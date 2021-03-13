@@ -1,3 +1,3 @@
-# fastback.jl - Blazing fast Julia backtester
+# Fastback.jl - Blazing fast Julia backtester
 
-Basic backtesting functionality with a focus on execution speed.
+`Fastback.jl` provides an unopinionated and highly efficient backtesting framework for trading strategies.

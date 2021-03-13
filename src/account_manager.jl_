@@ -1,0 +1,49 @@
+using Dates
+
+
+
+function single_stock_order_manager(acc::Account, stock::Security, ba::BidAsk, trade_mode::TradeMode, trade_dir::TradeDir, trade_size::Volume)
+    if trade_mode == LongOnly
+        # Long only
+        if trade_dir == Long
+            if !has_open_positions(acc)
+                execute_order!(acc, OpenOrder(stock, trade_size * trade_dir), ba)
+            end
+        else
+            if has_open_positions(acc)
+                execute_order!(acc, CloseOrder(acc.open_positions[1]), ba)
+            end
+        end
+    elseif trade_mode == ShortOnly
+        # Short only
+        if trade_dir == Short
+            if !has_open_positions(acc)
+                execute_order!(acc, OpenOrder(stock, trade_size * trade_dir), ba)
+            end
+        else
+            if has_open_positions(acc)
+                execute_order!(acc, CloseOrder(acc.open_positions[1]), ba)
+            end
+        end
+    else
+        # Long/Short
+        if trade_dir != Unspecified::TradeDir
+            should_open = true
+
+            if has_open_positions(acc)
+                if acc.open_positions[1].dir != trade_dir
+                    # direction changed - close existing position
+                    execute_order!(acc, CloseOrder(acc.open_positions[1]), ba)
+                else
+                    # position in same direction already opened
+                    should_open = false
+                end
+            end
+
+            if should_open
+                # open new trade
+                execute_order!(acc, OpenOrder(stock, trade_size * trade_dir), ba)
+            end
+        end
+    end
+end
