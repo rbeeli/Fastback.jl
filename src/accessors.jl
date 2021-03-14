@@ -5,18 +5,15 @@
 @inline spread(ba::BidAsk) = (ba.ask - ba.bid)
 @inline spread(bid::Price, ask::Price) = (ask - bid)
 
-@inline is_long(size::Volume) = size > 0.0
 @inline is_long(dir::TradeDir) = dir === Long
 @inline is_long(pos::Position) = pos.dir === Long
 
-@inline is_short(size::Volume) = size < 0.0
 @inline is_short(dir::TradeDir) = dir === Short
 @inline is_short(pos::Position) = pos.dir === Short
 
-@inline get_open_price(size::Volume, ba::BidAsk) = is_long(size) ? ba.ask : (is_short(size) ? ba.bid : NaN)
+@inline get_open_price(pos::Position) = is_long(pos.dir) ? pos.open_quotes.ask : (is_short(pos.dir) ? pos.open_quotes.bid : NaN)
 @inline get_open_price(dir::TradeDir, ba::BidAsk) = is_long(dir) ? ba.ask : (is_short(dir) ? ba.bid : NaN)
-
-@inline get_close_price(size::Volume, ba::BidAsk) = is_long(size) ? ba.bid : (is_short(size) ? ba.ask : NaN)
+@inline get_close_price(pos::Position) = is_long(pos.dir) ? pos.last_quotes.bid : (is_short(pos.dir) ? pos.last_quotes.ask : NaN)
 @inline get_close_price(dir::TradeDir, ba::BidAsk) = is_long(dir) ? ba.bid : (is_short(dir) ? ba.ask : NaN)
 
 # size negative for shorts, thus works for both long and short
@@ -42,3 +39,11 @@
 
 @inline count_winners_net(acc::Account) = count(map(x -> get_pnl_net(x) > 0.0, acc.closed_positions))
 @inline count_winners_gross(acc::Account) = count(map(x -> get_pnl_gross(x) > 0.0, acc.closed_positions))
+
+# # Dates.func(nbbo.dt) accessor shortcuts, e.g. year(nbbo), day(nbbo), hour(nbbo)
+# for func in (:year, :month, :day, :hour, :minute, :second, :millisecond, :microsecond, :nanosecond)
+#     name = string(func)
+#     @eval begin
+#         $func(ba::BidAsk)::Int64 = Dates.$func(ba.dt)
+#     end
+# end

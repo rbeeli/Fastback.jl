@@ -1,12 +1,14 @@
 name = "Fastback"
 uuid = "cac590ea-fc37-4aa9-92e2-88b1ae187e30"
 authors = ["Rino Beeli <rino.beeli@gmail.com>"]
-version = "1.0.0"
 repo = "https://github.com/rbeeli/fastback.jl.git"
+version = "1.0.0"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

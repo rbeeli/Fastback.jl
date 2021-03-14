@@ -2,12 +2,12 @@ using Dates
 
 
 
-function single_stock_order_manager(acc::Account, stock::Security, ba::BidAsk, trade_mode::TradeMode, trade_dir::TradeDir, trade_size::Volume)
+function one_instrument_manager(acc::Account, inst::Instrument, ba::BidAsk, trade_mode::TradeMode, trade_dir::TradeDir, trade_size::Volume)
     if trade_mode == LongOnly
         # Long only
         if trade_dir == Long
             if !has_open_positions(acc)
-                execute_order!(acc, OpenOrder(stock, trade_size * trade_dir), ba)
+                execute_order!(acc, OpenOrder(inst, trade_size * trade_dir), ba)
             end
         else
             if has_open_positions(acc)
@@ -18,7 +18,7 @@ function single_stock_order_manager(acc::Account, stock::Security, ba::BidAsk, t
         # Short only
         if trade_dir == Short
             if !has_open_positions(acc)
-                execute_order!(acc, OpenOrder(stock, trade_size * trade_dir), ba)
+                execute_order!(acc, OpenOrder(inst, trade_size * trade_dir), ba)
             end
         else
             if has_open_positions(acc)
@@ -42,7 +42,7 @@ function single_stock_order_manager(acc::Account, stock::Security, ba::BidAsk, t
 
             if should_open
                 # open new trade
-                execute_order!(acc, OpenOrder(stock, trade_size * trade_dir), ba)
+                execute_order!(acc, OpenOrder(inst, trade_size * trade_dir), ba)
             end
         end
     end

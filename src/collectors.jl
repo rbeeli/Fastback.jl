@@ -1,4 +1,4 @@
-function value_collector(interval::Period)::Tuple{Function, PeriodicValues}
+function value_collector(period::Period)::Tuple{Function, PeriodicValues}
     pv = Base.RefValue(PeriodicValues(period))
 
     function collector(dt::DateTime, value::Float64)
@@ -12,7 +12,7 @@ function value_collector(interval::Period)::Tuple{Function, PeriodicValues}
 end
 
 
-# function periodic_value_collector(period::Period, round_func::Function)::Tuple{Function, PeriodicValues}
+# function value_collector(period::Period, round_func::Function)::Tuple{Function, PeriodicValues}
 #     pv = Base.RefValue(PeriodicValues(period))
 
 #     function collector(dt::DateTime, value::Float64)
@@ -27,7 +27,7 @@ end
 # end
 
 
-function periodic_max_value_collector(period::Period)::Tuple{Function, PeriodicValues}
+function max_value_collector(period::Period)::Tuple{Function, PeriodicValues}
     pv = Base.RefValue(PeriodicValues(period))
 
     function collector(dt::DateTime, value::Float64)

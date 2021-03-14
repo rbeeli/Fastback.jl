@@ -1,8 +1,9 @@
 import Base: *, sign
+import PrettyTables
 using Printf
 using Dates
 
-const Price = Float64    # stock quote bid/ask, traded price
+const Price = Float64    # quote bid/ask, traded price
 const Volume = Float64   # trade volume / number of shares
 const Return = Float64
 
@@ -12,27 +13,23 @@ const Return = Float64
 @inline TradeDir(x::Volume) = TradeDir(Int16(sign(x)))
 @inline sign(x::TradeDir) = Int64(x)
 
-@inline *(x::Float64, dir::TradeDir) = Volume(x * sign(dir))
-@inline *(dir::TradeDir, x::Float64) = Volume(x * sign(dir))
-@inline *(x::Int64, dir::TradeDir) = Volume(x * sign(dir))
-@inline *(dir::TradeDir, x::Int64) = Volume(x * sign(dir))
 @inline *(x::Volume, dir::TradeDir) = Volume(x * sign(dir))
 @inline *(dir::TradeDir, x::Volume) = Volume(x * sign(dir))
 
 # ----------------------------------------------------------
 
-struct Security
-    ticker      ::String
-    __hash      ::UInt64  # precomputed/cached hash
-    Security(ticker) = new(ticker, hash(ticker))
+struct Instrument
+    id      ::String
+    __hash  ::UInt64  # precomputed/cached hash
+    Instrument(id) = new(id, hash(id))
 end
 
 # custom hash (cached hash)
-Base.hash(sec::Security) = sec.__hash
+Base.hash(inst::Instrument) = inst.__hash
 
 # console output when printing object
-function Base.show(io::IO, sec::Security)
-    print(io, "ticker=$(sec.ticker)")
+function Base.show(io::IO, inst::Instrument)
+    print(io, "[Instrument] id=$(inst.id)")
 end
 
 # ----------------------------------------------------------
@@ -45,17 +42,9 @@ struct BidAsk
     BidAsk(dt::DateTime, bid::Price, ask::Price) = new(dt, bid, ask)
 end
 
-# Dates.func(nbbo.dt) accessor shortcuts, e.g. year(nbbo), day(nbbo), hour(nbbo)
-for func in (:year, :month, :day, :hour, :minute, :second, :millisecond, :microsecond, :nanosecond)
-    name = string(func)
-    @eval begin
-        $func(ba::BidAsk)::Int64 = Dates.$func(ba.dt)
-    end
-end
-
 # console output when printing object
 function Base.show(io::IO, ba::BidAsk)
-    print(io, "dt=$(ba.dt)  bid=$(ba.bid)  ask=$(ba.ask)")
+    print(io, "[BidAsk] dt=$(ba.dt)  bid=$(ba.bid)  ask=$(ba.ask)")
 end
 
 # ----------------------------------------------------------
@@ -63,7 +52,7 @@ end
 @enum CloseReason::Int64 Unspecified=0 StopLoss=1 TakeProfit=2
 
 mutable struct Position
-    sec             ::Security
+    inst            ::Instrument
     size            ::Volume  # negative = short selling
     dir             ::TradeDir
     open_quotes     ::BidAsk
@@ -85,7 +74,7 @@ function Base.show(io::IO, pos::Position)
         size_str = " " * size_str
     end
     pnl_str = @sprintf("%+.2f", pos.pnl)
-    print(io, "<Position> [$(pos.sec.ticker)] size=$size_str  "*
+    print(io, "[Position] $size_str $(pos.inst.id) "*
         "open=($(Dates.format(pos.open_dt, "yyyy-mm-dd HH:MM:SS")), $(@sprintf("%.2f", pos.open_price)))  "*
         "last=($(Dates.format(pos.last_dt, "yyyy-mm-dd HH:MM:SS")), $(@sprintf("%.2f", pos.last_price)))  "*
         "pnl=$pnl_str  stop_loss=$(@sprintf("%.2f", pos.stop_loss))  take_profit=$(@sprintf("%.2f", pos.take_profit))  "*
@@ -100,18 +89,18 @@ end
 # ----------------------------------------------------------
 
 struct OpenOrder <: Order
-    sec             ::Security
+    inst            ::Instrument
     size            ::Volume
     dir             ::TradeDir
     stop_loss       ::Price
     take_profit     ::Price
-    OpenOrder(sec::Security, size::Volume, dir::TradeDir) = new(sec, size, dir, NaN, NaN)
-    OpenOrder(sec::Security, size::Volume, dir::TradeDir, stop_loss::Price, take_profit::Price) = new(sec, size, dir, stop_loss, take_profit)
+    OpenOrder(inst::Instrument, size::Volume, dir::TradeDir) = new(inst, size, dir, NaN, NaN)
+    OpenOrder(inst::Instrument, size::Volume, dir::TradeDir, stop_loss::Price, take_profit::Price) = new(inst, size, dir, stop_loss, take_profit)
 end
 
 # console output when printing object
 function Base.show(io::IO, order::OpenOrder)
-    print(io, "<OpenOrder> [$(order.sec.ticker)]  size=$(order.size)  stop_loss=$(@sprintf("%.2f", order.stop_loss))  take_profit=$(@sprintf("%.2f", order.take_profit))")
+    print(io, "[OpenOrder] $(order.size) $(order.inst.id)  stop_loss=$(@sprintf("%.2f", order.stop_loss))  take_profit=$(@sprintf("%.2f", order.take_profit))")
 end
 
 # ----------------------------------------------------------
@@ -125,7 +114,7 @@ end
 
 # console output when printing object
 function Base.show(io::IO, order::CloseOrder)
-    print(io, "<CloseOrder> $(order.pos)  $(order.close_reason)")
+    print(io, "[CloseOrder] $(order.pos)  $(order.close_reason)")
 end
 
 # ----------------------------------------------------------
@@ -135,7 +124,7 @@ end
 
 # console output when printing object
 function Base.show(io::IO, order::CloseAllOrder)
-    print(io, "<CloseAllOrder>")
+    print(io, "[CloseAllOrder]")
 end
 
 # ----------------------------------------------------------
@@ -159,77 +148,68 @@ mutable struct Account
 end
 
 # console output when printing object
-function Base.show(io::IO, acc::Account)
-    max_print_items = 10
-    lvl1_indent = "  "
-    lvl2_indent = "     "
-
+function Base.show(io::IO, acc::Account; volume_digits=1, price_digits=2, kwargs...)
+    x, y = displaysize(io)
+    title = " ACCOUNT SUMMARY "
+    border_char = '━'
+    eq_width = y - length(title)
+    eqs = border_char^(floor(Int64, eq_width/2))
+    println(io, "")
+    println(io, eqs * title * eqs)
+    println(io, "")
+    println(io, " ", "Open positions:     $(length(acc.open_positions))")
+    print_positions(io, acc.open_positions; kwargs...)
     println(io, "")
 
-    # println(io, lvl1_indent, "Place orders:       $(acc.place_orders_count)")
-    # i = 0
-    # for (sec, orders) in acc.place_orders
-    #     for o in orders
-    #         println(io, lvl2_indent, o)
-    #         i += 1
-    #         if i == max_print_items
-    #             break
-    #         end
-    #     end
-    # end
-    # if i < acc.place_orders_count
-    #     println(io, lvl2_indent, "[...] $(acc.place_orders_count - i) more items")
-    # end
-    # println(io, "")
+    println(io, "")
+    println(io, " ", "Closed positions:   $(length(acc.closed_positions))")
+    print_positions(io, acc.closed_positions; kwargs...)
+    println(io, "")
 
-    # println(io, lvl1_indent, "Close orders:       $(acc.close_orders_count)")
-    # i = 0
-    # for (sec, orders) in acc.close_orders
-    #     for o in orders
-    #         println(io, lvl2_indent, o)
-    #         i += 1
-    #         if i == max_print_items
-    #             break
-    #         end
-    #     end
-    # end
-    # if i < acc.close_orders_count
-    #     println(io, lvl2_indent, "[...] $(acc.close_orders_count - i) more items")
-    # end
-    # println(io, "")
+    println(io, " ", "Balance:            $(@sprintf("%.2f", acc.balance))\n")
+    println(io, " ", "Equity:             $(@sprintf("%.2f", acc.equity))\n")
+    println(io, border_char^y)
+    println(io, "")
+end
 
-    println(io, lvl1_indent, "Open positions:     $(length(acc.open_positions))")
-    i = 0
-    total = length(acc.open_positions)
-    for pos in acc.open_positions
-        i += 1
-        println(io, lvl2_indent, pos)
-        if i == max_print_items
-            break
+
+function print_positions(positions::Vector{Position}; max_print=25, volume_digits=1, price_digits=2, kwargs...)
+    print_positions(stdout, positions::Vector{Position}; max_print, volume_digits, price_digits, kwargs...)
+end
+
+function print_positions(io::IO, positions::Vector{Position}; max_print=25, volume_digits=1, price_digits=2)
+    columns = ["Inst." "Volume" "Open time" "Open price" "Last quote" "Last price" "P&L" "Stop loss" "Take profit" "Close reason"]
+    df = dateformat"yyyy-mm-dd HH:MM:SS"
+    formatter = (v,i,j) -> begin
+        o = v
+        if j == 2
+            # Volume
+            o = round(v; digits=volume_digits)
+        elseif j == 4 || j == 6 || j == 7 || j == 8 || j == 9
+            # Open price / Last price / P&L / Stop loss / Take profit
+            if isnan(v)
+                o = "—"
+            else
+                o = round(v; digits=price_digits)
+            end
+        elseif j == 3 || j == 5
+            # Open time / Last quote
+            o = Dates.format(v, df)
+        end
+        o
+    end
+
+    n = length(positions)
+    if n > 0
+        data = map(pos -> [pos.inst.id pos.size pos.open_dt get_open_price(pos) pos.last_dt get_close_price(pos) pos.pnl pos.stop_loss pos.take_profit pos.close_reason], positions)
+        data = reduce(vcat, data)
+        if !isnan(max_print) && size(data, 1) > max_print
+            PrettyTables.pretty_table(io, data[1:max_print, :], columns; formatters=formatter)
+            println(io, " [...] $(n - max_print) more positions")
+        else
+            PrettyTables.pretty_table(io, data, columns; formatters=formatter)
         end
     end
-    if i < total
-        println(io, lvl2_indent, "[...] $(total - i) more items")
-    end
-    println(io, "")
-
-    println(io, lvl1_indent, "Closed positions:   $(length(acc.closed_positions))")
-    i = 0
-    total = length(acc.closed_positions)
-    for pos in acc.closed_positions
-        i += 1
-        println(io, lvl2_indent, pos)
-        if i == max_print_items
-            break
-        end
-    end
-    if i < total
-        println(io, lvl2_indent, "[...] $(total - i) more items")
-    end
-    println(io, "")
-
-    println(io, lvl1_indent, "Balance:            $(@sprintf("%.2f", acc.balance))\n")
-    println(io, lvl1_indent, "Equity:             $(@sprintf("%.2f", acc.equity))")
 end
 
 # ----------------------------------------------------------

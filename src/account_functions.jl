@@ -2,15 +2,15 @@
 function execute_order!(acc::Account, o::OpenOrder, ba::BidAsk)
     # create new position
     pos = Position(
-        o.sec,
+        o.inst,
         sign(o.dir) * abs(o.size),
         o.dir,
         ba,
         ba.dt,
-        get_open_price(o.size, ba),
+        get_open_price(o.dir, ba),
         ba,
         ba.dt,
-        get_close_price(o.size, ba),
+        get_close_price(o.dir, ba),
         o.stop_loss,
         o.take_profit,
         Unspecified::CloseReason,
@@ -83,34 +83,34 @@ function close_position!(acc::Account, pos::Position, ba::BidAsk, close_reason::
 end
 
 
-function update_account!(acc::Account, sec::Security, ba::BidAsk)
-    # # close orders for given security
+function update_account!(acc::Account, inst::Instrument, ba::BidAsk)
+    # # close orders for given instrument
     # if length(acc.close_orders) > 0
-    #     sec_orders = get(acc.close_orders, sec, nothing)
-    #     if !isnothing(sec_orders)
-    #         for o in sec_orders
+    #     inst_orders = get(acc.close_orders, inst, nothing)
+    #     if !isnothing(inst_orders)
+    #         for o in inst_orders
     #             execute_order!(acc, o, nbbo)
     #             acc.close_orders_count -= 1
     #         end
-    #         empty!(sec_orders)
+    #         empty!(inst_orders)
     #     end
     # end
 
-    # # open orders for given security
+    # # open orders for given instrument
     # if length(acc.place_orders) > 0
-    #     sec_orders = get(acc.place_orders, sec, nothing)
-    #     if !isnothing(sec_orders)
-    #         for o in sec_orders
+    #     inst_orders = get(acc.place_orders, inst, nothing)
+    #     if !isnothing(inst_orders)
+    #         for o in inst_orders
     #             execute_order!(acc, o, nbbo)
     #             acc.place_orders_count -= 1
     #         end
-    #         empty!(sec_orders)
+    #         empty!(inst_orders)
     #     end
     # end
 
-    # value open positions for given security
+    # value open positions for given instrument
     for pos in acc.open_positions
-        if pos.sec === sec
+        if pos.inst === inst
             # update P&L of position and account equity
             update_pnl!(acc, pos, ba)
         end
