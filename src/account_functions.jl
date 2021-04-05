@@ -7,14 +7,15 @@ function execute_order!(acc::Account, o::OpenOrder, ba::BidAsk)
         o.dir,
         ba,
         ba.dt,
-        get_open_price(o.dir, ba),
+        open_price(o.dir, ba),
         ba,
         ba.dt,
-        get_close_price(o.dir, ba),
+        close_price(o.dir, ba),
         o.stop_loss,
         o.take_profit,
         Unspecified::CloseReason,
-        0.0 # PnL
+        0.0,        # PnL
+        o.data      # user-defined data object
     )
     book_position!(acc, pos, ba)
     return

@@ -1,6 +1,6 @@
 using Base.Threads
 using Dates
-using Printf
+using Formatting
 
 
 function batch_backtest(params_list::Vector{Dict{Any, Any}}, backtest_func::Function)::Vector{Account}
@@ -31,7 +31,7 @@ function batch_backtest(params_list::Vector{Dict{Any, Any}}, backtest_func::Func
             lock(locker)
             n_done += 1
             if time() - last_info > 1.0 || n_done == n_params
-                println(" $(@sprintf("%.1f", 100*(n_done/n_params)))% ($n_done/$n_params)")
+                println(" $(fmt(".1f", 100*(n_done/n_params)))% ($n_done/$n_params)")
                 last_info = time()
             end
             unlock(locker)

@@ -1,6 +1,6 @@
 using Dates
 using Plots
-using Printf
+using Formatting
 using Query
 using StatsPlots
 using ColorSchemes
@@ -25,7 +25,7 @@ function plot_balance(pv::PeriodicValues)
         title="Balance",
         linecolor="blue",
         linetype=:steppost,
-        yformatter = y -> @sprintf("%.0f", y),
+        yformatter = y -> fmt(".0f", y),
         w=1,
         legend=false)
     ylims!((0, maximum(values)))
@@ -40,7 +40,7 @@ function plot_equity(pv::PeriodicValues)
         title="Equity",
         linecolor="green",
         linetype=:steppost,
-        yformatter = y -> @sprintf("%.0f", y),
+        yformatter = y -> fmt(".0f", y),
         w=1,
         legend=false)
     # ylims!((0, maximum(values)))
@@ -54,7 +54,7 @@ function plot_equity_seq(pv::PeriodicValues)
         title="Equity",
         linecolor="green",
         linetype=:steppost,
-        yformatter = y -> @sprintf("%.0f", y),
+        yformatter = y -> fmt(".0f", y),
         w=1,
         legend=false)
     # ylims!((0, maximum(values)))
@@ -67,7 +67,7 @@ function plot_open_orders(pv::PeriodicValues)
     max_open = maximum(values)
 
     y_ticks = 0:max_open
-    y_ticks_str = map(x -> @sprintf("%.0f", x), y_ticks)
+    y_ticks_str = map(x -> fmt(".0f", x), y_ticks)
 
     plot(dts, values;
         fontfamily="Computer Modern",
@@ -85,7 +85,7 @@ function plot_open_orders_seq(pv::PeriodicValues)
     max_open = maximum(values)
 
     y_ticks = 0:max_open
-    y_ticks_str = map(x -> @sprintf("%.0f", x), y_ticks)
+    y_ticks_str = map(x -> fmt(".0f", x), y_ticks)
 
     plot(x, values;
         fontfamily="Computer Modern",
@@ -108,7 +108,7 @@ function plot_drawdown(pv::PeriodicValues)
         fill=(0, "red"),
         linecolor="red",
         linetype=:steppost,
-        yformatter = y -> @sprintf("%.0f", y),
+        yformatter = y -> fmt(".0f", y),
         w=1,
         legend=false)
 end
@@ -122,7 +122,7 @@ function plot_drawdown_seq(pv::PeriodicValues)
         fill=(0, "red"),
         linecolor="red",
         linetype=:steppost,
-        yformatter = y -> @sprintf("%.0f", y),
+        yformatter = y -> fmt(".0f", y),
         w=1,
         legend=false)
 end
@@ -257,7 +257,7 @@ function plot_nominal_cum_returns_by_hour_seq(
                 fontfamily="Computer Modern",
                 xticks=((1, max_n_pos), (min_date_str, max_date_str)),
                 legendfontsize=9,
-                yformatter = y -> @sprintf("%.1f\$", y),
+                yformatter = y -> fmt(".1f", y)*"\$",
                 fontsize=9,
                 w=0.5,
                 foreground_color_legend=nothing,
