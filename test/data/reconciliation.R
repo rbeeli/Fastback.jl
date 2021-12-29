@@ -171,4 +171,35 @@ print(paste('Return.calculate log sd', sd(Return.calculate(asset.prices.ts, meth
 print(paste('Return.calculate diff length', length(Return.calculate(asset.prices.ts, method='diff'))))
 print(paste('Return.calculate diff mean', mean(Return.calculate(asset.prices.ts, method='diff'), na.rm=T)))
 print(paste('Return.calculate diff sd', sd(Return.calculate(asset.prices.ts, method='diff'), na.rm=T)))
+
+dd <- as.vector(Drawdowns(asset.rets.ts))
+print(paste('Drawdowns length', length(dd)))
+print(paste('Drawdowns mean', mean(dd)))
+print(paste('Drawdowns sd', sd(dd)))
+
+dd <- as.vector(Drawdowns(asset.rets.ts, geometric=F))
+print(paste('Drawdowns geometric mean', mean(dd)))
+print(paste('Drawdowns geometric sd', sd(dd)))
+
+# print(dd[1:10])
+
+#  [1]  0.0 -0.1  0.2 -0.5 -0.1  0.2  0.3 -0.2  0.6  0.8  0.2 -0.8
+#  [1]  0.00000000 -0.10000000  0.00000000 -0.45454545 -0.54545455 -0.36363636
+#  [7] -0.09090909 -0.27272727  0.00000000  0.00000000  0.00000000 -0.33333333
+a <- c(0.0, -0.1, 0.2, -0.5, -0.1, 0.2, 0.3, -0.2, 0.6, 0.8, 0.2, -0.8)
+cumrets <- 1+cumsum(a)
+print(cumrets)
+print(as.vector(cummax(c(1, cumrets))[-1]))
+
+# print(a)
+# print(as.vector(Drawdowns(a, geometric=F)))
+
+#     x <- a
+#     Return.cumulative = 1+cumsum(x)
+#     maxCumulativeReturn = cummax(c(1,Return.cumulative))[-1]
+#     column.drawdown = Return.cumulative/maxCumulativeReturn - 1
+#     print(Return.cumulative)
+#     print(maxCumulativeReturn)
+#     print(column.drawdown)
+
 print('-----------------------------------------------------------')

@@ -73,4 +73,12 @@ using Statistics
     @test CVaR(asset_returns, 0.05, :gaussian) ≈ -0.00156905316259027
     @test CVaR(asset_returns, 0.05, :cornish_fisher) ≈ -0.0016287316713825
 
+    @test length(drawdowns(asset_returns)) == 1000
+    @test mean(drawdowns(asset_returns)) ≈ -0.000517982256217951
+    @test std(drawdowns(asset_returns)) ≈ 0.000916577011725993
+
+    @test mean(drawdowns(asset_returns; geometric=false)) ≈ -0.000418043468523338
+    @test std(drawdowns(asset_returns; geometric=false)) ≈ 0.000757130672676854
+
+
 end
