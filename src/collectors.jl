@@ -81,7 +81,7 @@ mutable struct MaxValue{T}
 end
 
 function max_value_collector(type::Type{T})::Tuple{Function, MaxValue{T}} where T
-    mv = MaxValue{T}(DateTime(0), -1e50)
+    mv = MaxValue{T}(DateTime(0), typemin(T))
 
     @inline function collector(dt::DateTime, value::T)::Nothing
         if value > mv.max_value

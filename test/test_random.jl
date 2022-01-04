@@ -18,10 +18,10 @@ dts = map(x -> DateTime(2000, 1, 1) + Minute(x) + Millisecond(123), 1:N);
 acc = Account(10_000.0);
 
 # plot data collectors
-collect_balance, balance_curve = value_collector(Second(1));
-collect_equity, equity_curve = value_collector(Second(1));
-collect_open_orders, open_orders_curve = max_value_collector(Second(1));
-collect_drawdown, drawdown_curve = drawdown_collector(Second(1));
+collect_balance, balance_curve = periodic_collector(Float64, Second(1));
+collect_equity, equity_curve = periodic_collector(Float64, Second(1));
+collect_open_orders, open_orders_curve = max_value_collector(Int64);
+collect_drawdown, drawdown_curve = drawdown_collector(Percentage::DrawdownMode, (v, dt, equity) -> dt - v.last_dt >= Second(1));
 
 # backtest random trading strategy
 for i in 1:N
@@ -36,7 +36,7 @@ for i in 1:N
     else
         # randomly trade
         if rand() > 0.99 && hour(ba.dt) < 15
-            pos_dir = TradeDir(rand() - 0.5) # positive = long, negative = short
+            pos_dir = rand() > 0.5 ? Long::TradeDir : Short::TradeDir
             pos_size = match_target_exposure(acc.equity, pos_dir, ba)
             execute_order!(acc, OpenOrder(inst, pos_size, pos_dir; data=i), ba)
         end
@@ -54,7 +54,7 @@ for i in 1:N
     # collect data for analysis
     collect_balance(ba.dt, acc.balance)
     collect_equity(ba.dt, acc.equity)
-    collect_open_orders(ba.dt, Float64(length(acc.open_positions)))
+    collect_open_orders(ba.dt, length(acc.open_positions))
     collect_drawdown(ba.dt, acc.equity)
 end
 
@@ -72,7 +72,7 @@ print_positions(acc.closed_positions; max_print=NaN, data_renderer=(pos, data) -
 # include("../backtesting/plots.jl");
 # using Measures
 # gr();
-#
+
 # title_text = "Backtest $(inst.symbol)"
 # title_plot = scatter(1:2,
 #     marker=0,
