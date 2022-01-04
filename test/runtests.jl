@@ -9,6 +9,5 @@ include("bidask.jl")
 include("position.jl")
 include("collectors.jl")
 include("account.jl")
-include("statistics.jl")
 
 end

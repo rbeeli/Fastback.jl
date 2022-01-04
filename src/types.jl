@@ -43,10 +43,10 @@ mutable struct Position
     inst            ::Instrument
     size            ::Volume        # negative = short selling
     dir             ::TradeDir
-    open_quote     ::BidAsk
+    open_quote      ::BidAsk
     open_dt         ::DateTime
     open_price      ::Price
-    last_quote     ::BidAsk
+    last_quote      ::BidAsk
     last_dt         ::DateTime
     last_price      ::Price
     stop_loss       ::Price

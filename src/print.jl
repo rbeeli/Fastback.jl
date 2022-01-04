@@ -136,6 +136,7 @@ end
 
 # --------------- Account ---------------
 
+# TODO: Digits
 function Base.show(io::IO, acc::Account; volume_digits=1, price_digits=2, kwargs...)
     x, y = displaysize(io)
     get_color(val) = val >= 0 ? (val == 0 ? :black : :green) : :red

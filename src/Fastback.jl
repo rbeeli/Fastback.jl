@@ -9,7 +9,6 @@ include("account_functions.jl")
 include("backtest_runner.jl")
 include("print.jl")
 include("utils.jl")
-include("statistics.jl")
 
 # export all
 for n in names(@__MODULE__; all=true)
