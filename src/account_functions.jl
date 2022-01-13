@@ -85,30 +85,6 @@ end
 
 
 function update_account!(acc::Account, inst::Instrument, ba::BidAsk)
-    # # close orders for given instrument
-    # if length(acc.close_orders) > 0
-    #     inst_orders = get(acc.close_orders, inst, nothing)
-    #     if !isnothing(inst_orders)
-    #         for o in inst_orders
-    #             execute_order!(acc, o, nbbo)
-    #             acc.close_orders_count -= 1
-    #         end
-    #         empty!(inst_orders)
-    #     end
-    # end
-
-    # # open orders for given instrument
-    # if length(acc.place_orders) > 0
-    #     inst_orders = get(acc.place_orders, inst, nothing)
-    #     if !isnothing(inst_orders)
-    #         for o in inst_orders
-    #             execute_order!(acc, o, nbbo)
-    #             acc.place_orders_count -= 1
-    #         end
-    #         empty!(inst_orders)
-    #     end
-    # end
-
     # value open positions for given instrument
     for pos in acc.open_positions
         if pos.inst === inst
@@ -116,6 +92,5 @@ function update_account!(acc::Account, inst::Instrument, ba::BidAsk)
             update_pnl!(acc, pos, ba)
         end
     end
-
     return
 end

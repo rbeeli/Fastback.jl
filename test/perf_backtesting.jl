@@ -1,9 +1,6 @@
 using Dates
 using BenchmarkTools
-
-include("../Fastback.jl");
-
-
+using Fastback
 
 # w/ delayed orders min     = 14.4 ms
 # direct placement          = 5.4 ms
@@ -12,11 +9,11 @@ include("../Fastback.jl");
     dt = DateTime(2018, 1, 2, 9, 30, 0)
     acc = Account(100_000.0)
     for i = 1:100_000
-        nbbo = NBBO(dt, 100.0 + i / 1000, 102 + i / 1000)
-        execute_order!(acc, OpenOrder(AAPL, 100), nbbo)
-        update_account!(acc, AAPL, NBBO(dt, 100, 102))
-        execute_order!(acc, CloseOrder(acc.open_positions[1]), nbbo)
-        update_account!(acc, AAPL, NBBO(dt, 100, 102))
+        ba = BidAsk(dt, 100.0 + i / 1000, 102 + i / 1000)
+        execute_order!(acc, OpenOrder(AAPL, 100.0, Long), ba)
+        update_account!(acc, AAPL, BidAsk(dt, 100.0, 102.0))
+        execute_order!(acc, CloseOrder(acc.open_positions[1]), ba)
+        update_account!(acc, AAPL, BidAsk(dt, 100.0, 102.0))
     end
 end evals=3 samples=40
 
@@ -28,10 +25,10 @@ end evals=3 samples=40
     dt = DateTime(2018, 1, 2, 9, 30, 0)
     acc = Account(100_000.0)
     for i = 1:100_000
-        nbbo = NBBO(dt, 100.0 + i / 1000, 102 + i / 1000)
+        ba = BidAsk(dt, 100.0 + i / 1000, 102 + i / 1000)
         if i == 1
-            execute_order!(acc, OpenOrder(AAPL, 100), nbbo)
+            execute_order!(acc, OpenOrder(AAPL, 100.0, Long), ba)
         end
-        update_account!(acc, AAPL, nbbo)
+        update_account!(acc, AAPL, ba)
     end
 end evals=3 samples=40

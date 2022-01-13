@@ -1,7 +1,6 @@
 using BenchmarkTools
 using Dates
-
-include("../Fastback.jl");
+using Fastback
 
 
 # synthetic data

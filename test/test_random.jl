@@ -1,7 +1,7 @@
 module FastbackDummyTest
 
-using Fastback
 using Dates
+using Fastback
 
 # create instrument
 inst = Instrument("AAPL");
