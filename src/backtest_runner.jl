@@ -47,7 +47,7 @@ function batch_backtest(
 
                 # print progress
                 if time() - last_info > 1.0 || n_done == n_params
-                    printstyled("$(@sprintf("%3.0d", 100*(n_done/n_params)))%\t$n_done/$n_params\n"; color=:green)
+                    printstyled("\n$(@sprintf("%3.0d", 100*(n_done/n_params)))%\t$n_done/$n_params\n\n"; color=:green)
                     last_info = time()
                 end
             finally
