@@ -14,8 +14,11 @@ if isempty(requested_tests)
     include("permute.jl")
     include("bidask.jl")
     include("position.jl")
-    include("collectors.jl")
     include("account.jl")
+    include("collectors.jl")
+    include("batch_backtest.jl")
+    include("perf_collectors.jl")
+    include("perf_backtesting.jl")
 else
     for test_name=requested_tests
         include(test_name)

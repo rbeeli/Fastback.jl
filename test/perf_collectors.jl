@@ -55,7 +55,7 @@ end
 collected1 = run_test1(dts, prices);
 collected2 = run_test2(dts, prices);
 
-@assert all(collected1.values .== collected2.values);
+@test all(collected1.values .== collected2.values);
 
 @benchmark run_test1(dts, prices) samples=40 evals=2
 @benchmark run_test2(dts, prices) samples=40 evals=2

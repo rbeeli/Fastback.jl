@@ -1,4 +1,3 @@
-using Formatting
 using PrettyTables
 
 
@@ -20,16 +19,16 @@ end
 # --------------- Position ---------------
 
 function Base.show(io::IO, pos::Position)
-    size_str = fmt(".2f", pos.size)
+    size_str = @sprintf("%.2f", pos.size)
     if sign(pos.size) != -1
         size_str = " " * size_str
     end
-    pnl_str = fmt("+.2f", pos.pnl)
+    pnl_str = @sprintf("%+.2f", pos.pnl)
     data_str = isnothing(pos.data) ? "nothing" : "<object>"
     print(io, "[Position] $(pos.inst.symbol) $(pos.dir) $size_str  "*
-        "open=($(Dates.format(pos.open_dt, "yyyy-mm-dd HH:MM:SS")), $(fmt(".2f", pos.open_price)))  "*
-        "last=($(Dates.format(pos.last_dt, "yyyy-mm-dd HH:MM:SS")), $(fmt(".2f", pos.last_price)))  "*
-        "pnl=$pnl_str  stop_loss=$(fmt(".2f", pos.stop_loss))  take_profit=$(fmt(".2f", pos.take_profit))  "*
+        "open=($(Dates.format(pos.open_dt, "yyyy-mm-dd HH:MM:SS")), $(@sprintf("%.2f", pos.open_price)))  "*
+        "last=($(Dates.format(pos.last_dt, "yyyy-mm-dd HH:MM:SS")), $(@sprintf("%.2f", pos.last_price)))  "*
+        "pnl=$pnl_str  stop_loss=$(@sprintf("%.2f", pos.stop_loss))  take_profit=$(@sprintf("%.2f", pos.take_profit))  "*
         "close_reason=$(pos.close_reason)  data=$data_str")
 end
 
@@ -50,6 +49,10 @@ function print_positions(io::IO, positions::Vector{Position};
     end
 
     df = dateformat"yyyy-mm-dd HH:MM:SS"
+
+    volume_digits = 5
+    vol_fmt = x -> string(round(x, digits=volume_digits))
+    price_fmt = x -> string(round(x, digits=price_digits))
 
     columns = [
         "Symbol"; "Volume"; "Open time"; "Open price";
@@ -74,9 +77,9 @@ function print_positions(io::IO, positions::Vector{Position};
     formatter = (v, i, j) -> begin
         o = v
         if j == idx_volume
-            o = sprintf1("%.$(volume_digits)f", v)
+            o = vol_fmt(v)
         elseif j == idx_open_price || j == idx_last_price || j == idx_pnl || j == idx_stop_loss || j == idx_take_profit
-            o = isnan(v) ? "—" : sprintf1("%.$(price_digits)f", v)
+            o = isnan(v) ? "—" : price_fmt(v)
         elseif j == idx_open_time || j == idx_last_quote
             o = Dates.format(v, df)
         elseif j == idx_data
@@ -116,7 +119,7 @@ end
 # --------------- OpenOrder ---------------
 
 function Base.show(io::IO, order::OpenOrder)
-    print(io, "[OpenOrder] $(order.inst.symbol) $(order.size) $(order.dir)  stop_loss=$(fmt(".2f", order.stop_loss))  take_profit=$(fmt(".2f", order.take_profit))")
+    print(io, "[OpenOrder] $(order.inst.symbol) $(order.size) $(order.dir)  stop_loss=$(@sprintf("%.2f", order.stop_loss))  take_profit=$(@sprintf("%.2f", order.take_profit))")
 end
 
 
@@ -146,21 +149,21 @@ function Base.show(io::IO, acc::Account; volume_digits=1, price_digits=2, kwargs
     eqs = border_char^(floor(Int64, eq_width/2))
     println(io, "")
     println(io, eqs * title * eqs)
+    println(io, " ", "Initial balance:    $(@sprintf("%.2f", acc.initial_balance))")
+    print(io,   " ", "Balance:            $(@sprintf("%.2f", acc.balance))")
+    print(io, " (")
+    printstyled(io, "$(@sprintf("%+.2f", balance_ret(acc)*100))%"; color=get_color(balance_ret(acc)))
+    print(io, ")\n")
+    print(io, " ", "Equity:             $(@sprintf("%.2f", acc.equity))")
+    print(io, " (")
+    printstyled(io, "$(@sprintf("%+.2f", equity_ret(acc)*100))%"; color=get_color(equity_ret(acc)))
+    print(io, ")\n")
+    println(io, "")
     println(io, " ", "Open positions:     $(length(acc.open_positions))")
     print_positions(io, acc.open_positions; kwargs...)
     println(io, "")
     println(io, " ", "Closed positions:   $(length(acc.closed_positions))")
     print_positions(io, acc.closed_positions; kwargs...)
-    println(io, "")
-    println(io, " ", "Initial balance:    $(fmt(".2f", acc.initial_balance))")
-    print(io,   " ", "Balance:            $(fmt(".2f", acc.balance))")
-    print(io, " (")
-    printstyled(io, "$(fmt("+.2f", balance_ret(acc)*100))%"; color=get_color(balance_ret(acc)))
-    print(io, ")\n")
-    print(io, " ", "Equity:             $(fmt(".2f", acc.equity))")
-    print(io, " (")
-    printstyled(io, "$(fmt("+.2f", equity_ret(acc)*100))%"; color=get_color(equity_ret(acc)))
-    print(io, ")\n")
     println(io, border_char^y)
     println(io, "")
 end

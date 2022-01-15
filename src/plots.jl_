@@ -1,6 +1,5 @@
 using Dates
 using Plots
-using Formatting
 using Query
 using StatsPlots
 using ColorSchemes

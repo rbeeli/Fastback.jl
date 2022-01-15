@@ -1,52 +1,64 @@
 using Base.Threads
 using Dates
-using Formatting
+using Printf
 
 
-function batch_backtest(params_list::Vector{Dict{Any, Any}}, backtest_func::Function)::Vector{Account}
+function batch_backtest(
+    params_list::Vector{Dict{Any, Any}},
+    backtest_func::Function;
+    finished_func::Union{Function, Nothing}=nothing)::Vector{Union{Account, Nothing}}
+
     n_params = length(params_list)
     n_threads = nthreads()
 
-    println("----------------------------------------------------------------")
-    println("Batch backtest")
-    println(" > Threads:     $n_threads")
-    println(" > Iterations:  $n_params")
+    printstyled("─"^80*"\n"; color=:green)
+    printstyled("Batch backtest [threads=$n_threads, itrs=$n_params]\n"; color=:green)
     println("")
 
-    results = Vector{Account}(undef, n_params)
+    results = Vector{Union{Account, Nothing}}(nothing, n_params)
     n_done = 0
     last_info = 0.0
-    locker = SpinLock()
+    lk = SpinLock()
 
     @time begin
         # for i = 1:n_params
         @threads for i = 1:n_params
             # get params used for backtest
-            prms = params_list[i]
+            params = params_list[i]
 
             # run backtest
-            acc = backtest_func(; prms...)
+            acc = backtest_func(; params...)
 
-            # progress info
-            lock(locker)
-            n_done += 1
-            if time() - last_info > 1.0 || n_done == n_params
-                println(" $(fmt(".1f", 100*(n_done/n_params)))% ($n_done/$n_params)")
-                last_info = time()
+            lock(lk)
+            try
+                n_done += 1
+
+                if acc isa Account
+                    results[i] = acc
+
+                    # callback for single finished backtest if set
+                    if !isnothing(finished_func)
+                        finished_func(params, acc)
+                    end
+                else
+                    printstyled(
+                        "WARN [Fastback] backtest_runner - No Account instance returned from backtest_func, but of type "*string(typeof(acc))*". finished_func will not be called.\n"; color=:yellow);
+                end
+
+                # print progress
+                if time() - last_info > 1.0 || n_done == n_params
+                    printstyled("$(@sprintf("%3.0d", 100*(n_done/n_params)))%\t$n_done/$n_params\n"; color=:green)
+                    last_info = time()
+                end
+            finally
+                unlock(lk)
             end
-            unlock(locker)
-
-            println(
-                "\n"*
-                "\n  $i:  # trades:           $(length(acc.closed_positions))"*
-                "\n  $i:  nominal return:     $(sum(map(x -> calc_nominal_return_net(x), acc.closed_positions)))"*
-                "\n")
-
-            results[i] = acc
         end
+
+        println("")
     end
 
-    println("----------------------------------------------------------------")
+    printstyled("─"^80*"\n"; color=:green)
 
     results
 end
