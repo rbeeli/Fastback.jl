@@ -12,12 +12,12 @@ function periodic_collector(
     values = Vector{Tuple{DateTime, T}}()
     pv = PeriodicValues{T}(values, period, DateTime(0))
 
-    @inline function collector(dt::DateTime, value::T)::Nothing
+    @inline function collector(dt::DateTime, value::T)
         if (dt - pv.last_dt) >= period
             push!(values, (dt, value))
             pv.last_dt = dt
         end
-        nothing
+        return
     end
 
     return collector, pv
@@ -40,13 +40,13 @@ function predicate_collector(
     values = Vector{Tuple{DateTime, T}}()
     pv = PredicateValues{T}(values, DateTime(0), init_value, nothing)
 
-    @inline function collector(dt::DateTime, value::T)::Nothing
+    @inline function collector(dt::DateTime, value::T)
         if predicate(pv, dt, value)
             push!(values, (dt, value))
             pv.last_dt = dt
             pv.last_value = value
         end
-        nothing
+        return
     end
 
     return collector, pv
@@ -62,12 +62,12 @@ end
 function min_value_collector(type::Type{T})::Tuple{Function, MinValue{T}} where T
     mv = MinValue{T}(DateTime(0), 1e50)
 
-    @inline function collector(dt::DateTime, value::T)::Nothing
+    @inline function collector(dt::DateTime, value::T)
         if value < mv.min_value
             mv.min_value = value
             mv.dt = dt
         end
-        nothing
+        return
     end
 
     return collector, mv
@@ -83,12 +83,12 @@ end
 function max_value_collector(type::Type{T})::Tuple{Function, MaxValue{T}} where T
     mv = MaxValue{T}(DateTime(0), typemin(T))
 
-    @inline function collector(dt::DateTime, value::T)::Nothing
+    @inline function collector(dt::DateTime, value::T)
         if value > mv.max_value
             mv.max_value = value
             mv.dt = dt
         end
-        nothing
+        return
     end
 
     return collector, mv
@@ -114,7 +114,7 @@ function drawdown_collector(mode::DrawdownMode, predicate::Function)::Tuple{Func
         DateTime(0),
         nothing)
 
-    @inline function collector(dt::DateTime, equity::Price)::Nothing
+    @inline function collector(dt::DateTime, equity::Price)
         # keep track of max equity value
         dv.max_equity = max(dv.max_equity, equity)
 
@@ -128,7 +128,7 @@ function drawdown_collector(mode::DrawdownMode, predicate::Function)::Tuple{Func
             dv.last_dt = dt
         end
 
-        nothing
+        return
     end
 
     return collector, dv

@@ -314,6 +314,7 @@ function params_combinations_internal(
             push!(result, new_parameterset)
         end
     end
+    return
 end
 
 

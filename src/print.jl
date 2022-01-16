@@ -49,8 +49,6 @@ function print_positions(io::IO, positions::Vector{Position};
     end
 
     df = dateformat"yyyy-mm-dd HH:MM:SS"
-
-    volume_digits = 5
     vol_fmt = x -> string(round(x, digits=volume_digits))
     price_fmt = x -> string(round(x, digits=price_digits))
 
@@ -139,16 +137,16 @@ end
 
 # --------------- Account ---------------
 
-# TODO: Digits
 function Base.show(io::IO, acc::Account; volume_digits=1, price_digits=2, kwargs...)
+    # volume_digits and price_digits are passed to print_positions(...)
     x, y = displaysize(io)
+    
     get_color(val) = val >= 0 ? (val == 0 ? :black : :green) : :red
+
     title = " ACCOUNT SUMMARY "
-    border_char = '━'
-    eq_width = y - length(title)
-    eqs = border_char^(floor(Int64, eq_width/2))
+    title_line = '━'^(floor(Int64, (y - length(title))/2))
     println(io, "")
-    println(io, eqs * title * eqs)
+    println(io, title_line * title * title_line)
     println(io, " ", "Initial balance:    $(@sprintf("%.2f", acc.initial_balance))")
     print(io,   " ", "Balance:            $(@sprintf("%.2f", acc.balance))")
     print(io, " (")
@@ -164,6 +162,6 @@ function Base.show(io::IO, acc::Account; volume_digits=1, price_digits=2, kwargs
     println(io, "")
     println(io, " ", "Closed positions:   $(length(acc.closed_positions))")
     print_positions(io, acc.closed_positions; kwargs...)
-    println(io, border_char^y)
+    println(io, '━'^y)
     println(io, "")
 end

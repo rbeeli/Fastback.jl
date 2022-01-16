@@ -21,7 +21,7 @@ acc = Account(10_000.0);
 collect_balance, balance_curve = periodic_collector(Float64, Second(1));
 collect_equity, equity_curve = periodic_collector(Float64, Second(1));
 collect_open_orders, open_orders_curve = max_value_collector(Int64);
-collect_drawdown, drawdown_curve = drawdown_collector(Percentage::DrawdownMode, (v, dt, equity) -> dt - v.last_dt >= Second(1));
+collect_drawdown, drawdown_curve = drawdown_collector(Percentage, (v, dt, equity) -> dt - v.last_dt >= Second(1));
 
 # backtest random trading strategy
 for i in 1:N
@@ -36,7 +36,7 @@ for i in 1:N
     else
         # randomly trade
         if rand() > 0.99 && hour(ba.dt) < 15
-            pos_dir = rand() > 0.5 ? Long::TradeDir : Short::TradeDir
+            pos_dir = rand() > 0.5 ? Long : Short
             pos_size = match_target_exposure(acc.equity, pos_dir, ba)
             execute_order!(acc, OpenOrder(inst, pos_size, pos_dir; data=i), ba)
         end
