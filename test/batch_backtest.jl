@@ -3,7 +3,7 @@ using Fastback
 
 @testset "batch_backtest" begin
 
-    params = permute_params(Dict{Any, Vector{Any}}(
+    params = params_combinations(Dict{Any, Vector{Any}}(
         :a => 1:5,
         :b => ["A", "B", "C"]));
 
@@ -19,7 +19,7 @@ end
 
 @testset "finished_func" begin
 
-    params = permute_params(Dict{Any, Vector{Any}}(
+    params = params_combinations(Dict{Any, Vector{Any}}(
         :a => 1:5,
         :b => ["A", "B", "C"]));
 
