@@ -7,13 +7,9 @@ function batch_backtest(
     params_list::Vector{Dict{Any, Any}},
     backtest_func::Function;
     finished_func::Union{Function, Nothing}=nothing,
-    n_threads::Int64=-1)::Vector{Union{Account, Nothing}}
+    parallel::Bool=true)::Vector{Union{Account, Nothing}}
 
-    if n_threads <= 0
-        # use all available CPU cores
-        n_threads = Sys.CPU_THREADS
-    end
-
+    n_threads = !parallel ? Sys.CPU_THREADS : 1
     n_params = length(params_list)
 
     printstyled("─"^80*"\n"; color=:green)
@@ -25,44 +21,51 @@ function batch_backtest(
     last_info = 0.0
     lk = SpinLock()
 
-    @time begin
-        # for i = 1:n_params
-        @threads for i = 1:n_params
-            # get params used for backtest
-            params = params_list[i]
+    function single_pass(params, i)
+        # run backtest
+        acc = backtest_func(; params...)
 
-            # run backtest
-            acc = backtest_func(; params...)
+        lock(lk)
+        try
+            n_done += 1
 
-            lock(lk)
-            try
-                n_done += 1
+            if acc isa Account
+                results[i] = acc
 
-                if acc isa Account
-                    results[i] = acc
-
-                    # callback for single finished backtest if set
-                    if !isnothing(finished_func)
-                        finished_func(params, acc)
-                    end
-                else
-                    printstyled(
-                        "WARN [Fastback] backtest_runner - No Account instance returned from backtest_func, but of type "*string(typeof(acc))*". finished_func will not be called.\n"; color=:yellow);
+                # callback for single finished backtest if set
+                if !isnothing(finished_func)
+                    finished_func(params, acc)
                 end
-
-                # print progress
-                if time() - last_info > 1.0 || n_done == n_params
-                    printstyled("\n$(@sprintf("%3.0d", 100*(n_done/n_params)))%\t$n_done/$n_params\n"; color=:green)
-                    last_info = time()
-                end
-            finally
-                unlock(lk)
+            else
+                printstyled(
+                    "WARN [Fastback] backtest_runner - No Account instance returned from backtest_func, but of type "*string(typeof(acc))*". finished_func will not be called.\n"; color=:yellow);
             end
-        end
 
-        println("")
+            # print progress
+            if time() - last_info > 1.0 || n_done == n_params
+                printstyled("\n$(@sprintf("%3.0d", 100*(n_done/n_params)))%\t$n_done/$n_params\n"; color=:green)
+                last_info = time()
+            end
+        finally
+            unlock(lk)
+        end
     end
 
+    @time begin
+        if parallel
+            # multi-threaded execution
+            @threads for i = 1:n_params
+                single_pass(params_list[i], i)
+            end
+        else
+            # single-threaded execution
+            for i = 1:n_params
+                single_pass(params_list[i], i)
+            end
+        end
+    end
+
+    println("")
     printstyled("─"^80*"\n"; color=:green)
 
     results
