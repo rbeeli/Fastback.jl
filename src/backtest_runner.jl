@@ -6,10 +6,15 @@ using Printf
 function batch_backtest(
     params_list::Vector{Dict{Any, Any}},
     backtest_func::Function;
-    finished_func::Union{Function, Nothing}=nothing)::Vector{Union{Account, Nothing}}
+    finished_func::Union{Function, Nothing}=nothing,
+    n_threads::Int64=-1)::Vector{Union{Account, Nothing}}
+
+    if n_threads == -1
+        # use all available CPU cores
+        n_threads = nthreads()
+    end
 
     n_params = length(params_list)
-    n_threads = nthreads()
 
     printstyled("─"^80*"\n"; color=:green)
     printstyled("Batch backtest [threads=$n_threads, itrs=$n_params]\n"; color=:green)
