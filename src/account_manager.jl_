@@ -1,6 +1,7 @@
 using Dates
 
 
+@enum TradeMode::Int16 LongShort=0 LongOnly=1 ShortOnly=-1
 
 function one_instrument_manager(acc::Account, inst::Instrument, ba::BidAsk, trade_mode::TradeMode, trade_dir::TradeDir, trade_size::Volume)
     if trade_mode == LongOnly

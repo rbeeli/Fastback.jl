@@ -5,7 +5,6 @@ const Price = Float64    # quote bid/ask, traded price
 const Volume = Float64   # trade volume / number of shares
 const Return = Price     # same as price
 
-@enum TradeMode::Int16 LongShort=0 LongOnly=1 ShortOnly=-1
 @enum TradeDir::Int16 Undefined=0 Long=1 Short=-1
 
 @inline sign(x::TradeDir) = Int64(x)
