@@ -9,7 +9,7 @@ function batch_backtest(
     finished_func::Union{Function, Nothing}=nothing,
     parallel::Bool=true)::Vector{Union{Account, Nothing}}
 
-    n_threads = !parallel ? Sys.CPU_THREADS : 1
+    n_threads = !parallel ? Threads.nthreads() : 1
     n_params = length(params_list)
 
     printstyled("─"^80*"\n"; color=:green)
