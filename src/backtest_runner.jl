@@ -9,9 +9,9 @@ function batch_backtest(
     finished_func::Union{Function, Nothing}=nothing,
     n_threads::Int64=-1)::Vector{Union{Account, Nothing}}
 
-    if n_threads == -1
+    if n_threads <= 0
         # use all available CPU cores
-        n_threads = nthreads()
+        n_threads = Sys.CPU_THREADS
     end
 
     n_params = length(params_list)
