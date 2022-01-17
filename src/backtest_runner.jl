@@ -4,10 +4,12 @@ using Printf
 
 
 function batch_backtest(
-    params_list::Vector{Dict{Any, Any}},
-    backtest_func::Function;
-    finished_func::Union{Function, Nothing}=nothing,
-    parallel::Bool=true)::Vector{Union{Account, Nothing}}
+    backtest_return_type        ::Type{T},
+    params_list                 ::Vector{Dict{Any, Any}},
+    backtest_func               ::Function;
+    finished_func               ::Union{Function, Nothing}=nothing,
+    parallel                    ::Bool=true
+)::Vector{T} where T
 
     n_threads = !parallel ? Threads.nthreads() : 1
     n_params = length(params_list)
@@ -16,29 +18,23 @@ function batch_backtest(
     printstyled("Batch backtest [threads=$n_threads, itrs=$n_params]\n"; color=:green)
     println("")
 
-    results = Vector{Union{Account, Nothing}}(nothing, n_params)
+    results = Vector{backtest_return_type}(undef, n_params)
     n_done = 0
     last_info = 0.0
     lk = SpinLock()
 
     function single_pass(params, i)
         # run backtest
-        acc = backtest_func(; params...)
+        backtest_res = backtest_func(; params...)
 
         lock(lk)
         try
             n_done += 1
+            results[i] = backtest_res
 
-            if acc isa Account
-                results[i] = acc
-
-                # callback for single finished backtest if set
-                if !isnothing(finished_func)
-                    finished_func(params, acc)
-                end
-            else
-                printstyled(
-                    "WARN [Fastback] backtest_runner - No Account instance returned from backtest_func, but of type "*string(typeof(acc))*". finished_func will not be called.\n"; color=:yellow);
+            # callback for single finished backtest if set
+            if !isnothing(finished_func)
+                finished_func(params, backtest_res)
             end
 
             # print progress

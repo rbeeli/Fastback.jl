@@ -12,7 +12,7 @@ using Fastback
         acc
     end
 
-    accs = batch_backtest(params, backtest_func)
+    accs = batch_backtest(Account, params, backtest_func)
 
     @test length(accs) == length(params)
 end
@@ -33,7 +33,7 @@ end
         finished_called = true
     end
 
-    accs = batch_backtest(params, backtest_func; finished_func = finished_func)
+    accs = batch_backtest(Account, params, backtest_func; finished_func = finished_func)
 
     @test finished_called
     @test length(accs) == length(params)
