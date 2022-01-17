@@ -46,8 +46,8 @@
 @inline has_open_positions(acc::Account) = length(acc.open_positions) > 0
 @inline has_closed_positions(acc::Account) = length(acc.closed_positions) > 0
 
-@inline total_return_net(acc::Account) = sum(map(return_net, acc.closed_positions))
-@inline total_return_gross(acc::Account) = sum(map(return_gross, acc.closed_positions))
+# account total return based on initial balance and current equity
+@inline total_return(acc::Account) = acc.equity / acc.initial_balance - 1.0
 
 @inline total_pnl_net(acc::Account) = sum(map(pnl_net, acc.closed_positions))
 @inline total_pnl_gross(acc::Account) = sum(map(pnl_gross, acc.closed_positions))
