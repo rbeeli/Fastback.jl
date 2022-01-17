@@ -82,7 +82,7 @@
         @test length(collected.values) == 5
         @test all(map(x -> x[1], collected.values) .== map(x -> DateTime(2000, 1, 1) + Second(x), 1:5))
         @test collected.last_dt == dts[end]
-        @test all(map(x -> x[2], collected.values) .≈ [0.0, -11/110, -5/110, -5/110, -10/120])
+        @test all(map(x -> x[2], collected.values) .≈ [0.0, -11 / 110, -5 / 110, -5 / 110, -10 / 120])
     end
 
 end

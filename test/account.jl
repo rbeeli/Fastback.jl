@@ -6,7 +6,7 @@ using Dates
 inst = Instrument("TICKER");
 
 # generate data
-data = Dict{Instrument, Vector{BidAsk}}();
+data = Dict{Instrument,Vector{BidAsk}}();
 dt = DateTime(2018, 1, 2, 9, 30, 0);
 data[inst] = [
     BidAsk(dt + Second(1), 100.0, 101.0),
@@ -24,8 +24,8 @@ data[inst] = [
 
     # create trading account
     acc = Account(10_000.0)
-    collect_balance, balance_curve = periodic_collector(Float64, Second(1));
-    collect_equity, equity_curve = periodic_collector(Float64, Second(1));
+    collect_balance, balance_curve = periodic_collector(Float64, Second(1))
+    collect_equity, equity_curve = periodic_collector(Float64, Second(1))
 
     # dummy backtest
     for (i, ba) in enumerate(data[inst])
@@ -66,7 +66,7 @@ end
 
     @test pnl_gross(p) ≈ p.size * (midprice(p.last_quote) - midprice(p.open_quote))
     @test pnl_net(p) ≈ p.size * (p.last_price - p.open_price)
-    
+
     @test return_gross(p) ≈ (midprice(p.last_quote) - midprice(p.open_quote)) / midprice(p.open_quote)
     @test return_net(p) ≈ (p.last_price - p.open_price) / p.open_price
 

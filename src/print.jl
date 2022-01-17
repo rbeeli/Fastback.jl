@@ -1,4 +1,6 @@
 using PrettyTables
+using Crayons
+using Printf
 
 
 # --------------- Instrument ---------------
@@ -32,15 +34,30 @@ function Base.show(io::IO, pos::Position)
         "close_reason=$(pos.close_reason)  data=$data_str")
 end
 
-function print_positions(positions::Vector{Position};
-    max_print=25, volume_digits=1, price_digits=2,
-    data_renderer::Union{Function, Nothing}=nothing, kwargs...
+function print_positions(
+    positions::Vector{Position};
+    max_print=25,
+    volume_digits=1,
+    price_digits=2,
+    data_renderer::Union{Function, Nothing}=nothing,
+    kwargs...
 )
-    print_positions(stdout, positions::Vector{Position}; max_print, volume_digits, price_digits, data_renderer, kwargs...)
+    print_positions(
+        stdout,
+        positions;
+        max_print,
+        volume_digits,
+        price_digits,
+        data_renderer,
+        kwargs...)
 end
 
-function print_positions(io::IO, positions::Vector{Position};
-    max_print=25, volume_digits=1, price_digits=2,
+function print_positions(
+    io::IO,
+    positions::Vector{Position};
+    max_print=25,
+    volume_digits=1,
+    price_digits=2,
     data_renderer::Union{Function, Nothing}=nothing
 )
     n = length(positions)
@@ -141,7 +158,12 @@ function Base.show(io::IO, acc::Account; volume_digits=1, price_digits=2, kwargs
     # volume_digits and price_digits are passed to print_positions(...)
     x, y = displaysize(io)
     
-    get_color(val) = val >= 0 ? (val == 0 ? :black : :green) : :red
+    function get_color(val)
+        if val >= 0
+            return val == 0 ? crayon"rgb(128,128,128)" : crayon"green"
+        end
+        return crayon"red"
+    end
 
     title = " ACCOUNT SUMMARY "
     title_line = '━'^(floor(Int64, (y - length(title))/2))
@@ -150,11 +172,11 @@ function Base.show(io::IO, acc::Account; volume_digits=1, price_digits=2, kwargs
     println(io, " ", "Initial balance:    $(@sprintf("%.2f", acc.initial_balance))")
     print(io,   " ", "Balance:            $(@sprintf("%.2f", acc.balance))")
     print(io, " (")
-    printstyled(io, "$(@sprintf("%+.2f", balance_ret(acc)*100))%"; color=get_color(balance_ret(acc)))
+    print(io, get_color(balance_ret(acc)), "$(@sprintf("%+.2f", balance_ret(acc)*100))%", Crayon(reset=true))
     print(io, ")\n")
     print(io, " ", "Equity:             $(@sprintf("%.2f", acc.equity))")
     print(io, " (")
-    printstyled(io, "$(@sprintf("%+.2f", equity_ret(acc)*100))%"; color=get_color(equity_ret(acc)))
+    print(io, get_color(equity_ret(acc)), "$(@sprintf("%+.2f", equity_ret(acc)*100))%", Crayon(reset=true))
     print(io, ")\n")
     println(io, "")
     println(io, " ", "Open positions:     $(length(acc.open_positions))")

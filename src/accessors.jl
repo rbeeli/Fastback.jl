@@ -32,8 +32,8 @@
 @inline pnl_gross(pos::Position) = pos.size * (midprice(pos.last_quote) - midprice(pos.open_quote))
 
 # size negative for shorts, thus works for both long and short
-@inline return_net(pos::Position) = sign(pos.size) * (pos.last_price - pos.open_price) / pos.open_price
-@inline return_gross(pos::Position) = sign(pos.size) * ((midprice(pos.last_quote) - midprice(pos.open_quote)) / midprice(pos.open_quote))
+@inline return_net(pos::Position) = pos.dir * (pos.last_price - pos.open_price) / pos.open_price
+@inline return_gross(pos::Position) = pos.dir * ((midprice(pos.last_quote) - midprice(pos.open_quote)) / midprice(pos.open_quote))
 
 
 # ------------------------
