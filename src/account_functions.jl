@@ -17,7 +17,7 @@ function execute_order!(
         close_price(order.dir, ba),
         order.stop_loss,
         order.take_profit,
-        Unspecified::CloseReason,
+        NullReason::CloseReason,
         0.0,            # initial PnL
         order.data      # user-defined data object
     )
@@ -42,7 +42,7 @@ function execute_order!(
     ba      ::BidAsk
 )
     for pos in acc.open_positions
-        close_position!(acc, pos, ba, Unspecified::CloseReason)
+        close_position!(acc, pos, ba, NullReason::CloseReason)
     end
     return
 end

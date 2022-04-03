@@ -8,7 +8,7 @@
 
     begin
         # long
-        pos = Position(inst, 500.0, Long, ba1, dt1, ba1.ask, ba2, dt2, ba2.bid, 0.0, 0.0, Unspecified::CloseReason, 0.0, nothing)
+        pos = Position(inst, 500.0, Long, ba1, dt1, ba1.ask, ba2, dt2, ba2.bid, 0.0, 0.0, NullReason::CloseReason, 0.0, nothing)
 
         @test is_long(pos)
         @test !is_short(pos)
@@ -27,7 +27,7 @@
 
     begin
         # short
-        pos = Position(inst, -500.0, Short, ba1, dt1, ba1.bid, ba2, dt2, ba2.ask, 0.0, 0.0, Unspecified::CloseReason, 0.0, nothing)
+        pos = Position(inst, -500.0, Short, ba1, dt1, ba1.bid, ba2, dt2, ba2.ask, 0.0, 0.0, NullReason::CloseReason, 0.0, nothing)
 
         @test !is_long(pos)
         @test is_short(pos)

@@ -101,7 +101,7 @@ function print_positions(
             # position "data" field renderer
             o = data_renderer(positions[j], v)
         elseif j == idx_close_reason
-            o = v == Unspecified::CloseReason ? "—" : v
+            o = v == NullReason::CloseReason ? "—" : v
         end
         o
     end

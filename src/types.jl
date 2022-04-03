@@ -1,11 +1,12 @@
 import Base: *, sign
 using Dates
 
+
 const Price = Float64    # quote bid/ask, traded price
 const Volume = Float64   # trade volume / number of shares
 const Return = Price     # same as price
 
-@enum TradeDir::Int16 Undefined=0 Long=1 Short=-1
+@enum TradeDir::Int16 NullDir=0 Long=1 Short=-1
 
 @inline sign(x::TradeDir) = Int64(x)
 
@@ -36,7 +37,7 @@ end
 
 # ----------------------------------------------------------
 
-@enum CloseReason::Int64 Unspecified=0 StopLoss=1 TakeProfit=2
+@enum CloseReason::Int64 NullReason=0 StopLoss=1 TakeProfit=2
 
 mutable struct Position
     inst            ::Instrument
@@ -83,7 +84,7 @@ end
 struct CloseOrder <: Order
     pos             ::Position
     close_reason    ::CloseReason
-    CloseOrder(pos::Position) = new(pos, Unspecified::CloseReason)
+    CloseOrder(pos::Position) = new(pos, NullReason::CloseReason)
     CloseOrder(pos::Position, close_reason::CloseReason) = new(pos, close_reason)
 end
 

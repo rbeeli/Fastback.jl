@@ -9,36 +9,48 @@ include("backtest_runner.jl")
 include("print.jl")
 include("utils.jl")
 
-# export all
-for n in names(@__MODULE__; all=true)
-   if Base.isidentifier(n) && n ∉ (Symbol(@__MODULE__), :eval, :include)
-       @eval export $n
-   end
-end
+# structs
+export Instrument
+export BidAsk
+export Position
+export Order
+export OpenOrder
+export CloseOrder
+export CloseAllOrder
+export Account
+export PeriodicValues
+export MinValue
+export MaxValue
+export DrawdownValues
 
-# # structs
-# export Instrument
-# export BidAsk
-# export Position
-# export Account
-# export PeriodicValues
-# export Order
-# export OpenOrder
-# export CloseOrder
-# export CloseAllOrder
-#
-# # enums
-# export CloseReason, Unspecified, StopLoss, TakeProfit
-# export TradeDir, Undefined, Long, Short
-# export TradeMode, LongShort, LongOnly, ShortOnly
-#
-# # type aliases
-# export Price, Volume
-#
-# # account functions
-# export execute_order!, update_pnl!, update_account!
-#
-# # collection functions
-# export value_collector, drawdown_collector, max_value_collector
+# enums
+export CloseReason, NullReason, StopLoss, TakeProfit
+export TradeDir, NullDir, Long, Short
+export DrawdownMode, Percentage, PnL
+# export TradeMode, LongShort::TradeMode, LongOnly::TradeMode, ShortOnly::TradeMode
+
+# type aliases
+export Price, Volume, Return
+
+# account functions
+export execute_order!, book_position!, update_pnl!, update_account!, close_position!
+
+# position functions
+export match_target_exposure
+
+# backtest functions
+export batch_backtest
+
+# collection functions
+export periodic_collector, predicate_collector, min_value_collector, max_value_collector, drawdown_collector
+
+# print helpers
+export print_positions
+
+# utils
+export params_combinations
+
+# accessors
+export midprice, spread, open_price, close_price, is_long, is_short, pnl_net, pnl_gross, return_net, return_gross, balance_ret, equity_ret, has_open_positions, has_closed_positions, total_return, total_pnl_net, total_pnl_gross, count_winners_net, count_winners_gross
 
 end # module
