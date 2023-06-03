@@ -1,7 +1,7 @@
 using PrettyTables
 using Crayons
 using Printf
-
+using DataFrames
 
 # --------------- Instrument ---------------
 
@@ -65,7 +65,7 @@ function print_positions(
         return
     end
 
-    df = dateformat"yyyy-mm-dd HH:MM:SS"
+    date_fmt = dateformat"yyyy-mm-dd HH:MM:SS"
     vol_fmt = x -> string(round(x, digits=volume_digits))
     price_fmt = x -> string(round(x, digits=price_digits))
 
@@ -96,7 +96,7 @@ function print_positions(
         elseif j == idx_open_price || j == idx_last_price || j == idx_pnl || j == idx_stop_loss || j == idx_take_profit
             o = isnan(v) ? "—" : price_fmt(v)
         elseif j == idx_open_time || j == idx_last_quote
-            o = Dates.format(v, df)
+            o = Dates.format(v, date_fmt)
         elseif j == idx_data
             # position "data" field renderer
             o = data_renderer(positions[j], v)
@@ -117,13 +117,15 @@ function print_positions(
     h_neg_red = Highlighter((data, i, j) -> j == idx_pnl && data[i, j] < 0, bold=true, foreground=:red)
 
     if !isnan(max_print) && size(data, 1) > max_print
-        pretty_table(io, data[1:max_print, :], columns;
+        df = DataFrame(data, columns)
+        pretty_table(io, first(df, max_print);
             highlighters = (h_pos_green, h_neg_red),
             formatters = formatter,
             compact_printing = false)
         println(io, " [...] $(n - max_print) more positions")
     else
-        pretty_table(io, data, columns;
+        df = DataFrame(data, columns)
+        pretty_table(io, df;
             highlighters = (h_pos_green, h_neg_red),
             formatters = formatter,
             compact_printing = false)
