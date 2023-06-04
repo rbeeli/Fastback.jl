@@ -1,13 +1,11 @@
 using Dates
-using Plots
 using Query
-using StatsPlots
-using ColorSchemes
-using Measures
+using Formatting
+using Plots, StatsPlots, ColorSchemes, Measures
 
 
 function plot_title(title_text)
-    scatter(
+    Plots.scatter(
         1:2,
         marker=0, markeralpha=0,
         annotations=(1.5, 1.5, title_text),
@@ -16,10 +14,10 @@ function plot_title(title_text)
 end
 
 
-function plot_balance(pv::PeriodicValues)
+function plot_balance(pv::PeriodicValues{T}) where {T}
     dts = map(x -> x[1], pv.values)
     values = map(x -> x[2], pv.values)
-    plot(dts, values;
+    Plots.plot(dts, values;
         fontfamily="Computer Modern",
         title="Balance",
         linecolor="blue",
@@ -27,14 +25,14 @@ function plot_balance(pv::PeriodicValues)
         yformatter = y -> fmt(".0f", y),
         w=1,
         legend=false)
-    ylims!((0, maximum(values)))
+    Plots.ylims!((0, maximum(values)))
 end
 
 
-function plot_equity(pv::PeriodicValues)
+function plot_equity(pv::PeriodicValues{T}) where {T}
     dts = map(x -> x[1], pv.values)
     values = map(x -> x[2], pv.values)
-    plot(dts, values;
+    Plots.plot(dts, values;
         fontfamily="Computer Modern",
         title="Equity",
         linecolor="green",
@@ -42,13 +40,13 @@ function plot_equity(pv::PeriodicValues)
         yformatter = y -> fmt(".0f", y),
         w=1,
         legend=false)
-    # ylims!((0, maximum(values)))
+    # Plots.ylims!((0, maximum(values)))
 end
 
-function plot_equity_seq(pv::PeriodicValues)
+function plot_equity_seq(pv::PeriodicValues{T}) where {T}
     x = collect(1:length(pv.values))
     values = map(x -> x[2], pv.values)
-    plot(x, values;
+    Plots.plot(x, values;
         fontfamily="Computer Modern",
         title="Equity",
         linecolor="green",
@@ -56,11 +54,11 @@ function plot_equity_seq(pv::PeriodicValues)
         yformatter = y -> fmt(".0f", y),
         w=1,
         legend=false)
-    # ylims!((0, maximum(values)))
+    # Plots.ylims!((0, maximum(values)))
 end
 
 
-function plot_open_orders(pv::PeriodicValues)
+function plot_open_orders(pv::PeriodicValues{T}) where {T}
     dts = map(x -> x[1], pv.values)
     values = map(x -> x[2], pv.values)
     max_open = maximum(values)
@@ -68,17 +66,17 @@ function plot_open_orders(pv::PeriodicValues)
     y_ticks = 0:max_open
     y_ticks_str = map(x -> fmt(".0f", x), y_ticks)
 
-    plot(dts, values;
+    Plots.plot(dts, values;
         fontfamily="Computer Modern",
         title="# open orders",
         color="black",
         linetype=:steppost,
         yticks=(y_ticks, y_ticks_str),
         legend=false)
-    ylims!((0, maximum(values)))
+    Plots.ylims!((0, maximum(values)))
 end
 
-function plot_open_orders_seq(pv::PeriodicValues)
+function plot_open_orders_seq(pv::PeriodicValues{T}) where {T}
     x = collect(1:length(pv.values))
     values = map(x -> x[2], pv.values)
     max_open = maximum(values)
@@ -86,22 +84,22 @@ function plot_open_orders_seq(pv::PeriodicValues)
     y_ticks = 0:max_open
     y_ticks_str = map(x -> fmt(".0f", x), y_ticks)
 
-    plot(x, values;
+    Plots.plot(x, values;
         fontfamily="Computer Modern",
         title="# open orders",
         color="black",
         linetype=:steppost,
         yticks=(y_ticks, y_ticks_str),
         legend=false)
-    ylims!((0, maximum(values)))
+    Plots.ylims!((0, maximum(values)))
 end
 
 
 
-function plot_drawdown(pv::PeriodicValues)
+function plot_drawdown(pv::DrawdownValues)
     dts = map(x -> x[1], pv.values)
     values = map(x -> x[2], pv.values)
-    plot(dts, values;
+    Plots.plot(dts, values;
         fontfamily="Computer Modern",
         title="Drawdown",
         fill=(0, "red"),
@@ -112,10 +110,10 @@ function plot_drawdown(pv::PeriodicValues)
         legend=false)
 end
 
-function plot_drawdown_seq(pv::PeriodicValues)
+function plot_drawdown_seq(pv::DrawdownValues)
     x = collect(1:length(pv.values))
     values = map(x -> x[2], pv.values)
-    plot(x, values;
+    Plots.plot(x, values;
         fontfamily="Computer Modern",
         title="Drawdown",
         fill=(0, "red"),
@@ -129,11 +127,11 @@ end
 
 function violin_nominal_returns_by_day(positions::Vector{Position})
     if length(positions) == 0
-        return plot(title="No positions")
+        return Plots.plot(title="No positions")
     end
 
     pos_by_day = positions |>
-        @groupby(Dates.dayofweek(_.open_dt), calc_nominal_return_net(_)) |>
+        @groupby(Dates.dayofweek(_.open_dt), return_net(_)) |>
         @orderby(key(_)) |>
         collect;
 
@@ -143,7 +141,7 @@ function violin_nominal_returns_by_day(positions::Vector{Position})
         push!(y, group)
     end
 
-    violin(y,
+    Plots.violin(y,
         xticks=(1:length(y), x_lbls),
         fill="green",
         linewidth=0,
@@ -155,11 +153,11 @@ end
 
 function violin_nominal_returns_by_hour(positions::Vector{Position})
     if length(positions) == 0
-        return plot(title="No positions")
+        return Plots.plot(title="No positions")
     end
 
     pos_by_hour = positions |>
-        @groupby(Dates.hour(_.open_dt), calc_nominal_return_net(_)) |>
+        @groupby(Dates.hour(_.open_dt), return_net(_)) |>
         @orderby(key(_)) |>
         collect;
 
@@ -169,7 +167,7 @@ function violin_nominal_returns_by_hour(positions::Vector{Position})
         push!(y, group)
     end
 
-    violin(y,
+    Plots.violin(y,
         xticks=(1:length(x_lbls), x_lbls),
         fontfamily="Computer Modern",
         fill="green",
@@ -185,7 +183,7 @@ function plot_nominal_cum_returns_by_hour(
     ret_func::Function
 )
     if length(positions) == 0
-        return plot(title="No positions")
+        return Plots.plot(title="No positions")
     end
 
     pos_by_hour = positions |>
@@ -202,7 +200,7 @@ function plot_nominal_cum_returns_by_hour(
         cum_rets = cumsum(rets)
         lbl = "$(hour):00+"
         if i == 1
-            plt = plot(dts, cum_rets;
+            plt = Plots.plot(dts, cum_rets;
                 fontfamily="Computer Modern",
                 legend=:topleft,
                 label=lbl,
@@ -210,19 +208,19 @@ function plot_nominal_cum_returns_by_hour(
                 title="Nominal returns by hour",
                 size=(800, 600))
         else
-            plot!(dts, cum_rets; label=lbl)
+            Plots.plot!(dts, cum_rets; label=lbl)
         end
-        annotate!(max_date, cum_rets[end], text(lbl, :left, 9; family="Computer Modern"))
+        Plots.annotate!(max_date, cum_rets[end], text(lbl, :left, 9; family="Computer Modern"))
     end
     plt
 end
 
 function plot_nominal_cum_returns_by_hour_seq_net(positions::Vector{Position})
-    plot_nominal_cum_returns_by_hour_seq(positions, calc_nominal_return_net, "Net cumulative returns by hour")
+    plot_nominal_cum_returns_by_hour_seq(positions, return_net, "Net cumulative returns by hour")
 end
 
 function plot_nominal_cum_returns_by_hour_seq_gross(positions::Vector{Position})
-    plot_nominal_cum_returns_by_hour_seq(positions, calc_nominal_return_gross, "Gross cumulative returns by hour")
+    plot_nominal_cum_returns_by_hour_seq(positions, return_gross, "Gross cumulative returns by hour")
 end
 
 function plot_nominal_cum_returns_by_hour_seq(
@@ -231,7 +229,7 @@ function plot_nominal_cum_returns_by_hour_seq(
     title_str::String
 )
     if length(positions) == 0
-        return plot(title="No positions")
+        return Plots.plot(title="No positions")
     end
 
     pos_by_hour = positions |>
@@ -252,7 +250,7 @@ function plot_nominal_cum_returns_by_hour_seq(
         cum_rets = 1.0 .+ cumsum(rets)
         lbl = "$(hour):00"
         if i == 1
-            plt = plot(x, cum_rets;
+            plt = Plots.plot(x, cum_rets;
                 fontfamily="Computer Modern",
                 xticks=((1, max_n_pos), (min_date_str, max_date_str)),
                 legendfontsize=9,
@@ -267,13 +265,13 @@ function plot_nominal_cum_returns_by_hour_seq(
                 label=lbl,
                 # right_margin=08mm,
                 title=title_str)
-            xlims!(plt, (1, floor(Int64, 1.1*max_n_pos)))
+            Plots.xlims!(plt, (1, floor(Int64, 1.1*max_n_pos)))
         else
-            plot!(x, cum_rets;
+            Plots.plot!(x, cum_rets;
                 label=lbl,
                 w=0.5)
         end
-        annotate!(n_pos + floor(Int64, 0.03*n_pos),
+        Plots.annotate!(n_pos + floor(Int64, 0.03*n_pos),
             cum_rets[end],
             text(lbl, :left, 8; family="Computer Modern"))
     end
@@ -288,7 +286,7 @@ function plot_nominal_cum_returns_by_weekday(
     ret_func::Function
 )
     if length(positions) == 0
-        return plot(title="No positions")
+        return Plots.plot(title="No positions")
     end
 
     pos_by_day = positions |>
@@ -305,7 +303,7 @@ function plot_nominal_cum_returns_by_weekday(
         cum_rets = cumsum(rets)
         lbl = Dates.dayname(weekday)[1:3]
         if i == 1
-            plt = plot(dts, cum_rets;
+            plt = Plots.plot(dts, cum_rets;
                 fontfamily="Computer Modern",
                 legend=:topleft,
                 label=lbl,
@@ -313,9 +311,9 @@ function plot_nominal_cum_returns_by_weekday(
                 title="Nominal returns by weekday",
                 size=(800, 600))
         else
-            plot!(dts, cum_rets; label=lbl)
+            Plots.plot!(dts, cum_rets; label=lbl)
         end
-        annotate!(max_date, cum_rets[end], text(lbl, :left, 8; family="Computer Modern"))
+        Plots.annotate!(max_date, cum_rets[end], text(lbl, :left, 8; family="Computer Modern"))
     end
     plt
 end
@@ -327,7 +325,7 @@ function plot_nominal_cum_returns_by_weekday_seq(
     ret_func::Function
 )
     if length(positions) == 0
-        return plot(title="No positions")
+        return Plots.plot(title="No positions")
     end
 
     pos_by_day = positions |>
@@ -345,7 +343,7 @@ function plot_nominal_cum_returns_by_weekday_seq(
         cum_rets = cumsum(rets)
         lbl = Dates.dayname(weekday)[1:3]
         if i == 1
-            plt = plot(x, cum_rets;
+            plt = Plots.plot(x, cum_rets;
                 fontfamily="Computer Modern",
                 legend=:bottomleft,
                 label=lbl,
@@ -353,9 +351,9 @@ function plot_nominal_cum_returns_by_weekday_seq(
                 title="Nominal returns by weekday",
                 size=(800, 600))
         else
-            plot!(x, cum_rets; label=lbl)
+            Plots.plot!(x, cum_rets; label=lbl)
         end
-        annotate!(n_pos + 1, cum_rets[end], text(lbl, :left, 8; family="Computer Modern"))
+        Plots.annotate!(n_pos + 1, cum_rets[end], text(lbl, :left, 8; family="Computer Modern"))
     end
     plt
 end
