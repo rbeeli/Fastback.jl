@@ -8,6 +8,7 @@ function batch_backtest(
     params_list                 ::Vector{Dict{Any, Any}},
     backtest_func               ::Function;
     finished_func               ::Union{Function, Nothing}=nothing,
+    progress_log_interval       ::Int=1,
     parallel                    ::Bool=true
 )::Vector{T} where T
 
@@ -19,7 +20,6 @@ function batch_backtest(
 
     results = Vector{backtest_return_type}(undef, n_params)
     n_done = 0
-    last_info = 0.0
     lk = SpinLock()
 
     function single_pass(params, i)
@@ -33,13 +33,16 @@ function batch_backtest(
 
             # callback for single finished backtest if set
             if !isnothing(finished_func)
-                finished_func(params, backtest_res)
+                try
+                    finished_func(params, backtest_res)
+                catch e
+                    printstyled("!!! Error in finished_func: $e\n"; color=:red)
+                end
             end
 
             # print progress
-            if time() - last_info > 1.0 || n_done == n_params
+            if progress_log_interval > 0 && (n % progress_log_interval == 0 || n_done == n_params)
                 printstyled("> $(@sprintf("%3.0d", 100*(n_done/n_params)))% [$n_done/$n_params]\n"; color=:green)
-                last_info = time()
             end
         finally
             unlock(lk)
