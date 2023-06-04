@@ -158,7 +158,7 @@ end
 
 function Base.show(io::IO, acc::Account; volume_digits=1, price_digits=2, kwargs...)
     # volume_digits and price_digits are passed to print_positions(...)
-    x, y = displaysize(io)
+    display_width = displaysize()[2]
     
     function get_color(val)
         if val >= 0
@@ -168,7 +168,7 @@ function Base.show(io::IO, acc::Account; volume_digits=1, price_digits=2, kwargs
     end
 
     title = " ACCOUNT SUMMARY "
-    title_line = '━'^(floor(Int64, (y - length(title))/2))
+    title_line = '━'^(floor(Int64, (display_width - length(title))/2))
     println(io, "")
     println(io, title_line * title * title_line)
     println(io, " ", "Initial balance:    $(@sprintf("%.2f", acc.initial_balance))")
@@ -186,6 +186,6 @@ function Base.show(io::IO, acc::Account; volume_digits=1, price_digits=2, kwargs
     println(io, "")
     println(io, " ", "Closed positions:   $(length(acc.closed_positions))")
     print_positions(io, acc.closed_positions; kwargs...)
-    println(io, '━'^y)
+    println(io, '━'^display_width)
     println(io, "")
 end

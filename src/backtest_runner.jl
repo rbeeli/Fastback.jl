@@ -15,7 +15,8 @@ function batch_backtest(
     n_threads = parallel ? Threads.nthreads() : 1
     n_params = length(params_list)
 
-    printstyled("─"^80*"\n"; color=:green)
+    display_width = displaysize()[2]
+    printstyled("━"^display_width*"\n"; color=:green)
     printstyled("Batch backtest [iterations=$n_params, threads=$n_threads]\n"; color=:green)
 
     results = Vector{backtest_return_type}(undef, n_params)
@@ -61,7 +62,7 @@ function batch_backtest(
         end
     end
 
-    printstyled("─"^80*"\n"; color=:green)
+    printstyled("━"^display_width*"\n"; color=:green)
 
     results
 end
