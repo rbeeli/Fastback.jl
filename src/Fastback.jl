@@ -51,6 +51,8 @@ export print_positions
 export params_combinations
 
 # accessors
-export midprice, spread, open_price, close_price, is_long, is_short, pnl_net, pnl_gross, return_net, return_gross, balance_ret, equity_ret, has_open_positions, has_closed_positions, total_return, total_pnl_net, total_pnl_gross, count_winners_net, count_winners_gross
+export midprice, spread, open_price, close_price, is_long, is_short, pnl_net, pnl_gross, return_net, return_gross,
+    balance_ret, equity_ret, has_open_positions, has_closed_positions, total_return, total_pnl_net, total_pnl_gross, 
+    count_winners_net, count_winners_gross, has_open_position_with_dir, opposite_dir
 
 end # module
