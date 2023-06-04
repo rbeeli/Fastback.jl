@@ -39,7 +39,7 @@ function batch_backtest(
 
             # print progress
             if time() - last_info > 1.0 || n_done == n_params
-                printstyled("\n$(@sprintf("%3.0d", 100*(n_done/n_params)))%\t$n_done/$n_params\n"; color=:green)
+                printstyled("$(@sprintf("%3.0d", 100*(n_done/n_params)))%\t$n_done of $n_params\n"; color=:green)
                 last_info = time()
             end
         finally
@@ -47,17 +47,15 @@ function batch_backtest(
         end
     end
 
-    @time begin
-        if parallel
-            # multi-threaded execution
-            @threads for i = 1:n_params
-                single_pass(params_list[i], i)
-            end
-        else
-            # single-threaded execution
-            for i = 1:n_params
-                single_pass(params_list[i], i)
-            end
+    if parallel
+        # multi-threaded execution
+        @threads for i = 1:n_params
+            single_pass(params_list[i], i)
+        end
+    else
+        # single-threaded execution
+        for i = 1:n_params
+            single_pass(params_list[i], i)
         end
     end
 
