@@ -18,6 +18,15 @@
 
 @inline is_long(dir::TradeDir) = dir === Long
 @inline is_short(dir::TradeDir) = dir === Short
+@inline function opposite_dir(dir::TradeDir)
+    if dir === Long
+        return Short
+    elseif dir === Short
+        return Long
+    else
+        return NullDir
+    end
+end
 
 
 # ------------------------
@@ -45,6 +54,15 @@
 
 @inline has_open_positions(acc::Account) = length(acc.open_positions) > 0
 @inline has_closed_positions(acc::Account) = length(acc.closed_positions) > 0
+
+function has_open_position_with_dir(acc::Account, inst::Instrument, dir::TradeDir)
+    for pos in acc.open_positions
+        if pos.inst == inst && pos.dir == dir
+            return true
+        end
+    end
+    false
+end
 
 # account total return based on initial balance and current equity
 @inline total_return(acc::Account) = acc.equity / acc.initial_balance - 1.0
