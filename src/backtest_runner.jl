@@ -41,7 +41,7 @@ function batch_backtest(
             end
 
             # print progress
-            if progress_log_interval > 0 && (n % progress_log_interval == 0 || n_done == n_params)
+            if progress_log_interval > 0 && (n_done % progress_log_interval == 0 || n_done == n_params)
                 printstyled("> $(@sprintf("%3.0d", 100*(n_done/n_params)))% [$n_done/$n_params]\n"; color=:green)
             end
         finally
