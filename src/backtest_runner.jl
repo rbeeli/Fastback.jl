@@ -15,8 +15,7 @@ function batch_backtest(
     n_params = length(params_list)
 
     printstyled("─"^80*"\n"; color=:green)
-    printstyled("Batch backtest [threads=$n_threads, itrs=$n_params]\n"; color=:green)
-    println("")
+    printstyled("Batch backtest [iterations=$n_params, threads=$n_threads]\n"; color=:green)
 
     results = Vector{backtest_return_type}(undef, n_params)
     n_done = 0
@@ -39,7 +38,7 @@ function batch_backtest(
 
             # print progress
             if time() - last_info > 1.0 || n_done == n_params
-                printstyled("$(@sprintf("%3.0d", 100*(n_done/n_params)))%\t$n_done of $n_params\n"; color=:green)
+                printstyled("> $(@sprintf("%3.0d", 100*(n_done/n_params)))% [$n_done/$n_params]\n"; color=:green)
                 last_info = time()
             end
         finally
@@ -59,7 +58,6 @@ function batch_backtest(
         end
     end
 
-    println("")
     printstyled("─"^80*"\n"; color=:green)
 
     results
