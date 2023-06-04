@@ -11,7 +11,7 @@ function batch_backtest(
     parallel                    ::Bool=true
 )::Vector{T} where T
 
-    n_threads = !parallel ? Threads.nthreads() : 1
+    n_threads = parallel ? Threads.nthreads() : 1
     n_params = length(params_list)
 
     printstyled("─"^80*"\n"; color=:green)
