@@ -21,6 +21,7 @@ function batch_backtest(
 
     results = Vector{backtest_return_type}(undef, n_params)
     n_done = 0
+    start_time = now()
     lk = SpinLock()
 
     function single_pass(params, i)
@@ -43,7 +44,17 @@ function batch_backtest(
 
             # print progress
             if progress_log_interval > 0 && (n_done % progress_log_interval == 0 || n_done == n_params)
-                printstyled("> $(@sprintf("%3.0d", 100*(n_done/n_params)))% [$n_done/$n_params]\n"; color=:green)
+                # ETA string
+                elapsed = now() - start_time
+                eta = estimate_eta(elapsed, n_done/n_params)
+                eta_str = format_period_HHMMSS(eta)
+
+                # progress
+                prog_pct = @sprintf("%3.0d", 100*(n_done/n_params))
+                num_digits = floor(Int, log10(n_params)) + 1
+                prog_int = lpad(n_done, num_digits)
+
+                printstyled("$prog_pct%  [ $prog_int / $n_params ]  ETA $eta_str \n"; color=:green)
             end
         finally
             unlock(lk)

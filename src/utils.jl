@@ -1,5 +1,6 @@
 using Random
 using Dates
+using Printf
 
 
 """
@@ -94,6 +95,72 @@ function params_combinations_internal(
     end
     return
 end
+
+
+
+
+"""
+    compute_eta(elapsed:, frac_processed)
+
+Calculate the Estimated Time of Arrival (ETA) given the elapsed time and the fraction of the task that has been processed.
+
+# Arguments
+- `elapsed`:
+A Period object representing the time that has already elapsed.
+This could be in any time unit such as seconds, minutes, hours, etc.
+
+- `frac_processed`:
+A Float64 representing the fraction of the task that has been processed (between 0 and 1 inclusive).
+If this value is 0, the function returns "Inf" indicating that the task has not yet begun.
+
+# Returns
+- Calculated ETA value as Period object. Returns NaN if frac_processed is 0.
+"""
+function estimate_eta(elapsed, frac_processed)
+    # check if fraction_processed is zero to avoid division by zero
+    if frac_processed == 0
+        return NaN
+    end
+
+    elapsed_ms = convert(Dates.Millisecond, elapsed)
+
+    # calculate total time
+    total_ms = Millisecond(ceil(Int, Dates.value(elapsed_ms) / frac_processed))
+
+    # calculate ETA
+    total_ms - elapsed_ms
+end
+
+"""
+    format_period_HHMMSS(period; nan_value="Inf")
+
+Formats a Period object into a string in the format HH:MM:SS. 
+
+# Arguments
+- `period`: A Period object. This could be in any time unit such as seconds, minutes, hours, etc.
+- `nan_value`: An optional string to be returned if the input is a NaN value. The default is "Inf".
+
+# Returns
+- A string representing the input period in HH:MM:SS format. If the input is NaN, returns the value specified by `nan_value`.
+
+# Examples
+```julia
+format_period_HHMMSS(Dates.Hour(1) + Dates.Minute(30) + Dates.Second(45))  # returns "01:30:45"
+format_period_HHMMSS(NaN)  # returns "Inf"
+format_period_HHMMSS(NaN, nan_value="N/A")  # returns "N/A"
+```
+"""
+function format_period_HHMMSS(period; nan_value="Inf")
+    if isa(period, Real) && isnan(period)
+        return nan_value
+    end
+    period = convert(Millisecond, period)
+    hours = Dates.value(floor(period, Hour))
+    minutes = Dates.value(floor(period, Minute)) % 60
+    seconds = Dates.value(floor(period, Second)) % 60
+    @sprintf("%02d:%02d:%02d", hours, minutes, seconds)
+end
+
 
 
 

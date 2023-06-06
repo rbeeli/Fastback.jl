@@ -48,7 +48,7 @@ export periodic_collector, predicate_collector, min_value_collector, max_value_c
 export print_positions
 
 # utils
-export params_combinations
+export params_combinations, estimate_eta, format_period_HHMMSS
 
 # accessors
 export midprice, spread, open_price, close_price, is_long, is_short, pnl_net, pnl_gross, return_net, return_gross,
