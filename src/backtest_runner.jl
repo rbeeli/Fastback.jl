@@ -54,7 +54,7 @@ function batch_backtest(
                 num_digits = floor(Int, log10(n_params)) + 1
                 prog_int = lpad(n_done, num_digits)
 
-                printstyled("$prog_pct%  [ $prog_int / $n_params ]  ETA $eta_str \n"; color=:green)
+                printstyled("$prog_pct%  [$(prog_int)∕$(n_params)]  ETA $eta_str \n"; color=:green)
             end
         finally
             unlock(lk)
