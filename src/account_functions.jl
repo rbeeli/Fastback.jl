@@ -36,16 +36,17 @@ function execute_order!(
 end
 
 
-function execute_order!(
-    acc     ::Account,
-    order   ::CloseAllOrder,
-    ba      ::BidAsk
-)
-    for pos in acc.open_positions
-        close_position!(acc, pos, ba, NullReason::CloseReason)
-    end
-    return
-end
+# function execute_order!(
+#     acc     ::Account,
+#     order   ::CloseAllOrder,
+#     ba      ::BidAsk
+# )
+#     for i in length(acc.open_positions):-1:1
+#         pos = acc.open_positions[i]
+#         close_position!(acc, pos, ba, NullReason::CloseReason)
+#     end
+#     return
+# end
 
 
 function book_position!(

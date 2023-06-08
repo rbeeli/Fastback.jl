@@ -36,7 +36,10 @@ data[inst] = [
         update_account!(acc, inst, ba)
 
         if i == 7
-            execute_order!(acc, CloseAllOrder(), ba)
+            for i in length(acc.open_positions):-1:1
+                pos = acc.open_positions[i]
+                execute_order!(acc, CloseOrder(pos), ba)
+            end
         end
 
         # collect data for analysis

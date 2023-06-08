@@ -1,5 +1,7 @@
 import Base: *, sign
 using Dates
+using Printf
+using Crayons
 
 
 const Price = Float64    # quote bid/ask, traded price
@@ -25,6 +27,11 @@ end
 # custom hash (cached hash)
 Base.hash(inst::Instrument) = inst.__hash
 
+function Base.show(io::IO, inst::Instrument)
+    data_str = isnothing(inst.data) ? "" : "  data=<object>"
+    print(io, "[Instrument] symbol=$(inst.symbol)$data_str")
+end
+
 # ----------------------------------------------------------
 
 struct BidAsk
@@ -33,6 +40,10 @@ struct BidAsk
     ask     ::Price
     BidAsk() = new(DateTime(0), Price(0.0), Price(0.0))
     BidAsk(dt::DateTime, bid::Price, ask::Price) = new(dt, bid, ask)
+end
+
+function Base.show(io::IO, ba::BidAsk)
+    print(io, "[BidAsk] dt=$(ba.dt)  bid=$(ba.bid)  ask=$(ba.ask)")
 end
 
 # ----------------------------------------------------------
@@ -54,6 +65,20 @@ mutable struct Position
     close_reason    ::CloseReason
     pnl             ::Price
     data            ::Any           # user-defined data field for position instance
+end
+
+function Base.show(io::IO, pos::Position)
+    size_str = @sprintf("%.2f", pos.size)
+    if sign(pos.size) != -1
+        size_str = " " * size_str
+    end
+    pnl_str = @sprintf("%+.2f", pos.pnl)
+    data_str = isnothing(pos.data) ? "nothing" : "<object>"
+    print(io, "[Position] $(pos.inst.symbol) $(pos.dir) $size_str  "*
+        "open=($(Dates.format(pos.open_dt, "yyyy-mm-dd HH:MM:SS")), $(@sprintf("%.2f", pos.open_price)))  "*
+        "last=($(Dates.format(pos.last_dt, "yyyy-mm-dd HH:MM:SS")), $(@sprintf("%.2f", pos.last_price)))  "*
+        "pnl=$pnl_str  stop_loss=$(@sprintf("%.2f", pos.stop_loss))  take_profit=$(@sprintf("%.2f", pos.take_profit))  "*
+        "close_reason=$(pos.close_reason)  data=$data_str")
 end
 
 # ----------------------------------------------------------
@@ -79,6 +104,10 @@ struct OpenOrder <: Order
         data::Any=nothing) = new(inst, size, dir, stop_loss, take_profit, data)
 end
 
+function Base.show(io::IO, order::OpenOrder)
+    print(io, "[OpenOrder] $(order.inst.symbol) $(order.size) $(order.dir)  stop_loss=$(@sprintf("%.2f", order.stop_loss))  take_profit=$(@sprintf("%.2f", order.take_profit))")
+end
+
 # ----------------------------------------------------------
 
 struct CloseOrder <: Order
@@ -88,10 +117,18 @@ struct CloseOrder <: Order
     CloseOrder(pos::Position, close_reason::CloseReason) = new(pos, close_reason)
 end
 
+function Base.show(io::IO, order::CloseOrder)
+    print(io, "[CloseOrder] $(order.pos)  $(order.close_reason)")
+end
+
 # ----------------------------------------------------------
 
-struct CloseAllOrder <: Order
-end
+# struct CloseAllOrder <: Order
+# end
+
+# function Base.show(io::IO, order::CloseAllOrder)
+#     print(io, "[CloseAllOrder]")
+# end
 
 # ----------------------------------------------------------
 
@@ -110,6 +147,40 @@ mutable struct Account
         initial_balance,
         initial_balance,
         data)
+end
+
+function Base.show(io::IO, acc::Account; volume_digits=1, price_digits=2, kwargs...)
+    # volume_digits and price_digits are passed to print_positions(...)
+    display_width = displaysize()[2]
+    
+    function get_color(val)
+        if val >= 0
+            return val == 0 ? crayon"rgb(128,128,128)" : crayon"green"
+        end
+        return crayon"red"
+    end
+
+    title = " ACCOUNT SUMMARY "
+    title_line = '━'^(floor(Int64, (display_width - length(title))/2))
+    println(io, "")
+    println(io, title_line * title * title_line)
+    println(io, " ", "Initial balance:    $(@sprintf("%.2f", acc.initial_balance))")
+    print(io,   " ", "Balance:            $(@sprintf("%.2f", acc.balance))")
+    print(io, " (")
+    print(io, get_color(balance_ret(acc)), "$(@sprintf("%+.2f", balance_ret(acc)*100))%", Crayon(reset=true))
+    print(io, ")\n")
+    print(io, " ", "Equity:             $(@sprintf("%.2f", acc.equity))")
+    print(io, " (")
+    print(io, get_color(equity_ret(acc)), "$(@sprintf("%+.2f", equity_ret(acc)*100))%", Crayon(reset=true))
+    print(io, ")\n")
+    println(io, "")
+    println(io, " ", "Open positions:     $(length(acc.open_positions))")
+    print_positions(io, acc.open_positions; kwargs...)
+    println(io, "")
+    println(io, " ", "Closed positions:   $(length(acc.closed_positions))")
+    print_positions(io, acc.closed_positions; kwargs...)
+    println(io, '━'^display_width)
+    println(io, "")
 end
 
 # ----------------------------------------------------------
