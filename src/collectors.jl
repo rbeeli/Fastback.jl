@@ -1,13 +1,13 @@
 
-mutable struct PeriodicValues{T}
+mutable struct PeriodicValues{T,TPeriod<:Period}
     values::Vector{Tuple{DateTime,T}}
-    period::Period
+    period::TPeriod
     last_dt::DateTime
 end
 
-function periodic_collector(::Type{T}, period::Period) where {T}
+function periodic_collector(::Type{T}, period::TPeriod) where {T,TPeriod<:Period}
     values = Vector{Tuple{DateTime,T}}()
-    pv = PeriodicValues{T}(values, period, DateTime(0))
+    pv = PeriodicValues(values, period, DateTime(0))
 
     @inline function collector(dt::DateTime, value::T)
         if (dt - pv.last_dt) >= period
@@ -20,7 +20,7 @@ function periodic_collector(::Type{T}, period::Period) where {T}
     return collector, pv
 end
 
-@inline should_collect(pv::PeriodicValues, dt) = (dt - pv.last_dt) >= pv.period
+@inline should_collect(pv::PeriodicValues{T,TPeriod}, dt) where {T,TPeriod<:Period}= (dt - pv.last_dt) >= pv.period
 
 # ----------------------------------------------------------
 
