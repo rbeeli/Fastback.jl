@@ -22,11 +22,11 @@ end
 
 # predicate_collector
 function run_test2(dts::Vector{DateTime}, values::Vector{Float64})
-    predicate = (collected, dt, value) -> (dt - collected.last_dt) >= Minute(10)
+    predicate = (collected, dt) -> (dt - collected.last_dt) >= Minute(10)
     f, collected = predicate_collector(Float64, predicate, 0.0)
 
     for i in 1:length(dts)
-        @inbounds f(dts[i], values[i])
+        @inbounds f(dts[i], (collected, dt) -> values[i])
     end
 
     collected

@@ -23,25 +23,27 @@ function periodic_collector(
     return collector, pv
 end
 
+@inline should_collect(pv::PeriodicValues, dt) = (dt - pv.last_dt) >= pv.period
+
 # ----------------------------------------------------------
 
 mutable struct PredicateValues{T}
     values          ::Vector{Tuple{DateTime, T}}
     last_dt         ::DateTime
     last_value      ::T
-    data            ::Any               # user-defined data for use in predicate
 end
 
 function predicate_collector(
     type            ::Type{T},
-    predicate       ::Function,
+    predicate       ::TFunc,
     init_value      ::T
-)::Tuple{Function, PredicateValues{T}} where T
+) where {T, TFunc <: Function}
     values = Vector{Tuple{DateTime, T}}()
-    pv = PredicateValues{T}(values, DateTime(0), init_value, nothing)
+    pv = PredicateValues{T}(values, DateTime(0), init_value)
 
-    @inline function collector(dt::DateTime, value::T)
-        if predicate(pv, dt, value)
+    @inline function collector(dt::DateTime, collect_func::TCollectFunc) where {TCollectFunc}
+        if predicate(pv, dt)
+            value = collect_func(pv, dt)
             push!(values, (dt, value))
             pv.last_dt = dt
             pv.last_value = value
@@ -59,7 +61,7 @@ mutable struct MinValue{T}
     min_value  ::T
 end
 
-function min_value_collector(type::Type{T})::Tuple{Function, MinValue{T}} where T
+function min_value_collector(type::Type{T}) where T
     mv = MinValue{T}(DateTime(0), 1e50)
 
     @inline function collector(dt::DateTime, value::T)
@@ -80,7 +82,7 @@ mutable struct MaxValue{T}
     max_value  ::T
 end
 
-function max_value_collector(type::Type{T})::Tuple{Function, MaxValue{T}} where T
+function max_value_collector(type::Type{T}) where T
     mv = MaxValue{T}(DateTime(0), typemin(T))
 
     @inline function collector(dt::DateTime, value::T)
@@ -103,16 +105,14 @@ mutable struct DrawdownValues
     mode            ::DrawdownMode
     max_equity      ::Price
     last_dt         ::DateTime
-    data            ::Any               # user-defined data for use in predicate
 end
 
-function drawdown_collector(mode::DrawdownMode, predicate::Function)::Tuple{Function, DrawdownValues}
+function drawdown_collector(mode::DrawdownMode, predicate::TFunc) where {TFunc <: Function}
     dv = DrawdownValues(
         Vector{Tuple{DateTime, Price}}(),
         mode,
         -1e50,
-        DateTime(0),
-        nothing)
+        DateTime(0))
 
     @inline function collector(dt::DateTime, equity::Price)
         # keep track of max equity value
