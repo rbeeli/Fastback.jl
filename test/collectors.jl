@@ -8,7 +8,7 @@
         f, collected = periodic_collector(Float64, Second(1))
 
         for i in eachindex(dts)
-            f(dts[i], data[i])
+            should_collect(collected, dts[i]) && f(dts[i], data[i])
         end
 
         @test length(collected.values) == 5
@@ -29,7 +29,7 @@ end
         f, collected = predicate_collector(Float64, predicate, 0.0)
 
         for i in eachindex(dts)
-            f(dts[i], (collected, dt) -> data[i])
+            should_collect(collected, dts[i]) && f(dts[i], data[i])
         end
 
         @test length(collected.values) == 5

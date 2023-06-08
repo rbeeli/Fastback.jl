@@ -42,7 +42,7 @@ export match_target_exposure
 export batch_backtest
 
 # collection functions
-export periodic_collector, predicate_collector, min_value_collector, max_value_collector, drawdown_collector
+export should_collect, periodic_collector, predicate_collector, min_value_collector, max_value_collector, drawdown_collector
 
 # print helpers
 export print_positions

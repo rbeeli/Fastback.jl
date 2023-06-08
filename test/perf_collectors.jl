@@ -26,7 +26,7 @@ function run_test2(dts::Vector{DateTime}, values::Vector{Float64})
     f, collected = predicate_collector(Float64, predicate, 0.0)
 
     for i in 1:length(dts)
-        @inbounds f(dts[i], (collected, dt) -> values[i])
+        @inbounds f(dts[i], values[i])
     end
 
     collected
