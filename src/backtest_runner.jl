@@ -50,7 +50,7 @@ function batch_backtest(
                 eta_str = format_period_HHMMSS(eta)
 
                 # progress
-                prog_pct = floor(Int, 100*(n_done/n_params))
+                prog_pct = @sprintf("%3.0d", floor(Int, 100*(n_done/n_params)))
                 num_digits = floor(Int, log10(n_params)) + 1
                 prog_int = lpad(n_done, num_digits)
 
