@@ -59,9 +59,7 @@ function params_combinations(
 
     params_combinations_internal(params, filter, result, 1, tmp_keys, tmp_values)
 
-    if shuffle
-        shuffle!(result)
-    end
+    shuffle && shuffle!(result)
 
     result
 end
@@ -97,8 +95,6 @@ function params_combinations_internal(
 end
 
 
-
-
 """
     compute_eta(elapsed:, frac_processed)
 
@@ -121,15 +117,11 @@ function estimate_eta(elapsed, frac_processed)
     if frac_processed == 0
         return NaN
     end
-
     elapsed_ms = convert(Dates.Millisecond, elapsed)
-
-    # calculate total time
-    total_ms = Millisecond(ceil(Int, Dates.value(elapsed_ms) / frac_processed))
-
-    # calculate ETA
-    total_ms - elapsed_ms
+    eta_ms = Millisecond(ceil(Int, (1-frac_processed) * Dates.value(elapsed_ms) / frac_processed))
+    eta_ms
 end
+
 
 """
     format_period_HHMMSS(period; nan_value="Inf")
