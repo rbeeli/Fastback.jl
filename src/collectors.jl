@@ -103,8 +103,9 @@ mutable struct DrawdownValues
 end
 
 function drawdown_collector(mode::DrawdownMode, predicate::TFunc) where {TFunc<:Function}
+    values = Vector{Tuple{DateTime,Price}}()
     dv = DrawdownValues(
-        Vector{Tuple{DateTime,Price}}(),
+        values,
         mode,
         -1e50,
         DateTime(0))
@@ -119,7 +120,7 @@ function drawdown_collector(mode::DrawdownMode, predicate::TFunc) where {TFunc<:
             if mode == Percentage::DrawdownMode
                 drawdown /= dv.max_equity
             end
-            push!(dv.values, (dt, drawdown))
+            push!(values, (dt, drawdown))
             dv.last_dt = dt
         end
 
