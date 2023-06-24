@@ -10,7 +10,7 @@ const Volume = Float64          # trade volume / number of shares
 
 @enum TradeDir::Int16 NullDir = 0 Long = 1 Short = -1
 
-@inline sign(x::TradeDir) = Int64(x)
+@inline sign(x::TradeDir) = Volume(x)
 @inline trade_dir(volume) = volume > 0 ? Long : ((volume < 0) ? Short : NullDir)
 
 @inline *(x::Volume, dir::TradeDir) = Volume(x * sign(dir))
