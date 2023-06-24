@@ -28,7 +28,8 @@ function print_orders(
     vol_fmt = x -> string(round(x, digits=volume_digits))
     price_fmt = x -> string(round(x, digits=price_digits))
 
-    columns = ["Symbol"; "Quantity"; "Date"; "Execution date"; "Execution price"; "Execution quantity"; "Realized P&L"; "Flag 1"; "Flag 2"; "Flag 3"]
+    # ; "Flag 1"; "Flag 2"; "Flag 3"
+    columns = ["Symbol"; "Quantity"; "Date"; "Execution date"; "Execution price"; "Execution quantity"; "Realized P&L"]
 
     ix_date = findfirst(columns .== "Date")
     ix_exe_date = findfirst(columns .== "Execution date")
