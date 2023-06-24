@@ -80,4 +80,4 @@ function calc_weighted_avg_price(pos_avg_price, pos_qty, order_price, order_qty)
     end
 end
 
-# @inline match_target_exposure(target_exposure::Price, dir::TradeDir, ba::BidAsk) = target_exposure / open_price(dir, ba)
+@inline match_target_exposure(target_exposure::Price, dir::TradeDir, ob::OrderBook) = target_exposure / fill_price(sign(dir), ob; zero_price=0.0)
