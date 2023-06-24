@@ -94,7 +94,7 @@ Base.show(order::Order) = Base.show(stdout, order)
 # --------------- OrderExecution ---------------
 
 function Base.show(io::IO, oe::OrderExecution)
-    print(io, "[OrderExe] qty=$(@sprintf("%+.2f", oe.quantity))  price=$(oe.price)  dt=$(Dates.format(oe.dt, "yyyy-mm-dd HH:MM:SS"))  realized_pnl=$(oe.realized_pnl)")
+    print(io, "[OrderExe] qty=$(@sprintf("%+.2f", oe.quantity))  pos_avg_price=$(oe.pos_avg_price)  pos_quantity=$(oe.pos_quantity)  fill_price=$(oe.fill_price)  dt=$(Dates.format(oe.dt, "yyyy-mm-dd HH:MM:SS"))  realized_pnl=$(oe.realized_pnl)")
 end
 
 Base.show(order_exe::OrderExecution) = Base.show(stdout, order_exe)

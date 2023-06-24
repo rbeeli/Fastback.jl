@@ -40,20 +40,22 @@ function execute_order!(acc::Account, book::OrderBook, order::Order)
     # order execution details
     exe = order.execution
     exe.dt = book.bba.dt
-    exe.price = fill_price(order.quantity, book)
+    exe.pos_quantity = pos.quantity
+    exe.pos_avg_price = pos.avg_price
+    exe.fill_price = fill_price(order.quantity, book)
     exe.quantity = order.quantity
 
-    # update account balance
-    acc.balance -= exe.quantity * exe.price
-    
     # realized P&L
     covering_qty = calc_covering_quantity(pos.quantity, exe.quantity)
     if covering_qty != 0.0
         # order is reducing exposure (covering), calculate realized P&L
-        exe.realized_pnl = (pos.avg_price - exe.price) * -covering_qty
+        exe.realized_pnl = (exe.pos_avg_price - exe.fill_price) * -covering_qty
         pos.pnl -= exe.realized_pnl
     end
 
+    # update account balance
+    acc.balance -= exe.quantity * exe.fill_price
+    
     # calculate new exposure
     new_exposure = pos.quantity + exe.quantity
     if new_exposure == 0.0
@@ -61,7 +63,7 @@ function execute_order!(acc::Account, book::OrderBook, order::Order)
         pos.avg_price = 0.0
     else
         # update average price (if exposure is increased)
-        pos.avg_price = calc_weighted_avg_price(pos.avg_price, pos.quantity, exe.price, exe.quantity)
+        pos.avg_price = calc_weighted_avg_price(pos.avg_price, pos.quantity, exe.fill_price, exe.quantity)
     end
 
     # update position quantity
