@@ -37,9 +37,9 @@ function print_orders(
     ix_avg_price = findfirst(columns .== "Avg price")
     ix_exe_price = findfirst(columns .== "Execution price")
     ix_pnl = findfirst(columns .== "Realized P&L")
-    ix_flag1 = findfirst(columns .== "Flag 1")
-    ix_flag2 = findfirst(columns .== "Flag 2")
-    ix_flag3 = findfirst(columns .== "Flag 3")
+    # ix_flag1 = findfirst(columns .== "Flag 1")
+    # ix_flag2 = findfirst(columns .== "Flag 2")
+    # ix_flag3 = findfirst(columns .== "Flag 3")
 
     formatter = (v, i, j) -> begin
         o = v
@@ -49,8 +49,8 @@ function print_orders(
             o = vol_fmt(v)
         elseif j ∈ [ix_exe_price, ix_avg_price, ix_pnl]
             o = isnan(v) ? "—" : price_fmt(v)
-        elseif j ∈ [ix_flag1, ix_flag2, ix_flag3]
-            o = string(v)
+        # elseif j ∈ [ix_flag1, ix_flag2, ix_flag3]
+        #     o = string(v)
         end
         o
     end
@@ -59,7 +59,8 @@ function print_orders(
     n_shown = min(n_total, max_print)
     n_hidden = n_total - n_shown
 
-    data = map(o -> [o.inst.symbol o.quantity o.dt o.execution.dt o.execution.price o.execution.quantity o.execution.realized_pnl o.flag1 o.flag2 o.flag3], first(orders, n_shown))
+    #  o.flag1 o.flag2 o.flag3
+    data = map(o -> [o.inst.symbol o.quantity o.dt o.execution.dt o.execution.price o.execution.quantity o.execution.realized_pnl], first(orders, n_shown))
     data = reduce(vcat, data)
 
     h_pos_green = Highlighter((data, i, j) -> j == ix_pnl && data[i, j] > 0, bold=true, foreground=:green)
