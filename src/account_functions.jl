@@ -1,132 +1,95 @@
+@inline balance_ret(acc::Account) = acc.balance / acc.initial_balance - 1.0
+@inline equity_ret(acc::Account) = acc.equity / acc.initial_balance - 1.0
 
-function execute_order!(
-    acc     ::Account,
-    order   ::OpenOrder,
-    ba      ::BidAsk
-)
-    # create new position
-    pos = Position(
-        order.inst,
-        sign(order.dir) * abs(order.size),
-        order.dir,
-        ba,
-        ba.dt,
-        open_price(order.dir, ba),
-        ba,
-        ba.dt,
-        close_price(order.dir, ba),
-        order.stop_loss,
-        order.take_profit,
-        NullReason::CloseReason,
-        0.0,            # initial PnL
-        order.data      # user-defined data object
-    )
-    book_position!(acc, pos, ba)
-    return
+# note: slow
+@inline has_positions(acc::Account) = any(map(x -> x.quantity != 0.0, acc.positions))
+
+function has_position_with_inst(acc::Account, inst::Instrument)
+    acc.positions[inst.index].quantity != 0.0
 end
 
-
-function execute_order!(
-    acc     ::Account,
-    order   ::CloseOrder,
-    ba      ::BidAsk
-)
-    close_position!(acc, order.pos, ba, order.close_reason)
-    return
+function has_position_with_dir(acc::Account, inst::Instrument, dir::TradeDir)
+    sign(acc.positions[inst.index].quantity) == sign(dir)
 end
 
+# account total return based on initial balance and current equity
+@inline total_return(acc::Account) = acc.equity / acc.initial_balance - 1.0
 
-# function execute_order!(
-#     acc     ::Account,
-#     order   ::CloseAllOrder,
-#     ba      ::BidAsk
-# )
-#     for i in length(acc.open_positions):-1:1
-#         pos = acc.open_positions[i]
-#         close_position!(acc, pos, ba, NullReason::CloseReason)
+# @inline total_pnl_net(acc::Account) = sum(map(pnl_net, acc.closed_positions))
+# @inline total_pnl_gross(acc::Account) = sum(map(pnl_gross, acc.closed_positions))
+
+# @inline count_winners_net(acc::Account) = count(map(x -> pnl_net(x) > 0.0, acc.closed_positions))
+# @inline count_winners_gross(acc::Account) = count(map(x -> pnl_gross(x) > 0.0, acc.closed_positions))
+
+# # Dates.func(nbbo.dt) accessor shortcuts, e.g. year(nbbo), day(nbbo), hour(nbbo)
+# for func in (:year, :month, :day, :hour, :minute, :second, :millisecond, :microsecond, :nanosecond)
+#     name = string(func)
+#     @eval begin
+#         $func(ba::BidAsk)::Int64 = Dates.$func(ba.dt)
 #     end
-#     return
 # end
 
 
-function book_position!(
-    acc     ::Account,
-    pos     ::Position,
-    ba      ::BidAsk
-)
-    # update P&L of position and account equity
-    update_pnl!(acc, pos, ba)
+function execute_order!(acc::Account, book::OrderBook, order::Order)
+    # positions are netted using weighted average price, hence only one
+    # position per instrument will be maintained
+    # https://www.developer.saxo/openapi/learn/position-netting
 
-    # add position to portfolio
-    push!(acc.open_positions, pos)
+    pos = @inbounds acc.positions[order.inst.index]
 
-    return
-end
-
-
-function update_pnl!(
-    acc     ::Account,
-    pos     ::Position,
-    ba      ::BidAsk
-)
-    # temporarily remove from account equity
-    acc.equity -= pos.pnl
-
-    # update P&L of position
-    update_pnl!(pos, ba)
-
-    # add updated value to account equity
-    acc.equity += pos.pnl
-
-    return
-end
-
-
-function close_position!(
-    acc             ::Account,
-    pos             ::Position,
-    ba              ::BidAsk,
-    close_reason    ::CloseReason
-)
-    # find in vector of open positions
-    idx = findfirst(x -> x === pos, acc.open_positions)
-    if isnothing(idx)
-        printstyled(
-            "WARN [Fastback] close_position! - WARNING: Position already closed.", pos, "\n"; color=:yellow);
-        return
-    end
-
-    pos.close_reason = close_reason
-
-    # update P&L of position and account equity
-    update_pnl!(acc, pos, ba)
-
-    # remove from open positions vector
-    deleteat!(acc.open_positions, idx)
-
-    # add to closed positions vector
-    push!(acc.closed_positions, pos)
+    # order execution details
+    exe = order.execution
+    exe.dt = book.bba.dt
+    exe.price = fill_price(order.quantity, book)
+    exe.quantity = order.quantity
 
     # update account balance
-    acc.balance += pos.pnl
+    acc.balance -= exe.quantity * exe.price
+    
+    # realized P&L
+    covering_qty = calc_covering_quantity(pos.quantity, exe.quantity)
+    if covering_qty != 0.0
+        # order is reducing exposure (covering), calculate realized P&L
+        exe.realized_pnl = (pos.avg_price - exe.price) * -covering_qty
+        pos.pnl -= exe.realized_pnl
+    end
 
-    return
+    # calculate new exposure
+    new_exposure = pos.quantity + exe.quantity
+    if new_exposure == 0.0
+        # no more exposure
+        pos.avg_price = 0.0
+    else
+        # update average price (if exposure is increased)
+        pos.avg_price = calc_weighted_avg_price(pos.avg_price, pos.quantity, exe.price, exe.quantity)
+    end
+
+    # update position quantity
+    pos.quantity = new_exposure
+
+    # update P&L of position and account equity
+    update_pnl!(acc, book, pos)
+
+    # add order to history
+    push!(pos.orders_history, order)
+    push!(acc.orders_history, order)
+
+    return nothing
 end
 
 
-function update_account!(
-    acc     ::Account,
-    inst    ::Instrument,
-    ba      ::BidAsk
-)
-    # value open positions for given instrument
-    for pos in acc.open_positions
-        if pos.inst !== inst
-            continue
-        end
+@inline function update_pnl!(acc::Account, book::OrderBook, pos::Position)
+    # update P&L and account equity
+    acc.equity -= pos.pnl
+    pos.pnl = calc_pnl(pos, book)
+    acc.equity += pos.pnl
+    return nothing
+end
 
-        # update P&L of position and account equity
-        update_pnl!(acc, pos, ba)
-    end
-    return
+
+function update_account!(acc::Account, data::MarketData, inst::Instrument)
+    # update P&L and account equity
+    book = @inbounds data.order_books[inst.index]
+    pos = @inbounds acc.positions[inst.index]
+    update_pnl!(acc, book, pos)
 end

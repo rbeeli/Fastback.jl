@@ -14,10 +14,7 @@ if isempty(requested_tests)
     include("position.jl")
     include("account.jl")
     include("collectors.jl")
-    include("backtesting.jl")
     include("batch_backtest.jl")
-    include("perf_collectors.jl")
-    include("perf_backtesting.jl")
 else
     for test = requested_tests
         include(test)

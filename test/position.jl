@@ -1,46 +1,99 @@
-@testset "Position functions" begin
-    inst = Instrument("TEST")
-    dt1 = DateTime(2000, 1, 1)
-    ba1 = BidAsk(dt1, 500.0, 501.1)
-
-    dt2 = DateTime(2000, 1, 2)
-    ba2 = BidAsk(dt2, 505.0, 506.5)
+@testset "Position calc_pnl calc_return" begin
+    inst = Instrument(1, "TEST")
+    
+    ba1 = BidAsk(DateTime(2000, 1, 1), 500.0, 501.1)
+    ba2 = BidAsk(DateTime(2000, 1, 2), 505.0, 506.5)
 
     begin
         # long
-        pos = Position(inst, 500.0, Long, ba1, dt1, ba1.ask, ba2, dt2, ba2.bid, 0.0, 0.0, NullReason::CloseReason, 0.0, nothing)
+        pos = Position(inst.index, inst, 500.0, Vector{Order}(), ba1.ask, 0.0)
 
         @test is_long(pos)
         @test !is_short(pos)
+        @test pos.avg_price == ba1.ask
+        @test pos.quantity == 500.0
 
-        @test pos.open_price == 501.1
-        @test open_price(pos.dir, ba1) == 501.1
-        @test pos.last_price == 505.0
-        @test close_price(pos.dir, ba2) == 505.0
+        book = OrderBook(1, inst, ba2)
 
-        @test pnl_net(pos) == 500.0 * (pos.last_price - pos.open_price)
-        @test pnl_gross(pos) == 500.0 * (midprice(pos.last_quote) - midprice(pos.open_quote))
-
-        @test return_net(pos) == (pos.last_price - pos.open_price) / pos.open_price
-        @test return_gross(pos) == (midprice(pos.last_quote) - midprice(pos.open_quote)) / midprice(pos.open_quote)
+        @test calc_pnl(pos, book) == pos.quantity * (fill_price(-pos.quantity, book) - pos.avg_price)
+        @test calc_return(pos, book) == (ba2.bid - ba1.ask)/ba1.ask
     end
 
     begin
         # short
-        pos = Position(inst, -500.0, Short, ba1, dt1, ba1.bid, ba2, dt2, ba2.ask, 0.0, 0.0, NullReason::CloseReason, 0.0, nothing)
+        pos = Position(inst.index, inst, -500.0, Vector{Order}(), ba1.bid, 0.0)
 
         @test !is_long(pos)
         @test is_short(pos)
+        @test pos.avg_price == ba1.bid
+        @test pos.quantity == -500.0
 
-        @test pos.open_price == 500.0
-        @test open_price(pos.dir, ba1) == 500.0
-        @test pos.last_price == 506.5
-        @test close_price(pos.dir, ba2) == 506.5
+        book = OrderBook(1, inst, ba2)
 
-        @test pnl_net(pos) == -500.0 * (pos.last_price - pos.open_price)
-        @test pnl_gross(pos) == -500.0 * (midprice(pos.last_quote) - midprice(pos.open_quote))
-
-        @test return_net(pos) == -(pos.last_price - pos.open_price) / pos.open_price
-        @test return_gross(pos) == -(midprice(pos.last_quote) - midprice(pos.open_quote)) / midprice(pos.open_quote)
+        @test calc_pnl(pos, book) == pos.quantity * (fill_price(-pos.quantity, book) - pos.avg_price)
+        @test calc_return(pos, book) == (ba1.bid - ba2.ask)/ba1.bid
     end
+end
+
+
+@testset "Position calc_covering_quantity" begin
+    # Test 1: long position, sell order more than position
+    @test calc_covering_quantity(10, -30) == 10
+
+    # Test 2: long position, sell order less than position
+    @test calc_covering_quantity(10, -5) == 5
+
+    # Test 3: short position, buy order more than position
+    @test calc_covering_quantity(-10, 30) == -10
+
+    # Test 4: short position, buy order less than position
+    @test calc_covering_quantity(-10, 5) == -5
+
+    # Test 4: short position, buy order same as position
+    @test calc_covering_quantity(-10, 10) == -10
+
+    # Test 5: long position, buy order
+    @test calc_covering_quantity(10, 5) == 0
+
+    # Test 6: short position, sell order
+    @test calc_covering_quantity(-10, -5) == 0
+
+    # Test 7: no position, sell order
+    @test calc_covering_quantity(0, -5) == 0
+
+    # Test 8: no position, buy order
+    @test calc_covering_quantity(0, 5) == 0
+
+    # Test 9: no op
+    @test calc_covering_quantity(0, 0) == 0
+end
+
+
+@testset "Position calc_exposure_increase_quantity" begin
+    # Test 1: long position, buy order more than position
+    @test calc_exposure_increase_quantity(10, 20) == 20
+
+    # Test 2: long position, buy order less than position
+    @test calc_exposure_increase_quantity(10, 5) == 5
+
+    # Test 3: short position, sell order more than position
+    @test calc_exposure_increase_quantity(-10, -20) == -20
+
+    # Test 4: short position, sell order less than position
+    @test calc_exposure_increase_quantity(-10, -5) == -5
+
+    # Test 5: long position, sell order
+    @test calc_exposure_increase_quantity(10, -5) == 0
+
+    # Test 6: short position, buy order
+    @test calc_exposure_increase_quantity(-10, 5) == 0
+
+    # Test 7: no position, sell order
+    @test calc_exposure_increase_quantity(0, -5) == -5
+
+    # Test 8: no position, buy order
+    @test calc_exposure_increase_quantity(0, 5) == 5
+
+    # Test 9: no op
+    @test calc_exposure_increase_quantity(0, 0) == 0
 end
