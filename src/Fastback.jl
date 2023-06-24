@@ -45,7 +45,7 @@ export params_combinations, estimate_eta, format_period_HHMMSS
 
 # accessors
 export midprice, spread, is_long, is_short, trade_dir, pnl_net, pnl_gross, return_net, return_gross,
-    balance_ret, equity_ret, has_positions, total_return
-    #, total_pnl_net, total_pnl_gross, count_winners_net, count_winners_gross, opposite_dir
+    balance_ret, equity_ret, has_positions, total_return, opposite_dir
+    #, total_pnl_net, total_pnl_gross, count_winners_net, count_winners_gross
 
 end # module
