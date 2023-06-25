@@ -1,5 +1,4 @@
-@inline balance_ret(acc::Account) = acc.balance / acc.initial_balance - 1.0
-@inline equity_ret(acc::Account) = acc.equity / acc.initial_balance - 1.0
+@inline equity_return(acc::Account) = acc.equity / acc.initial_balance - 1.0
 
 # note: slow
 @inline has_positions(acc::Account) = any(map(x -> x.quantity != 0.0, acc.positions))
@@ -42,19 +41,19 @@ function execute_order!(acc::Account, book::OrderBook, order::Order)
     exe.dt = book.bba.dt
     exe.pos_quantity = pos.quantity
     exe.pos_avg_price = pos.avg_price
-    exe.fill_price = fill_price(order.quantity, book)
+    exe.price = fill_price(order.quantity, book)
     exe.quantity = order.quantity
 
     # realized P&L
-    covering_qty = calc_covering_quantity(pos.quantity, exe.quantity)
-    if covering_qty != 0.0
+    exe.realized_quantity = calc_realized_quantity(pos.quantity, exe.quantity)
+    if exe.realized_quantity != 0.0
         # order is reducing exposure (covering), calculate realized P&L
-        exe.realized_pnl = (exe.pos_avg_price - exe.fill_price) * -covering_qty
+        exe.realized_pnl = (exe.pos_avg_price - exe.price) * -exe.realized_quantity
         pos.pnl -= exe.realized_pnl
     end
 
     # update account balance
-    acc.balance -= exe.quantity * exe.fill_price
+    acc.balance -= exe.quantity * exe.price
     
     # calculate new exposure
     new_exposure = pos.quantity + exe.quantity
@@ -63,7 +62,7 @@ function execute_order!(acc::Account, book::OrderBook, order::Order)
         pos.avg_price = 0.0
     else
         # update average price (if exposure is increased)
-        pos.avg_price = calc_weighted_avg_price(pos.avg_price, pos.quantity, exe.fill_price, exe.quantity)
+        pos.avg_price = calc_weighted_avg_price(pos.avg_price, pos.quantity, exe.price, exe.quantity)
     end
 
     # update position quantity
@@ -71,6 +70,8 @@ function execute_order!(acc::Account, book::OrderBook, order::Order)
 
     # update P&L of position and account equity
     update_pnl!(acc, book, pos)
+
+    # exe.weight = exe.quantity * exe.price / acc.equity
 
     # add order to history
     push!(pos.orders_history, order)

@@ -23,7 +23,7 @@ end
 
 
 """
-Calculates the quantity that is covered by a order of an existing position.
+Calculates the quantity that is covered (realized) by a order of an existing position.
 Covered in this context means the exposure is reduced.
 
 # Arguments
@@ -38,12 +38,12 @@ the function returns 0.
 
 # Examples
 ```julia
-calc_covering_quantity(10, -30) # returns 10
-calc_covering_quantity(-10, 30) # returns -10
-calc_covering_quantity(10, 5)   # returns 0
+calc_realized_quantity(10, -30) # returns 10
+calc_realized_quantity(-10, 30) # returns -10
+calc_realized_quantity(10, 5)   # returns 0
 ```
 """
-@inline function calc_covering_quantity(position_qty, order_qty)
+@inline function calc_realized_quantity(position_qty, order_qty)
     (position_qty * order_qty < 0) ? sign(position_qty) * min(abs(position_qty), abs(order_qty)) : zero(position_qty)
 end
 

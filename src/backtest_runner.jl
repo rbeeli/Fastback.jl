@@ -4,19 +4,18 @@ using Printf
 
 
 function batch_backtest(
-    backtest_return_type        ::Type{T},
-    params_list                 ::Vector{Dict{Any, Any}},
-    backtest_func               ::Function;
-    finished_func               ::Union{Function, Nothing}=nothing,
-    progress_log_interval       ::Int=1,
-    parallel                    ::Bool=true
-)::Vector{T} where T
-
+    backtest_return_type::Type{T},
+    params_list::Vector{Dict{Any,Any}},
+    backtest_func::Function;
+    finished_func::Union{Function,Nothing}=nothing,
+    progress_log_interval::Int=1,
+    parallel::Bool=true
+)::Vector{T} where {T}
     n_threads = parallel ? Threads.nthreads() : 1
     n_params = length(params_list)
 
     display_width = displaysize()[2]
-    printstyled("━"^display_width*"\n"; color=:green)
+    printstyled("━"^display_width * "\n"; color=:green)
     printstyled("Batch backtest [iterations=$n_params, threads=$n_threads]\n"; color=:green)
 
     results = Vector{backtest_return_type}(undef, n_params)
@@ -46,11 +45,11 @@ function batch_backtest(
             if progress_log_interval > 0 && (n_done % progress_log_interval == 0 || n_done == n_params)
                 # ETA string
                 elapsed = now() - start_time
-                eta = estimate_eta(elapsed, n_done/n_params)
+                eta = estimate_eta(elapsed, n_done / n_params)
                 eta_str = format_period_HHMMSS(eta)
 
                 # progress
-                prog_pct = @sprintf("%3.0d", floor(Int, 100*(n_done/n_params)))
+                prog_pct = @sprintf("%3.0d", floor(Int, 100 * (n_done / n_params)))
                 num_digits = floor(Int, log10(n_params)) + 1
                 prog_int = lpad(n_done, num_digits)
 
@@ -73,7 +72,7 @@ function batch_backtest(
         end
     end
 
-    printstyled("━"^display_width*"\n"; color=:green)
+    printstyled("━"^display_width * "\n"; color=:green)
 
     results
 end

@@ -57,11 +57,13 @@ end
 
 mutable struct OrderExecution
     dt::DateTime
+    quantity::Volume            # negative = short selling
+    price::Price                # price at which the order was filled
     pos_quantity::Volume        # quantity of the existing position
     pos_avg_price::Price        # average price of the existing position
-    fill_price::Price           # price at which the order was filled
-    quantity::Volume            # negative = short selling
-    realized_pnl::Price
+    # weight::Price               # weight of the order after it got executed (relative to equity)
+    realized_pnl::Price         # realized P&L from exposure reduction (covering)
+    realized_quantity::Volume   # quantity of the existing position that was covered by the order
 end
 
 # ----------------------------------------------------------
@@ -72,7 +74,7 @@ struct Order
     dt::DateTime
     execution::OrderExecution
     Order(inst::Instrument, quantity::Volume, dt::DateTime) =
-        new(inst, quantity, dt, OrderExecution(DateTime(0), 0, 0, 0, 0, 0))
+        new(inst, quantity, dt, OrderExecution(DateTime(0), 0, 0, 0, 0, 0, 0))
 end
 
 # ----------------------------------------------------------

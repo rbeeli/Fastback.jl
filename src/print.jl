@@ -94,7 +94,7 @@ Base.show(order::Order) = Base.show(stdout, order)
 # --------------- OrderExecution ---------------
 
 function Base.show(io::IO, oe::OrderExecution)
-    print(io, "[OrderExe] qty=$(@sprintf("%+.2f", oe.quantity))  pos_avg_price=$(oe.pos_avg_price)  pos_quantity=$(oe.pos_quantity)  fill_price=$(oe.fill_price)  dt=$(Dates.format(oe.dt, "yyyy-mm-dd HH:MM:SS"))  realized_pnl=$(oe.realized_pnl)")
+    print(io, "[OrderExe] qty=$(@sprintf("%+.2f", oe.quantity))  pos_avg_price=$(oe.pos_avg_price)  pos_quantity=$(oe.pos_quantity)  price=$(oe.price)  dt=$(Dates.format(oe.dt, "yyyy-mm-dd HH:MM:SS"))  realized_pnl=$(oe.realized_pnl)")
 end
 
 Base.show(order_exe::OrderExecution) = Base.show(stdout, order_exe)
@@ -211,7 +211,7 @@ function Base.show(io::IO, acc::Account; max_orders=100, volume_digits=1, price_
     print(io, ")\n")
     print(io, " ", "Equity:             $(@sprintf("%.2f", acc.equity))")
     print(io, " (")
-    print(io, get_color(equity_ret(acc)), "$(@sprintf("%+.2f", equity_ret(acc)*100))%", Crayon(reset=true))
+    print(io, get_color(equity_return(acc)), "$(@sprintf("%+.2f", equity_return(acc)*100))%", Crayon(reset=true))
     print(io, ")\n")
     println(io, "")
     println(io, " ", "Positions:          $n_open_positions")

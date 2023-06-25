@@ -36,36 +36,36 @@
 end
 
 
-@testset "Position calc_covering_quantity" begin
+@testset "Position calc_realized_quantity" begin
     # Test 1: long position, sell order more than position
-    @test calc_covering_quantity(10, -30) == 10
+    @test calc_realized_quantity(10, -30) == 10
 
     # Test 2: long position, sell order less than position
-    @test calc_covering_quantity(10, -5) == 5
+    @test calc_realized_quantity(10, -5) == 5
 
     # Test 3: short position, buy order more than position
-    @test calc_covering_quantity(-10, 30) == -10
+    @test calc_realized_quantity(-10, 30) == -10
 
     # Test 4: short position, buy order less than position
-    @test calc_covering_quantity(-10, 5) == -5
+    @test calc_realized_quantity(-10, 5) == -5
 
     # Test 4: short position, buy order same as position
-    @test calc_covering_quantity(-10, 10) == -10
+    @test calc_realized_quantity(-10, 10) == -10
 
     # Test 5: long position, buy order
-    @test calc_covering_quantity(10, 5) == 0
+    @test calc_realized_quantity(10, 5) == 0
 
     # Test 6: short position, sell order
-    @test calc_covering_quantity(-10, -5) == 0
+    @test calc_realized_quantity(-10, -5) == 0
 
     # Test 7: no position, sell order
-    @test calc_covering_quantity(0, -5) == 0
+    @test calc_realized_quantity(0, -5) == 0
 
     # Test 8: no position, buy order
-    @test calc_covering_quantity(0, 5) == 0
+    @test calc_realized_quantity(0, 5) == 0
 
     # Test 9: no op
-    @test calc_covering_quantity(0, 0) == 0
+    @test calc_realized_quantity(0, 0) == 0
 end
 
 
