@@ -3,11 +3,11 @@
 # note: slow
 @inline has_positions(acc::Account) = any(map(x -> x.quantity != 0.0, acc.positions))
 
-function has_position_with_inst(acc::Account, inst::Instrument)
+function has_position_with_inst(acc::Account, inst::Instrument{I}) where {I}
     acc.positions[inst.index].quantity != 0.0
 end
 
-function has_position_with_dir(acc::Account, inst::Instrument, dir::TradeDir)
+function has_position_with_dir(acc::Account, inst::Instrument{I}, dir::TradeDir) where {I}
     sign(acc.positions[inst.index].quantity) == sign(dir)
 end
 
@@ -97,7 +97,7 @@ end
 end
 
 
-function update_account!(acc::Account, data::MarketData, inst::Instrument)
+function update_account!(acc::Account, data::MarketData{I}, inst::Instrument{I}) where {I}
     # update P&L and account equity
     book = @inbounds data.order_books[inst.index]
     pos = @inbounds acc.positions[inst.index]

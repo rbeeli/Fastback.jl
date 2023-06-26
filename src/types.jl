@@ -49,10 +49,10 @@ end
 
 # ----------------------------------------------------------
 
-struct MarketData
-    instruments::Vector{Instrument}
+struct MarketData{I}
+    instruments::Vector{Instrument{I}}
     order_books::Vector{OrderBook}
-    MarketData(instruments) = new(instruments, [OrderBook(i.index, i, BidAsk()) for i in instruments])
+    MarketData(instruments::Vector{Instrument{I}}) where {I} = new{I}(instruments, [OrderBook(i.index, i, BidAsk()) for i in instruments])
 end
 
 # ----------------------------------------------------------
