@@ -105,7 +105,7 @@ Base.show(order_exe::OrderExecution) = Base.show(stdout, order_exe)
 
 function print_positions(
     positions::Vector{Position};
-    max_print=25,
+    max_print=50,
     volume_digits=1,
     price_digits=2,
     kwargs...
@@ -122,7 +122,7 @@ end
 function print_positions(
     io::IO,
     positions::Vector{Position};
-    max_print=25,
+    max_print=50,
     volume_digits=1,
     price_digits=2
 )
@@ -189,7 +189,7 @@ Base.show(pos::Position) = Base.show(stdout, pos)
 
 # --------------- Account ---------------
 
-function Base.show(io::IO, acc::Account; max_orders=100, volume_digits=1, price_digits=2, kwargs...)
+function Base.show(io::IO, acc::Account; max_orders=50, volume_digits=1, price_digits=2, kwargs...)
     # volume_digits and price_digits are passed to print_positions(...) via kwargs
     display_width = displaysize()[2]
 
