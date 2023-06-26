@@ -48,21 +48,27 @@ function execute_order!(acc::Account, book::OrderBook, order::Order)
     exe.realized_quantity = calc_realized_quantity(pos.quantity, exe.quantity)
     if exe.realized_quantity != 0.0
         # order is reducing exposure (covering), calculate realized P&L
-        exe.realized_pnl = (exe.pos_avg_price - exe.price) * -exe.realized_quantity
+        exe.realized_pnl = (exe.price - exe.pos_avg_price) * exe.realized_quantity
         pos.pnl -= exe.realized_pnl
     end
 
     # update account balance
     acc.balance -= exe.quantity * exe.price
-    
+
     # calculate new exposure
     new_exposure = pos.quantity + exe.quantity
     if new_exposure == 0.0
         # no more exposure
         pos.avg_price = 0.0
     else
-        # update average price (if exposure is increased)
-        pos.avg_price = calc_weighted_avg_price(pos.avg_price, pos.quantity, exe.price, exe.quantity)
+        # update average price of position
+        if sign(new_exposure) != sign(pos.quantity)
+            # handle transitions from long to short and vice versa
+            pos.avg_price = exe.price
+        elseif abs(new_exposure) > abs(pos.quantity)
+            # exposure is increased, update average price
+            pos.avg_price = (pos.avg_price * pos.quantity + exe.price * exe.quantity) / new_exposure
+        end
     end
 
     # update position quantity
@@ -71,7 +77,8 @@ function execute_order!(acc::Account, book::OrderBook, order::Order)
     # update P&L of position and account equity
     update_pnl!(acc, book, pos)
 
-    # exe.weight = exe.quantity * exe.price / acc.equity
+    # portfolio weight at execution
+    # exe.weight = exe.quantity * pos.avg_price / acc.equity
 
     # add order to history
     push!(pos.orders_history, order)

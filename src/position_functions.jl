@@ -71,13 +71,4 @@ calc_exposure_increase_quantity(10, -5)   # returns 0
 end
 
 
-function calc_weighted_avg_price(pos_avg_price, pos_qty, order_price, order_qty)
-    if pos_qty * order_qty >= zero(pos_qty)  # same sign
-        increase_qty = calc_exposure_increase_quantity(pos_qty, order_qty)
-        return (pos_avg_price * pos_qty + order_price * increase_qty) / (pos_qty + increase_qty)
-    else  # different signs
-        return order_price
-    end
-end
-
 @inline match_target_exposure(target_exposure::Price, dir::TradeDir, ob::OrderBook) = target_exposure / fill_price(sign(dir), ob; zero_price=0.0)
