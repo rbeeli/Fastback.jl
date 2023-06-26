@@ -18,11 +18,13 @@ const Volume = Float64          # trade volume / number of shares
 
 # ----------------------------------------------------------
 
-struct Instrument
+struct Instrument{T}
     index::Int64                # unique index for each instrument starting from 1 (used for array indexing and hashing)
     symbol::String
+    data::T
     __hash::UInt64
-    Instrument(index, symbol) = new(index, symbol, convert(UInt64, index))
+    Instrument(index, symbol) = new{Nothing}(index, symbol, nothing, convert(UInt64, index))
+    Instrument(index, symbol, data::T) where {T} = new{T}(index, symbol, data, convert(UInt64, index))
 end
 
 Base.hash(inst::Instrument) = inst.__hash  # custom hash for better performance
