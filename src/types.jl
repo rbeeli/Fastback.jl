@@ -75,8 +75,12 @@ struct Order
     quantity::Volume            # negative = short selling
     dt::DateTime
     execution::OrderExecution
-    Order(inst::Instrument, quantity::Volume, dt::DateTime) =
-        new(inst, quantity, dt, OrderExecution(DateTime(0), 0, 0, 0, 0, 0, 0))
+    num1::Float64
+    num2::Float64
+    flag1::Symbol
+    flag2::Symbol
+    Order(inst::Instrument, quantity::Volume, dt::DateTime; num1::Float64=0.0, num2::Float64=0.0, flag1::Symbol=:none, flag2::Symbol=:none) =
+        new(inst, quantity, dt, OrderExecution(DateTime(0), 0, 0, 0, 0, 0, 0), num1, num2, flag1, flag2)
 end
 
 # ----------------------------------------------------------
