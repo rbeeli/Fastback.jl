@@ -14,11 +14,11 @@ Base.show(io::IO, ba::BidAsk) = print(io, "[BidAsk] dt=$(ba.dt)  bid=$(ba.bid)  
 
 function print_orders(
     io::IO,
-    orders::Vector{Order};
+    orders::Vector{Order{O}};
     max_print=25,
     volume_digits=1,
     price_digits=2
-)
+) where {O}
     if length(orders) == 0
         print(io, "\n  No orders\n")
         return
@@ -83,13 +83,13 @@ function print_orders(
     end
 end
 
-function Base.show(io::IO, o::Order)
+function Base.show(io::IO, o::Order{O}) where {O}
     print(io, "[Order] $(o.inst.symbol)  qty=$(@sprintf("%+.2f", o.quantity))  dt=$(Dates.format(o.dt, "yyyy-mm-dd HH:MM:SS"))  execution=$(o.execution)")
 end
 
 #   flags=[$(o.flag1),$(o.flag2),$(o.flag3)]
 
-Base.show(order::Order) = Base.show(stdout, order)
+Base.show(order::Order{O}) where {O} = Base.show(stdout, order)
 
 # --------------- OrderExecution ---------------
 
@@ -104,12 +104,12 @@ Base.show(order_exe::OrderExecution) = Base.show(stdout, order_exe)
 # --------------- Position ---------------
 
 function print_positions(
-    positions::Vector{Position};
+    positions::Vector{Position{O}};
     max_print=50,
     volume_digits=1,
     price_digits=2,
     kwargs...
-)
+) where {O}
     print_positions(
         stdout,
         positions;
@@ -121,11 +121,11 @@ end
 
 function print_positions(
     io::IO,
-    positions::Vector{Position};
+    positions::Vector{Position{O}};
     max_print=50,
     volume_digits=1,
     price_digits=2
-)
+) where {O}
     positions = filter(p -> p.quantity != 0, positions)
 
     if length(positions) == 0
@@ -178,7 +178,7 @@ function print_positions(
     end
 end
 
-function Base.show(io::IO, pos::Position)
+function Base.show(io::IO, pos::Position{O}) where {O}
     quantity_str = @sprintf("%+.2f", pos.quantity)
     pnl_str = @sprintf("%+.2f", pos.pnl)
     print(io, "[Position] $(pos.inst.symbol) $quantity_str @ $(pos.avg_price)  pnl=$pnl_str  " *
@@ -189,7 +189,7 @@ Base.show(pos::Position) = Base.show(stdout, pos)
 
 # --------------- Account ---------------
 
-function Base.show(io::IO, acc::Account; max_orders=50, volume_digits=1, price_digits=2, kwargs...)
+function Base.show(io::IO, acc::Account{O}; max_orders=50, volume_digits=1, price_digits=2, kwargs...) where {O}
     # volume_digits and price_digits are passed to print_positions(...) via kwargs
     display_width = displaysize()[2]
 
@@ -226,4 +226,4 @@ function Base.show(io::IO, acc::Account; max_orders=50, volume_digits=1, price_d
     println(io, "")
 end
 
-Base.show(acc::Account; kwargs...) = Base.show(stdout, acc; kwargs...)
+Base.show(acc::Account{O}; kwargs...) where {O} = Base.show(stdout, acc; kwargs...)
