@@ -21,7 +21,7 @@
 
     begin
         # short
-        pos = Position(inst.index, inst, -500.0, Vector{Order}(), ba1.bid, 0.0)
+        pos = Position{Nothing}(inst.index, inst, -500.0, Vector{Order{Nothing}}(), ba1.bid, 0.0)
 
         @test !is_long(pos)
         @test is_short(pos)

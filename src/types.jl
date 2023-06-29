@@ -70,45 +70,53 @@ end
 
 # ----------------------------------------------------------
 
-struct Order
+struct Order{O}
     inst::Instrument
     quantity::Volume            # negative = short selling
     dt::DateTime
     execution::OrderExecution
-    num1::Float64
-    num2::Float64
-    flag1::Symbol
-    flag2::Symbol
-    Order(inst::Instrument, quantity::Volume, dt::DateTime; num1::Float64=0.0, num2::Float64=0.0, flag1::Symbol=:none, flag2::Symbol=:none) =
-        new(inst, quantity, dt, OrderExecution(DateTime(0), 0, 0, 0, 0, 0, 0), num1, num2, flag1, flag2)
+    data::O
+    Order(inst::Instrument, quantity::Volume, dt::DateTime, data::O) where {O} =
+        new{O}(inst, quantity, dt, OrderExecution(DateTime(0), 0, 0, 0, 0, 0, 0), data)
+    Order(inst::Instrument, quantity::Volume, dt::DateTime) =
+        new{Nothing}(inst, quantity, dt, OrderExecution(DateTime(0), 0, 0, 0, 0, 0, 0), nothing)
 end
 
 # ----------------------------------------------------------
 
-mutable struct Position
+mutable struct Position{O}
     index::Int64                # unique index for each position starting from 1 (used for array indexing and hashing)
     inst::Instrument
     quantity::Volume            # negative = short selling
-    orders_history::Vector{Order}
+    orders_history::Vector{Order{O}}
     avg_price::Price
     pnl::Price
+    Position{O}(index, inst, quantity, orders_history, avg_price, pnl) where {O} =
+        new{O}(index, inst, quantity, orders_history, avg_price, pnl)
+    Position(index, inst, quantity, orders_history, avg_price, pnl) =
+        new{Nothing}(index, inst, quantity, orders_history, avg_price, pnl)
 end
 
 # ----------------------------------------------------------
 
-mutable struct Account
-    positions::Vector{Position} # same size/indexing as MarketData.instruments and MarketData.order_books
-    orders_history::Vector{Order}
+mutable struct Account{O}
+    positions::Vector{Position{O}} # same size/indexing as MarketData.instruments and MarketData.order_books
+    orders_history::Vector{Order{O}}
     initial_balance::Price
     balance::Price
     equity::Price
-    function Account(instruments, initial_balance::Price)
-        new(
-            [Position(i.index, i, 0.0, Vector{Order}(), 0.0, 0.0) for i in instruments],
-            Vector{Order}(),
+
+    function Account{O}(instruments, initial_balance::Price) where {O}
+        new{O}(
+            [Position{O}(i.index, i, 0.0, Vector{Order{O}}(), 0.0, 0.0) for i in instruments],
+            Vector{Order{O}}(),
             initial_balance,
             initial_balance,
             initial_balance)
+    end
+
+    function Account(instruments, initial_balance::Price)
+        Account{Nothing}(instruments, initial_balance)
     end
 end
 
