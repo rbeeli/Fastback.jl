@@ -34,8 +34,8 @@ using Dates
     # open long order
     execute_order!(acc, book, Order(inst, 100.0, prices[1].dt))
 
-    @test calc_realized_pnl(acc.orders_history[end]) == 0.0
-    @test calc_realized_price_return(acc.orders_history[end]) == 0.0
+    @test calc_realized_pnl(acc.transactions[end].execution) == 0.0
+    @test calc_realized_price_return(acc.transactions[end].execution) == 0.0
     @test acc.positions[inst.index].avg_price == 101.0
 
     # update account
@@ -64,20 +64,22 @@ using Dates
     # close order again
     execute_order!(acc, book, Order(inst, -100.0, prices[3].dt))
 
-    @test calc_realized_pnl(acc.orders_history[end]) == 150
-    @test calc_realized_price_return(acc.orders_history[end]) ≈ (102.5 - 101.0) / 101.0
-    @test acc.positions[inst.index].orders_history[end].execution.realized_pnl ≈ 150
+    @test calc_realized_pnl(acc.transactions[end].execution) == 150
+    @test calc_realized_price_return(acc.transactions[end].execution) ≈ (102.5 - 101.0) / 101.0
+    @test acc.positions[inst.index].transactions[end].execution.realized_pnl ≈ 150
 
     @test acc.positions[inst.index].quantity == 0.0
     @test acc.positions[inst.index].avg_price == 0.0
     @test acc.positions[inst.index].pnl == 0.0
-    @test length(acc.positions[inst.index].orders_history) == 2
+    @test length(acc.positions[inst.index].transactions) == 2
 
     @test acc.balance ≈ 100_150.0
     @test acc.equity ≈ 100_150.0
 
-    @test acc.equity == acc.initial_balance + sum(order.execution.realized_pnl for order in acc.orders_history)
+    @test acc.equity == acc.initial_balance + sum(tx.execution.realized_pnl for tx in acc.transactions)
     @test acc.balance == acc.equity
+
+    show(acc)
 end
 
 @testset "Single ticker + collectors" begin
@@ -132,8 +134,8 @@ end
     @test equity_curve.values[end][2] == acc.equity
     @test balance_curve.values[end][2] == acc.balance
 
-    @test length(acc.orders_history) == 2
-    @test acc.orders_history[1].execution.quantity == 500.0
+    @test length(acc.transactions) == 2
+    @test acc.transactions[1].execution.quantity == 500.0
 
 end
 
@@ -187,12 +189,12 @@ end
     execute_order!(acc, book, Order(inst, 200.0, prices[3].dt))
 
     @test acc.positions[inst.index].avg_price == book.bba.ask
-    @test calc_realized_price_return(acc.orders_history[end]) ≈ (100.0 - 103.0) / 100.0
-    @test calc_realized_pnl(acc.orders_history[end]) ≈ -300.0
-    # @test calc_realized_return(acc.orders_history[end]) ≈ (100.0 - 103.0) / 100.0
-    @test acc.orders_history[end].execution.realized_pnl ≈ -300.0
+    @test calc_realized_price_return(acc.transactions[end].execution) ≈ (100.0 - 103.0) / 100.0
+    @test calc_realized_pnl(acc.transactions[end].execution) ≈ -300.0
+    # @test calc_realized_return(acc.transactions[end].execution) ≈ (100.0 - 103.0) / 100.0
+    @test acc.transactions[end].execution.realized_pnl ≈ -300.0
     @test pos.pnl ≈ -50
-    @test acc.balance ≈ 100_000.0 + sum(o.execution.realized_pnl for o in acc.orders_history) - pos.quantity * prices[3].ask
+    @test acc.balance ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.transactions) - pos.quantity * prices[3].ask
     @test acc.equity ≈ 99_650.0
 
     update_book!(book, prices[4])
@@ -204,9 +206,9 @@ end
     execute_order!(acc, book, Order(inst, -150.0, prices[4].dt))
 
     @test acc.positions[inst.index].avg_price == book.bba.bid
-    @test acc.orders_history[end].execution.realized_pnl ≈ -300.0
+    @test acc.transactions[end].execution.realized_pnl ≈ -300.0
     @test pos.pnl ≈ -25
-    @test acc.balance ≈ 100_000.0 + sum(o.execution.realized_pnl for o in acc.orders_history) - pos.quantity * prices[4].bid
+    @test acc.balance ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.transactions) - pos.quantity * prices[4].bid
     @test acc.equity ≈ 99_375.0
 
     # close open position
@@ -214,17 +216,17 @@ end
 
     @test acc.balance ≈ 99_375.0
     @test acc.equity ≈ 99_375.0
-    @test acc.orders_history[end].execution.realized_pnl ≈ -25.0
+    @test acc.transactions[end].execution.realized_pnl ≈ -25.0
 
     @test pos.quantity == 0.0
     @test pos.avg_price == 0.0
     @test pos.pnl == 0.0
-    @test length(pos.orders_history) == 4
+    @test length(pos.transactions) == 4
 
-    @test acc.equity == acc.initial_balance + sum(order.execution.realized_pnl for order in acc.orders_history)
+    @test acc.equity == acc.initial_balance + sum(t.execution.realized_pnl for t in acc.transactions)
     @test acc.balance == acc.equity
 
-    # realized_orders = filter(o -> o.execution.realized_pnl != 0.0, acc.orders_history)
+    # realized_orders = filter(t -> t.execution.realized_pnl != 0.0, acc.transactions)
     # @test equity_return(acc) ≈ sum(calc_realized_return(o)*o.execution.weight for o in realized_orders)
 end
 

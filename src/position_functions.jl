@@ -1,6 +1,5 @@
-
 # quantity negative for shorts, thus works for both long and short
-@inline function calc_pnl(pos::Position, ob::OrderBook)
+function calc_pnl(pos::Position{O}, ob::OrderBook{I}) where {O,I}
     pos.quantity * (fill_price(-pos.quantity, ob; zero_price=0.0) - pos.avg_price)
 end
 
@@ -13,10 +12,10 @@ and the current price of the asset based on order book data.
 - `position`: Position object.
 - `ob`: Order book instance with instrument corresponding to the position. Used to calculate the current price of the asset.
 """
-@inline function calc_return(pos::Position, ob::OrderBook)
+function calc_return(pos::Position{O}, ob::OrderBook{I}) where {O,I}
     qty = pos.quantity
     if qty == 0.0
-        return zero(qty)
+        return qty
     end
     sign(qty) * (fill_price(-qty, ob) - pos.avg_price) / pos.avg_price
 end
@@ -43,7 +42,7 @@ calc_realized_quantity(-10, 30) # returns -10
 calc_realized_quantity(10, 5)   # returns 0
 ```
 """
-@inline function calc_realized_quantity(position_qty, order_qty)
+function calc_realized_quantity(position_qty, order_qty)
     (position_qty * order_qty < 0) ? sign(position_qty) * min(abs(position_qty), abs(order_qty)) : zero(position_qty)
 end
 
@@ -66,9 +65,11 @@ calc_exposure_increase_quantity(-10, -20) # returns -20
 calc_exposure_increase_quantity(10, -5)   # returns 0
 ```
 """
-@inline function calc_exposure_increase_quantity(position_qty, order_qty)
+function calc_exposure_increase_quantity(position_qty, order_qty)
     (position_qty * order_qty > zero(position_qty)) ? order_qty : max(0, abs(order_qty) - abs(position_qty)) * sign(order_qty)
 end
 
 
-@inline match_target_exposure(target_exposure::Price, dir::TradeDir, ob::OrderBook) = target_exposure / fill_price(sign(dir), ob; zero_price=0.0)
+function match_target_exposure(target_exposure::Price, dir::TradeDir, ob::OrderBook{I}) where {I}
+    target_exposure / fill_price(sign(dir), ob; zero_price=0.0)
+end

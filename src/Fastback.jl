@@ -5,7 +5,7 @@ include("accessors.jl")
 include("collectors.jl")
 include("position_functions.jl")
 include("book_functions.jl")
-include("order_functions.jl")
+include("execution_functions.jl")
 include("account_functions.jl")
 include("backtest_runner.jl")
 include("print.jl")
@@ -20,7 +20,7 @@ export DrawdownMode, Percentage, PnL
 
 # structs
 export Instrument, BidAsk, OrderBook, MarketData, Position
-export Order, OrderExecution, Account
+export Order, Execution, Transaction, Account
 export PeriodicValues, MinValue, MaxValue, DrawdownValues
 
 # account functions
@@ -32,7 +32,7 @@ export match_target_exposure, calc_pnl, calc_return, calc_realized_quantity, cal
 # book functions
 export fill_price, update_book!
 
-# order functions
+# execution functions
 export calc_realized_pnl, calc_realized_price_return # calc_realized_return, 
 
 # backtest functions
@@ -42,7 +42,7 @@ export batch_backtest
 export should_collect, periodic_collector, predicate_collector, min_value_collector, max_value_collector, drawdown_collector
 
 # print helpers
-export print_positions, print_orders
+export print_positions, print_transactions
 
 # utils
 export params_combinations, estimate_eta, format_period_HHMMSS

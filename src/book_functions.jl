@@ -1,9 +1,9 @@
-@inline function update_book!(book::OrderBook, ba::BidAsk)
+function update_book!(book::OrderBook{I}, ba::BidAsk) where {I}
     book.bba = ba
     return
 end
 
 
-@inline function fill_price(quantity::Volume, ob::OrderBook; zero_price=NaN)
+function fill_price(quantity::Volume, ob::OrderBook{I}; zero_price=NaN) where {I}
     quantity > 0 ? ob.bba.ask : (quantity < 0 ? ob.bba.bid : zero_price)
 end

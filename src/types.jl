@@ -41,9 +41,11 @@ end
 
 # ----------------------------------------------------------
 
-mutable struct OrderBook
+# TODO: Immutable
+
+mutable struct OrderBook{I}
     index::Int64                # unique index for each position starting from 1 (used for array indexing and hashing)
-    inst::Instrument
+    inst::Instrument{I}
     bba::BidAsk
 end
 
@@ -51,13 +53,26 @@ end
 
 struct MarketData{I}
     instruments::Vector{Instrument{I}}
-    order_books::Vector{OrderBook}
-    MarketData(instruments::Vector{Instrument{I}}) where {I} = new{I}(instruments, [OrderBook(i.index, i, BidAsk()) for i in instruments])
+    order_books::Vector{OrderBook{I}}
+    MarketData(instruments::Vector{Instrument{I}}) where {I} = new{I}(instruments, [OrderBook{I}(i.index, i, BidAsk()) for i in instruments])
 end
 
 # ----------------------------------------------------------
 
-mutable struct OrderExecution
+struct Order{O}
+    inst::Instrument
+    quantity::Volume            # negative = short selling
+    dt::DateTime
+    data::O
+    Order(inst::Instrument, quantity::Volume, dt::DateTime, data::O) where {O} =
+        new{O}(inst, quantity, dt, data)
+    Order(inst::Instrument, quantity::Volume, dt::DateTime) =
+        new{Nothing}(inst, quantity, dt, nothing)
+end
+
+# ----------------------------------------------------------
+
+struct Execution
     dt::DateTime
     quantity::Volume            # negative = short selling
     price::Price                # price at which the order was filled
@@ -70,16 +85,11 @@ end
 
 # ----------------------------------------------------------
 
-struct Order{O}
-    inst::Instrument
-    quantity::Volume            # negative = short selling
-    dt::DateTime
-    execution::OrderExecution
-    data::O
-    Order(inst::Instrument, quantity::Volume, dt::DateTime, data::O) where {O} =
-        new{O}(inst, quantity, dt, OrderExecution(DateTime(0), 0, 0, 0, 0, 0, 0), data)
-    Order(inst::Instrument, quantity::Volume, dt::DateTime) =
-        new{Nothing}(inst, quantity, dt, OrderExecution(DateTime(0), 0, 0, 0, 0, 0, 0), nothing)
+struct Transaction{O}
+    order::Order{O}
+    execution::Execution
+    Transaction(order::Order{O}, execution::Execution) where {O} =
+        new{O}(order, execution)
 end
 
 # ----------------------------------------------------------
@@ -88,33 +98,31 @@ mutable struct Position{O}
     index::Int64                # unique index for each position starting from 1 (used for array indexing and hashing)
     inst::Instrument
     quantity::Volume            # negative = short selling
-    orders_history::Vector{Order{O}}
+    transactions::Vector{Transaction{O}}
     avg_price::Price
     pnl::Price
-    Position{O}(index, inst, quantity, orders_history, avg_price, pnl) where {O} =
-        new{O}(index, inst, quantity, orders_history, avg_price, pnl)
-    Position(index, inst, quantity, orders_history, avg_price, pnl) =
-        new{Nothing}(index, inst, quantity, orders_history, avg_price, pnl)
+    Position{O}(index, inst, quantity, transactions, avg_price, pnl) where {O} =
+        new{O}(index, inst, quantity, transactions, avg_price, pnl)
+    Position(index, inst, quantity, transactions, avg_price, pnl) =
+        new{Nothing}(index, inst, quantity, transactions, avg_price, pnl)
 end
 
 # ----------------------------------------------------------
 
 mutable struct Account{O}
     positions::Vector{Position{O}} # same size/indexing as MarketData.instruments and MarketData.order_books
-    orders_history::Vector{Order{O}}
+    transactions::Vector{Transaction{O}}
     initial_balance::Price
     balance::Price
     equity::Price
-
     function Account{O}(instruments, initial_balance::Price) where {O}
         new{O}(
-            [Position{O}(i.index, i, 0.0, Vector{Order{O}}(), 0.0, 0.0) for i in instruments],
-            Vector{Order{O}}(),
+            [Position{O}(i.index, i, 0.0, Vector{Transaction{O}}(), 0.0, 0.0) for i in instruments],
+            Vector{Transaction{O}}(),
             initial_balance,
             initial_balance,
             initial_balance)
     end
-
     function Account(instruments, initial_balance::Price)
         Account{Nothing}(instruments, initial_balance)
     end

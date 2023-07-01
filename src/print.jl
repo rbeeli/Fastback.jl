@@ -12,15 +12,33 @@ Base.show(io::IO, ba::BidAsk) = print(io, "[BidAsk] dt=$(ba.dt)  bid=$(ba.bid)  
 
 # --------------- Order ---------------
 
-function print_orders(
+function Base.show(io::IO, o::Order{O}) where {O}
+    print(io, "[Order] $(o.inst.symbol)  qty=$(@sprintf("%+.2f", o.quantity))  dt=$(Dates.format(o.dt, "yyyy-mm-dd HH:MM:SS"))")
+end
+
+Base.show(order::Order{O}) where {O} = Base.show(stdout, order)
+
+# --------------- Execution ---------------
+
+function Base.show(io::IO, oe::Execution)
+    print(io, "[Execution] qty=$(@sprintf("%+.2f", oe.quantity))  pos_avg_price=$(oe.pos_avg_price)  "*
+        "pos_quantity=$(oe.pos_quantity)  price=$(oe.price)  dt=$(Dates.format(oe.dt, "yyyy-mm-dd HH:MM:SS"))  "*
+        "realized_pnl=$(oe.realized_pnl)  realized_quantity=$(oe.realized_quantity)")
+end
+
+Base.show(order_exe::Execution) = Base.show(stdout, order_exe)
+
+# --------------- Transaction ---------------
+
+function print_transactions(
     io::IO,
-    orders::Vector{Order{O}};
+    txs::Vector{Transaction{O}};
     max_print=25,
     volume_digits=1,
     price_digits=2
 ) where {O}
-    if length(orders) == 0
-        print(io, "\n  No orders\n")
+    if length(txs) == 0
+        print(io, "\n  No transactions\n")
         return
     end
 
@@ -38,9 +56,6 @@ function print_orders(
     ix_avg_price = findfirst(columns .== "Avg price")
     ix_exe_price = findfirst(columns .== "Execution price")
     ix_pnl = findfirst(columns .== "Realized P&L")
-    # ix_flag1 = findfirst(columns .== "Flag 1")
-    # ix_flag2 = findfirst(columns .== "Flag 2")
-    # ix_flag3 = findfirst(columns .== "Flag 3")
 
     formatter = (v, i, j) -> begin
         o = v
@@ -50,18 +65,15 @@ function print_orders(
             o = vol_fmt(v)
         elseif j ∈ [ix_exe_price, ix_avg_price, ix_pnl]
             o = isnan(v) ? "—" : price_fmt(v)
-        # elseif j ∈ [ix_flag1, ix_flag2, ix_flag3]
-        #     o = string(v)
         end
         o
     end
 
-    n_total = length(orders)
+    n_total = length(txs)
     n_shown = min(n_total, max_print)
     n_hidden = n_total - n_shown
 
-    #  o.flag1 o.flag2 o.flag3
-    data = map(o -> [o.inst.symbol o.quantity o.dt o.execution.dt o.execution.price o.execution.quantity o.execution.realized_pnl], first(orders, n_shown))
+    data = map(t -> [t.order.inst.symbol t.order.quantity t.order.dt t.execution.dt t.execution.price t.execution.quantity t.execution.realized_pnl], first(txs, n_shown))
     data = reduce(vcat, data)
 
     h_pos_green = Highlighter((data, i, j) -> j == ix_pnl && data[i, j] > 0, bold=true, foreground=:green)
@@ -73,7 +85,7 @@ function print_orders(
             highlighters = (h_pos_green, h_neg_red),
             formatters = formatter,
             compact_printing = false)
-        println(io, " [...] $n_hidden more orders")
+        println(io, " [...] $n_hidden more transactions")
     else
         df = DataFrame(data, columns)
         pretty_table(io, df;
@@ -82,24 +94,6 @@ function print_orders(
             compact_printing = false)
     end
 end
-
-function Base.show(io::IO, o::Order{O}) where {O}
-    print(io, "[Order] $(o.inst.symbol)  qty=$(@sprintf("%+.2f", o.quantity))  dt=$(Dates.format(o.dt, "yyyy-mm-dd HH:MM:SS"))  execution=$(o.execution)")
-end
-
-#   flags=[$(o.flag1),$(o.flag2),$(o.flag3)]
-
-Base.show(order::Order{O}) where {O} = Base.show(stdout, order)
-
-# --------------- OrderExecution ---------------
-
-function Base.show(io::IO, oe::OrderExecution)
-    print(io, "[OrderExe] qty=$(@sprintf("%+.2f", oe.quantity))  pos_avg_price=$(oe.pos_avg_price)  "*
-        "pos_quantity=$(oe.pos_quantity)  price=$(oe.price)  dt=$(Dates.format(oe.dt, "yyyy-mm-dd HH:MM:SS"))  "*
-        "realized_pnl=$(oe.realized_pnl)  realized_quantity=$(oe.realized_quantity)")
-end
-
-Base.show(order_exe::OrderExecution) = Base.show(stdout, order_exe)
 
 # --------------- Position ---------------
 
@@ -219,8 +213,8 @@ function Base.show(io::IO, acc::Account{O}; max_orders=50, volume_digits=1, pric
     println(io, " ", "Positions:          $n_open_positions")
     print_positions(io, acc.positions; kwargs...)
     println(io, "")
-    println(io, " ", "Orders history:             $(length(acc.orders_history))")
-    print_orders(io, acc.orders_history; max_print=max_orders, kwargs...)
+    println(io, " ", "Transactions:             $(length(acc.transactions))")
+    print_transactions(io, acc.transactions; max_print=max_orders, kwargs...)
     println(io, "")
     println(io, '━'^display_width)
     println(io, "")
