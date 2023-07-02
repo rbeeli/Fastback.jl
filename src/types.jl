@@ -101,11 +101,14 @@ mutable struct Position{O,I}
     transactions::Vector{Transaction{O}}
     avg_price::Price
     pnl::Price
+    __hash::UInt64
     Position{O}(index, inst::Instrument{I}, quantity, transactions, avg_price, pnl) where {O,I} =
-        new{O,I}(index, inst, quantity, transactions, avg_price, pnl)
+        new{O,I}(index, inst, quantity, transactions, avg_price, pnl, convert(UInt64, index))
     Position(index, inst::Instrument{I}, quantity, transactions, avg_price, pnl) where {I} =
-        new{Nothing,I}(index, inst, quantity, transactions, avg_price, pnl)
+        new{Nothing,I}(index, inst, quantity, transactions, avg_price, pnl, convert(UInt64, index))
 end
+
+Base.hash(pos::Position{O,I}) where {O,I} = pos.__hash  # custom hash for better performance
 
 # ----------------------------------------------------------
 
