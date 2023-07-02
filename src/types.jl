@@ -18,16 +18,16 @@ const Volume = Float64          # trade volume / number of shares
 
 # ----------------------------------------------------------
 
-struct Instrument{T}
+struct Instrument{I}
     index::Int64                # unique index for each instrument starting from 1 (used for array indexing and hashing)
     symbol::String
-    data::T
+    data::I
     __hash::UInt64
     Instrument(index, symbol) = new{Nothing}(index, symbol, nothing, convert(UInt64, index))
-    Instrument(index, symbol, data::T) where {T} = new{T}(index, symbol, data, convert(UInt64, index))
+    Instrument(index, symbol, data::I) where {I} = new{I}(index, symbol, data, convert(UInt64, index))
 end
 
-Base.hash(inst::Instrument) = inst.__hash  # custom hash for better performance
+Base.hash(inst::Instrument{I}) where {I} = inst.__hash  # custom hash for better performance
 
 # ----------------------------------------------------------
 
@@ -59,15 +59,15 @@ end
 
 # ----------------------------------------------------------
 
-struct Order{O}
-    inst::Instrument
+struct Order{O,I}
+    inst::Instrument{I}
     quantity::Volume            # negative = short selling
     dt::DateTime
     data::O
-    Order(inst::Instrument, quantity::Volume, dt::DateTime, data::O) where {O} =
-        new{O}(inst, quantity, dt, data)
-    Order(inst::Instrument, quantity::Volume, dt::DateTime) =
-        new{Nothing}(inst, quantity, dt, nothing)
+    Order(inst::Instrument{I}, quantity::Volume, dt::DateTime, data::O) where {O,I} =
+        new{O,I}(inst, quantity, dt, data)
+    Order(inst::Instrument{I}, quantity::Volume, dt::DateTime) where {I} =
+        new{Nothing,I}(inst, quantity, dt, nothing)
 end
 
 # ----------------------------------------------------------
@@ -85,45 +85,45 @@ end
 
 # ----------------------------------------------------------
 
-struct Transaction{O}
-    order::Order{O}
+struct Transaction{O,I}
+    order::Order{O,I}
     execution::Execution
-    Transaction(order::Order{O}, execution::Execution) where {O} =
-        new{O}(order, execution)
+    Transaction(order::Order{O,I}, execution::Execution) where {O,I} =
+        new{O,I}(order, execution)
 end
 
 # ----------------------------------------------------------
 
-mutable struct Position{O}
+mutable struct Position{O,I}
     index::Int64                # unique index for each position starting from 1 (used for array indexing and hashing)
-    inst::Instrument
+    inst::Instrument{I}
     quantity::Volume            # negative = short selling
     transactions::Vector{Transaction{O}}
     avg_price::Price
     pnl::Price
-    Position{O}(index, inst, quantity, transactions, avg_price, pnl) where {O} =
-        new{O}(index, inst, quantity, transactions, avg_price, pnl)
-    Position(index, inst, quantity, transactions, avg_price, pnl) =
-        new{Nothing}(index, inst, quantity, transactions, avg_price, pnl)
+    Position{O}(index, inst::Instrument{I}, quantity, transactions, avg_price, pnl) where {O,I} =
+        new{O,I}(index, inst, quantity, transactions, avg_price, pnl)
+    Position(index, inst::Instrument{I}, quantity, transactions, avg_price, pnl) where {I} =
+        new{Nothing,I}(index, inst, quantity, transactions, avg_price, pnl)
 end
 
 # ----------------------------------------------------------
 
-mutable struct Account{O}
-    positions::Vector{Position{O}} # same size/indexing as MarketData.instruments and MarketData.order_books
-    transactions::Vector{Transaction{O}}
+mutable struct Account{O,I}
+    positions::Vector{Position{O,I}} # same size/indexing as MarketData.instruments and MarketData.order_books
+    transactions::Vector{Transaction{O,I}}
     initial_balance::Price
     balance::Price
     equity::Price
-    function Account{O}(instruments, initial_balance::Price) where {O}
-        new{O}(
-            [Position{O}(i.index, i, 0.0, Vector{Transaction{O}}(), 0.0, 0.0) for i in instruments],
-            Vector{Transaction{O}}(),
+    function Account{O}(instruments::Vector{Instrument{I}}, initial_balance::Price) where {O,I}
+        new{O,I}(
+            [Position{O}(i.index, i, 0.0, Vector{Transaction{O,I}}(), 0.0, 0.0) for i in instruments],
+            Vector{Transaction{O,I}}(),
             initial_balance,
             initial_balance,
             initial_balance)
     end
-    function Account(instruments, initial_balance::Price)
+    function Account(instruments::Vector{Instrument{I}}, initial_balance::Price) where {I}
         Account{Nothing}(instruments, initial_balance)
     end
 end

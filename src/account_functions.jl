@@ -1,18 +1,18 @@
-equity_return(acc::Account) = acc.equity / acc.initial_balance - 1.0
+equity_return(acc::Account{O,I}) where {O,I} = acc.equity / acc.initial_balance - 1.0
 
 # note: slow
-has_positions(acc::Account{O}) where {O} = any(map(x -> x.quantity != 0.0, acc.positions))
+has_positions(acc::Account{O,I}) where {O,I} = any(map(x -> x.quantity != 0.0, acc.positions))
 
-function has_position_with_inst(acc::Account{O}, inst::Instrument{I}) where {O,I}
+function has_position_with_inst(acc::Account{O,I}, inst::Instrument{I}) where {O,I}
     acc.positions[inst.index].quantity != 0.0
 end
 
-function has_position_with_dir(acc::Account{O}, inst::Instrument{I}, dir::TradeDir) where {O,I}
+function has_position_with_dir(acc::Account{O,I}, inst::Instrument{I}, dir::TradeDir) where {O,I}
     sign(acc.positions[inst.index].quantity) == sign(dir)
 end
 
 # account total return based on initial balance and current equity
-total_return(acc::Account{O}) where {O} = acc.equity / acc.initial_balance - 1.0
+total_return(acc::Account{O,I}) where {O,I} = acc.equity / acc.initial_balance - 1.0
 
 # @inline total_pnl_net(acc::Account) = sum(map(pnl_net, acc.closed_positions))
 # @inline total_pnl_gross(acc::Account) = sum(map(pnl_gross, acc.closed_positions))
@@ -29,7 +29,7 @@ total_return(acc::Account{O}) where {O} = acc.equity / acc.initial_balance - 1.0
 # end
 
 
-function execute_order!(acc::Account{O}, book::OrderBook{I}, order::Order{O}) where {O,I}
+function execute_order!(acc::Account{O,I}, book::OrderBook{I}, order::Order{O,I}) where {O,I}
     # positions are netted using weighted average price, hence only one
     # position per instrument will be maintained
     # https://www.developer.saxo/openapi/learn/position-netting
@@ -94,7 +94,7 @@ function execute_order!(acc::Account{O}, book::OrderBook{I}, order::Order{O}) wh
 end
 
 
-function update_pnl!(acc::Account{O}, book::OrderBook{I}, pos::Position{O}) where {O,I}
+function update_pnl!(acc::Account{O,I}, book::OrderBook{I}, pos::Position{O}) where {O,I}
     # update P&L and account equity
     new_pnl = calc_pnl(pos, book)
     acc.equity += new_pnl - pos.pnl
@@ -103,7 +103,7 @@ function update_pnl!(acc::Account{O}, book::OrderBook{I}, pos::Position{O}) wher
 end
 
 
-function update_account!(acc::Account{O}, data::MarketData{I}, inst::Instrument{I}) where {O,I}
+function update_account!(acc::Account{O,I}, data::MarketData{I}, inst::Instrument{I}) where {O,I}
     # update P&L and account equity
     book = @inbounds data.order_books[inst.index]
     pos = @inbounds acc.positions[inst.index]

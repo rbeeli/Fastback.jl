@@ -1,5 +1,5 @@
 # quantity negative for shorts, thus works for both long and short
-function calc_pnl(pos::Position{O}, ob::OrderBook{I}) where {O,I}
+function calc_pnl(pos::Position{O,I}, ob::OrderBook{I}) where {O,I}
     pos.quantity * (fill_price(-pos.quantity, ob; zero_price=0.0) - pos.avg_price)
 end
 
@@ -12,7 +12,7 @@ and the current price of the asset based on order book data.
 - `position`: Position object.
 - `ob`: Order book instance with instrument corresponding to the position. Used to calculate the current price of the asset.
 """
-function calc_return(pos::Position{O}, ob::OrderBook{I}) where {O,I}
+function calc_return(pos::Position{O,I}, ob::OrderBook{I}) where {O,I}
     qty = pos.quantity
     if qty == 0.0
         return qty
