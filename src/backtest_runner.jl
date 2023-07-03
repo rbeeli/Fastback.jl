@@ -9,6 +9,8 @@ function batch_backtest(
     backtest_func::Function;
     finished_func::Union{Function,Nothing}=nothing,
     progress_log_interval::Int=1,
+    gc_interval::Int=-1,
+    gc_full::Bool=true,
     parallel::Bool=true
 )::Vector{T} where {T}
     n_threads = parallel ? Threads.nthreads() : 1
@@ -54,6 +56,11 @@ function batch_backtest(
                 prog_int = lpad(n_done, num_digits)
 
                 printstyled("$prog_pct%  [$(prog_int)∕$(n_params)]  ETA $eta_str \n"; color=:green)
+            end
+
+            if gc_interval > 0 && (n_done % gc_interval == 0 || n_done == n_params)
+                # run garbage collection
+                GC.gc(gc_full)
             end
         finally
             unlock(lk)
