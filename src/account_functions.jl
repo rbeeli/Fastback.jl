@@ -29,7 +29,7 @@ total_return(acc::Account{O,I}) where {O,I} = acc.equity / acc.initial_balance -
 # end
 
 
-function execute_order!(acc::Account{O,I}, book::OrderBook{I}, order::Order{O,I}) where {O,I}
+function execute_order!(acc::Account{O,I}, book::OrderBook{I}, order::Order{O,I})::Transaction where {O,I}
     # positions are netted using weighted average price, hence only one
     # position per instrument will be maintained
     # https://www.developer.saxo/openapi/learn/position-netting
@@ -90,7 +90,7 @@ function execute_order!(acc::Account{O,I}, book::OrderBook{I}, order::Order{O,I}
     push!(pos.transactions, tx)
     push!(acc.transactions, tx)
 
-    return nothing
+    tx
 end
 
 
