@@ -213,7 +213,7 @@ function Base.show(io::IO, acc::Account{O,I}; max_orders=50, volume_digits=1, pr
     println(io, " ", "Positions:          $n_open_positions")
     print_positions(io, acc.positions; kwargs...)
     println(io, "")
-    println(io, " ", "Transactions:             $(length(acc.transactions))")
+    println(io, " ", "Transactions:       $(length(acc.transactions))")
     print_transactions(io, acc.transactions; max_print=max_orders, kwargs...)
     println(io, "")
     println(io, '━'^display_width)
