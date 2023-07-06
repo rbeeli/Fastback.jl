@@ -130,7 +130,7 @@ function print_positions(
     vol_fmt = x -> string(round(x, digits=volume_digits))
     price_fmt = x -> string(round(x, digits=price_digits))
 
-    columns = ["Symbol"; "Quantity"; "Avg price"; "P&L"; "Orders count"]
+    columns = ["Symbol"; "Quantity"; "Avg price"; "P&L"; "Tx count"]
 
     ix_quantity = findfirst(columns .== "Quantity")
     ix_avg_price = findfirst(columns .== "Avg price")
@@ -150,7 +150,7 @@ function print_positions(
     n_shown = min(n_total, max_print)
     n_hidden = n_total - n_shown
 
-    data = map(p -> [p.inst.symbol p.quantity p.avg_price p.pnl length(p.orders_history)], first(positions, n_shown))
+    data = map(p -> [p.inst.symbol p.quantity p.avg_price p.pnl length(p.transactions)], first(positions, n_shown))
     data = reduce(vcat, data)
 
     h_pos_green = Highlighter((data, i, j) -> j == ix_pnl && data[i, j] > 0, bold=true, foreground=:green)
@@ -176,7 +176,7 @@ function Base.show(io::IO, pos::Position{O,I}) where {O,I}
     quantity_str = @sprintf("%+.2f", pos.quantity)
     pnl_str = @sprintf("%+.2f", pos.pnl)
     print(io, "[Position] $(pos.inst.symbol) $quantity_str @ $(pos.avg_price)  pnl=$pnl_str  " *
-              "($(length(pos.orders_history)) orders)")
+              "($(length(pos.transactions)) transactions)")
 end
 
 Base.show(pos::Position{O,I}) where {O,I} = Base.show(stdout, pos)
