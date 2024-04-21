@@ -2,19 +2,19 @@ import Base: *, sign
 using Dates
 using Printf
 using Crayons
-
+using EnumX
 
 const Price = Float64           # quote bid/ask, traded price
-const Return = Price            # same as price
+const Return = Float64          # same as price
 const Volume = Float64          # trade volume / number of shares
 
-@enum TradeDir::Int16 NullDir = 0 Long = 1 Short = -1
+@enumx TradeDir::Int8 Null = 0 Long = 1 Short = -1
 
-@inline sign(x::TradeDir) = Volume(Int16(x))
-@inline trade_dir(volume) = volume > 0 ? Long : ((volume < 0) ? Short : NullDir)
+@inline sign(x::TradeDir.T) = Volume(Int8(x))
+@inline trade_dir(volume) = volume > 0 ? Long : ((volume < 0) ? TradeDir.Short : TradeDir.Null)
 
-@inline *(x::Volume, dir::TradeDir) = Volume(x * sign(dir))
-@inline *(dir::TradeDir, x::Volume) = Volume(x * sign(dir))
+@inline *(x::Volume, dir::TradeDir.T) = Volume(x * sign(dir))
+@inline *(dir::TradeDir.T, x::Volume) = Volume(x * sign(dir))
 
 # ----------------------------------------------------------
 
@@ -31,43 +31,13 @@ Base.hash(inst::Instrument{I}) where {I} = inst.__hash  # custom hash for better
 
 # ----------------------------------------------------------
 
-struct BidAsk
-    dt::DateTime
-    bid::Price
-    ask::Price
-    BidAsk() = new(DateTime(0), Price(0.0), Price(0.0))
-    BidAsk(dt::DateTime, bid::Price, ask::Price) = new(dt, bid, ask)
-end
-
-# ----------------------------------------------------------
-
-# TODO: Immutable
-
-mutable struct OrderBook{I}
-    index::Int64                # unique index for each position starting from 1 (used for array indexing and hashing)
-    inst::Instrument{I}
-    bba::BidAsk
-end
-
-# ----------------------------------------------------------
-
-struct MarketData{I}
-    instruments::Vector{Instrument{I}}
-    order_books::Vector{OrderBook{I}}
-    MarketData(instruments::Vector{Instrument{I}}) where {I} = new{I}(instruments, [OrderBook{I}(i.index, i, BidAsk()) for i in instruments])
-end
-
-# ----------------------------------------------------------
-
 struct Order{O,I}
     inst::Instrument{I}
     quantity::Volume            # negative = short selling
     dt::DateTime
     data::O
-    Order(inst::Instrument{I}, quantity::Volume, dt::DateTime, data::O) where {O,I} =
-        new{O,I}(inst, quantity, dt, data)
-    Order(inst::Instrument{I}, quantity::Volume, dt::DateTime) where {I} =
-        new{Nothing,I}(inst, quantity, dt, nothing)
+    Order(inst::Instrument{I}, quantity::Volume, dt::DateTime; data=nothing) where {I} =
+        new{typeof(data),I}(inst, quantity, dt, nothing)
 end
 
 # ----------------------------------------------------------

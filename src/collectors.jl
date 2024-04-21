@@ -1,3 +1,4 @@
+using EnumX
 
 mutable struct PeriodicValues{T,TPeriod<:Period}
     values::Vector{Tuple{DateTime,T}}
@@ -93,16 +94,16 @@ end
 
 # ----------------------------------------------------------
 
-@enum DrawdownMode Percentage PnL
+@enumx DrawdownMode::Int8 Percentage=1 PnL=2
 
 mutable struct DrawdownValues
     values::Vector{Tuple{DateTime,Price}}
-    mode::DrawdownMode
+    mode::DrawdownMode.T
     max_equity::Price
     last_dt::DateTime
 end
 
-function drawdown_collector(mode::DrawdownMode, predicate::TFunc) where {TFunc<:Function}
+function drawdown_collector(mode::DrawdownMode.T, predicate::TFunc) where {TFunc<:Function}
     values = Vector{Tuple{DateTime,Price}}()
     dv = DrawdownValues(
         values,
@@ -117,7 +118,7 @@ function drawdown_collector(mode::DrawdownMode, predicate::TFunc) where {TFunc<:
         # should collect new drawdown value?
         if predicate(dv, dt, equity)
             drawdown = min(0.0, equity - dv.max_equity)
-            if mode == Percentage::DrawdownMode
+            if mode == DrawdownMode.Percentage
                 drawdown /= dv.max_equity
             end
             push!(values, (dt, drawdown))

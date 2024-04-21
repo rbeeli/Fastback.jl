@@ -4,7 +4,6 @@ include("types.jl")
 include("accessors.jl")
 include("collectors.jl")
 include("position_functions.jl")
-include("book_functions.jl")
 include("execution_functions.jl")
 include("account_functions.jl")
 include("backtest_runner.jl")
@@ -15,16 +14,16 @@ include("utils.jl")
 export Price, Volume, Return
 
 # enums
-export TradeDir, NullDir, Long, Short
-export DrawdownMode, Percentage, PnL
+export TradeDir, DrawdownMode
 
 # structs
-export Instrument, BidAsk, OrderBook, MarketData, Position
+# export BidAsk, OrderBook, MarketData
+export Instrument, Position
 export Order, Execution, Transaction, Account
 export PeriodicValues, MinValue, MaxValue, DrawdownValues
 
 # account functions
-export execute_order!, adjust_position!, update_pnl!, update_account!, has_position_with_inst, has_position_with_dir, equity_return
+export execute_order!, adjust_position!, update_pnl!, has_position_with_inst, has_position_with_dir, equity_return, get_position
 
 # position functions
 export match_target_exposure, calc_pnl, calc_return, calc_realized_quantity, calc_exposure_increase_quantity
@@ -48,7 +47,7 @@ export print_positions, print_transactions
 export params_combinations, estimate_eta, format_period_HHMMSS
 
 # accessors
-export midprice, spread, is_long, is_short, trade_dir, pnl_net, pnl_gross, return_net, return_gross,
+export is_long, is_short, trade_dir, pnl_net, pnl_gross, return_net, return_gross,
     has_positions, total_return, opposite_dir
     #, total_pnl_net, total_pnl_gross, count_winners_net, count_winners_gross
 

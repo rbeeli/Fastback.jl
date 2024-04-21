@@ -77,7 +77,7 @@ end
     begin
         # drawdown_collector (P&L)
         p = (v, dt, equity) -> dt - v.last_dt >= Second(1)
-        f, collected = drawdown_collector(PnL::DrawdownMode, p)
+        f, collected = drawdown_collector(DrawdownMode.PnL, p)
 
         for i in eachindex(dts)
             f(dts[i], data[i])
@@ -92,7 +92,7 @@ end
     begin
         # drawdown_collector (%)
         p = (dv, dt, equity) -> dt - dv.last_dt >= Second(1)
-        f, collected = drawdown_collector(Percentage::DrawdownMode, p)
+        f, collected = drawdown_collector(DrawdownMode.Percentage, p)
 
         for i in eachindex(dts)
             f(dts[i], data[i])

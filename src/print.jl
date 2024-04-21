@@ -6,10 +6,6 @@ using DataFrames
 
 Base.show(io::IO, inst::Instrument) = print(io, "[Instrument] symbol=$(inst.symbol)  index=$(inst.index)")
 
-# --------------- BidAsk ---------------
-
-Base.show(io::IO, ba::BidAsk) = print(io, "[BidAsk] dt=$(ba.dt)  bid=$(ba.bid)  ask=$(ba.ask)")
-
 # --------------- Order ---------------
 
 function Base.show(io::IO, o::Order{O,I}) where {O,I}

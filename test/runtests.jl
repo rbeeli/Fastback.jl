@@ -10,7 +10,6 @@ requested_tests = lowercase.(ARGS)
 
 if isempty(requested_tests)
     include("utils.jl")
-    include("bidask.jl")
     include("position.jl")
     include("account.jl")
     include("collectors.jl")

@@ -1,21 +1,21 @@
-# ------------------------
-# BidAsk
-# ------------------------
+# # ------------------------
+# # BidAsk
+# # ------------------------
 
-@inline midprice(ba::BidAsk) = (ba.bid + ba.ask) / 2.0
-@inline midprice(bid::Price, ask::Price) = (bid + ask) / 2.0
+# @inline midprice(ba::BidAsk) = (ba.bid + ba.ask) / 2.0
+# @inline midprice(bid::Price, ask::Price) = (bid + ask) / 2.0
 
-@inline spread(ba::BidAsk) = (ba.ask - ba.bid)
-@inline spread(bid::Price, ask::Price) = (ask - bid)
+# @inline spread(ba::BidAsk) = (ba.ask - ba.bid)
+# @inline spread(bid::Price, ask::Price) = (ask - bid)
 
 
 # ------------------------
 # TradeDir
 # ------------------------
 
-@inline is_long(dir::TradeDir) = dir === Long
-@inline is_short(dir::TradeDir) = dir === Short
-@inline opposite_dir(dir::TradeDir) = dir === Long ? Short : (dir === Short ? Long : NullDir)
+@inline is_long(dir::TradeDir.T) = dir === TradeDir.Long
+@inline is_short(dir::TradeDir.T) = dir === TradeDir.Short
+@inline opposite_dir(dir::TradeDir.T) = dir === TradeDir.Long ? TradeDir.Short : (dir === TradeDir.Short ? TradeDir.Long : TradeDir.Null)
 
 
 # ------------------------

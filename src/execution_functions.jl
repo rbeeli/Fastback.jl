@@ -1,4 +1,6 @@
-@inline calc_realized_pnl(exe::Execution) = exe.realized_pnl
+@inline function calc_realized_pnl(exe::Execution)
+    exe.realized_pnl
+end
 
 # @inline function calc_realized_return(order::Order; zero_value=0.0)
 #     order.execution.realized_pnl != 0 ? calc_realized_pnl(order) / (order.execution.pos_avg_price * abs(order.execution.realized_quantity)) : zero_value
