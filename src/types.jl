@@ -23,8 +23,14 @@ struct Instrument{I}
     symbol::String
     data::I
     __hash::UInt64
-    Instrument(index, symbol) = new{Nothing}(index, symbol, nothing, convert(UInt64, index))
-    Instrument(index, symbol, data::I) where {I} = new{I}(index, symbol, data, convert(UInt64, index))
+
+    function Instrument(index, symbol)
+        new{Nothing}(index, symbol, nothing, convert(UInt64, index))
+    end
+
+    function Instrument(index, symbol, data::I) where {I}
+        new{I}(index, symbol, data, convert(UInt64, index))
+    end
 end
 
 Base.hash(inst::Instrument{I}) where {I} = inst.__hash  # custom hash for better performance
@@ -36,8 +42,10 @@ struct Order{O,I}
     quantity::Volume            # negative = short selling
     dt::DateTime
     data::O
-    Order(inst::Instrument{I}, quantity::Volume, dt::DateTime; data=nothing) where {I} =
+
+    function Order(inst::Instrument{I}, quantity::Volume, dt::DateTime; data=nothing) where {I}
         new{typeof(data),I}(inst, quantity, dt, nothing)
+    end
 end
 
 # ----------------------------------------------------------
@@ -58,8 +66,10 @@ end
 struct Transaction{O,I}
     order::Order{O,I}
     execution::Execution
-    Transaction(order::Order{O,I}, execution::Execution) where {O,I} =
+
+    function Transaction(order::Order{O,I}, execution::Execution) where {O,I}
         new{O,I}(order, execution)
+    end
 end
 
 # ----------------------------------------------------------
@@ -72,10 +82,14 @@ mutable struct Position{O,I}
     avg_price::Price
     pnl::Price
     __hash::UInt64
-    Position{O}(index, inst::Instrument{I}, quantity, transactions, avg_price, pnl) where {O,I} =
+
+    function Position{O}(index, inst::Instrument{I}, quantity, transactions, avg_price, pnl) where {O,I}
         new{O,I}(index, inst, quantity, transactions, avg_price, pnl, convert(UInt64, index))
-    Position(index, inst::Instrument{I}, quantity, transactions, avg_price, pnl) where {I} =
+    end
+
+    function Position(index, inst::Instrument{I}, quantity, transactions, avg_price, pnl) where {I}
         new{Nothing,I}(index, inst, quantity, transactions, avg_price, pnl, convert(UInt64, index))
+    end
 end
 
 Base.hash(pos::Position{O,I}) where {O,I} = pos.__hash  # custom hash for better performance
@@ -83,11 +97,12 @@ Base.hash(pos::Position{O,I}) where {O,I} = pos.__hash  # custom hash for better
 # ----------------------------------------------------------
 
 mutable struct Account{O,I}
-    positions::Vector{Position{O,I}} # same size/indexing as MarketData.instruments and MarketData.order_books
+    positions::Vector{Position{O,I}}
     transactions::Vector{Transaction{O,I}}
     initial_balance::Price
     balance::Price
     equity::Price
+
     function Account{O}(instruments::Vector{Instrument{I}}, initial_balance::Price) where {O,I}
         new{O,I}(
             [Position{O}(i.index, i, 0.0, Vector{Transaction{O,I}}(), 0.0, 0.0) for i in instruments],
@@ -96,6 +111,7 @@ mutable struct Account{O,I}
             initial_balance,
             initial_balance)
     end
+
     function Account(instruments::Vector{Instrument{I}}, initial_balance::Price) where {I}
         Account{Nothing}(instruments, initial_balance)
     end

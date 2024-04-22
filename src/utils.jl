@@ -23,7 +23,7 @@ List of Dict with (filtered) parameter-sets.
 
 # Examples
 ```jldoctest
-julia> params_combinations(Dict{Any, Vector{Any}}("wnd" => [1,2,3], :mode => ["A"], "coef" => [0.1, 0.5, 1.0]))
+julia> params_combinations(Dict("wnd" => [1,2,3], :mode => ["A"], "coef" => [0.1, 0.5, 1.0]))
 9-element Array{Dict{Any,Any},1}:
     Dict("wnd" => 1,:mode => "A","coef" => 0.1)
     Dict("wnd" => 1,:mode => "A","coef" => 0.5)
@@ -35,7 +35,7 @@ julia> params_combinations(Dict{Any, Vector{Any}}("wnd" => [1,2,3], :mode => ["A
     Dict("wnd" => 3,:mode => "A","coef" => 0.5)
     Dict("wnd" => 3,:mode => "A","coef" => 1.0)
 julia>
-julia> params = Dict{Any, Vector{Any}}(:wnd => [1,2], :mode => ["A", "B"], :coef => [0.1, 0.5]);
+julia> params = Dict(:wnd => [1,2], :mode => ["A", "B"], :coef => [0.1, 0.5]);
 julia> filter = x -> x[:mode] != "A" || x[:wnd] > 1;
 julia> params_combinations(params; filter=filter)
 6-element Array{Dict{Any,Any},1}:
@@ -48,31 +48,27 @@ julia> params_combinations(params; filter=filter)
 ```
 """
 function params_combinations(
-    params      ::Dict{Any, Vector{Any}};
-    filter      ::Function=x -> true,
-    shuffle     ::Bool=false
-)::Vector{Dict{Any, Any}}
+    params;      # ::Dict{Any, Vector{Any}};
+    filter::TF=x -> true,
+    shuffle=false
+) where {TF<:Function}
     # recursive implementation
-    result = Vector{Dict{Any, Any}}()
+    result = Vector{Dict{keytype(params),eltype(valtype(params))}}()
     tmp_keys = collect(keys(params))
-    tmp_values = Vector{Any}(undef, length(params))
-
+    tmp_values = Vector{eltype(valtype(params))}(undef, length(params))
     params_combinations_internal(params, filter, result, 1, tmp_keys, tmp_values)
-
     shuffle && shuffle!(result)
-
     result
 end
 
-
 function params_combinations_internal(
-    params          ::Dict{Any, Vector{Any}},
-    filter          ::Function,
-    result          ::Vector{Dict{Any, Any}},
-    key_pos         ::Int64,
+    params,
+    filter::TF,
+    result,
+    key_pos,
     tmp_keys,
     tmp_values
-)
+) where {TF<:Function}
     if key_pos <= length(params)
         key_params = params[tmp_keys[key_pos]]
         for param in key_params
@@ -80,18 +76,18 @@ function params_combinations_internal(
             tmp_values[key_pos] = param
 
             # call recursively for next set of values of one parameter
-            params_combinations_internal(params, filter, result, key_pos+1, tmp_keys, tmp_values)
+            params_combinations_internal(params, filter, result, key_pos + 1, tmp_keys, tmp_values)
         end
     else
         # parameter-set finished, add to result set
-        new_parameterset = Dict(zip(tmp_keys, tmp_values))
+        new_parameterset = Dict{keytype(params),eltype(valtype(params))}(zip(tmp_keys, tmp_values))
 
         # check filter function
         if filter(new_parameterset)
             push!(result, new_parameterset)
         end
     end
-    return
+    return # if-block returns a value otherwise
 end
 
 
@@ -118,7 +114,7 @@ function estimate_eta(elapsed, frac_processed)
         return NaN
     end
     elapsed_ms = convert(Dates.Millisecond, elapsed)
-    eta_ms = Millisecond(ceil(Int, (1-frac_processed) * Dates.value(elapsed_ms) / frac_processed))
+    eta_ms = Millisecond(ceil(Int, (1 - frac_processed) * Dates.value(elapsed_ms) / frac_processed))
     eta_ms
 end
 
