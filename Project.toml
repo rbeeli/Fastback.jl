@@ -1,8 +1,8 @@
 name = "Fastback"
-uuid = "cac590ea-fc37-4aa9-92e2-88b1ae187e30"
+uuid = "2b92286b-cbc8-46f1-be48-a629b4baefca"
 authors = ["Rino Beeli <40661605+rbeeli@users.noreply.github.com>"]
 repo = "https://github.com/rbeeli/fastback.jl.git"
-version = "2.0.2"
+version = "0.1.0"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
