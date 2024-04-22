@@ -1,3 +1,7 @@
-# fastback.jl
+# Fastback.jl - Blazing fast Julia backtester 🚀
 
-Documentation for fastback.jl
+Fastback provides a lightweight, flexible and highly efficient event-based backtesting framework for quantitative trading strategies.
+
+## Bug reports and feature requests
+
+Please report any issues via the GitHub issue tracker.

@@ -1,12 +1,12 @@
 push!(LOAD_PATH,"../src/")
 
 using Documenter
-using fastback
+using Fastback
 
 makedocs(
-    sitename = "fastback",
-    format = Documenter.HTML(prettyurls=false),
-    modules = [fastback]
+    sitename = "Fastback.jl",
+    # format = Documenter.HTML(prettyurls=false),
+    # modules = [Fastback]
 )
 
 # Documenter can also automatically deploy documentation to gh-pages.
