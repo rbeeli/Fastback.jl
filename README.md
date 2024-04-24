@@ -20,7 +20,7 @@ Fastback does not try to model every aspect of a trading system, e.g. brokers, d
 
 ## Example
 
-Code file, see [examples/random_strategy.jl](examples/random_strategy.jl).
+Code file, see [examples/random_trading.jl](examples/random_trading.jl).
 
 ### Code
 
