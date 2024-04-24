@@ -15,8 +15,8 @@ using Dates
             should_collect(collected, dts[i]) && f(dts[i], data[i])
         end
 
-        @test length(collected.values) == 5
-        @test all(map(x -> x[1], collected.values) .== map(x -> DateTime(2000, 1, 1) + Second(x), 1:5))
+        @test length(values(collected)) == 5
+        @test all(dates(collected) .== map(x -> DateTime(2000, 1, 1) + Second(x), 1:5))
         @test collected.last_dt == dts[end]
     end
 end
@@ -36,8 +36,8 @@ end
             should_collect(collected, dts[i]) && f(dts[i], data[i])
         end
 
-        @test length(collected.values) == 5
-        @test all(map(x -> x[1], collected.values) .== map(x -> DateTime(2000, 1, 1) + Second(x), 1:5))
+        @test length(dates(collected)) == 5
+        @test all(dates(collected) .== map(x -> DateTime(2000, 1, 1) + Second(x), 1:5))
         @test collected.last_dt == dts[end]
     end
 end
@@ -87,10 +87,11 @@ end
             f(dts[i], data[i])
         end
 
-        @test length(collected.values) == 5
-        @test all(map(x -> x[1], collected.values) .== map(x -> DateTime(2000, 1, 1) + Second(x), 1:5))
+        @test length(dates(collected)) == 5
+        @test length(values(collected)) == 5
+        @test all(dates(collected) .== map(x -> DateTime(2000, 1, 1) + Second(x), 1:5))
         @test collected.last_dt == dts[end]
-        @test all(map(x -> x[2], collected.values) .== [0.0, -11, -5, -5, -10])
+        @test all(values(collected) .== [0.0, -11, -5, -5, -10])
     end
 
     begin
@@ -102,9 +103,10 @@ end
             f(dts[i], data[i])
         end
 
-        @test length(collected.values) == 5
-        @test all(map(x -> x[1], collected.values) .== map(x -> DateTime(2000, 1, 1) + Second(x), 1:5))
+        @test length(dates(collected)) == 5
+        @test length(values(collected)) == 5
+        @test all(dates(collected) .== map(x -> DateTime(2000, 1, 1) + Second(x), 1:5))
         @test collected.last_dt == dts[end]
-        @test all(map(x -> x[2], collected.values) .≈ [0.0, -11 / 110, -5 / 110, -5 / 110, -10 / 120])
+        @test all(values(collected) .≈ [0.0, -11 / 110, -5 / 110, -5 / 110, -10 / 120])
     end
 end

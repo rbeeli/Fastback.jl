@@ -1,18 +1,25 @@
 using EnumX
+import Base: values
 
 mutable struct PeriodicValues{T,TPeriod<:Period}
-    values::Vector{Tuple{DateTime,T}}
-    period::TPeriod
+    const dates::Vector{DateTime}
+    const values::Vector{T}
+    const period::TPeriod
     last_dt::DateTime
 end
 
+@inline dates(pv::PeriodicValues) = pv.dates
+@inline Base.values(pv::PeriodicValues) = pv.values
+
 function periodic_collector(::Type{T}, period::TPeriod) where {T,TPeriod<:Period}
-    values = Vector{Tuple{DateTime,T}}()
-    pv = PeriodicValues(values, period, DateTime(0))
+    dates = Vector{DateTime}()
+    values = Vector{T}()
+    pv = PeriodicValues(dates, values, period, DateTime(0))
 
     @inline function collector(dt::DateTime, value::T)
         if (dt - pv.last_dt) >= period
-            push!(values, (dt, value))
+            push!(dates, dt)
+            push!(values, value)
             pv.last_dt = dt
         end
         return
@@ -26,19 +33,25 @@ end
 # ----------------------------------------------------------
 
 mutable struct PredicateValues{T,TPredicate<:Function}
-    values::Vector{Tuple{DateTime,T}}
-    predicate::TPredicate
+    const dates::Vector{DateTime}
+    const values::Vector{T}
+    const predicate::TPredicate
     last_dt::DateTime
     last_value::T
 end
 
+@inline dates(pv::PredicateValues) = pv.dates
+@inline Base.values(pv::PredicateValues) = pv.values
+
 function predicate_collector(::Type{T}, predicate::TPredicate, init_value::T) where {T,TPredicate<:Function}
-    values = Vector{Tuple{DateTime,T}}()
-    pv = PredicateValues(values, predicate, DateTime(0), init_value)
+    dates = Vector{DateTime}()
+    values = Vector{T}()
+    pv = PredicateValues(dates, values, predicate, DateTime(0), init_value)
 
     @inline function collector(dt::DateTime, value::T)
         if predicate(pv, dt)
-            push!(values, (dt, value))
+            push!(dates, dt)
+            push!(values, value)
             pv.last_dt = dt
             pv.last_value = value
         end
@@ -97,18 +110,24 @@ end
 @enumx DrawdownMode::Int8 Percentage=1 PnL=2
 
 mutable struct DrawdownValues
-    values::Vector{Tuple{DateTime,Price}}
-    mode::DrawdownMode.T
+    const dates::Vector{DateTime}
+    const values::Vector{Price}
+    const mode::DrawdownMode.T
     max_equity::Price
     last_dt::DateTime
 end
 
+@inline dates(pv::DrawdownValues) = pv.dates
+@inline Base.values(pv::DrawdownValues) = pv.values
+
 function drawdown_collector(mode::DrawdownMode.T, predicate::TFunc) where {TFunc<:Function}
-    values = Vector{Tuple{DateTime,Price}}()
+    dates = Vector{DateTime}()
+    values = Vector{Price}()
     dv = DrawdownValues(
+        dates,
         values,
         mode,
-        -1e50,
+        -Inf,
         DateTime(0))
 
     @inline function collector(dt::DateTime, equity::Price)
@@ -121,7 +140,8 @@ function drawdown_collector(mode::DrawdownMode.T, predicate::TFunc) where {TFunc
             if mode == DrawdownMode.Percentage
                 drawdown /= dv.max_equity
             end
-            push!(values, (dt, drawdown))
+            push!(dates, dt)
+            push!(values, drawdown)
             dv.last_dt = dt
         end
 
