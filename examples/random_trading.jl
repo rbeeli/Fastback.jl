@@ -40,7 +40,7 @@ for i in 1:N
         fill_order!(acc, order, dt, price; fill_quantity=0.75order.quantity, fees_pct=0.001)
     end
 
-    # update position and account PnL
+    # update position and account P&L
     update_pnl!(acc, pos, price)
 
     # collect data for analysis
