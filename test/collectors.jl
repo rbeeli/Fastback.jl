@@ -1,3 +1,7 @@
+using Fastback
+using Test
+using Dates
+
 @testset "periodic_collector" begin
     # every 500 ms from 1 sec to 5 sec
     dts = map(x -> DateTime(2000, 1, 1) + Millisecond(x), 1000:500:5000)

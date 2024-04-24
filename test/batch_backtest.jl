@@ -1,8 +1,8 @@
 using Fastback
-
+using Test
+using Dates
 
 @testset "batch_backtest" begin
-
     params = params_combinations(Dict{Any,Vector{Any}}(
         :a => 1:5,
         :b => ["A", "B", "C"]))
@@ -19,7 +19,6 @@ using Fastback
 end
 
 @testset "finished_func" begin
-
     params = params_combinations(Dict{Any,Vector{Any}}(
         :a => 1:5,
         :b => ["A", "B", "C"]))

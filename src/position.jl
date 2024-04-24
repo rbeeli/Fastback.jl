@@ -1,22 +1,65 @@
-# quantity negative for shorts, thus works for both long and short
+mutable struct Position{OData,IData,TAccount}
+    index::Int64                # unique index for each position starting from 1 (used for array indexing and hashing)
+    acc::TAccount
+    inst::Instrument{IData}
+    quantity::Quantity          # negative = short selling
+    executions::Vector{Execution{OData,IData}}
+    avg_price::Price
+    pnl::Price
+
+    function Position{OData,IData}(
+        index,
+        acc::TAccount,
+        inst::Instrument{IData},
+        quantity,
+        avg_price,
+        pnl
+    ) where {OData,IData,TAccount}
+        executions = Vector{Execution{OData,IData}}()
+        new{OData,IData,TAccount}(index, acc, inst, quantity, executions, avg_price, pnl)
+    end
+end
+
+Base.hash(pos::Position) = pos.index  # custom hash for better performance
+
+@inline is_long(pos::Position) = pos.quantity > 0
+@inline is_short(pos::Position) = pos.quantity < 0
+@inline trade_dir(pos::Position) = trade_dir(pos.quantity)
+@inline avg_price(pos::Position) = pos.avg_price
+@inline quantity(pos::Position) = pos.quantity
+@inline pnl(pos::Position) = pos.pnl
+@inline executions(pos::Position) = pos.executions
+
+"""
+Calculates the P&L of a position.
+
+The P&L is based on the weighted average price of the position
+and the current closing price, without considering fees.
+Fees are accounted for in the account equity calculation and execution P&L.
+
+# Arguments
+- `position`: Position object.
+- `close_price`: Current closing price.
+"""
 @inline function calc_pnl(pos::Position{O,I}, close_price::Price) where {O,I}
+    # quantity negative for shorts, thus works for both long and short
     pos.quantity * (close_price - pos.avg_price)
 end
 
 
 """
 Calculates the return of a position.
+
 The return is based on the weighted average price of the position
-and the current closing prie.
+and the current closing price, without considering fees.
+Fees are accounted for in the account equity calculation and execution P&L.
 
 # Arguments
 - `position`: Position object.
 - `close_price`: Current closing price.
 """
 @inline function calc_return(pos::Position{O,I}, close_price::Price) where {O,I}
-    qty = pos.quantity
-    qty == 0.0 && return qty
-    sign(qty) * (close_price - pos.avg_price) / pos.avg_price
+    sign(pos.quantity) * (close_price / pos.avg_price - 1)
 end
 
 
@@ -42,7 +85,11 @@ calc_realized_quantity(10, 5)   # returns 0
 ```
 """
 @inline function calc_realized_quantity(position_qty, order_qty)
-    (position_qty * order_qty < 0) ? sign(position_qty) * min(abs(position_qty), abs(order_qty)) : zero(position_qty)
+    if (position_qty * order_qty < 0)
+        sign(position_qty) * min(abs(position_qty), abs(order_qty))
+    else
+        zero(position_qty)
+    end
 end
 
 
@@ -65,7 +112,11 @@ calc_exposure_increase_quantity(10, -5)   # returns 0
 ```
 """
 @inline function calc_exposure_increase_quantity(position_qty, order_qty)
-    (position_qty * order_qty > zero(position_qty)) ? order_qty : max(0, abs(order_qty) - abs(position_qty)) * sign(order_qty)
+    if position_qty * order_qty > zero(position_qty)
+        order_qty
+    else
+        max(zero(position_qty), abs(order_qty) - abs(position_qty)) * sign(order_qty)
+    end
 end
 
 

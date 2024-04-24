@@ -10,51 +10,40 @@ using Fastback
 using Dates
 
 # generate synthetic price series
-N = 1_000;
+N = 2_000;
 prices = 1000.0 .+ cumsum(randn(N) .+ 0.1);
 dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N);
 
 # define instrument
-inst_dummy = Instrument(1, "DUMMY");
-instruments = [inst_dummy];
+DUMMY = Instrument(1, "DUMMY");
+instruments = [DUMMY];
 
 # create trading account
-acc = Account(instruments, 100_000.0);
+acc = Account{Nothing}(instruments, 100_000.0);
 
 # data collectors for balance, equity, open orders and drawdown
-collect_balance, balance_data = periodic_collector(Float64, Second(1));
 collect_equity, equity_data = periodic_collector(Float64, Second(1));
 collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, (v, dt, equity) -> dt - v.last_dt >= Second(1));
 
 # get position for instrument
-pos = get_position(acc, inst_dummy);
+pos = get_position(acc, DUMMY);
 
 # loop over price series
 for i in 1:N
     dt = dts[i]
     price = prices[i]
 
-    if i < N
-        # randomly trade with 1% probability
-        if rand() < 0.01
-            println("Trading at ", dt, " with price ", price)
-            quantity = rand() > 0.5 ? 1.0 : -1.0
-            order = Order(inst_dummy, quantity, dt)
-            fill_order!(acc, order, dt, price; fill_quantity=0.75order.quantity)
-        end
-    else
-        # close all open positions at end of backtest
-        if pos.quantity !== 0.0
-            order = Order(inst_dummy, -pos.quantity, dt)
-            fill_order!(acc, order, dt, price)
-        end
+    # randomly trade with 1% probability
+    if rand() < 0.01
+        quantity = rand() > 0.5 ? 1.0 : -1.0
+        order = Order(acc, DUMMY, dt, price, quantity)
+        fill_order!(acc, order, dt, price; fill_quantity=0.75order.quantity, fees_pct=0.001)
     end
 
     # update position and account PnL
     update_pnl!(acc, pos, price)
 
     # collect data for analysis
-    collect_balance(dt, acc.balance)
     collect_equity(dt, acc.equity)
     collect_drawdown(dt, acc.equity)
 end

@@ -1,37 +1,40 @@
+using Fastback
+using Test
+using Dates
+
 @testset "Position calc_pnl calc_return" begin
-    inst = Instrument(1, "TEST")
-    
-    ba1 = BidAsk(DateTime(2000, 1, 1), 500.0, 501.1)
-    ba2 = BidAsk(DateTime(2000, 1, 2), 505.0, 506.5)
+    TEST = Instrument(1, "TEST")
+    instruments = [TEST]
+
+    acc = Account{Nothing}(instruments, 100_000.0)
+
+    dt1, px1 = DateTime(2000, 1, 1), 500.0
+    dt2, px2 = DateTime(2000, 1, 2), 505.0
 
     begin
         # long
-        pos = Position(inst.index, inst, 500.0, Vector{Order}(), ba1.ask, 0.0)
+        pos = Position{Nothing,Nothing}(1, acc, TEST, 500.0, px1, 0.0)
 
         @test is_long(pos)
         @test !is_short(pos)
-        @test pos.avg_price == ba1.ask
+        @test pos.avg_price == px1
         @test pos.quantity == 500.0
 
-        book = OrderBook(1, inst, ba2)
-
-        @test calc_pnl(pos, book) == pos.quantity * (fill_price(-pos.quantity, book) - pos.avg_price)
-        @test calc_return(pos, book) == (ba2.bid - ba1.ask)/ba1.ask
+        @test calc_pnl(pos, px2) == pos.quantity * (px2 - pos.avg_price)
+        @test calc_return(pos, px2) ≈ (px2 - px1) / px1
     end
 
     begin
         # short
-        pos = Position{Nothing}(inst.index, inst, -500.0, Vector{Order{Nothing}}(), ba1.bid, 0.0)
+        pos = Position{Nothing,Nothing}(2, acc, TEST, -500.0, px1, 0.0)
 
         @test !is_long(pos)
         @test is_short(pos)
-        @test pos.avg_price == ba1.bid
+        @test pos.avg_price == px1
         @test pos.quantity == -500.0
 
-        book = OrderBook(1, inst, ba2)
-
-        @test calc_pnl(pos, book) == pos.quantity * (fill_price(-pos.quantity, book) - pos.avg_price)
-        @test calc_return(pos, book) == (ba1.bid - ba2.ask)/ba1.bid
+        @test calc_pnl(pos, px2) == pos.quantity * (px2 - pos.avg_price)
+        @test calc_return(pos, px2) ≈ -(px2 - px1) / px1
     end
 end
 

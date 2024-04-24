@@ -1,93 +1,102 @@
 using PrettyTables
 using Printf
-using DataFrames
 
 # --------------- Instrument ---------------
 
-Base.show(io::IO, inst::Instrument) = print(io, "[Instrument] symbol=$(inst.symbol)  index=$(inst.index)")
+function Base.show(io::IO, inst::Instrument)
+    print(io, "[Instrument] " *
+              "index=$(inst.index) " *
+              "symbol=$(inst.symbol)")
+end
 
 # --------------- Order ---------------
 
 function Base.show(io::IO, o::Order{O,I}) where {O,I}
-    print(io, "[Order] $(o.inst.symbol)  qty=$(@sprintf("%+.2f", o.quantity))  dt=$(Dates.format(o.dt, "yyyy-mm-dd HH:MM:SS"))")
+    print(io, "[Order] $(o.inst.symbol) " *
+              "dt=$(o.acc.date_formatter(o.dt))" *
+              "px=$(o.inst.price_formatter(o.price)) " *
+              "qty=$(o.inst.quantity_formatter(o.quantity)) ")
 end
 
 Base.show(order::Order{O,I}) where {O,I} = Base.show(stdout, order)
 
 # --------------- Execution ---------------
 
-function Base.show(io::IO, oe::Execution)
-    print(io, "[Execution] qty=$(@sprintf("%+.2f", oe.quantity))  pos_avg_price=$(oe.pos_avg_price)  "*
-        "pos_quantity=$(oe.pos_quantity)  price=$(oe.price)  dt=$(Dates.format(oe.dt, "yyyy-mm-dd HH:MM:SS"))  "*
-        "realized_pnl=$(oe.realized_pnl)  realized_quantity=$(oe.realized_quantity)")
+function Base.show(io::IO, e::Execution)
+    print(io, "[Execution] " *
+              "dt=$(e.order.acc.date_formatter(e.dt)) " *
+              "fill_px=$(e.order.inst.price_formatter(e.fill_price)) " *
+              "fill_qty=$(e.order.inst.quantity_formatter(e.fill_quantity)) " *
+              "remain_qty=$(e.order.inst.quantity_formatter(e.remaining_quantity)) " *
+              "real_pnl=$(e.order.acc.ccy_formatter(e.realized_pnl)) " *
+              "real_qty=$(e.order.inst.quantity_formatter(e.realized_quantity))" *
+              "fees_ccy=$(e.order.acc.ccy_formatter(e.fees_ccy))" *
+              "pos_avg_px=$(e.order.inst.price_formatter(e.pos_avg_price)) " *
+              "pos_qty=$(e.order.inst.quantity_formatter(e.pos_quantity)) ")
 end
 
-Base.show(order_exe::Execution) = Base.show(stdout, order_exe)
+Base.show(obj::Execution) = Base.show(stdout, obj)
 
-# --------------- Transaction ---------------
-
-function print_transactions(
+function print_executions(
     io::IO,
-    txs::Vector{Transaction{O,I}};
-    max_print=25,
-    volume_digits=1,
-    price_digits=2
+    executions::Vector{Execution{O,I}}
+    ;
+    max_print=25
 ) where {O,I}
-    if length(txs) == 0
-        print(io, "\n  No transactions\n")
+    if length(executions) == 0
+        print(io, "\n  No executions\n")
         return
     end
 
-    date_fmt = dateformat"yyyy-mm-dd HH:MM:SS"
-    vol_fmt = x -> string(round(x, digits=volume_digits))
-    price_fmt = x -> string(round(x, digits=price_digits))
-
-    # ; "Flag 1"; "Flag 2"; "Flag 3"
-    columns = ["Symbol"; "Quantity"; "Date"; "Execution date"; "Execution price"; "Execution quantity"; "Realized P&L"]
-
-    ix_date = findfirst(columns .== "Date")
-    ix_exe_date = findfirst(columns .== "Execution date")
-    ix_quantity = findfirst(columns .== "Quantity")
-    ix_exe_quantity = findfirst(columns .== "Execution quantity")
-    ix_avg_price = findfirst(columns .== "Avg price")
-    ix_exe_price = findfirst(columns .== "Execution price")
-    ix_pnl = findfirst(columns .== "Realized P&L")
-
-    formatter = (v, i, j) -> begin
-        o = v
-        if j ∈ [ix_date, ix_exe_date]
-            o = Dates.format(v, date_fmt)
-        elseif j ∈ [ix_quantity, ix_exe_quantity]
-            o = vol_fmt(v)
-        elseif j ∈ [ix_exe_price, ix_avg_price, ix_pnl]
-            o = isnan(v) ? "—" : price_fmt(v)
-        end
-        o
-    end
-
-    n_total = length(txs)
+    n_total = length(executions)
     n_shown = min(n_total, max_print)
     n_hidden = n_total - n_shown
 
-    data = map(t -> [t.order.inst.symbol t.order.quantity t.order.dt t.execution.dt t.execution.price t.execution.quantity t.execution.realized_pnl], first(txs, n_shown))
-    data = reduce(vcat, data)
+    cols = [
+        Dict(:name => "Seq", :val => t -> t.seq, :fmt => (e, v) -> v),
+        Dict(:name => "Symbol", :val => t -> t.order.inst.symbol, :fmt => (e, v) -> v),
+        Dict(:name => "Date", :val => t -> "$(t.order.acc.date_formatter(t.order.dt)) +$(Dates.value(round(t.dt - t.order.dt, Millisecond))) ms", :fmt => (e, v) -> v),
+        # Dict(:name => "Qty", :val => t -> t.order.quantity, :fmt => (e, v) -> e.order.inst.quantity_formatter(v)),
+        Dict(:name => "Fill qty", :val => t -> t.fill_quantity, :fmt => (e, v) -> e.order.inst.quantity_formatter(v)),
+        Dict(:name => "Remain. qty", :val => t -> t.remaining_quantity, :fmt => (e, v) -> e.order.inst.quantity_formatter(v)),
+        Dict(:name => "Fill price", :val => t -> t.fill_price, :fmt => (e, v) -> isnan(v) ? "—" : e.order.inst.price_formatter(v)),
+        Dict(:name => "Realized P&L", :val => t -> t.realized_pnl, :fmt => (e, v) -> isnan(v) ? "—" : e.order.acc.ccy_formatter(v)),
+        Dict(:name => "Fees", :val => t -> t.fees_ccy, :fmt => (e, v) -> e.order.acc.ccy_formatter(v))
+    ]
+    columns = [c[:name] for c in cols]
 
-    h_pos_green = Highlighter((data, i, j) -> j == ix_pnl && data[i, j] > 0, bold=true, foreground=:green)
-    h_neg_red = Highlighter((data, i, j) -> j == ix_pnl && data[i, j] < 0, bold=true, foreground=:red)
+    data_columns = []
+    for col in cols
+        push!(data_columns, map(col[:val], first(executions, n_shown)))
+    end
+    data_matrix = reduce(hcat, data_columns)
+
+    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](executions[row_ix], v)
+
+    h_pnl_pos = Highlighter((data, i, j) -> cols[j][:name] == "Realized P&L" && data_columns[j][i] > 0, foreground=:green)
+    h_pnl_neg = Highlighter((data, i, j) -> cols[j][:name] == "Realized P&L" && data_columns[j][i] < 0, foreground=:red)
+    h_qty_pos = Highlighter((data, i, j) -> cols[j][:name] == "Fill qty" && data_columns[j][i] > 0, foreground=:magenta)
+    h_qty_neg = Highlighter((data, i, j) -> cols[j][:name] == "Fill qty" && data_columns[j][i] < 0, foreground=:yellow)
 
     if n_hidden > 0
-        df = DataFrame(data, columns)
-        pretty_table(io, df;
-            highlighters = (h_pos_green, h_neg_red),
-            formatters = formatter,
-            compact_printing = false)
-        println(io, " [...] $n_hidden more transactions")
+        pretty_table(
+            io,
+            data_matrix
+            ;
+            header=columns,
+            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg),
+            formatters=formatter,
+            compact_printing=true)
+        println(io, " [...] $n_hidden more executions")
     else
-        df = DataFrame(data, columns)
-        pretty_table(io, df;
-            highlighters = (h_pos_green, h_neg_red),
-            formatters = formatter,
-            compact_printing = false)
+        pretty_table(
+            io,
+            data_matrix
+            ;
+            header=columns,
+            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg),
+            formatters=formatter,
+            compact_printing=true)
     end
 end
 
@@ -111,109 +120,111 @@ end
 
 function print_positions(
     io::IO,
-    positions::Vector{Position{O,I}};
-    max_print=50,
-    volume_digits=1,
-    price_digits=2
+    positions::Vector{Position{O,I}}
+    ;
+    max_print=50
 ) where {O,I}
     positions = filter(p -> p.quantity != 0, positions)
 
     if length(positions) == 0
-        print(io, "\n  No open positions\n")
         return
-    end
-
-    vol_fmt = x -> string(round(x, digits=volume_digits))
-    price_fmt = x -> string(round(x, digits=price_digits))
-
-    columns = ["Symbol"; "Quantity"; "Avg price"; "P&L"; "Tx count"]
-
-    ix_quantity = findfirst(columns .== "Quantity")
-    ix_avg_price = findfirst(columns .== "Avg price")
-    ix_pnl = findfirst(columns .== "P&L")
-
-    formatter = (v, i, j) -> begin
-        o = v
-        if j == ix_quantity
-            o = vol_fmt(v)
-        elseif j == ix_avg_price || j == ix_pnl
-            o = isnan(v) ? "—" : price_fmt(v)
-        end
-        o
     end
 
     n_total = length(positions)
     n_shown = min(n_total, max_print)
     n_hidden = n_total - n_shown
 
-    data = map(p -> [p.inst.symbol p.quantity p.avg_price p.pnl length(p.transactions)], first(positions, n_shown))
-    data = reduce(vcat, data)
+    cols = [
+        Dict(:name => "Symbol", :val => t -> t.inst.symbol, :fmt => (p, v) -> v),
+        Dict(:name => "Qty", :val => t -> t.quantity, :fmt => (p, v) -> p.inst.quantity_formatter(v)),
+        Dict(:name => "Avg. price", :val => t -> t.avg_price, :fmt => (p, v) -> isnan(v) ? "—" : p.inst.price_formatter(v)),
+        Dict(:name => "P&L", :val => t -> t.pnl, :fmt => (p, v) -> isnan(v) ? "—" : p.acc.ccy_formatter(v))
+    ]
+    columns = [c[:name] for c in cols]
 
-    h_pos_green = Highlighter((data, i, j) -> j == ix_pnl && data[i, j] > 0, bold=true, foreground=:green)
-    h_neg_red = Highlighter((data, i, j) -> j == ix_pnl && data[i, j] < 0, bold=true, foreground=:red)
+    data_columns = []
+    for col in cols
+        push!(data_columns, map(col[:val], first(positions, n_shown)))
+    end
+    data_matrix = reduce(hcat, data_columns)
+
+    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](positions[row_ix], v)
+
+    h_pnl_pos = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] > 0, foreground=:green)
+    h_pnl_neg = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] < 0, foreground=:red)
+    h_qty_pos = Highlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] > 0, foreground=:magenta)
+    h_qty_neg = Highlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] < 0, foreground=:yellow)
 
     if n_hidden > 0
-        df = DataFrame(data, columns)
-        pretty_table(io, df;
-            highlighters = (h_pos_green, h_neg_red),
-            formatters = formatter,
-            compact_printing = false)
+        pretty_table(
+            io,
+            data_matrix
+            ;
+            header=columns,
+            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg),
+            formatters=formatter,
+            compact_printing=true)
         println(io, " [...] $n_hidden more positions")
     else
-        df = DataFrame(data, columns)
-        pretty_table(io, df;
-            highlighters = (h_pos_green, h_neg_red),
-            formatters = formatter,
-            compact_printing = false)
+        pretty_table(
+            io,
+            data_matrix
+            ;
+            header=columns,
+            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg),
+            formatters=formatter,
+            compact_printing=true)
     end
 end
 
-function Base.show(io::IO, pos::Position{O,I}) where {O,I}
-    quantity_str = @sprintf("%+.2f", pos.quantity)
-    pnl_str = @sprintf("%+.2f", pos.pnl)
-    print(io, "[Position] $(pos.inst.symbol) $quantity_str @ $(pos.avg_price)  pnl=$pnl_str  " *
-              "($(length(pos.transactions)) transactions)")
+function Base.show(io::IO, pos::Position)
+    print(io, "[Position] $(pos.inst.symbol) " *
+              "px=$(pos.inst.price_formatter(pos.avg_price)) " *
+              "qty=$(pos.inst.quantity_formatter(pos.quantity)) " *
+              "pnl=$(pos.acc.ccy_formatter(pos.pnl)) " *
+              "fees=$(pos.acc.ccy_formatter(pos.fees_ccy))" *
+              "($(length(pos.executions)) executions)")
 end
 
-Base.show(pos::Position{O,I}) where {O,I} = Base.show(stdout, pos)
+Base.show(pos::Position) = Base.show(stdout, pos)
 
 # --------------- Account ---------------
 
-function Base.show(io::IO, acc::Account{O,I}; max_orders=50, volume_digits=1, price_digits=2, kwargs...) where {O,I}
+function Base.show(
+    io::IO,
+    acc::Account{O,I}
+    ;
+    max_orders=50,
+    kwargs...
+) where {O,I}
     # volume_digits and price_digits are passed to print_positions(...) via kwargs
     display_width = displaysize()[2]
 
     function get_color(val)
-        if val >= 0
-            return val == 0 ? crayon"rgb(128,128,128)" : crayon"green"
-        end
-        return crayon"red"
+        val >= 0 && return val == 0 ? crayon"rgb(128,128,128)" : crayon"green"
+        crayon"red"
     end
 
-    n_open_positions = count(p -> p.quantity != 0, acc.positions)
+    n_open_pos = count(p -> p.quantity ≉ 0, acc.positions)
+    acc_return = total_return(acc)
 
     title = " ACCOUNT SUMMARY "
     title_line = '━'^(floor(Int64, (display_width - length(title)) / 2))
     println(io, "")
     println(io, title_line * title * title_line)
-    println(io, " ", "Initial balance:    $(@sprintf("%.2f", acc.initial_balance))")
-    print(io, " ", "Balance:            $(@sprintf("%.2f", acc.balance))\n")
+    print(io, "Balance:         $(acc.ccy_formatter(acc.balance)) (initial $(acc.ccy_formatter(acc.initial_balance)))\n")
     # print(io, " (")
     # print(io, get_color(balance_ret(acc)), "$(@sprintf("%+.2f", balance_ret(acc)*100))%", Crayon(reset=true))
     # print(io, ")\n")
-    print(io, " ", "Equity:             $(@sprintf("%.2f", acc.equity))")
+    print(io, "Equity:          $(acc.ccy_formatter(acc.equity))")
     print(io, " (")
-    print(io, get_color(equity_return(acc)), "$(@sprintf("%+.2f", equity_return(acc)*100))%", Crayon(reset=true))
+    print(io, get_color(acc_return), "$(@sprintf("%+.1f", 100*acc_return))%", Crayon(reset=true))
     print(io, ")\n")
-    println(io, "")
-    println(io, " ", "Positions:          $n_open_positions")
+    println(io, "Open positions:  $n_open_pos")
     print_positions(io, acc.positions; kwargs...)
-    println(io, "")
-    println(io, " ", "Transactions:       $(length(acc.transactions))")
-    print_transactions(io, acc.transactions; max_print=max_orders, kwargs...)
-    println(io, "")
+    println(io, "Executions:      $(length(acc.executions))")
+    print_executions(io, acc.executions; max_print=max_orders, kwargs...)
     println(io, '━'^display_width)
-    println(io, "")
 end
 
-Base.show(acc::Account{O,I}; kwargs...) where {O,I} = Base.show(stdout, acc; kwargs...)
+Base.show(acc::Account; kwargs...) = Base.show(stdout, acc; kwargs...)

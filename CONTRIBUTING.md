@@ -4,24 +4,21 @@ Pull requests and issues are welcome.
 
 ## TODOs
 
-- Order placement price and quantity
-- Execution price and quantity --> partial fills, slippage
-- Fixed dollar-amount fee per trade
-- Order placement date != execution date -> latency
 - Incorporate funding cost info to positions, accrues over time
-- Sequence number for orders and transactions
-- Logging of event
-
-Principal Amount:
-The total value of the position being financed.
-Calculated as the number of contracts multiplied by the contract size and the price per contract.
+- Make price and quantity types configurable
+- Logging of events
+- Unit tests
 
 ## Testing
 
-To run a subset of unit tests, call `Pkg.test` as follows, e.g. to run the tests in `test/utils.jl`:
+To run a specific file of unit tests, execute one of the following lines:
 
 ```julia
 import Pkg; Pkg.test("Fastback", test_args=["utils.jl"])
+import Pkg; Pkg.test("Fastback", test_args=["collectors.jl"])
+import Pkg; Pkg.test("Fastback", test_args=["batch_backtest.jl"])
+import Pkg; Pkg.test("Fastback", test_args=["position.jl"])
+import Pkg; Pkg.test("Fastback", test_args=["account.jl"])
 ```
 
 ## Building documentation

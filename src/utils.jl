@@ -2,7 +2,6 @@ using Random
 using Dates
 using Printf
 
-
 """
     params_combinations(params; filter, shuffle)
 
