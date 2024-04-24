@@ -7,9 +7,10 @@ Fastback provides a lightweight, flexible and highly efficient event-based backt
 
 ## Features
 
-* Event-based
-* Modular architecture, no opinionated black-box design
-* Supports arbitrary price and volume data source
-* Support for modelling fees, execution delays, price slippage and partial fills
-* TODO: Support for funding costs
-* Maintains single position per instrument using weighted average cost method
+- Event-based
+- Modular architecture, no opinionated black-box design
+- Supports arbitrary pricing data source
+- Supports modelling fees, execution delays, price slippage and partial fills
+- Flexible data collectors to collect time series like account equitity history, number of open positions, etc.
+- Uses position netting approach for bookkeeping
+  - Maintains single position per instrument using weighted average cost method
