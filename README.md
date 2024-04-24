@@ -14,6 +14,7 @@ Fastback does not try to model every aspect of a trading system, e.g. brokers, d
 - Supports arbitrary pricing data source
 - Supports modelling fees, execution delays, price slippage and partial fills
 - Flexible data collectors to collect time series like account equitity history, number of open positions, etc.
+- Facilities for parallelized backtesting and hyperparameter optimization
 - Uses position netting approach for bookkeeping
   - Maintains single position per instrument using weighted average cost method
 

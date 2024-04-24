@@ -2,17 +2,17 @@ using Base.Threads
 using Dates
 using Printf
 
-
 function batch_backtest(
-    backtest_return_type::Type{T},
-    params_list::Vector{Dict{Any,Any}},
-    backtest_func::Function;
-    finished_func::Union{Function,Nothing}=nothing,
+    backtest_return_type::Type{TReturn},
+    params_list,
+    backtest_func
+    ;
+    finished_func=nothing,
     progress_log_interval::Int=1,
     gc_interval::Int=-1,
     gc_full::Bool=true,
     parallel::Bool=true
-)::Vector{T} where {T}
+)::Vector{TReturn} where {TReturn}
     n_threads = parallel ? Threads.nthreads() : 1
     n_params = length(params_list)
 
