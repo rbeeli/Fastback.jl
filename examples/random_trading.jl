@@ -21,7 +21,7 @@ instruments = [DUMMY];
 # create trading account
 acc = Account{Nothing}(instruments, 100_000.0);
 
-# data collectors for balance, equity, open orders and drawdown
+# data collectors for account equity and drawdown
 collect_equity, equity_data = periodic_collector(Float64, Second(1));
 collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, (v, dt, equity) -> dt - v.last_dt >= Second(1));
 
