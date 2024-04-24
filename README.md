@@ -5,6 +5,8 @@
 
 Fastback provides a lightweight, flexible and highly efficient event-based backtesting framework for quantitative trading strategies.
 
+Fastback does not try to model every aspect of a trading system, e.g. brokers, data sources, logging etc., but rather provides basic building blocks to create a custom backtesting environment that is easy to understand and extend.
+
 ## Features
 
 - Event-based
