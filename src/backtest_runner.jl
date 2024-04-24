@@ -16,9 +16,9 @@ function batch_backtest(
     n_threads = parallel ? Threads.nthreads() : 1
     n_params = length(params_list)
 
-    display_width = displaysize()[2]
+    display_width = displaysize(stdout)[2]
     printstyled("━"^display_width * "\n"; color=:green)
-    printstyled("Batch backtest [iterations=$n_params, threads=$n_threads]\n"; color=:green)
+    printstyled("Batch backtest [iters=$n_params, threads=$n_threads]\n"; color=:green)
 
     results = Vector{backtest_return_type}(undef, n_params)
     n_done = 0

@@ -73,10 +73,10 @@ function print_executions(
 
     formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](executions[row_ix], v)
 
-    h_pnl_pos = Highlighter((data, i, j) -> cols[j][:name] == "Realized P&L" && data_columns[j][i] > 0, foreground=:green)
-    h_pnl_neg = Highlighter((data, i, j) -> cols[j][:name] == "Realized P&L" && data_columns[j][i] < 0, foreground=:red)
-    h_qty_pos = Highlighter((data, i, j) -> cols[j][:name] == "Fill qty" && data_columns[j][i] > 0, foreground=:magenta)
-    h_qty_neg = Highlighter((data, i, j) -> cols[j][:name] == "Fill qty" && data_columns[j][i] < 0, foreground=:yellow)
+    h_pnl_pos = Highlighter((data, i, j) -> cols[j][:name] == "Realized P&L" && data_columns[j][i] > 0, foreground=0x11BF11)
+    h_pnl_neg = Highlighter((data, i, j) -> cols[j][:name] == "Realized P&L" && data_columns[j][i] < 0, foreground=0xDD0000)
+    h_qty_pos = Highlighter((data, i, j) -> cols[j][:name] == "Fill qty" && data_columns[j][i] > 0, foreground=0xDD00DD)
+    h_qty_neg = Highlighter((data, i, j) -> cols[j][:name] == "Fill qty" && data_columns[j][i] < 0, foreground=0xDDDD00)
 
     if n_hidden > 0
         pretty_table(
@@ -150,10 +150,10 @@ function print_positions(
 
     formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](positions[row_ix], v)
 
-    h_pnl_pos = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] > 0, foreground=:green)
-    h_pnl_neg = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] < 0, foreground=:red)
-    h_qty_pos = Highlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] > 0, foreground=:magenta)
-    h_qty_neg = Highlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] < 0, foreground=:yellow)
+    h_pnl_pos = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] > 0, foreground=0x11BF11)
+    h_pnl_neg = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] < 0, foreground=0xDD0000)
+    h_qty_pos = Highlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] > 0, foreground=0xDD00DD)
+    h_qty_neg = Highlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] < 0, foreground=0xDDDD00)
 
     if n_hidden > 0
         pretty_table(
@@ -198,11 +198,11 @@ function Base.show(
     kwargs...
 ) where {O,I}
     # volume_digits and price_digits are passed to print_positions(...) via kwargs
-    display_width = displaysize()[2]
+    display_width = displaysize(io)[2]
 
     function get_color(val)
-        val >= 0 && return val == 0 ? crayon"rgb(128,128,128)" : crayon"green"
-        crayon"red"
+        val >= 0 && return val == 0 ? crayon"#888888" : crayon"#11BF11"
+        crayon"#DD0000"
     end
 
     n_open_pos = count(p -> p.quantity ≉ 0, acc.positions)
@@ -225,6 +225,7 @@ function Base.show(
     println(io, "Executions:      $(length(acc.executions))")
     print_executions(io, acc.executions; max_print=max_orders, kwargs...)
     println(io, '━'^display_width)
+    print(io, "")
 end
 
 Base.show(acc::Account; kwargs...) = Base.show(stdout, acc; kwargs...)
