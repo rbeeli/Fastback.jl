@@ -5,7 +5,9 @@ Pull requests and issues are welcome.
 ## TODOs
 
 - Incorporate funding cost info to positions, accrues over time
+- Backtesting portfolios (rebalancing, weights)
 - Make price and quantity types configurable
+  - Use Account as parameter for all trading functions?
 - Logging of events
 - Unit tests
 

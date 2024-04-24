@@ -1,26 +1,22 @@
-mutable struct Position{OData,IData,TAccount}
-    index::Int64                # unique index for each position starting from 1 (used for array indexing and hashing)
-    acc::TAccount
-    inst::Instrument{IData}
+mutable struct Position{OData,IData}
+    const index::Int                  # unique index for each position starting from 1 (used for array indexing and hashing)
+    const inst::Instrument{IData}
     quantity::Quantity          # negative = short selling
-    executions::Vector{Execution{OData,IData}}
     avg_price::Price
     pnl::Price
 
-    function Position{OData,IData}(
-        index,
-        acc::TAccount,
+    function Position{OData}(
+        index::Int,
         inst::Instrument{IData},
-        quantity,
-        avg_price,
-        pnl
-    ) where {OData,IData,TAccount}
-        executions = Vector{Execution{OData,IData}}()
-        new{OData,IData,TAccount}(index, acc, inst, quantity, executions, avg_price, pnl)
+        quantity::Quantity,
+        avg_price::Price,
+        pnl::Price
+    ) where {OData,IData}
+        new{OData,IData}(index, inst, quantity, avg_price, pnl)
     end
 end
 
-Base.hash(pos::Position) = pos.index  # custom hash for better performance
+@inline Base.hash(pos::Position) = pos.index  # custom hash for better performance
 
 @inline is_long(pos::Position) = pos.quantity > 0
 @inline is_short(pos::Position) = pos.quantity < 0
@@ -28,7 +24,6 @@ Base.hash(pos::Position) = pos.index  # custom hash for better performance
 @inline avg_price(pos::Position) = pos.avg_price
 @inline quantity(pos::Position) = pos.quantity
 @inline pnl(pos::Position) = pos.pnl
-@inline executions(pos::Position) = pos.executions
 
 """
 Calculates the P&L of a position.
@@ -41,7 +36,7 @@ Fees are accounted for in the account equity calculation and execution P&L.
 - `position`: Position object.
 - `close_price`: Current closing price.
 """
-@inline function calc_pnl(pos::Position{O,I}, close_price::Price) where {O,I}
+@inline function calc_pnl(pos::Position, close_price)
     # quantity negative for shorts, thus works for both long and short
     pos.quantity * (close_price - pos.avg_price)
 end
@@ -58,8 +53,8 @@ Fees are accounted for in the account equity calculation and execution P&L.
 - `position`: Position object.
 - `close_price`: Current closing price.
 """
-@inline function calc_return(pos::Position{O,I}, close_price::Price) where {O,I}
-    sign(pos.quantity) * (close_price / pos.avg_price - 1)
+@inline function calc_return(pos::Position{O,I}, close_price) where {O,I}
+    sign(pos.quantity) * (close_price / pos.avg_price - one(close_price))
 end
 
 
@@ -85,7 +80,7 @@ calc_realized_quantity(10, 5)   # returns 0
 ```
 """
 @inline function calc_realized_quantity(position_qty, order_qty)
-    if (position_qty * order_qty < 0)
+    if position_qty * order_qty < 0
         sign(position_qty) * min(abs(position_qty), abs(order_qty))
     else
         zero(position_qty)

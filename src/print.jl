@@ -1,5 +1,6 @@
 using PrettyTables
 using Printf
+using Dates
 
 # --------------- Instrument ---------------
 
@@ -12,10 +13,11 @@ end
 # --------------- Order ---------------
 
 function Base.show(io::IO, o::Order{O,I}) where {O,I}
+    date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS.sss")
     print(io, "[Order] $(o.inst.symbol) " *
-              "dt=$(o.acc.date_formatter(o.dt))" *
-              "px=$(o.inst.price_formatter(o.price)) " *
-              "qty=$(o.inst.quantity_formatter(o.quantity)) ")
+              "dt=$(date_formatter(o.dt))" *
+              "px=$(format_price(o.inst, o.price)) " *
+              "qty=$(format_quantity(o.inst, o.quantity)) ")
 end
 
 Base.show(order::Order{O,I}) where {O,I} = Base.show(stdout, order)
@@ -23,26 +25,30 @@ Base.show(order::Order{O,I}) where {O,I} = Base.show(stdout, order)
 # --------------- Execution ---------------
 
 function Base.show(io::IO, e::Execution)
+    date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS.sss")
+    ccy_formatter = x -> @sprintf("%.2f", x)
     print(io, "[Execution] " *
-              "dt=$(e.order.acc.date_formatter(e.dt)) " *
-              "fill_px=$(e.order.inst.price_formatter(e.fill_price)) " *
-              "fill_qty=$(e.order.inst.quantity_formatter(e.fill_quantity)) " *
-              "remain_qty=$(e.order.inst.quantity_formatter(e.remaining_quantity)) " *
-              "real_pnl=$(e.order.acc.ccy_formatter(e.realized_pnl)) " *
-              "real_qty=$(e.order.inst.quantity_formatter(e.realized_quantity))" *
-              "fees_ccy=$(e.order.acc.ccy_formatter(e.fees_ccy))" *
-              "pos_avg_px=$(e.order.inst.price_formatter(e.pos_avg_price)) " *
-              "pos_qty=$(e.order.inst.quantity_formatter(e.pos_quantity)) ")
+              "dt=$(date_formatter(e.dt)) " *
+              "fill_px=$(format_price(e.order.inst, e.fill_price)) " *
+              "fill_qty=$(format_quantity(e.order.inst, e.fill_quantity)) " *
+              "remain_qty=$(format_quantity(e.order.inst, e.remaining_quantity)) " *
+              "real_pnl=$(ccy_formatter(e.realized_pnl)) " *
+              "real_qty=$(format_quantity(e.order.inst, e.realized_quantity))" *
+              "fees_ccy=$(ccy_formatter(e.fees_ccy))" *
+              "pos_avg_px=$(format_price(e.order.inst, e.pos_avg_price)) " *
+              "pos_qty=$(format_quantity(e.order.inst, e.pos_quantity)) ")
 end
 
 Base.show(obj::Execution) = Base.show(stdout, obj)
 
 function print_executions(
     io::IO,
-    executions::Vector{Execution{O,I}}
+    acc::Account{O,I}
     ;
     max_print=25
 ) where {O,I}
+    executions = acc.executions
+
     if length(executions) == 0
         print(io, "\n  No executions\n")
         return
@@ -55,13 +61,13 @@ function print_executions(
     cols = [
         Dict(:name => "Seq", :val => t -> t.seq, :fmt => (e, v) -> v),
         Dict(:name => "Symbol", :val => t -> t.order.inst.symbol, :fmt => (e, v) -> v),
-        Dict(:name => "Date", :val => t -> "$(t.order.acc.date_formatter(t.order.dt)) +$(Dates.value(round(t.dt - t.order.dt, Millisecond))) ms", :fmt => (e, v) -> v),
-        # Dict(:name => "Qty", :val => t -> t.order.quantity, :fmt => (e, v) -> e.order.inst.quantity_formatter(v)),
-        Dict(:name => "Fill qty", :val => t -> t.fill_quantity, :fmt => (e, v) -> e.order.inst.quantity_formatter(v)),
-        Dict(:name => "Remain. qty", :val => t -> t.remaining_quantity, :fmt => (e, v) -> e.order.inst.quantity_formatter(v)),
-        Dict(:name => "Fill price", :val => t -> t.fill_price, :fmt => (e, v) -> isnan(v) ? "—" : e.order.inst.price_formatter(v)),
-        Dict(:name => "Realized P&L", :val => t -> t.realized_pnl, :fmt => (e, v) -> isnan(v) ? "—" : e.order.acc.ccy_formatter(v)),
-        Dict(:name => "Fees", :val => t -> t.fees_ccy, :fmt => (e, v) -> e.order.acc.ccy_formatter(v))
+        Dict(:name => "Date", :val => t -> "$(format_date(acc, t.order.dt)) +$(Dates.value(round(t.dt - t.order.dt, Millisecond))) ms", :fmt => (e, v) -> v),
+        # Dict(:name => "Qty", :val => t -> t.order.quantity, :fmt => (e, v) -> format_quantity(e.order.inst, v)),
+        Dict(:name => "Fill qty", :val => t -> t.fill_quantity, :fmt => (e, v) -> format_quantity(e.order.inst, v)),
+        Dict(:name => "Remain. qty", :val => t -> t.remaining_quantity, :fmt => (e, v) -> format_quantity(e.order.inst, v)),
+        Dict(:name => "Fill price", :val => t -> t.fill_price, :fmt => (e, v) -> isnan(v) ? "—" : format_price(e.order.inst, v)),
+        Dict(:name => "Realized P&L", :val => t -> t.realized_pnl, :fmt => (e, v) -> isnan(v) ? "—" : format_ccy(acc, v)),
+        Dict(:name => "Fees", :val => t -> t.fees_ccy, :fmt => (e, v) -> format_ccy(acc, v))
     ]
     columns = [c[:name] for c in cols]
 
@@ -103,28 +109,27 @@ end
 # --------------- Position ---------------
 
 function print_positions(
-    positions::Vector{Position{O,I}};
+    acc::Account{O,I}
+    ;
     max_print=50,
-    volume_digits=1,
-    price_digits=2,
     kwargs...
 ) where {O,I}
     print_positions(
         stdout,
-        positions;
+        acc
+        ;
         max_print,
-        volume_digits,
-        price_digits,
-        kwargs...)
+        kwargs...
+    )
 end
 
 function print_positions(
     io::IO,
-    positions::Vector{Position{O,I}}
+    acc::Account{O,I}
     ;
     max_print=50
 ) where {O,I}
-    positions = filter(p -> p.quantity != 0, positions)
+    positions = filter(p -> p.quantity != 0, acc.positions)
 
     if length(positions) == 0
         return
@@ -136,9 +141,9 @@ function print_positions(
 
     cols = [
         Dict(:name => "Symbol", :val => t -> t.inst.symbol, :fmt => (p, v) -> v),
-        Dict(:name => "Qty", :val => t -> t.quantity, :fmt => (p, v) -> p.inst.quantity_formatter(v)),
-        Dict(:name => "Avg. price", :val => t -> t.avg_price, :fmt => (p, v) -> isnan(v) ? "—" : p.inst.price_formatter(v)),
-        Dict(:name => "P&L", :val => t -> t.pnl, :fmt => (p, v) -> isnan(v) ? "—" : p.acc.ccy_formatter(v))
+        Dict(:name => "Qty", :val => t -> t.quantity, :fmt => (p, v) -> format_quantity(p.inst, v)),
+        Dict(:name => "Avg. price", :val => t -> t.avg_price, :fmt => (p, v) -> isnan(v) ? "—" : format_price(p.inst, v)),
+        Dict(:name => "P&L", :val => t -> t.pnl, :fmt => (p, v) -> isnan(v) ? "—" : format_ccy(acc, v))
     ]
     columns = [c[:name] for c in cols]
 
@@ -179,11 +184,9 @@ end
 
 function Base.show(io::IO, pos::Position)
     print(io, "[Position] $(pos.inst.symbol) " *
-              "px=$(pos.inst.price_formatter(pos.avg_price)) " *
-              "qty=$(pos.inst.quantity_formatter(pos.quantity)) " *
-              "pnl=$(pos.acc.ccy_formatter(pos.pnl)) " *
-              "fees=$(pos.acc.ccy_formatter(pos.fees_ccy))" *
-              "($(length(pos.executions)) executions)")
+              "px=$(format_price(pos.inst, pos.avg_price)) " *
+              "qty=$(format_quantity(pos.inst, pos.quantity)) " *
+              "pnl=$(format_price(pos.inst, pos.pnl))")
 end
 
 Base.show(pos::Position) = Base.show(stdout, pos)
@@ -197,7 +200,6 @@ function Base.show(
     max_orders=50,
     kwargs...
 ) where {O,I}
-    # volume_digits and price_digits are passed to print_positions(...) via kwargs
     display_width = displaysize(io)[2]
 
     function get_color(val)
@@ -212,18 +214,18 @@ function Base.show(
     title_line = '━'^(floor(Int64, (display_width - length(title)) / 2))
     println(io, "")
     println(io, title_line * title * title_line)
-    print(io, "Balance:         $(acc.ccy_formatter(acc.balance)) (initial $(acc.ccy_formatter(acc.initial_balance)))\n")
+    print(io, "Balance:         $(format_ccy(acc, acc.balance)) (initial $(format_ccy(acc, acc.initial_balance)))\n")
     # print(io, " (")
     # print(io, get_color(balance_ret(acc)), "$(@sprintf("%+.2f", balance_ret(acc)*100))%", Crayon(reset=true))
     # print(io, ")\n")
-    print(io, "Equity:          $(acc.ccy_formatter(acc.equity))")
+    print(io, "Equity:          $(format_ccy(acc, acc.equity))")
     print(io, " (")
     print(io, get_color(acc_return), "$(@sprintf("%+.1f", 100*acc_return))%", Crayon(reset=true))
     print(io, ")\n")
     println(io, "Open positions:  $n_open_pos")
-    print_positions(io, acc.positions; kwargs...)
+    print_positions(io, acc; kwargs...)
     println(io, "Executions:      $(length(acc.executions))")
-    print_executions(io, acc.executions; max_print=max_orders, kwargs...)
+    print_executions(io, acc; max_print=max_orders, kwargs...)
     println(io, '━'^display_width)
     print(io, "")
 end

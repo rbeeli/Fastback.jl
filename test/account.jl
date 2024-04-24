@@ -21,12 +21,12 @@ using Dates
     prices = [100.0, 100.5, 102.5]
 
     # buy order
-    quantity = 100
-    order = Order(acc, DUMMY, dates[1], prices[1], quantity)
+    quantity = 100.0
+    order = Order(oid!(acc), DUMMY, dates[1], prices[1], quantity)
     exe1 = fill_order!(acc, order, dates[1], prices[1])
 
     @test exe1 == acc.executions[end]
-    @test exe1.fees_ccy == 0
+    @test exe1.fees_ccy == 0.0
     @test nominal_value(exe1) == quantity * prices[1]
     @test realized_pnl(exe1) == 0.0
     # @test realized_return(exe1) == 0.0
@@ -40,7 +40,7 @@ using Dates
     @test acc.equity ≈ acc.initial_balance + (prices[2] - prices[1]) * pos.quantity
 
     # close position
-    order = Order(acc, DUMMY, dates[3], prices[3], -pos.quantity)
+    order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
     fill_order!(acc, order, dates[3], prices[3])
 
     # update position and account P&L
@@ -72,9 +72,9 @@ end
     prices = [100.0, 100.5, 102.5]
 
     # buy order
-    quantity = 100
-    order = Order(acc, DUMMY, dates[1], prices[1], quantity)
-    fees_ccy = 1
+    quantity = 100.0
+    order = Order(oid!(acc), DUMMY, dates[1], prices[1], quantity)
+    fees_ccy = 1.0
     exe1 = fill_order!(acc, order, dates[1], prices[1]; fees_ccy=fees_ccy)
 
     @test exe1 == acc.executions[end]
@@ -92,7 +92,7 @@ end
     @test acc.equity ≈ acc.initial_balance + (prices[2] - prices[1]) * pos.quantity - fees_ccy
 
     # close position
-    order = Order(acc, DUMMY, dates[3], prices[3], -pos.quantity)
+    order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
     exe2 = fill_order!(acc, order, dates[3], prices[3]; fees_ccy=0.5)
 
     # update position and account P&L
@@ -124,8 +124,8 @@ end
     prices = [100.0, 100.5, 102.5]
 
     # buy order
-    quantity = 100
-    order = Order(acc, DUMMY, dates[1], prices[1], quantity)
+    quantity = 100.0
+    order = Order(oid!(acc), DUMMY, dates[1], prices[1], quantity)
     fees_pct1 = 0.001
     exe1 = fill_order!(acc, order, dates[1], prices[1]; fees_pct=fees_pct1)
 
@@ -143,7 +143,7 @@ end
     @test acc.equity ≈ acc.initial_balance + (prices[2] - prices[1]) * pos.quantity - exe1.fees_ccy
 
     # close position
-    order = Order(acc, DUMMY, dates[3], prices[3], -pos.quantity)
+    order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
     exe2 = fill_order!(acc, order, dates[3], prices[3]; fees_pct=0.0005)
 
     # update position and account P&L

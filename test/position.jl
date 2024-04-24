@@ -13,7 +13,7 @@ using Dates
 
     begin
         # long
-        pos = Position{Nothing,Nothing}(1, acc, TEST, 500.0, px1, 0.0)
+        pos = Position{Nothing}(1, TEST, 500.0, px1, 0.0)
 
         @test is_long(pos)
         @test !is_short(pos)
@@ -26,7 +26,7 @@ using Dates
 
     begin
         # short
-        pos = Position{Nothing,Nothing}(2, acc, TEST, -500.0, px1, 0.0)
+        pos = Position{Nothing}(2, TEST, -500.0, px1, 0.0)
 
         @test !is_long(pos)
         @test is_short(pos)

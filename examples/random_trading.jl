@@ -36,7 +36,7 @@ for i in 1:N
     # randomly trade with 1% probability
     if rand() < 0.01
         quantity = rand() > 0.5 ? 1.0 : -1.0
-        order = Order(acc, DUMMY, dt, price, quantity)
+        order = Order(oid!(acc), DUMMY, dt, price, quantity)
         fill_order!(acc, order, dt, price; fill_quantity=0.75order.quantity, fees_pct=0.001)
     end
 

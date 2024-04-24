@@ -1,36 +1,30 @@
 using Printf
 
-struct Instrument{IData}
-    index::Int64                # unique index for each instrument starting from 1 (used for array indexing and hashing)
-    symbol::String
+mutable struct Instrument{IData}
+    const index::Int                # unique index for each instrument starting from 1 (used for array indexing and hashing)
+    const symbol::String
+    const price_digits::Int
+    const quantity_digits::Int
     data::IData
-    price_digits::Int
-    quantity_digits::Int
-    price_formatter::Function
-    quantity_formatter::Function
 
     function Instrument(
-        index,
-        symbol,
-        data::TData=nothing
+        index::Int,
+        symbol::String,
+        data::IData=nothing
         ;
-        price_digits=2,
-        quantity_digits=2
-    ) where {TData}
-        price_format = Printf.Format("%.$(price_digits)f")
-        price_formatter = x -> Printf.format(price_format, x)
-        quantity_format = Printf.Format("%.$(quantity_digits)f")
-        quantity_formatter = x -> Printf.format(quantity_format, x)
-        new{TData}(
+        price_digits::Int=2,
+        quantity_digits::Int=2
+    ) where {IData}
+        new{IData}(
             index,
             symbol,
-            data,
             price_digits,
             quantity_digits,
-            price_formatter,
-            quantity_formatter
+            data,
         )
     end
 end
 
-Base.hash(inst::Instrument) = inst.index  # custom hash for better performance
+@inline Base.hash(inst::Instrument) = inst.index  # custom hash for better performance
+@inline format_price(inst::Instrument, price) = Printf.format(Printf.Format("%.$(inst.price_digits)f"), price)
+@inline format_quantity(inst::Instrument, quantity) = Printf.format(Printf.Format("%.$(inst.quantity_digits)f"), quantity)
