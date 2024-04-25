@@ -1,7 +1,7 @@
 using Dates
 
 mutable struct Order{OData,IData}
-    const seq::Int
+    const oid::Int
     const inst::Instrument{IData}
     const dt::DateTime
     const price::Price
@@ -9,7 +9,7 @@ mutable struct Order{OData,IData}
     data::OData
 
     function Order(
-        seq::Int,
+        oid::Int,
         inst::Instrument{IData},
         dt::DateTime,
         price::Price,
@@ -17,8 +17,14 @@ mutable struct Order{OData,IData}
         ;
         data::OData=nothing
     ) where {OData,IData}
-        new{OData,IData}(seq, inst, dt, price, quantity, data)
+        new{OData,IData}(oid, inst, dt, price, quantity, data)
     end
 end
 
+@inline oid(order::Order) = order.oid
+@inline instrument(order::Order) = order.inst
+@inline date(order::Order) = order.dt
+@inline price(order::Order) = order.price
+@inline quantity(order::Order) = order.quantity
 @inline trade_dir(order::Order) = trade_dir(order.quantity)
+@inline data(order::Order) = order.data

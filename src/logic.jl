@@ -5,9 +5,9 @@
     fill_price::Price
     ;
     fill_quantity::Quantity=0.0,    # fill quantity, if not provided, order quantity is used (complete fill)
-    fees_ccy::Price=0.0,            # fixed fees in account currency
-    fees_pct::Price=0.0,            # relative fees as percentage of order value, e.g. 0.001 = 0.1%
-)::Execution{OData,IData} where {OData,IData}
+    fee_ccy::Price=0.0,            # fixed fees in account currency
+    fee_pct::Price=0.0,            # relative fees as percentage of order value, e.g. 0.001 = 0.1%
+)::Trade{OData,IData} where {OData,IData}
     # positions are netted using weighted average price,
     # hence only one static position per instrument is maintained
 
@@ -19,7 +19,7 @@
     remaining_quantity = order.quantity - fill_quantity
 
     # calculate paid fees
-    fees_ccy += fees_pct * fill_price * abs(fill_quantity)
+    fee_ccy += fee_pct * fill_price * abs(fill_quantity)
 
     # realized P&L
     realized_quantity = calc_realized_quantity(pos_qty, fill_quantity)
@@ -27,24 +27,29 @@
     if realized_quantity != 0.0
         # order is reducing exposure (covering), calculate realized P&L
         realized_pnl = (fill_price - pos.avg_price) * realized_quantity
+
+        # add realized P&L to account balance
+        acc.balance += realized_pnl
+
+        # remove realized P&L from position P&L
         pos.pnl -= realized_pnl
     end
-    realized_pnl -= fees_ccy
+    realized_pnl -= fee_ccy
 
-    # execution sequence number
-    seq = eid!(acc)
+    # trade sequence number
+    tid = tid!(acc)
 
-    # create execution object
-    exe = Execution(
+    # create trade object
+    exe = Trade(
         order,
-        seq,
+        tid,
         dt,
         fill_price,
         fill_quantity,
         remaining_quantity,
         realized_pnl,
         realized_quantity,
-        fees_ccy,
+        fee_ccy,
         pos_qty,
         pos.avg_price,
     )
@@ -69,14 +74,14 @@
     # update position quantity
     pos.quantity = new_exposure
 
-    # update account balance and equity incl. fees
-    acc.balance -= fill_quantity * fill_price + fees_ccy
-    acc.equity -= fees_ccy
+    # subtract fees from account balance and equity
+    acc.balance -= fee_ccy
+    acc.equity -= fee_ccy
 
     # update P&L of position and account equity (w/o fees, already accounted for)
     update_pnl!(acc, pos, fill_price)
 
-    push!(acc.executions, exe)
+    push!(acc.trades, exe)
 
     exe
 end

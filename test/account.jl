@@ -4,7 +4,7 @@ using Dates
 
 @testset "Account long order w/o fees" begin
     # create instrument
-    DUMMY = Instrument(1, "DUMMY");
+    DUMMY = Instrument(1, Symbol("DUMMY"));
     instruments = [DUMMY];
 
     # create trading account
@@ -21,13 +21,13 @@ using Dates
     prices = [100.0, 100.5, 102.5]
 
     # buy order
-    quantity = 100.0
-    order = Order(oid!(acc), DUMMY, dates[1], prices[1], quantity)
+    qty = 100.0
+    order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
     exe1 = fill_order!(acc, order, dates[1], prices[1])
 
-    @test exe1 == acc.executions[end]
-    @test exe1.fees_ccy == 0.0
-    @test nominal_value(exe1) == quantity * prices[1]
+    @test exe1 == acc.trades[end]
+    @test exe1.fee_ccy == 0.0
+    @test nominal_value(exe1) == qty * prices[1]
     @test realized_pnl(exe1) == 0.0
     # @test realized_return(exe1) == 0.0
     @test pos.avg_price == 100.0
@@ -35,27 +35,27 @@ using Dates
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
 
-    @test pos.pnl ≈ (prices[2] - prices[1]) * pos.quantity
-    @test acc.balance ≈ 100_000.0 - pos.quantity * prices[1]
-    @test acc.equity ≈ acc.initial_balance + (prices[2] - prices[1]) * pos.quantity
+    @test pnl(pos) ≈ (prices[2] - prices[1]) * quantity(pos)
+    @test balance(acc) ≈ 100_000.0
+    @test equity(acc) ≈ initial_balance(acc) + (prices[2] - prices[1]) * quantity(pos)
 
     # close position
-    order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
+    order = Order(oid!(acc), DUMMY, dates[3], prices[3], -quantity(pos))
     fill_order!(acc, order, dates[3], prices[3])
 
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
 
-    @test pos.pnl ≈ 0
-    @test acc.balance ≈ 100_000.0 + (prices[3] - prices[1]) * quantity
-    @test acc.equity ≈ acc.balance
+    @test pnl(pos) ≈ 0
+    @test balance(acc) ≈ 100_000.0 + (prices[3] - prices[1]) * qty
+    @test equity(acc) ≈ balance(acc)
 
     show(acc)
 end
 
 @testset "Account long order w/ fees ccy" begin
     # create instrument
-    DUMMY = Instrument(1, "DUMMY");
+    DUMMY = Instrument(1, Symbol("DUMMY"));
     instruments = [DUMMY];
 
     # create trading account
@@ -72,34 +72,34 @@ end
     prices = [100.0, 100.5, 102.5]
 
     # buy order
-    quantity = 100.0
-    order = Order(oid!(acc), DUMMY, dates[1], prices[1], quantity)
-    fees_ccy = 1.0
-    exe1 = fill_order!(acc, order, dates[1], prices[1]; fees_ccy=fees_ccy)
+    qty = 100.0
+    order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
+    fee_ccy = 1.0
+    exe1 = fill_order!(acc, order, dates[1], prices[1]; fee_ccy=fee_ccy)
 
-    @test exe1 == acc.executions[end]
-    @test nominal_value(exe1) == quantity * prices[1]
-    @test exe1.fees_ccy == fees_ccy
-    @test realized_pnl(exe1) == -fees_ccy
+    @test exe1 == acc.trades[end]
+    @test nominal_value(exe1) == qty * prices[1]
+    @test exe1.fee_ccy == fee_ccy
+    @test realized_pnl(exe1) == -fee_ccy
     # @test realized_return(exe1) == 0.0
     @test pos.avg_price == 100.0
 
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
 
-    @test pos.pnl ≈ (prices[2] - prices[1]) * pos.quantity # does not include fees!
-    @test acc.balance ≈ 100_000.0 - pos.quantity * prices[1] - fees_ccy
-    @test acc.equity ≈ acc.initial_balance + (prices[2] - prices[1]) * pos.quantity - fees_ccy
+    @test pos.pnl ≈ (prices[2] - prices[1]) * quantity(pos) # does not include fees!
+    @test acc.balance ≈ 100_000.0 - fee_ccy
+    @test acc.equity ≈ acc.initial_balance + (prices[2] - prices[1]) * quantity(pos) - fee_ccy
 
     # close position
-    order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
-    exe2 = fill_order!(acc, order, dates[3], prices[3]; fees_ccy=0.5)
+    order = Order(oid!(acc), DUMMY, dates[3], prices[3], -quantity(pos))
+    exe2 = fill_order!(acc, order, dates[3], prices[3]; fee_ccy=0.5)
 
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
 
     @test pos.pnl ≈ 0
-    @test acc.balance ≈ 100_000.0 + (prices[3] - prices[1]) * quantity - fees_ccy - 0.5
+    @test acc.balance ≈ 100_000.0 + (prices[3] - prices[1]) * qty - fee_ccy - 0.5
     @test acc.equity ≈ acc.balance
 
     show(acc)
@@ -107,7 +107,7 @@ end
 
 @testset "Account long order w/ fees pct" begin
     # create instrument
-    DUMMY = Instrument(1, "DUMMY");
+    DUMMY = Instrument(1, Symbol("DUMMY"));
     instruments = [DUMMY];
 
     # create trading account
@@ -124,33 +124,33 @@ end
     prices = [100.0, 100.5, 102.5]
 
     # buy order
-    quantity = 100.0
-    order = Order(oid!(acc), DUMMY, dates[1], prices[1], quantity)
-    fees_pct1 = 0.001
-    exe1 = fill_order!(acc, order, dates[1], prices[1]; fees_pct=fees_pct1)
+    qty = 100.0
+    order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
+    fee_pct1 = 0.001
+    exe1 = fill_order!(acc, order, dates[1], prices[1]; fee_pct=fee_pct1)
 
-    @test nominal_value(exe1) == quantity * prices[1]
-    @test exe1.fees_ccy == fees_pct1*nominal_value(exe1)
-    @test realized_pnl(acc.executions[end]) == -fees_pct1*nominal_value(exe1)
-    # @test realized_return(acc.executions[end]) == 0.0
+    @test nominal_value(exe1) == qty * prices[1]
+    @test exe1.fee_ccy == fee_pct1*nominal_value(exe1)
+    @test realized_pnl(acc.trades[end]) == -fee_pct1*nominal_value(exe1)
+    # @test realized_return(acc.trades[end]) == 0.0
     @test pos.avg_price == 100.0
 
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
 
-    @test pos.pnl ≈ (prices[2] - prices[1]) * pos.quantity # does not include fees
-    @test acc.balance ≈ 100_000.0 - nominal_value(exe1) - exe1.fees_ccy
-    @test acc.equity ≈ acc.initial_balance + (prices[2] - prices[1]) * pos.quantity - exe1.fees_ccy
+    @test pos.pnl ≈ (prices[2] - prices[1]) * quantity(pos) # does not include fees
+    @test acc.balance ≈ 100_000.0 - exe1.fee_ccy
+    @test acc.equity ≈ acc.initial_balance + (prices[2] - prices[1]) * quantity(pos) - exe1.fee_ccy
 
     # close position
-    order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
-    exe2 = fill_order!(acc, order, dates[3], prices[3]; fees_pct=0.0005)
+    order = Order(oid!(acc), DUMMY, dates[3], prices[3], -quantity(pos))
+    exe2 = fill_order!(acc, order, dates[3], prices[3]; fee_pct=0.0005)
 
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
 
     @test pos.pnl ≈ 0
-    @test acc.balance ≈ 100_000.0 + (prices[3] - prices[1]) * quantity - exe1.fees_ccy - exe2.fees_ccy
+    @test acc.balance ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.fee_ccy - exe2.fee_ccy
     @test acc.equity ≈ acc.balance
 
     show(acc)
@@ -189,14 +189,14 @@ end
 #     update_account!(acc, data, inst)
 
 #     @test pos.pnl ≈ -100
-#     @test acc.balance ≈ 100_000.0 - pos.quantity * prices[1].bid
+#     @test acc.balance ≈ 100_000.0 - quantity(pos) * prices[1].bid
 #     @test acc.equity ≈ 99_900.0
 
 #     update_book!(book, prices[2])
 #     update_account!(acc, data, inst)
 
 #     @test pos.pnl ≈ -200
-#     @test acc.balance ≈ 100_000.0 - pos.quantity * prices[1].bid
+#     @test acc.balance ≈ 100_000.0 - quantity(pos) * prices[1].bid
 #     @test acc.equity ≈ 99_800.0
 
 #     update_book!(book, prices[3])
@@ -206,12 +206,12 @@ end
 #     execute_order!(acc, book, Order(inst, 200.0, prices[3].dt))
 
 #     @test acc.positions[inst.index].avg_price == book.bba.ask
-#     @test realized_return(acc.executions[end].execution) ≈ (100.0 - 103.0) / 100.0
-#     @test realized_pnl(acc.executions[end].execution) ≈ -300.0
-#     # @test calc_realized_return(acc.executions[end].execution) ≈ (100.0 - 103.0) / 100.0
-#     @test acc.executions[end].execution.realized_pnl ≈ -300.0
+#     @test realized_return(acc.trades[end].execution) ≈ (100.0 - 103.0) / 100.0
+#     @test realized_pnl(acc.trades[end].execution) ≈ -300.0
+#     # @test calc_realized_return(acc.trades[end].execution) ≈ (100.0 - 103.0) / 100.0
+#     @test acc.trades[end].execution.realized_pnl ≈ -300.0
 #     @test pos.pnl ≈ -50
-#     @test acc.balance ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.executions) - pos.quantity * prices[3].ask
+#     @test acc.balance ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.trades) - quantity(pos) * prices[3].ask
 #     @test acc.equity ≈ 99_650.0
 
 #     update_book!(book, prices[4])
@@ -223,9 +223,9 @@ end
 #     execute_order!(acc, book, Order(inst, -150.0, prices[4].dt))
 
 #     @test acc.positions[inst.index].avg_price == book.bba.bid
-#     @test acc.executions[end].execution.realized_pnl ≈ -300.0
+#     @test acc.trades[end].execution.realized_pnl ≈ -300.0
 #     @test pos.pnl ≈ -25
-#     @test acc.balance ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.executions) - pos.quantity * prices[4].bid
+#     @test acc.balance ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.trades) - quantity(pos) * prices[4].bid
 #     @test acc.equity ≈ 99_375.0
 
 #     # close open position
@@ -233,17 +233,17 @@ end
 
 #     @test acc.balance ≈ 99_375.0
 #     @test acc.equity ≈ 99_375.0
-#     @test acc.executions[end].execution.realized_pnl ≈ -25.0
+#     @test acc.trades[end].execution.realized_pnl ≈ -25.0
 
-#     @test pos.quantity == 0.0
+#     @test quantity(pos) == 0.0
 #     @test pos.avg_price == 0.0
 #     @test pos.pnl == 0.0
-#     @test length(pos.executions) == 4
+#     @test length(pos.trades) == 4
 
-#     @test acc.equity == acc.initial_balance + sum(t.execution.realized_pnl for t in acc.executions)
+#     @test acc.equity == acc.initial_balance + sum(t.execution.realized_pnl for t in acc.trades)
 #     @test acc.balance == acc.equity
 
-#     # realized_orders = filter(t -> t.execution.realized_pnl != 0.0, acc.executions)
+#     # realized_orders = filter(t -> t.execution.realized_pnl != 0.0, acc.trades)
 #     # @test equity_return(acc) ≈ sum(calc_realized_return(o)*o.execution.weight for o in realized_orders)
 # end
 

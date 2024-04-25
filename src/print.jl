@@ -13,7 +13,7 @@ end
 # --------------- Order ---------------
 
 function Base.show(io::IO, o::Order{O,I}) where {O,I}
-    date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS.sss")
+    date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS")
     print(io, "[Order] $(o.inst.symbol) " *
               "dt=$(date_formatter(o.dt))" *
               "px=$(format_price(o.inst, o.price)) " *
@@ -22,44 +22,45 @@ end
 
 Base.show(order::Order{O,I}) where {O,I} = Base.show(stdout, order)
 
-# --------------- Execution ---------------
+# --------------- Trade ---------------
 
-function Base.show(io::IO, e::Execution)
-    date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS.sss")
+function Base.show(io::IO, e::Trade)
+    inst = instrument(e.order)
+    date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS")
     ccy_formatter = x -> @sprintf("%.2f", x)
-    print(io, "[Execution] " *
+    print(io, "[Trade] " *
               "dt=$(date_formatter(e.dt)) " *
-              "fill_px=$(format_price(e.order.inst, e.fill_price)) " *
-              "fill_qty=$(format_quantity(e.order.inst, e.fill_quantity)) " *
-              "remain_qty=$(format_quantity(e.order.inst, e.remaining_quantity)) " *
-              "real_pnl=$(ccy_formatter(e.realized_pnl)) " *
-              "real_qty=$(format_quantity(e.order.inst, e.realized_quantity))" *
-              "fees_ccy=$(ccy_formatter(e.fees_ccy))" *
-              "pos_avg_px=$(format_price(e.order.inst, e.pos_avg_price)) " *
-              "pos_qty=$(format_quantity(e.order.inst, e.pos_quantity)) ")
+              "fill_px=$(format_price(inst, fill_price(e))) " *
+              "fill_qty=$(format_quantity(inst, fill_quantity(e))) " *
+              "remain_qty=$(format_quantity(inst, remaining_quantity(e))) " *
+              "real_pnl=$(ccy_formatter(realized_pnl(e))) " *
+              "real_qty=$(format_quantity(inst, realized_quantity(e))) " *
+              "fee_ccy=$(ccy_formatter(fee_ccy(e))) " *
+              "pos_px=$(format_price(inst, pos_price(e))) " *
+              "pos_qty=$(format_quantity(inst, pos_quantity(e)))")
 end
 
-Base.show(obj::Execution) = Base.show(stdout, obj)
+Base.show(obj::Trade) = Base.show(stdout, obj)
 
-function print_executions(
+function print_trades(
     io::IO,
     acc::Account{O,I}
     ;
     max_print=25
 ) where {O,I}
-    executions = acc.executions
+    trades = acc.trades
 
-    if length(executions) == 0
-        print(io, "\n  No executions\n")
+    if length(trades) == 0
+        print(io, "\n  No trades\n")
         return
     end
 
-    n_total = length(executions)
+    n_total = length(trades)
     n_shown = min(n_total, max_print)
     n_hidden = n_total - n_shown
 
     cols = [
-        Dict(:name => "Seq", :val => t -> t.seq, :fmt => (e, v) -> v),
+        Dict(:name => "Seq", :val => t -> tid(t), :fmt => (e, v) -> v),
         Dict(:name => "Symbol", :val => t -> t.order.inst.symbol, :fmt => (e, v) -> v),
         Dict(:name => "Date", :val => t -> "$(format_date(acc, t.order.dt)) +$(Dates.value(round(t.dt - t.order.dt, Millisecond))) ms", :fmt => (e, v) -> v),
         # Dict(:name => "Qty", :val => t -> t.order.quantity, :fmt => (e, v) -> format_quantity(e.order.inst, v)),
@@ -67,17 +68,17 @@ function print_executions(
         Dict(:name => "Remain. qty", :val => t -> t.remaining_quantity, :fmt => (e, v) -> format_quantity(e.order.inst, v)),
         Dict(:name => "Fill price", :val => t -> t.fill_price, :fmt => (e, v) -> isnan(v) ? "—" : format_price(e.order.inst, v)),
         Dict(:name => "Realized P&L", :val => t -> t.realized_pnl, :fmt => (e, v) -> isnan(v) ? "—" : format_ccy(acc, v)),
-        Dict(:name => "Fees", :val => t -> t.fees_ccy, :fmt => (e, v) -> format_ccy(acc, v))
+        Dict(:name => "Fee", :val => t -> t.fee_ccy, :fmt => (e, v) -> format_ccy(acc, v))
     ]
     columns = [c[:name] for c in cols]
 
     data_columns = []
     for col in cols
-        push!(data_columns, map(col[:val], first(executions, n_shown)))
+        push!(data_columns, map(col[:val], first(trades, n_shown)))
     end
     data_matrix = reduce(hcat, data_columns)
 
-    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](executions[row_ix], v)
+    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](trades[row_ix], v)
 
     h_pnl_pos = Highlighter((data, i, j) -> cols[j][:name] == "Realized P&L" && data_columns[j][i] > 0, foreground=0x11BF11)
     h_pnl_neg = Highlighter((data, i, j) -> cols[j][:name] == "Realized P&L" && data_columns[j][i] < 0, foreground=0xDD0000)
@@ -93,7 +94,7 @@ function print_executions(
             highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg),
             formatters=formatter,
             compact_printing=true)
-        println(io, " [...] $n_hidden more executions")
+        println(io, " [...] $n_hidden more trades")
     else
         pretty_table(
             io,
@@ -224,8 +225,8 @@ function Base.show(
     print(io, ")\n")
     println(io, "Open positions:  $n_open_pos")
     print_positions(io, acc; kwargs...)
-    println(io, "Executions:      $(length(acc.executions))")
-    print_executions(io, acc; max_print=max_orders, kwargs...)
+    println(io, "Trades:      $(length(acc.trades))")
+    print_trades(io, acc; max_print=max_orders, kwargs...)
     println(io, '━'^display_width)
     print(io, "")
 end

@@ -1,29 +1,31 @@
 mutable struct Position{OData,IData}
     const index::Int                  # unique index for each position starting from 1 (used for array indexing and hashing)
     const inst::Instrument{IData}
-    quantity::Quantity          # negative = short selling
     avg_price::Price
+    quantity::Quantity          # negative = short selling
     pnl::Price
 
     function Position{OData}(
         index::Int,
         inst::Instrument{IData},
-        quantity::Quantity,
         avg_price::Price,
+        quantity::Quantity,
         pnl::Price
     ) where {OData,IData}
-        new{OData,IData}(index, inst, quantity, avg_price, pnl)
+        new{OData,IData}(index, inst, avg_price, quantity, pnl)
     end
 end
 
 @inline Base.hash(pos::Position) = pos.index  # custom hash for better performance
 
-@inline is_long(pos::Position) = pos.quantity > 0
-@inline is_short(pos::Position) = pos.quantity < 0
+@inline instrument(pos::Position) = pos.inst
+@inline is_long(pos::Position) = pos.quantity > zero(Quantity)
+@inline is_short(pos::Position) = pos.quantity < zero(Quantity)
 @inline trade_dir(pos::Position) = trade_dir(pos.quantity)
 @inline avg_price(pos::Position) = pos.avg_price
 @inline quantity(pos::Position) = pos.quantity
 @inline pnl(pos::Position) = pos.pnl
+@inline has_exposure(pos::Position) = pos.quantity != zero(Quantity)
 
 """
 Calculates the P&L of a position.
@@ -80,7 +82,7 @@ calc_realized_quantity(10, 5)   # returns 0
 ```
 """
 @inline function calc_realized_quantity(position_qty, order_qty)
-    if position_qty * order_qty < 0
+    if position_qty * order_qty < zero(position_qty)
         sign(position_qty) * min(abs(position_qty), abs(order_qty))
     else
         zero(position_qty)

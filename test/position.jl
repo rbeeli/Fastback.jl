@@ -3,7 +3,7 @@ using Test
 using Dates
 
 @testset "Position calc_pnl calc_return" begin
-    TEST = Instrument(1, "TEST")
+    TEST = Instrument(1, Symbol("TEST"))
     instruments = [TEST]
 
     acc = Account{Nothing}(instruments, 100_000.0)
@@ -13,27 +13,27 @@ using Dates
 
     begin
         # long
-        pos = Position{Nothing}(1, TEST, 500.0, px1, 0.0)
+        pos = Position{Nothing}(1, TEST, px1, 500.0, 0.0)
 
         @test is_long(pos)
         @test !is_short(pos)
-        @test pos.avg_price == px1
-        @test pos.quantity == 500.0
+        @test avg_price(pos) == px1
+        @test quantity(pos) == 500.0
 
-        @test calc_pnl(pos, px2) == pos.quantity * (px2 - pos.avg_price)
+        @test calc_pnl(pos, px2) == quantity(pos) * (px2 - avg_price(pos))
         @test calc_return(pos, px2) ≈ (px2 - px1) / px1
     end
 
     begin
         # short
-        pos = Position{Nothing}(2, TEST, -500.0, px1, 0.0)
+        pos = Position{Nothing}(2, TEST, px1, -500.0, 0.0)
 
         @test !is_long(pos)
         @test is_short(pos)
-        @test pos.avg_price == px1
-        @test pos.quantity == -500.0
+        @test avg_price(pos) == px1
+        @test quantity(pos) == -500.0
 
-        @test calc_pnl(pos, px2) == pos.quantity * (px2 - pos.avg_price)
+        @test calc_pnl(pos, px2) == quantity(pos) * (px2 - avg_price(pos))
         @test calc_return(pos, px2) ≈ -(px2 - px1) / px1
     end
 end

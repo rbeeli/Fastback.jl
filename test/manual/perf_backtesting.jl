@@ -5,20 +5,17 @@ using InteractiveUtils
 
 function run_backtest()
     # define instrument
-    DUMMY = Instrument(1, "DUMMY")
+    DUMMY = Instrument(1, Symbol("DUMMY"))
     instruments = [DUMMY]
 
     # create trading account
     acc = Account{Nothing}(instruments, 100_000.0)
 
-    # get position for instrument
-    pos = get_position(acc, DUMMY)
-
     dt = DateTime(2018, 1, 2, 9, 30, 0)
     for i = 1:1_000_000
         price = 100.0 + i / 1000
         
-        update_pnl!(acc, pos, price)
+        update_pnl!(acc, DUMMY, price)
 
         order = Order(oid!(acc), DUMMY, dt, price, 1.0)
         fill_order!(acc, order, dt, price)
@@ -36,7 +33,7 @@ ProfileView.@profview map(i -> run_backtest(), 1:10)
 
 
 # define instrument
-const DUMMY = Instrument(1, "DUMMY")
+const DUMMY = Instrument(1, Symbol("DUMMY"))
 const instruments = [DUMMY]
 
 # create trading account
@@ -55,8 +52,8 @@ const price = 100.0
 @code_native update_pnl!(acc, pos, price)
 
 const order = Order(oid!(acc), DUMMY, dt, price, 1.0)
-@code_warntype fill_order!(acc, order, dt, price; fill_quantity=0.0, fees_ccy=0.0, fees_pct=0.0)
-@code_llvm fill_order!(acc, order, dt, price; fill_quantity=0.0, fees_ccy=0.0, fees_pct=0.0)
-@code_native fill_order!(acc, order, dt, price; fill_quantity=0.0, fees_ccy=0.0, fees_pct=0.0)
+@code_warntype fill_order!(acc, order, dt, price; fill_quantity=0.0, fee_ccy=0.0, fee_pct=0.0)
+@code_llvm fill_order!(acc, order, dt, price; fill_quantity=0.0, fee_ccy=0.0, fee_pct=0.0)
+@code_native fill_order!(acc, order, dt, price; fill_quantity=0.0, fee_ccy=0.0, fee_pct=0.0)
 
-@benchmark fill_order!(acc, order, dt, price; fill_quantity=0.0, fees_ccy=0.0, fees_pct=0.0)
+@benchmark fill_order!(acc, order, dt, price; fill_quantity=0.0, fee_ccy=0.0, fee_pct=0.0)

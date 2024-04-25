@@ -1,5 +1,6 @@
-using EnumX
 import Base: values
+using Dates
+using EnumX
 
 mutable struct PeriodicValues{T,TPeriod<:Period}
     const dates::Vector{DateTime}
@@ -119,6 +120,10 @@ end
 
 @inline dates(pv::DrawdownValues) = pv.dates
 @inline Base.values(pv::DrawdownValues) = pv.values
+
+function drawdown_collector(mode::DrawdownMode.T, interval::Dates.Period)
+    drawdown_collector(mode, (v, dt, equity) -> dt - v.last_dt >= interval)
+end
 
 function drawdown_collector(mode::DrawdownMode.T, predicate::TFunc) where {TFunc<:Function}
     dates = Vector{DateTime}()
