@@ -8,11 +8,22 @@ Furthermore, the execution logic supports fees, slippage, partial fills and exec
 
 Fastback does not try to model every aspect of a trading system, e.g. brokers, data sources, logging etc.
 Instead, it provides basic building blocks for creating a custom backtesting environment that is easy to understand and extend.
-For example, Fastback has no notion of "strategy" or "indicator", such constructs are highly strategy implementation specific and therefore up to the user to define.
+For example, Fastback has no notion of "strategy" or "indicator", such constructs are highly strategy specific, and therefore up to the user to define.
 
 The event-based architecture aims to mimic the way a real-world trading systems works, where new data is ingested as a continuous data stream, i.e. events.
 This reduces the implementation gap from backtesting to real-world execution significantly compared to a vectorized backtesting frameworks.
 
-## Bug reports and feature requests
+### Features
 
-Please report any issues via the GitHub issue tracker.
+- Event-based
+- Modular architecture, no opinionated black-box design
+- Supports arbitrary pricing data source
+- Supports modelling fees, execution delays, price slippage and partial fills
+- Flexible data collectors to collect time series like account equitity history, number of open positions, etc.
+- Facilities for parallelized backtesting and hyperparameter optimization
+- Uses position netting approach for bookkeeping
+  - Maintains single position per instrument using weighted average cost method
+
+### Bug reports and feature requests
+
+Please report any issues via the [GitHub issue tracker](https://github.com/rbeeli/Fastback.jl/issues).

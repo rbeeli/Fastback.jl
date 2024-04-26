@@ -1,26 +1,3 @@
-# Portfolio trading strategy example
-# -------------------------------
-# This example demonstrates how to run a backtest with multiple assets, i.e.
-# trading a portfolio of assets.
-#
-# The price data is loaded from a CSV file containing daily close prices for
-# the stocks AAPL, NVDA, TSLA, and GE, ranging from 2022-01-03 to 2024-04-22.
-# 
-# The strategy buys one stock if the last 5 days were positive,
-# and sells it again if the last 2 days were negative.
-# Each trade is executed at a fee of 0.1%.
-# 
-# When missing data points are detected for a stock,
-# all open positions for that stock are closed.
-# Logic of this type is common in real-world strategies
-# and harder to implement in a vectorized way,
-# showcasing the flexibility of Fastback.
-#
-# The account equity, balance and drawdowns are collected for
-# every day and plotted at the end using the Plots package.
-# Additionally, the performance and P&L breakdown of each stock is plotted
-# and statistics (avg. P&L, min. P&L, max. P&L, win rate) are printed.
-
 using Fastback
 using Dates
 using CSV

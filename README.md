@@ -2,6 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 ![Maintenance](https://img.shields.io/maintenance/yes/2024)
+[![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://rbeeli.github.io/Fastback.jl/docs/build/index.html)
 
 Fastback provides a lightweight, flexible and highly efficient event-based backtesting library for quantitative trading strategies.
 
@@ -11,7 +12,7 @@ Furthermore, the execution logic supports fees, slippage, partial fills and exec
 
 Fastback does not try to model every aspect of a trading system, e.g. brokers, data sources, logging etc.
 Instead, it provides basic building blocks for creating a custom backtesting environment that is easy to understand and extend.
-For example, Fastback has no notion of "strategy" or "indicator", such constructs are highly strategy implementation specific and therefore up to the user to define.
+For example, Fastback has no notion of "strategy" or "indicator", such constructs are highly strategy specific, and therefore up to the user to define.
 
 The event-based architecture aims to mimic the way a real-world trading systems works, where new data is ingested as a continuous data stream, i.e. events.
 This reduces the implementation gap from backtesting to real-world execution significantly compared to a vectorized backtesting frameworks.
@@ -27,31 +28,34 @@ This reduces the implementation gap from backtesting to real-world execution sig
 - Uses position netting approach for bookkeeping
   - Maintains single position per instrument using weighted average cost method
 
+## Documentation
+
+Full documentation is available [here](https://rbeeli.github.io/RiskPerf.jl/docs/build/index.html).
+
 ## Examples
 
-### Random Trading Strategy
+The following example demonstrates the general structure of a backtest using Fastback.
+See documentation for more advanced examples.
 
-<details>
+**Description**
 
-<summary>Click to expand code</summary>
+This dummy example demonstrates how to backtest a simple random trading strategy
+using synthetic data generated in the script.
+The price series is a random walk with a drift of 0.1 and initial price 1000.
 
-Code file, see [examples/random_trading.jl](examples/random_trading.jl).
+The strategy randomly buys or sells an instrument with a probability of 1%.
+Buy and sell orders use the same price series, implying a spread of 0.
+Each trade is executed at a fee of 0.1%.
+For the sake of illustration, only 75% of the order quantity is filled.
+
+The account equity and drawdowns are collected for every hour
+and plotted at the end using UnicodePlots.
+
+**Code**
+
+Full code file, see [examples/1_random_trading.jl](examples/1_random_trading.jl).
 
 ```julia
-# Random trading strategy example
-# -------------------------------
-# This dummy example demonstrates how to backtest a simple random trading strategy
-# using synthetic data generated in the script.
-# The price series is a random walk with a drift of 0.1 and initial price 1000.
-# 
-# The strategy randomly buys or sells an instrument with a probability of 1%.
-# Buy and sell orders use the same price series, implying a spread of 0.
-# Each trade is executed at a fee of 0.1%.
-# For the sake of illustration, only 75% of the order quantity is filled.
-#
-# The account equity and drawdowns are collected for every hour
-# and plotted at the end using UnicodePlots.
-
 using Fastback
 using Dates
 using Random
@@ -114,16 +118,12 @@ gridplot([
     ]; layout=(1, 2))
 ```
 
-</details>
-
 **Output**
 
-<details>
+![Example Backtest Account Summary](docs/src/examples/images/1_backtest_account_summary.png)
 
-<summary>Click to expand output</summary>
+![Example Backtest Plots](docs/src/examples/images/1_backtest_plots.png)
 
-![Example Backtest Account Summary](docs/images/backtest_account_summary.png)
+## Bug reports and feature requests
 
-![Example Backtest Plots](docs/images/backtest_plots.png)
-
-</details>
+Please report any issues via the [GitHub issue tracker](https://github.com/rbeeli/Fastback.jl/issues).

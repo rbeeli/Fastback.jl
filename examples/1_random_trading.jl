@@ -1,17 +1,3 @@
-# Random trading strategy example
-# -------------------------------
-# This dummy example demonstrates how to backtest a simple random trading strategy
-# using synthetic data generated in the script.
-# The price series is a random walk with a drift of 0.1 and initial price 1000.
-# 
-# The strategy randomly buys or sells an instrument with a probability of 1%.
-# Buy and sell orders use the same price series, implying a spread of 0.
-# Each trade is executed at a fee of 0.1%.
-# For the sake of illustration, only 75% of the order quantity is filled.
-#
-# The account equity and drawdowns are collected for every hour
-# and plotted at the end using UnicodePlots.
-
 using Fastback
 using Dates
 using Random
