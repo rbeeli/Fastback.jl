@@ -1,4 +1,4 @@
-ticker,dt_close,close,volume
+symbol,dt_close,close,volume
 AAPL,2022-01-03 21:00:00,179.7246,106008584
 AAPL,2022-01-04 21:00:00,177.4436,100370760
 AAPL,2022-01-05 21:00:00,172.7236,95737752

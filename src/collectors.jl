@@ -2,6 +2,8 @@ import Base: values
 using Dates
 using EnumX
 
+# ----------------------------------------------------------
+
 mutable struct PeriodicValues{T,TPeriod<:Period}
     const dates::Vector{DateTime}
     const values::Vector{T}
@@ -29,7 +31,9 @@ function periodic_collector(::Type{T}, period::TPeriod) where {T,TPeriod<:Period
     return collector, pv
 end
 
-@inline should_collect(pv::PeriodicValues{T,TPeriod}, dt) where {T,TPeriod<:Period}= (dt - pv.last_dt) >= pv.period
+@inline function should_collect(pv::PeriodicValues{T,TPeriod}, dt) where {T,TPeriod<:Period}
+    (dt - pv.last_dt) >= pv.period
+end
 
 # ----------------------------------------------------------
 
@@ -62,7 +66,9 @@ function predicate_collector(::Type{T}, predicate::TPredicate, init_value::T) wh
     return collector, pv
 end
 
-@inline should_collect(pv::PredicateValues{T,TPredicate}, dt) where {T,TPredicate<:Function} = pv.predicate(pv, dt)
+@inline function should_collect(pv::PredicateValues{T,TPredicate}, dt) where {T,TPredicate<:Function}
+    pv.predicate(pv, dt)
+end
 
 # ----------------------------------------------------------
 
@@ -108,7 +114,7 @@ end
 
 # ----------------------------------------------------------
 
-@enumx DrawdownMode::Int8 Percentage=1 PnL=2
+@enumx DrawdownMode::Int8 Percentage = 1 PnL = 2
 
 mutable struct DrawdownValues
     const dates::Vector{DateTime}

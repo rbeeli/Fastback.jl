@@ -18,13 +18,9 @@ end
 
 @inline Base.hash(pos::Position) = pos.index  # custom hash for better performance
 
-@inline instrument(pos::Position) = pos.inst
 @inline is_long(pos::Position) = pos.quantity > zero(Quantity)
 @inline is_short(pos::Position) = pos.quantity < zero(Quantity)
 @inline trade_dir(pos::Position) = trade_dir(pos.quantity)
-@inline avg_price(pos::Position) = pos.avg_price
-@inline quantity(pos::Position) = pos.quantity
-@inline pnl(pos::Position) = pos.pnl
 @inline has_exposure(pos::Position) = pos.quantity != zero(Quantity)
 
 """

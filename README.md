@@ -3,11 +3,18 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 ![Maintenance](https://img.shields.io/maintenance/yes/2024)
 
-Fastback provides a lightweight, flexible and highly efficient event-based backtesting framework for quantitative trading strategies.
+Fastback provides a lightweight, flexible and highly efficient event-based backtesting library for quantitative trading strategies.
 
-Fastback does not try to model every aspect of a trading system, e.g. brokers, data sources, logging etc., but rather provides basic building blocks to create a custom backtesting environment that is easy to understand and extend.
+The main value of Fastback is provided by the account and bookkeeping implementation.
+It keeps track of the open positions, account balance and equity.
+Furthermore, the execution logic supports fees, slippage, partial fills and execution delays in its design.
 
-The event-based architecture aims to mimic the way a real-world trading systems works, where new data is ingested as a continuous data stream, i.e. events. This reduces the implementation gap from backtesting to real-world execution significantly compared to a vectorized backtesting frameworks.
+Fastback does not try to model every aspect of a trading system, e.g. brokers, data sources, logging etc.
+Instead, it provides basic building blocks for creating a custom backtesting environment that is easy to understand and extend.
+For example, Fastback has no notion of "strategy" or "indicator", such constructs are highly strategy implementation specific and therefore up to the user to define.
+
+The event-based architecture aims to mimic the way a real-world trading systems works, where new data is ingested as a continuous data stream, i.e. events.
+This reduces the implementation gap from backtesting to real-world execution significantly compared to a vectorized backtesting frameworks.
 
 ## Features
 
@@ -20,11 +27,15 @@ The event-based architecture aims to mimic the way a real-world trading systems 
 - Uses position netting approach for bookkeeping
   - Maintains single position per instrument using weighted average cost method
 
-## Example
+## Examples
+
+### Random Trading Strategy
+
+<details>
+
+<summary>Click to expand code</summary>
 
 Code file, see [examples/random_trading.jl](examples/random_trading.jl).
-
-### Code
 
 ```julia
 # Random trading strategy example
@@ -57,7 +68,7 @@ dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N);
 DUMMY = Instrument(1, Symbol("DUMMY"));
 instruments = [DUMMY];
 
-# create trading account
+# create trading account with 10,000 start capital
 acc = Account{Nothing}(instruments, 10_000.0);
 
 # data collector for account equity and drawdowns (sampling every hour)
@@ -84,8 +95,10 @@ end
 # print account statistics
 show(acc)
 
+
 # plot equity and drawdown
 using UnicodePlots, Term
+
 gridplot([
         lineplot(
             dates(equity_data), values(equity_data);
@@ -101,8 +114,16 @@ gridplot([
     ]; layout=(1, 2))
 ```
 
-### Output
+</details>
+
+**Output**
+
+<details>
+
+<summary>Click to expand output</summary>
 
 ![Example Backtest Account Summary](docs/images/backtest_account_summary.png)
 
 ![Example Backtest Plots](docs/images/backtest_plots.png)
+
+</details>

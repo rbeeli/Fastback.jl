@@ -35,15 +35,8 @@ mutable struct Account{OData,IData}
     end
 end
 
-@inline ccy_digits(acc::Account) = acc.ccy_digits
-@inline date_format(acc::Account) = acc.date_format
-@inline format_ccy(acc::Account, x) = Printf.format(Printf.Format("%.$(ccy_digits(acc))f"), x)
-@inline format_date(acc::Account, x) = Dates.format(x, date_format(acc))
-@inline trades(acc::Account) = acc.trades
-@inline positions(acc::Account) = acc.positions
-@inline initial_balance(acc::Account) = acc.initial_balance
-@inline balance(acc::Account) = acc.balance
-@inline equity(acc::Account) = acc.equity
+@inline format_ccy(acc::Account, x) = Printf.format(Printf.Format("%.$(acc.ccy_digits)f"), x)
+@inline format_date(acc::Account, x) = Dates.format(x, acc.date_format)
 @inline oid!(acc::Account) = acc.order_seq += 1
 @inline tid!(acc::Account) = acc.trade_seq += 1
 
@@ -64,11 +57,11 @@ end
 end
 
 @inline function is_exposed_to(acc::Account{O,I}, inst::Instrument{I}) where {O,I}
-    has_exposure(@inbounds acc.positions[inst.index])
+    has_exposure(get_position(acc, inst))
 end
 
 @inline function is_exposed_to(acc::Account{O,I}, inst::Instrument{I}, dir::TradeDir.T) where {O,I}
-    trade_dir(@inbounds acc.positions[inst.index].quantity) == sign(dir)
+    trade_dir(get_position(acc, inst)) == sign(dir)
 end
 
 # @inline total_pnl_net(acc::Account) = sum(map(pnl_net, acc.closed_positions))
@@ -80,7 +73,8 @@ end
 @inline function update_pnl!(acc::Account, pos::Position, close_price)
     # update P&L and account equity using delta of old and new P&L
     new_pnl = calc_pnl(pos, close_price)
-    acc.equity += new_pnl - pos.pnl
+    pnl_delta = new_pnl - pos.pnl
+    acc.equity += pnl_delta
     pos.pnl = new_pnl
     return
 end

@@ -51,14 +51,14 @@
         realized_quantity,
         fee_ccy,
         pos_qty,
-        pos.avg_price,
+        pos.avg_price
     )
 
     # calculate new exposure
     new_exposure = pos_qty + fill_quantity
     if new_exposure == 0.0
         # no more exposure
-        pos.avg_price = 0.0
+        pos.avg_price = zero(Price)
     else
         # update average price of position
         if sign(new_exposure) != sign(pos_qty)

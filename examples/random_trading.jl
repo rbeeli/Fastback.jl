@@ -28,7 +28,7 @@ dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N);
 DUMMY = Instrument(1, Symbol("DUMMY"));
 instruments = [DUMMY];
 
-# create trading account
+# create trading account with 10,000 start capital
 acc = Account{Nothing}(instruments, 10_000.0);
 
 # data collector for account equity and drawdowns (sampling every hour)
@@ -55,8 +55,10 @@ end
 # print account statistics
 show(acc)
 
+
 # plot equity and drawdown
 using UnicodePlots, Term
+
 gridplot([
         lineplot(
             dates(equity_data), values(equity_data);

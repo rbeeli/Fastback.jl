@@ -17,10 +17,10 @@ using Dates
 
         @test is_long(pos)
         @test !is_short(pos)
-        @test avg_price(pos) == px1
-        @test quantity(pos) == 500.0
+        @test pos.avg_price == px1
+        @test pos.quantity == 500.0
 
-        @test calc_pnl(pos, px2) == quantity(pos) * (px2 - avg_price(pos))
+        @test calc_pnl(pos, px2) == pos.quantity * (px2 - pos.avg_price)
         @test calc_return(pos, px2) ≈ (px2 - px1) / px1
     end
 
@@ -30,10 +30,10 @@ using Dates
 
         @test !is_long(pos)
         @test is_short(pos)
-        @test avg_price(pos) == px1
-        @test quantity(pos) == -500.0
+        @test pos.avg_price == px1
+        @test pos.quantity == -500.0
 
-        @test calc_pnl(pos, px2) == quantity(pos) * (px2 - avg_price(pos))
+        @test calc_pnl(pos, px2) == pos.quantity * (px2 - pos.avg_price)
         @test calc_return(pos, px2) ≈ -(px2 - px1) / px1
     end
 end

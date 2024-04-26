@@ -18,30 +18,27 @@
 #
 # The account equity, balance and drawdowns are collected for
 # every day and plotted at the end using the Plots package.
-# Additionally, the performance and P&L breakdown of each stock is plotted.
+# Additionally, the performance and P&L breakdown of each stock is plotted
+# and statistics (avg. P&L, min. P&L, max. P&L, win rate) are printed.
 
 using Fastback
 using Dates
 using CSV
 using DataFrames
 
-# load CSV daily stock data for tickers AAPL, NVDA, TSLA, GE
+# load CSV daily stock data for symbols AAPL, NVDA, TSLA, GE
 df_csv = DataFrame(CSV.File("examples/data/stocks_1d.csv"; dateformat="yyyy-mm-dd HH:MM:SS"));
-
-# ticker strings to symbols
-df_csv.ticker = Symbol.(df_csv.ticker);
-
-# transform long to wide format (pivot)
-df = unstack(df_csv, :dt_close, :ticker, :close)
-# df = coalesce.(df, NaN) # replace missing values with NaN
-describe(df)
-
+df_csv.symbol = Symbol.(df_csv.symbol); # convert string to symbol type
+df = unstack(df_csv, :dt_close, :symbol, :close) # pivot long to wide format
 symbols = Symbol.(names(df)[2:end]);
 
-# define instrument objects for all tickers
+# print summary
+describe(df)
+
+# define instrument objects for all symbols
 instruments = map(t -> Instrument(t[1], t[2]), enumerate(symbols))
 
-# create trading account
+# create trading account with 100,000 start capital
 acc = Account{Nothing}(instruments, 100_000.0);
 
 # data collector for account balance, equity and drawdowns (sampling every day)
@@ -51,16 +48,16 @@ collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Da
 
 function open_position!(acc, inst, dt, price)
     # invest 20% of equity in the position
-    qty = 0.2equity(acc) / price
+    qty = 0.2acc.equity / price
     order = Order(oid!(acc), inst, dt, price, qty)
     fill_order!(acc, order, dt, price; fee_pct=0.001)
 end
 
 function close_position!(acc, inst, dt, price)
-    # close position for instrument if any
+    # close position for instrument, if any
     pos = get_position(acc, inst)
     has_exposure(pos) || return
-    order = Order(oid!(acc), inst, dt, price, -quantity(pos))
+    order = Order(oid!(acc), inst, dt, price, -pos.quantity)
     fill_order!(acc, order, dt, price; fee_pct=0.001)
 end
 
@@ -71,15 +68,15 @@ for i in 6:nrow(df)
 
     # loop over all instruments and check strategy rules
     for inst in instruments
-        symbol = inst.symbol
-        price = row[symbol]
+        price = row[inst.symbol]
 
-        window_open = @view df[i-5:i, symbol]
-        window_close = @view df[i-2:i, symbol]
+        window_open = @view df[i-5:i, inst.symbol]
+        window_close = @view df[i-2:i, inst.symbol]
 
         # close position of instrument if missing data
         if any(ismissing.(window_open))
-            close_position!(acc, inst, dt, avg_price(get_position(acc, inst)))
+            close_price = get_position(acc, inst).avg_price
+            close_position!(acc, inst, dt, close_price)
             continue
         end
 
@@ -104,13 +101,14 @@ for i in 6:nrow(df)
     end
 
     # collect data for plotting
-    collect_balance(dt, balance(acc))
-    collect_equity(dt, equity(acc))
-    collect_drawdown(dt, equity(acc))
+    collect_balance(dt, acc.balance)
+    collect_equity(dt, acc.equity)
+    collect_drawdown(dt, acc.equity)
 end
 
 # print account statistics
 show(acc)
+
 
 # plots
 using Plots, Query, Printf, Measures
@@ -161,13 +159,13 @@ for i in 3:ncol(df)
         label=names(df)[i])
 end
 
-# P&L breakdown
-pnl_by_inst = trades(acc) |>
-              @groupby(symbol(_)) |>
+# P&L breakdown by stocks
+pnl_by_inst = acc.trades |>
+              @groupby(_.order.inst.symbol) |>
               @map({
                   symbol = key(_),
-                  pnl = sum(map(x -> realized_pnl(x), _))
-              }) |> DataFrame;
+                  pnl = sum(getfield.(_, :realized_pnl))
+              }) |> DataFrame
 p4 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
     legend=false,
     title="P&L breakdown",
@@ -181,3 +179,14 @@ p4 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
 plot(p1, p2, p3, p4;
     layout=@layout[a{0.4h}; b{0.15h}; c{0.3h}; d{0.15h}],
     size=(600, 900), margin=0mm, left_margin=5mm)
+
+# statistics per stock
+trade_stats = acc.trades |>
+              @groupby(_.order.inst.symbol) |>
+              @map({
+                  symbol = key(_),
+                  avg_pnl = sum(getfield.(_, :realized_pnl)) / length(_),
+                  min_pnl = minimum(getfield.(_, :realized_pnl)),
+                  max_pnl = maximum(getfield.(_, :realized_pnl)),
+                  win_rate = count(getfield.(_, :realized_pnl) .> 0) / count(is_realizing.(_)),
+              }) |> DataFrame
