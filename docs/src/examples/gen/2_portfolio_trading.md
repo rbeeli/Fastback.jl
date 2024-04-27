@@ -184,9 +184,11 @@ plot(p1, p2, p3, p4;
 
 ### Calculate statistics per stock
 
-Calculates summary statistics for each stock. First, groups all trades by
-instrument symbol, then calculates average P&L, worst P&L, best P&L, and win rate.
-This functionality is provided by the `Query.jl` package.
+Calculates summary statistics for each stock. Using the `Query.jl` package,
+all trades are first grouped by instrument symbol, then average P&L,
+worst P&L, best P&L, and win rate are calculated.
+Finally, the results are piped into a `DataFrame` and printed
+using the `PrettyTables.jl` package.
 
 ````@example 2_portfolio_trading
 using PrettyTables

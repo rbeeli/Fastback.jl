@@ -1,4 +1,4 @@
-# Fastback.jl - Blazing fast Julia backtester 🚀
+# Fastback.jl - Blazingly fast Julia backtester 🚀
 
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 ![Maintenance](https://img.shields.io/maintenance/yes/2024)
