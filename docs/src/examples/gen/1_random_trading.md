@@ -1,3 +1,7 @@
+```@meta
+EditURL = "../1_random_trading.jl"
+```
+
 # Random trading strategy example
 
 This dummy example demonstrates how to backtest a simple random trading strategy
@@ -10,11 +14,9 @@ Each trade is executed at a fee of 0.1%.
 For the sake of illustration, only 75% of the order quantity is filled.
 
 The account equity and drawdowns are collected for every hour
-and plotted at the end using UnicodePlots.
+and plotted at the end using the Plots package.
 
-### Code
-
-```julia
+````@example 1_random_trading
 using Fastback
 using Dates
 using Random
@@ -57,28 +59,35 @@ end
 
 # print account statistics
 show(acc)
+````
 
+### Plot account equity curve
 
-# plot equity and drawdown
-using UnicodePlots, Term
+````@example 1_random_trading
+using Plots, Printf
+theme(:juno; titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false)
 
-gridplot([
-        lineplot(
-            dates(equity_data), values(equity_data);
-            title="Account equity",
-            height=12
-        ),
-        lineplot(
-            dates(drawdown_data), 100values(drawdown_data);
-            title="Drawdowns [%]",
-            color=:red,
-            height=12
-        )
-    ]; layout=(1, 2))
-```
+# plot equity curve
+plot(dates(equity_data), values(equity_data);
+    title="Account",
+    label="Equity",
+    linetype=:steppost,
+    yformatter=:plain,
+    size=(800, 400),
+    color="#BBBB00")
+````
 
-### Output
+### Plot account equity drawdown curve
 
-![Backtest Account Summary](images/1_backtest_account_summary.png)
+````@example 1_random_trading
+# plot drawdown curve
+plot(dates(drawdown_data), 100values(drawdown_data);
+    title="Equity drawdowns [%]",
+    legend=false,
+    linetype=:steppost,
+    color="#BB0000",
+    yformatter=y -> @sprintf("%.1f%%", y),
+    size=(800, 200),
+    fill=(0, "#BB000033"))
+````
 
-![Backtest Plots](images/1_backtest_plots.png)

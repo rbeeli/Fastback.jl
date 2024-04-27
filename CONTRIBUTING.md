@@ -32,7 +32,8 @@ The documentation is built using [Documenter.jl](https://documenter.juliadocs.or
 To rebuild, run the following command from the root of the repository:
 
 ```bash
-cd docs && julia --project=. make.jl && cd ..
+cd docs
+julia --project make.jl
 ```
 
 ```sql
