@@ -30,7 +30,7 @@ This reduces the implementation gap from backtesting to real-world execution sig
 
 ## Documentation & Examples
 
-Full documentation and examples are available [here](https://rbeeli.github.io/RiskPerf.jl/docs/build/index.html).
+Full documentation and examples are available [here](https://rbeeli.github.io/Fastback.jl/docs/build/index.html).
 
 ## Bug reports and feature requests
 
