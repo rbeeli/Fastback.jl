@@ -168,12 +168,6 @@ end
     trade_dir(get_position(acc, inst)) == sign(dir)
 end
 
-# @inline total_pnl_net(acc::Account) = sum(map(pnl_net, acc.closed_positions))
-# @inline total_pnl_gross(acc::Account) = sum(map(pnl_gross, acc.closed_positions))
-
-# @inline count_winners_net(acc::Account) = count(map(x -> pnl_net(x) > 0.0, acc.closed_positions))
-# @inline count_winners_gross(acc::Account) = count(map(x -> pnl_gross(x) > 0.0, acc.closed_positions))
-
 @inline function update_pnl!(acc::Account, pos::Position, close_price)
     # update P&L and account equity using delta of old and new P&L
     new_pnl = calc_pnl(pos, close_price)
@@ -187,3 +181,9 @@ end
 @inline function update_pnl!(acc::Account, inst::Instrument, close_price)
     update_pnl!(acc, get_position(acc, inst), close_price)
 end
+
+# @inline total_pnl_net(acc::Account) = sum(map(pnl_net, acc.closed_positions))
+# @inline total_pnl_gross(acc::Account) = sum(map(pnl_gross, acc.closed_positions))
+
+# @inline count_winners_net(acc::Account) = count(map(x -> pnl_net(x) > 0.0, acc.closed_positions))
+# @inline count_winners_gross(acc::Account) = count(map(x -> pnl_gross(x) > 0.0, acc.closed_positions))

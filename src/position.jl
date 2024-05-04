@@ -119,9 +119,9 @@ end
 
 function Base.show(io::IO, pos::Position)
     print(io, "[Position] $(pos.inst.symbol) " *
-              "px=$(format_quote(pos.inst, pos.avg_price)) " *
-              "qty=$(format_base(pos.inst, pos.quantity)) " *
-              "pnl=$(format_quote(pos.inst, pos.pnl))")
+              "px=$(format_quote(pos.inst, pos.avg_price)) $(pos.inst.quote_asset) " *
+              "qty=$(format_base(pos.inst, pos.quantity)) $(pos.inst.base_asset) " *
+              "pnl=$(format_quote(pos.inst, pos.pnl)) $(pos.inst.quote_asset)")
 end
 
 Base.show(pos::Position) = Base.show(stdout, pos)

@@ -27,9 +27,9 @@ end
 function Base.show(io::IO, o::Order{O,I}) where {O,I}
     date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS")
     print(io, "[Order] $(o.inst.symbol) " *
-              "dt=$(date_formatter(o.date))" *
-              "px=$(format_quote(o.inst, o.price)) " *
-              "qty=$(format_base(o.inst, o.quantity)) ")
+              "dt=$(date_formatter(o.date)) " *
+              "px=$(format_quote(o.inst, o.price)) $(o.inst.quote_asset) " *
+              "qty=$(format_base(o.inst, o.quantity)) $(o.inst.base_asset) ")
 end
 
 Base.show(order::Order{O,I}) where {O,I} = Base.show(stdout, order)

@@ -19,7 +19,7 @@ function print_trades(
     n_hidden = n_total - n_shown
 
     cols = [
-        Dict(:name => "Seq", :val => t -> t.tid, :fmt => (t, v) -> v),
+        Dict(:name => "ID", :val => t -> t.tid, :fmt => (t, v) -> v),
         Dict(:name => "Symbol", :val => t -> t.order.inst.symbol, :fmt => (t, v) -> v),
         Dict(:name => "Date", :val => t -> "$(format_date(acc, t.order.date)) +$(Dates.value(round(t.date - t.order.date, Millisecond))) ms", :fmt => (e, v) -> v),
         # Dict(:name => "Qty", :val => t -> t.order.quantity, :fmt => (e, v) -> format_quantity(instrument(e), v)),
@@ -193,13 +193,11 @@ function Base.show(
         crayon"#DD0000"
     end
 
-    n_open_pos = count(.!has_exposure.(acc.positions))
-
     title = " ACCOUNT SUMMARY "
     title_line = '━'^(floor(Int64, (display_width - length(title)) / 2))
     println(io, title_line * title * title_line)
-    print(io, "Balance:     $(format_base(acc, total_balance(acc)))\n")
-    print(io, "Equity:      $(format_base(acc, total_equity(acc)))\n")
+    print(io, "Balance:     $(format_base(acc, total_balance(acc))) $(acc.base_asset.symbol)\n")
+    print(io, "Equity:      $(format_base(acc, total_equity(acc))) $(acc.base_asset.symbol)\n")
     print(io, "Assets:      $(length(acc.assets))\n")
     print_assets(io, acc; kwargs...)
     # print(io, "Balance:         $(format_ccy(acc, acc.balance)) (initial $(format_ccy(acc, acc.initial_balance)))\n")
@@ -210,7 +208,7 @@ function Base.show(
     # print(io, " (")
     # print(io, get_color(acc_return), "$(@sprintf("%+.1f", 100*acc_return))%", Crayon(reset=true))
     # print(io, ")\n")
-    print(io, "Positions:   $n_open_pos\n")
+    print(io, "Positions:   $(count(has_exposure.(acc.positions)))\n")
     print_positions(io, acc; kwargs...)
     print(io, "Trades:      $(length(acc.trades))\n")
     print_trades(io, acc; max_print=max_trades, kwargs...)

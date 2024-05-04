@@ -56,5 +56,5 @@ function Base.show(io::IO, inst::Instrument)
               "index=$(inst.index) " *
               "symbol=$(inst.symbol) " *
               "base=$(inst.base_asset) [$(format_base(inst, inst.base_min)), $(format_base(inst, inst.base_max))] ± $(format_base(inst, inst.base_tick)) " *
-              "quote=$(inst.quote_asset) ± $(format_quote(inst, inst.quote_tick)) ")
+              "quote=$(inst.quote_asset) ± $(format_quote(inst, inst.quote_tick))")
 end
