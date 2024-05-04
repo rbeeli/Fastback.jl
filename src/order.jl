@@ -5,7 +5,7 @@ mutable struct Order{OData,IData}
     const inst::Instrument{IData}
     const date::DateTime
     const price::Price
-    const quantity::Quantity            # negative = short selling
+    const quantity::Quantity   # negative = short selling
     data::OData
 
     function Order(
@@ -26,10 +26,10 @@ end
 
 function Base.show(io::IO, o::Order{O,I}) where {O,I}
     date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS")
-    print(io, "[Order] $(o.symbol) " *
+    print(io, "[Order] $(o.inst.symbol) " *
               "dt=$(date_formatter(o.date))" *
-              "px=$(format_price(o.inst, o.price)) " *
-              "qty=$(format_quantity(o.inst, o.quantity)) ")
+              "px=$(format_quote(o.inst, o.price)) " *
+              "qty=$(format_base(o.inst, o.quantity)) ")
 end
 
 Base.show(order::Order{O,I}) where {O,I} = Base.show(stdout, order)

@@ -149,7 +149,7 @@ function print_assets(
     assets = acc.assets
 
     length(assets) == 0 && return
-    
+
     cols = [
         Dict(:name => "Symbol", :val => a -> a.symbol, :fmt => (a, v) -> v),
         Dict(:name => "Value", :val => a -> get_asset_value(acc, a), :fmt => (a, v) -> format_value(a, v))
@@ -193,12 +193,10 @@ function Base.show(
         crayon"#DD0000"
     end
 
-    n_open_pos = count(p -> p.quantity ≉ 0, acc.positions)
-    # acc_return = total_return(acc)
+    n_open_pos = count(.!has_exposure.(acc.positions))
 
     title = " ACCOUNT SUMMARY "
     title_line = '━'^(floor(Int64, (display_width - length(title)) / 2))
-    println(io, "")
     println(io, title_line * title * title_line)
     print(io, "Balance:     $(format_base(acc, total_balance(acc)))\n")
     print(io, "Equity:      $(format_base(acc, total_equity(acc)))\n")
@@ -212,9 +210,9 @@ function Base.show(
     # print(io, " (")
     # print(io, get_color(acc_return), "$(@sprintf("%+.1f", 100*acc_return))%", Crayon(reset=true))
     # print(io, ")\n")
-    println(io, "Positions:   $n_open_pos")
+    print(io, "Positions:   $n_open_pos\n")
     print_positions(io, acc; kwargs...)
-    println(io, "Trades:      $(length(acc.trades))")
+    print(io, "Trades:      $(length(acc.trades))\n")
     print_trades(io, acc; max_print=max_trades, kwargs...)
     println(io, '━'^display_width)
     print(io, "")

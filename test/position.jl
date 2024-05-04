@@ -3,17 +3,17 @@ using Test
 using Dates
 
 @testset "Position calc_pnl calc_return" begin
-    TEST = Instrument(1, Symbol("TEST"))
-    instruments = [TEST]
+    acc = Account{Nothing,Nothing}(Asset(1, :USD))
+    add_funds!(acc, acc.base_asset, 100_000.0)
 
-    acc = Account{Nothing}(instruments, 100_000.0)
+    TEST = register_instrument!(acc, Instrument(1, Symbol("TEST/USD"), :TEST, :USD))
 
     dt1, px1 = DateTime(2000, 1, 1), 500.0
     dt2, px2 = DateTime(2000, 1, 2), 505.0
 
     begin
         # long
-        pos = Position{Nothing}(1, TEST, px1, 500.0, 0.0)
+        pos = Position{Nothing}(1, TEST; avg_price=px1, quantity=500.0)
 
         @test is_long(pos)
         @test !is_short(pos)
@@ -26,7 +26,7 @@ using Dates
 
     begin
         # short
-        pos = Position{Nothing}(2, TEST, px1, -500.0, 0.0)
+        pos = Position{Nothing}(2, TEST; avg_price=px1, quantity=-500.0)
 
         @test !is_long(pos)
         @test is_short(pos)

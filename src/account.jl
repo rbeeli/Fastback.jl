@@ -129,7 +129,8 @@ end
 """
 Computes the total account balance in the base currency.
 
-This figures does not include the equity of open positions.
+Balance on your account reflects the amount of funds you currently have in your account,
+without taking into consideration any open positions profit or loss.
 """
 @inline function total_balance(acc::Account)
     total = 0.0
@@ -143,8 +144,7 @@ end
 """
 Computes the total account equity in the base currency.
 
-This figure includes the equity of open positions and is
-approximately equal to the total balance plus the unrealized P&L,
+Equity is your balance +/- the floating profit/loss of your open positions,
 not including closing fees.
 """
 @inline function total_equity(acc::Account)

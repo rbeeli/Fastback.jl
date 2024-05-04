@@ -36,9 +36,8 @@ symbols = Symbol.(names(df)[2:end]);
 describe(df)
 
 ## create trading account with $100'000 start capital
-base_asset = Asset(1, :USD);
-acc = Account{Nothing,Nothing}(base_asset);
-add_funds!(acc, base_asset, 100_000.0);
+acc = Account{Nothing,Nothing}(Asset(1, :USD));
+add_funds!(acc, acc.base_asset, 10_000.0);
 
 ## register instruments for all symbols
 instruments = map(((i, symbol),) -> Instrument(i, symbol, symbol, :USD), enumerate(symbols));

@@ -3,16 +3,16 @@ using Test
 using Dates
 
 @testset "Account long order w/o fees" begin
-    # create instrument
-    DUMMY = Instrument(1, Symbol("DUMMY"));
-    instruments = [DUMMY];
-
     # create trading account
-    acc = Account{Nothing}(instruments, 100_000.0)
+    acc = Account{Nothing,Nothing}(Asset(1, :USD))
+    add_funds!(acc, acc.base_asset, 100_000.0)
 
-    @test acc.initial_balance == 100_000.0
-    @test acc.balance == 100_000.0
-    @test acc.equity == 100_000.0
+    @test total_balance(acc) == 100_000.0
+    @test total_equity(acc) == 100_000.0
+    @test length(acc.assets) == 1
+
+    # create instrument
+    DUMMY = register_instrument!(acc, Instrument(1, Symbol("DUMMY/USD"), :DUMMY, :USD))
 
     pos = get_position(acc, DUMMY)
 
@@ -36,8 +36,8 @@ using Dates
     update_pnl!(acc, pos, prices[2])
 
     @test pos.pnl ≈ (prices[2] - prices[1]) * pos.quantity
-    @test acc.balance ≈ 100_000.0
-    @test acc.equity ≈ acc.initial_balance + (prices[2] - prices[1]) * pos.quantity
+    @test total_balance(acc) ≈ 100_000.0
+    @test total_equity(acc) ≈ 100_000.0 + (prices[2] - prices[1]) * pos.quantity
 
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
@@ -47,23 +47,23 @@ using Dates
     update_pnl!(acc, pos, prices[3])
 
     @test pos.pnl ≈ 0
-    @test acc.balance ≈ 100_000.0 + (prices[3] - prices[1]) * qty
-    @test acc.equity ≈ acc.balance
+    @test total_balance(acc) ≈ 100_000.0 + (prices[3] - prices[1]) * qty
+    @test total_equity(acc) ≈ total_balance(acc)[1]
 
     show(acc)
 end
 
 @testset "Account long order w/ fees ccy" begin
-    # create instrument
-    DUMMY = Instrument(1, Symbol("DUMMY"));
-    instruments = [DUMMY];
-
     # create trading account
-    acc = Account{Nothing}(instruments, 100_000.0)
+    acc = Account{Nothing,Nothing}(Asset(1, :USD))
+    add_funds!(acc, acc.base_asset, 100_000.0)
 
-    @test acc.initial_balance == 100_000.0
-    @test acc.balance == 100_000.0
-    @test acc.equity == 100_000.0
+    @test total_balance(acc) == 100_000.0
+    @test total_equity(acc) == 100_000.0
+    @test length(acc.assets) == 1
+
+    # create instrument
+    DUMMY = register_instrument!(acc, Instrument(1, Symbol("DUMMY/USD"), :DUMMY, :USD))
 
     pos = get_position(acc, DUMMY)
 
@@ -88,8 +88,8 @@ end
     update_pnl!(acc, pos, prices[2])
 
     @test pos.pnl ≈ (prices[2] - prices[1]) * pos.quantity # does not include fees!
-    @test acc.balance ≈ 100_000.0 - fee_ccy
-    @test acc.equity ≈ acc.initial_balance + (prices[2] - prices[1]) * pos.quantity - fee_ccy
+    @test total_balance(acc) ≈ 100_000.0 - fee_ccy
+    @test total_equity(acc) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - fee_ccy
 
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
@@ -99,23 +99,23 @@ end
     update_pnl!(acc, pos, prices[3])
 
     @test pos.pnl ≈ 0
-    @test acc.balance ≈ 100_000.0 + (prices[3] - prices[1]) * qty - fee_ccy - 0.5
-    @test acc.equity ≈ acc.balance
+    @test total_balance(acc) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - fee_ccy - 0.5
+    @test total_equity(acc) ≈ total_balance(acc)
 
     show(acc)
 end
 
 @testset "Account long order w/ fees pct" begin
-    # create instrument
-    DUMMY = Instrument(1, Symbol("DUMMY"));
-    instruments = [DUMMY];
-
     # create trading account
-    acc = Account{Nothing}(instruments, 100_000.0)
+    acc = Account{Nothing,Nothing}(Asset(1, :USD))
+    add_funds!(acc, acc.base_asset, 100_000.0)
 
-    @test acc.initial_balance == 100_000.0
-    @test acc.balance == 100_000.0
-    @test acc.equity == 100_000.0
+    @test total_balance(acc) == 100_000.0
+    @test total_equity(acc) == 100_000.0
+    @test length(acc.assets) == 1
+
+    # create instrument
+    DUMMY = register_instrument!(acc, Instrument(1, Symbol("DUMMY/USD"), :DUMMY, :USD))
 
     pos = get_position(acc, DUMMY)
 
@@ -139,8 +139,8 @@ end
     update_pnl!(acc, pos, prices[2])
 
     @test pos.pnl ≈ (prices[2] - prices[1]) * pos.quantity # does not include fees
-    @test acc.balance ≈ 100_000.0 - exe1.fee_ccy
-    @test acc.equity ≈ acc.initial_balance + (prices[2] - prices[1]) * pos.quantity - exe1.fee_ccy
+    @test total_balance(acc) ≈ 100_000.0 - exe1.fee_ccy
+    @test total_equity(acc) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - exe1.fee_ccy
 
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
@@ -150,8 +150,8 @@ end
     update_pnl!(acc, pos, prices[3])
 
     @test pos.pnl ≈ 0
-    @test acc.balance ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.fee_ccy - exe2.fee_ccy
-    @test acc.equity ≈ acc.balance
+    @test total_balance(acc) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.fee_ccy - exe2.fee_ccy
+    @test total_equity(acc) ≈ total_balance(acc)
 
     show(acc)
 end
@@ -189,15 +189,15 @@ end
 #     update_account!(acc, data, inst)
 
 #     @test pos.pnl ≈ -100
-#     @test acc.balance ≈ 100_000.0 - pos.quantity * prices[1].bid
-#     @test acc.equity ≈ 99_900.0
+#     @test total_balance(acc) ≈ 100_000.0 - pos.quantity * prices[1].bid
+#     @test total_equity(acc) ≈ 99_900.0
 
 #     update_book!(book, prices[2])
 #     update_account!(acc, data, inst)
 
 #     @test pos.pnl ≈ -200
-#     @test acc.balance ≈ 100_000.0 - pos.quantity * prices[1].bid
-#     @test acc.equity ≈ 99_800.0
+#     @test total_balance(acc) ≈ 100_000.0 - pos.quantity * prices[1].bid
+#     @test total_equity(acc) ≈ 99_800.0
 
 #     update_book!(book, prices[3])
 #     update_account!(acc, data, inst)
@@ -211,13 +211,13 @@ end
 #     # @test calc_realized_return(acc.trades[end].execution) ≈ (100.0 - 103.0) / 100.0
 #     @test acc.trades[end].execution.realized_pnl ≈ -300.0
 #     @test pos.pnl ≈ -50
-#     @test acc.balance ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.trades) - pos.quantity * prices[3].ask
-#     @test acc.equity ≈ 99_650.0
+#     @test total_balance(acc) ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.trades) - pos.quantity * prices[3].ask
+#     @test total_equity(acc) ≈ 99_650.0
 
 #     update_book!(book, prices[4])
 #     update_account!(acc, data, inst)
 
-#     @test acc.equity ≈ 99_400.0
+#     @test total_equity(acc) ≈ 99_400.0
 
 #     # open short order (results in net short -50)
 #     execute_order!(acc, book, Order(inst, -150.0, prices[4].dt))
@@ -225,14 +225,14 @@ end
 #     @test acc.positions[inst.index].avg_price == book.bba.bid
 #     @test acc.trades[end].execution.realized_pnl ≈ -300.0
 #     @test pos.pnl ≈ -25
-#     @test acc.balance ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.trades) - pos.quantity * prices[4].bid
-#     @test acc.equity ≈ 99_375.0
+#     @test total_balance(acc) ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.trades) - pos.quantity * prices[4].bid
+#     @test total_equity(acc) ≈ 99_375.0
 
 #     # close open position
 #     execute_order!(acc, book, Order(inst, 50.0, prices[4].dt))
 
-#     @test acc.balance ≈ 99_375.0
-#     @test acc.equity ≈ 99_375.0
+#     @test total_balance(acc) ≈ 99_375.0
+#     @test total_equity(acc) ≈ 99_375.0
 #     @test acc.trades[end].execution.realized_pnl ≈ -25.0
 
 #     @test pos.quantity == 0.0
@@ -240,8 +240,8 @@ end
 #     @test pos.pnl == 0.0
 #     @test length(pos.trades) == 4
 
-#     @test acc.equity == acc.initial_balance + sum(t.execution.realized_pnl for t in acc.trades)
-#     @test acc.balance == acc.equity
+#     @test total_equity(acc) == 100_000.0+ sum(t.execution.realized_pnl for t in acc.trades)
+#     @test total_balance(acc) == total_equity(acc)
 
 #     # realized_orders = filter(t -> t.execution.realized_pnl != 0.0, acc.trades)
 #     # @test equity_return(acc) ≈ sum(calc_realized_return(o)*o.execution.weight for o in realized_orders)

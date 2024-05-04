@@ -25,9 +25,8 @@ prices = 1000.0 .+ cumsum(randn(N) .+ 0.1);
 dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N);
 
 ## create trading account with $10'000 start capital
-base_asset = Asset(1, :USD);
-acc = Account{Nothing,Nothing}(base_asset);
-add_funds!(acc, base_asset, 10_000.0);
+acc = Account{Nothing,Nothing}(Asset(1, :USD));
+add_funds!(acc, acc.base_asset, 10_000.0);
 
 ## register a dummy instrument
 DUMMY = register_instrument!(acc, Instrument(1, Symbol("DUMMY/USD"), :DUMMY, :USD))

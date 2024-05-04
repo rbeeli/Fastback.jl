@@ -113,7 +113,6 @@ calc_exposure_increase_quantity(10, -5)   # returns 0
     end
 end
 
-
 # @inline function match_target_exposure(target_exposure::Price, dir::TradeDir.T, ob::OrderBook{I}) where {I}
 #     target_exposure / fill_price(sign(dir), ob; zero_price=0.0)
 # end
