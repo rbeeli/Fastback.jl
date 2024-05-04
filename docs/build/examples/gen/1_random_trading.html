@@ -51,12 +51,13 @@ N = 2_000;
 prices = 1000.0 .+ cumsum(randn(N) .+ 0.1);
 dts = map(x -&gt; DateTime(2020, 1, 1) + Hour(x), 0:N);
 
-# define instrument
-DUMMY = Instrument(1, Symbol(&quot;DUMMY&quot;));
-instruments = [DUMMY];
+# create trading account with $10&#39;000 start capital
+base_asset = Asset(1, :USD);
+acc = Account{Nothing,Nothing}(base_asset);
+add_funds!(acc, base_asset, 10_000.0);
 
-# create trading account with 10,000 start capital
-acc = Account{Nothing}(instruments, 10_000.0);
+# register a dummy instrument
+DUMMY = register_instrument!(acc, Instrument(1, Symbol(&quot;DUMMY/USD&quot;), :DUMMY, :USD))
 
 # data collector for account equity and drawdowns (sampling every hour)
 collect_equity, equity_data = periodic_collector(Float64, Hour(1));
@@ -75,49 +76,58 @@ for (dt, price) in zip(dts, prices)
     update_pnl!(acc, DUMMY, price)
 
     # collect data for plotting
-    collect_equity(dt, acc.equity)
-    collect_drawdown(dt, acc.equity)
+    if should_collect(equity_data, dt)
+        equity = total_equity(acc)
+        collect_equity(dt, equity)
+        collect_drawdown(dt, equity)
+    end
 end
 
 # print account statistics
 show(acc)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ACCOUNT SUMMARY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Balance:         10123.98 (initial 10000.00)
-Equity:          10244.09 (<span class="sgr38_2" style="color:#11bf11">+2.4%</span>)
-Open positions:  1
-┌────────┬──────┬────────────┬────────┐
-│<span class="sgr1"> Symbol </span>│<span class="sgr1">  Qty </span>│<span class="sgr1"> Avg. price </span>│<span class="sgr1">    P&amp;L </span>│
-├────────┼──────┼────────────┼────────┤
-│  DUMMY │<span class="sgr38_2" style="color:#d0d"> 3.25 </span>│    1086.99 │<span class="sgr38_2" style="color:#11bf11"> 120.11 </span>│
-└────────┴──────┴────────────┴────────┘
-Trades:          23
-┌─────┬────────┬───────────────────────────┬──────────┬─────────────┬────────────┬──────────────┬──────┐
-│<span class="sgr1"> Seq </span>│<span class="sgr1"> Symbol </span>│<span class="sgr1">                      Date </span>│<span class="sgr1"> Fill qty </span>│<span class="sgr1"> Remain. qty </span>│<span class="sgr1"> Fill price </span>│<span class="sgr1"> Realized P&amp;L </span>│<span class="sgr1">  Fee </span>│
-├─────┼────────┼───────────────────────────┼──────────┼─────────────┼────────────┼──────────────┼──────┤
-│   1 │  DUMMY │ 2020-01-01 03:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │     999.66 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
-│   2 │  DUMMY │ 2020-01-05 02:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1004.04 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
-│   3 │  DUMMY │ 2020-01-07 18:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1005.23 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
-│   4 │  DUMMY │ 2020-01-10 04:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1014.50 │<span class="sgr38_2" style="color:#11bf11">        10.51 </span>│ 1.01 │
-│   5 │  DUMMY │ 2020-01-14 05:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1005.24 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
-│   6 │  DUMMY │ 2020-01-16 05:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │     998.26 │<span class="sgr38_2" style="color:#d00">        -6.56 </span>│ 1.00 │
-│   7 │  DUMMY │ 2020-01-16 18:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │     998.62 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
-│   8 │  DUMMY │ 2020-01-18 03:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1002.23 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
-│   9 │  DUMMY │ 2020-01-18 10:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1003.12 │<span class="sgr38_2" style="color:#11bf11">         0.34 </span>│ 1.00 │
-│  10 │  DUMMY │ 2020-01-19 02:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1007.68 │<span class="sgr38_2" style="color:#11bf11">         4.89 </span>│ 1.01 │
-│  11 │  DUMMY │ 2020-01-30 02:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1014.10 │<span class="sgr38_2" style="color:#d00">        -0.76 </span>│ 0.76 │
-│  12 │  DUMMY │ 2020-02-03 14:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1026.44 │<span class="sgr38_2" style="color:#d00">        -0.77 </span>│ 0.77 │
-│  13 │  DUMMY │ 2020-02-10 16:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1039.42 │<span class="sgr38_2" style="color:#d00">        -0.78 </span>│ 0.78 │
-│  14 │  DUMMY │ 2020-02-12 20:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1050.59 │<span class="sgr38_2" style="color:#d00">        -0.79 </span>│ 0.79 │
-│  15 │  DUMMY │ 2020-02-27 17:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1049.16 │<span class="sgr38_2" style="color:#d00">        -0.79 </span>│ 0.79 │
-│  16 │  DUMMY │ 2020-02-27 23:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1044.86 │<span class="sgr38_2" style="color:#11bf11">        11.89 </span>│ 1.04 │
-│  17 │  DUMMY │ 2020-03-04 21:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1069.05 │<span class="sgr38_2" style="color:#11bf11">        36.06 </span>│ 1.07 │
-│  18 │  DUMMY │ 2020-03-07 17:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1076.76 │<span class="sgr38_2" style="color:#11bf11">        43.76 </span>│ 1.08 │
-│  19 │  DUMMY │ 2020-03-10 02:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1090.97 │<span class="sgr38_2" style="color:#d00">        -0.82 </span>│ 0.82 │
-│  20 │  DUMMY │ 2020-03-18 04:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1113.01 │<span class="sgr38_2" style="color:#d00">        -0.83 </span>│ 0.83 │
-│  21 │  DUMMY │ 2020-03-18 23:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1114.18 │<span class="sgr38_2" style="color:#d00">        -0.84 </span>│ 0.84 │
-│  22 │  DUMMY │ 2020-03-22 17:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1121.58 │<span class="sgr38_2" style="color:#d00">        -0.84 </span>│ 0.84 │
-│  23 │  DUMMY │ 2020-03-23 00:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1122.93 │<span class="sgr38_2" style="color:#11bf11">        34.82 </span>│ 1.12 │
-└─────┴────────┴───────────────────────────┴──────────┴─────────────┴────────────┴──────────────┴──────┘
+Balance:     10123.98
+Equity:      10244.09
+Assets:      1
+┌────────┬──────────┐
+│<span class="sgr1"> Symbol </span>│<span class="sgr1">    Value </span>│
+├────────┼──────────┤
+│    USD │<span class="sgr38_2" style="color:#11bf11"> 10123.98 </span>│
+└────────┴──────────┘
+Positions:   1
+┌───────────┬──────┬────────────┬────────┐
+│<span class="sgr1">    Symbol </span>│<span class="sgr1">  Qty </span>│<span class="sgr1"> Avg. price </span>│<span class="sgr1">    P&amp;L </span>│
+├───────────┼──────┼────────────┼────────┤
+│ DUMMY/USD │<span class="sgr38_2" style="color:#d0d"> 3.25 </span>│    1086.99 │<span class="sgr38_2" style="color:#11bf11"> 120.11 </span>│
+└───────────┴──────┴────────────┴────────┘
+Trades:      23
+┌─────┬───────────┬───────────────────────────┬──────────┬─────────────┬────────────┬──────────────┬──────┐
+│<span class="sgr1"> Seq </span>│<span class="sgr1">    Symbol </span>│<span class="sgr1">                      Date </span>│<span class="sgr1"> Fill qty </span>│<span class="sgr1"> Remain. qty </span>│<span class="sgr1"> Fill price </span>│<span class="sgr1"> Realized P&amp;L </span>│<span class="sgr1">  Fee </span>│
+├─────┼───────────┼───────────────────────────┼──────────┼─────────────┼────────────┼──────────────┼──────┤
+│   1 │ DUMMY/USD │ 2020-01-01 03:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │     999.66 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
+│   2 │ DUMMY/USD │ 2020-01-05 02:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1004.04 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
+│   3 │ DUMMY/USD │ 2020-01-07 18:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1005.23 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
+│   4 │ DUMMY/USD │ 2020-01-10 04:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1014.50 │<span class="sgr38_2" style="color:#11bf11">        10.51 </span>│ 1.01 │
+│   5 │ DUMMY/USD │ 2020-01-14 05:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1005.24 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
+│   6 │ DUMMY/USD │ 2020-01-16 05:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │     998.26 │<span class="sgr38_2" style="color:#d00">        -6.56 </span>│ 1.00 │
+│   7 │ DUMMY/USD │ 2020-01-16 18:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │     998.62 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
+│   8 │ DUMMY/USD │ 2020-01-18 03:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1002.23 │<span class="sgr38_2" style="color:#d00">        -0.75 </span>│ 0.75 │
+│   9 │ DUMMY/USD │ 2020-01-18 10:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1003.12 │<span class="sgr38_2" style="color:#11bf11">         0.34 </span>│ 1.00 │
+│  10 │ DUMMY/USD │ 2020-01-19 02:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1007.68 │<span class="sgr38_2" style="color:#11bf11">         4.89 </span>│ 1.01 │
+│  11 │ DUMMY/USD │ 2020-01-30 02:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1014.10 │<span class="sgr38_2" style="color:#d00">        -0.76 </span>│ 0.76 │
+│  12 │ DUMMY/USD │ 2020-02-03 14:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1026.44 │<span class="sgr38_2" style="color:#d00">        -0.77 </span>│ 0.77 │
+│  13 │ DUMMY/USD │ 2020-02-10 16:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1039.42 │<span class="sgr38_2" style="color:#d00">        -0.78 </span>│ 0.78 │
+│  14 │ DUMMY/USD │ 2020-02-12 20:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1050.59 │<span class="sgr38_2" style="color:#d00">        -0.79 </span>│ 0.79 │
+│  15 │ DUMMY/USD │ 2020-02-27 17:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1049.16 │<span class="sgr38_2" style="color:#d00">        -0.79 </span>│ 0.79 │
+│  16 │ DUMMY/USD │ 2020-02-27 23:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1044.86 │<span class="sgr38_2" style="color:#11bf11">        11.89 </span>│ 1.04 │
+│  17 │ DUMMY/USD │ 2020-03-04 21:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1069.05 │<span class="sgr38_2" style="color:#11bf11">        36.06 </span>│ 1.07 │
+│  18 │ DUMMY/USD │ 2020-03-07 17:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1076.76 │<span class="sgr38_2" style="color:#11bf11">        43.76 </span>│ 1.08 │
+│  19 │ DUMMY/USD │ 2020-03-10 02:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1090.97 │<span class="sgr38_2" style="color:#d00">        -0.82 </span>│ 0.82 │
+│  20 │ DUMMY/USD │ 2020-03-18 04:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1113.01 │<span class="sgr38_2" style="color:#d00">        -0.83 </span>│ 0.83 │
+│  21 │ DUMMY/USD │ 2020-03-18 23:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1114.18 │<span class="sgr38_2" style="color:#d00">        -0.84 </span>│ 0.84 │
+│  22 │ DUMMY/USD │ 2020-03-22 17:00:00 +0 ms │<span class="sgr38_2" style="color:#d0d">     0.75 </span>│        0.25 │    1121.58 │<span class="sgr38_2" style="color:#d00">        -0.84 </span>│ 0.84 │
+│  23 │ DUMMY/USD │ 2020-03-23 00:00:00 +0 ms │<span class="sgr38_2" style="color:#dd0">    -1.00 </span>│        0.00 │    1122.93 │<span class="sgr38_2" style="color:#11bf11">        34.82 </span>│ 1.12 │
+└─────┴───────────┴───────────────────────────┴──────────┴─────────────┴────────────┴──────────────┴──────┘
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</code></pre><h3 id="Plot-account-equity-curve"><a class="docs-heading-anchor" href="#Plot-account-equity-curve">Plot account equity curve</a><a id="Plot-account-equity-curve-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-account-equity-curve" title="Permalink"></a></h3><pre><code class="language-julia hljs">using Plots, Printf
 theme(:juno; titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false)
 
@@ -128,7 +138,7 @@ plot(dates(equity_data), values(equity_data);
     linetype=:steppost,
     yformatter=:plain,
     size=(800, 400),
-    color=&quot;#BBBB00&quot;)</code></pre><img src="1_random_trading-2546ce51.svg" alt="Example block output"/><h3 id="Plot-account-equity-drawdown-curve"><a class="docs-heading-anchor" href="#Plot-account-equity-drawdown-curve">Plot account equity drawdown curve</a><a id="Plot-account-equity-drawdown-curve-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-account-equity-drawdown-curve" title="Permalink"></a></h3><pre><code class="language-julia hljs"># plot drawdown curve
+    color=&quot;#BBBB00&quot;)</code></pre><img src="1_random_trading-bc77f1db.svg" alt="Example block output"/><h3 id="Plot-account-equity-drawdown-curve"><a class="docs-heading-anchor" href="#Plot-account-equity-drawdown-curve">Plot account equity drawdown curve</a><a id="Plot-account-equity-drawdown-curve-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-account-equity-drawdown-curve" title="Permalink"></a></h3><pre><code class="language-julia hljs"># plot drawdown curve
 plot(dates(drawdown_data), 100values(drawdown_data);
     title=&quot;Equity drawdowns [%]&quot;,
     legend=false,
@@ -136,4 +146,4 @@ plot(dates(drawdown_data), 100values(drawdown_data);
     color=&quot;#BB0000&quot;,
     yformatter=y -&gt; @sprintf(&quot;%.1f%%&quot;, y),
     size=(800, 200),
-    fill=(0, &quot;#BB000033&quot;))</code></pre><img src="1_random_trading-84d74b91.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../0_setup.html">« Basic Setup</a><a class="docs-footer-nextpage" href="2_portfolio_trading.html">2. Portfolio Trading »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Saturday 27 April 2024 04:46">Saturday 27 April 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    fill=(0, &quot;#BB000033&quot;))</code></pre><img src="1_random_trading-9dc8c041.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../0_setup.html">« Basic Setup</a><a class="docs-footer-nextpage" href="2_portfolio_trading.html">2. Portfolio Trading »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Saturday 4 May 2024 05:41">Saturday 4 May 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

@@ -24,12 +24,13 @@ N = 2_000;
 prices = 1000.0 .+ cumsum(randn(N) .+ 0.1);
 dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N);
 
-## define instrument
-DUMMY = Instrument(1, Symbol("DUMMY"));
-instruments = [DUMMY];
+## create trading account with $10'000 start capital
+base_asset = Asset(1, :USD);
+acc = Account{Nothing,Nothing}(base_asset);
+add_funds!(acc, base_asset, 10_000.0);
 
-## create trading account with 10,000 start capital
-acc = Account{Nothing}(instruments, 10_000.0);
+## register a dummy instrument
+DUMMY = register_instrument!(acc, Instrument(1, Symbol("DUMMY/USD"), :DUMMY, :USD))
 
 ## data collector for account equity and drawdowns (sampling every hour)
 collect_equity, equity_data = periodic_collector(Float64, Hour(1));
@@ -48,8 +49,11 @@ for (dt, price) in zip(dts, prices)
     update_pnl!(acc, DUMMY, price)
 
     ## collect data for plotting
-    collect_equity(dt, acc.equity)
-    collect_drawdown(dt, acc.equity)
+    if should_collect(equity_data, dt)
+        equity = total_equity(acc)
+        collect_equity(dt, equity)
+        collect_drawdown(dt, equity)
+    end
 end
 
 ## print account statistics

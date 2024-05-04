@@ -1,5 +1,5 @@
 @inline function fill_order!(
-    acc::Account{OData,IData},
+    acc::Account{OData,IData,AData,ER},
     order::Order{OData,IData},
     dt::DateTime,
     fill_price::Price
@@ -7,10 +7,12 @@
     fill_quantity::Quantity=0.0,    # fill quantity, if not provided, order quantity is used (complete fill)
     fee_ccy::Price=0.0,            # fixed fees in account currency
     fee_pct::Price=0.0,            # relative fees as percentage of order value, e.g. 0.001 = 0.1%
-)::Trade{OData,IData} where {OData,IData}
+)::Trade{OData,IData} where {OData,IData,AData,ER}
+    # get quote asset
+    quote_asset = get_asset(acc, order.inst.quote_asset)
+
     # positions are netted using weighted average price,
     # hence only one static position per instrument is maintained
-
     pos = @inbounds acc.positions[order.inst.index]
     pos_qty = pos.quantity
 
@@ -29,7 +31,7 @@
         realized_pnl = (fill_price - pos.avg_price) * realized_quantity
 
         # add realized P&L to account balance
-        acc.balance += realized_pnl
+        @inbounds acc.balances[quote_asset.index] += realized_pnl
 
         # remove realized P&L from position P&L
         pos.pnl -= realized_pnl
@@ -75,8 +77,8 @@
     pos.quantity = new_exposure
 
     # subtract fees from account balance and equity
-    acc.balance -= fee_ccy
-    acc.equity -= fee_ccy
+    @inbounds acc.balances[quote_asset.index] -= fee_ccy
+    @inbounds acc.equities[quote_asset.index] -= fee_ccy
 
     # update P&L of position and account equity (w/o fees, already accounted for)
     update_pnl!(acc, pos, fill_price)

@@ -6,12 +6,14 @@ Pull requests and issues are welcome.
 
 - Account base currency != instrument currency
   - Add currency conversion rates
+  - P&L in quote or base currency?
+  - Fee currency?
+- Fee model object
+- Slippage model object
+- Order sizer object
 - Incorporate funding cost info to positions, accrues over time
 - Backtesting portfolios (rebalancing, weights)
-- Make price and quantity types configurable
-  - Use Account as parameter for all trading functions?
-- Logging of events
-- Unit tests
+- More unit tests
 
 ## Testing
 
@@ -36,10 +38,9 @@ cd docs
 julia --project make.jl
 ```
 
-```sql
-select symbol ticker, dt_close, `close`, volume
-from frd.stocks_1d
-where symbol in ('AAPL','NVDA','TSLA','GE')
-  and dt_close between '2022-01-01' and '2025-01-01'
-order by symbol, dt_close
+To view the documentation locally, run:
+
+```bash
+cd docs
+npx live-server ./build
 ```

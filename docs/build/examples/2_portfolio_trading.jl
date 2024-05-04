@@ -35,11 +35,14 @@ symbols = Symbol.(names(df)[2:end]);
 ## print summary
 describe(df)
 
-## define instrument objects for all symbols
-instruments = map(t -> Instrument(t[1], t[2]), enumerate(symbols))
+## create trading account with $100'000 start capital
+base_asset = Asset(1, :USD);
+acc = Account{Nothing,Nothing}(base_asset);
+add_funds!(acc, base_asset, 100_000.0);
 
-## create trading account with 100,000 start capital
-acc = Account{Nothing}(instruments, 100_000.0);
+## register instruments for all symbols
+instruments = map(((i, symbol),) -> Instrument(i, symbol, symbol, :USD), enumerate(symbols));
+register_instrument!.(Ref(acc), instruments);
 
 ## data collector for account balance, equity and drawdowns (sampling every day)
 collect_balance, balance_data = periodic_collector(Float64, Day(1));
@@ -48,7 +51,7 @@ collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Da
 
 function open_position!(acc, inst, dt, price)
     ## invest 20% of equity in the position
-    qty = 0.2acc.equity / price
+    qty = 0.2total_equity(acc) / price
     order = Order(oid!(acc), inst, dt, price, qty)
     fill_order!(acc, order, dt, price; fee_pct=0.001)
 end
@@ -101,9 +104,12 @@ for i in 6:nrow(df)
     end
 
     ## collect data for plotting
-    collect_balance(dt, acc.balance)
-    collect_equity(dt, acc.equity)
-    collect_drawdown(dt, acc.equity)
+    if should_collect(equity_data, dt)
+        equity = total_equity(acc)
+        collect_balance(dt, total_balance(acc))
+        collect_equity(dt, equity)
+        collect_drawdown(dt, equity)
+    end
 end
 
 ## print account statistics
@@ -167,7 +173,7 @@ p4 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
     title="P&L breakdown by stocks",
     permute=(:x, :y),
     xlims=(0, size(pnl_by_inst)[1]),
-    yformatter=y -> format_ccy(acc, y),
+    yformatter=y -> @sprintf("%.0f", y),
     color="#BBBB00",
     linecolor=nothing,
     bar_width=0.5)

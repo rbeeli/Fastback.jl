@@ -7,10 +7,11 @@ mutable struct Position{OData,IData}
 
     function Position{OData}(
         index::Int,
-        inst::Instrument{IData},
-        avg_price::Price,
-        quantity::Quantity,
-        pnl::Price
+        inst::Instrument{IData}
+        ;
+        avg_price::Price=0.0,
+        quantity::Quantity=0.0,
+        pnl::Price=0.0
     ) where {OData,IData}
         new{OData,IData}(index, inst, avg_price, quantity, pnl)
     end
@@ -116,3 +117,12 @@ end
 # @inline function match_target_exposure(target_exposure::Price, dir::TradeDir.T, ob::OrderBook{I}) where {I}
 #     target_exposure / fill_price(sign(dir), ob; zero_price=0.0)
 # end
+
+function Base.show(io::IO, pos::Position)
+    print(io, "[Position] $(pos.inst.symbol) " *
+              "px=$(format_quote(pos.inst, pos.avg_price)) " *
+              "qty=$(format_base(pos.inst, pos.quantity)) " *
+              "pnl=$(format_quote(pos.inst, pos.pnl))")
+end
+
+Base.show(pos::Position) = Base.show(stdout, pos)

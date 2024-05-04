@@ -1,3 +1,5 @@
+using Dates
+
 mutable struct Trade{OData,IData}
     const order::Order{OData,IData}
     const tid::Int
@@ -23,3 +25,21 @@ end
 #         zero_value
 #     end
 # end
+
+function Base.show(io::IO, t::Trade)
+    date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS")
+    ccy_formatter = x -> @sprintf("%.2f", x)
+    inst = t.order.inst
+    print(io, "[Trade] " *
+              "dt=$(date_formatter(t.date)) " *
+              "fill_px=$(format_quote(inst, t.fill_price)) $(inst.quote_asset) " *
+              "fill_qty=$(format_base(inst, t.fill_quantity)) $(inst.base_asset) " *
+              "remain_qty=$(format_base(inst, t.remaining_quantity)) $(inst.base_asset) " *
+              "real_pnl=$(ccy_formatter(t.realized_pnl)) $(inst.quote_asset) " *
+              "real_qty=$(format_base(inst, t.realized_quantity)) $(inst.base_asset) " *
+              "fee_ccy=$(ccy_formatter(t.fee_ccy)) $(inst.quote_asset) " *
+              "pos_px=$(format_quote(inst, t.pos_price)) $(inst.quote_asset) " *
+              "pos_qty=$(format_base(inst, t.pos_quantity)) $(inst.base_asset)")
+end
+
+Base.show(obj::Trade) = Base.show(stdout, obj)

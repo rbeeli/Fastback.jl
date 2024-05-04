@@ -19,11 +19,13 @@ This reduces the implementation gap from backtesting to real-world execution sig
 
 ## Features
 
-- Event-based
-- Modular architecture, no opinionated black-box design
-- Supports arbitrary pricing data source
+- Event-based, modular architecture
+- Multi-currency support
+  - Hold multiple cash assets in parallel, e.g. USD, EUR, BTC etc.
+  - Configurable account base currency and conversion rates
+- Supports arbitrary price data sources
 - Supports modelling fees, execution delays, price slippage and partial fills
-- Flexible data collectors to collect time series like account equitity history, number of open positions, etc.
+- Flexible data collectors to historize account asset values, drawdowns, etc.
 - Facilities for parallelized backtesting and hyperparameter optimization
 - Uses position netting approach for bookkeeping
   - Maintains single position per instrument using weighted average cost method

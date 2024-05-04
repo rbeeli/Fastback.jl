@@ -21,11 +21,15 @@ mutable struct Order{OData,IData}
     end
 end
 
-@inline oid(order::Order) = order.oid
-@inline instrument(order::Order) = order.inst
-@inline symbol(order::Order) = symbol(instrument(order))
-@inline date(order::Order) = order.date
-@inline price(order::Order) = order.price
-@inline quantity(order::Order) = order.quantity
+@inline symbol(order::Order) = symbol(order.inst)
 @inline trade_dir(order::Order) = trade_dir(order.quantity)
-@inline data(order::Order) = order.data
+
+function Base.show(io::IO, o::Order{O,I}) where {O,I}
+    date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS")
+    print(io, "[Order] $(o.symbol) " *
+              "dt=$(date_formatter(o.date))" *
+              "px=$(format_price(o.inst, o.price)) " *
+              "qty=$(format_quantity(o.inst, o.quantity)) ")
+end
+
+Base.show(order::Order{O,I}) where {O,I} = Base.show(stdout, order)
