@@ -11,7 +11,8 @@ Pull requests and issues are welcome.
 - Fee model object
 - Slippage model object
 - Order sizer object
-- Incorporate funding cost info to positions, accrues over time
+- Margin trading
+  - Incorporate funding cost info to positions, accrues over time
 - Backtesting portfolios (rebalancing, weights)
 - More unit tests
 
