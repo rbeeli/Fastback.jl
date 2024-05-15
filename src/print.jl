@@ -21,7 +21,8 @@ function print_trades(
     cols = [
         Dict(:name => "ID", :val => t -> t.tid, :fmt => (t, v) -> v),
         Dict(:name => "Symbol", :val => t -> t.order.inst.symbol, :fmt => (t, v) -> v),
-        Dict(:name => "Date", :val => t -> "$(format_date(acc, t.order.date)) +$(Dates.value(round(t.date - t.order.date, Millisecond))) ms", :fmt => (e, v) -> v),
+        # Dict(:name => "Date", :val => t -> "$(format_date(acc, t.order.date)) +$(Dates.value(round(t.date - t.order.date, Millisecond))) ms", :fmt => (e, v) -> v),
+        Dict(:name => "Date", :val => t -> "$(format_date(acc, t.date))", :fmt => (e, v) -> v),
         # Dict(:name => "Qty", :val => t -> t.order.quantity, :fmt => (e, v) -> format_quantity(instrument(e), v)),
         Dict(:name => "Fill qty", :val => t -> t.fill_quantity, :fmt => (t, v) -> format_base(t.order.inst, v)),
         Dict(:name => "Remain. qty", :val => t -> t.remaining_quantity, :fmt => (t, v) -> format_base(t.order.inst, v)),
@@ -151,8 +152,21 @@ function print_assets(
     length(assets) == 0 && return
 
     cols = [
-        Dict(:name => "Symbol", :val => a -> a.symbol, :fmt => (a, v) -> v),
-        Dict(:name => "Value", :val => a -> get_asset_value(acc, a), :fmt => (a, v) -> format_value(a, v))
+        Dict(
+            :name => "",
+            :val => a -> a.symbol,
+            :fmt => (a, v) -> v
+        ),
+        Dict(
+            :name => "Value",
+            :val => a -> get_asset_value(acc, a),
+            :fmt => (a, v) -> format_value(a, v)
+        ),
+        Dict(
+            :name => "Value $(acc.base_asset.symbol)",
+            :val => a -> get_asset_value_base(acc, a),
+            :fmt => (a, v) -> format_value(a, v)
+        )
     ]
     columns = [c[:name] for c in cols]
 
@@ -164,8 +178,8 @@ function print_assets(
 
     formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](assets[row_ix], v)
 
-    h_val_pos = Highlighter((data, i, j) -> cols[j][:name] == "Value" && data_columns[j][i] > 0, foreground=0x11BF11)
-    h_val_neg = Highlighter((data, i, j) -> cols[j][:name] == "Value" && data_columns[j][i] < 0, foreground=0xDD0000)
+    h_val_pos = Highlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] > 0, foreground=0x11BF11)
+    h_val_neg = Highlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] < 0, foreground=0xDD0000)
 
     pretty_table(
         io,
@@ -196,21 +210,17 @@ function Base.show(
     title = " ACCOUNT SUMMARY "
     title_line = '━'^(floor(Int64, (display_width - length(title)) / 2))
     println(io, title_line * title * title_line)
-    print(io, "Balance:     $(format_base(acc, total_balance(acc))) $(acc.base_asset.symbol)\n")
-    print(io, "Equity:      $(format_base(acc, total_equity(acc))) $(acc.base_asset.symbol)\n")
-    print(io, "Assets:      $(length(acc.assets))\n")
+    print(io, "Total balance:     $(format_base(acc, total_balance(acc))) $(acc.base_asset.symbol)\n")
+    print(io, "Total equity:      $(format_base(acc, total_equity(acc))) $(acc.base_asset.symbol)\n")
+    print(io, "\n")
+    print(io, "\033[1mAsset balances\033[0m ($(length(acc.assets)))\n")
     print_assets(io, acc; kwargs...)
-    # print(io, "Balance:         $(format_ccy(acc, acc.balance)) (initial $(format_ccy(acc, acc.initial_balance)))\n")
-    # print(io, " (")
-    # print(io, get_color(balance_ret(acc)), "$(@sprintf("%+.2f", balance_ret(acc)*100))%", Crayon(reset=true))
-    # print(io, ")\n")
-    # print(io, "Equity:          $(format_ccy(acc, acc.equity))")
-    # print(io, " (")
     # print(io, get_color(acc_return), "$(@sprintf("%+.1f", 100*acc_return))%", Crayon(reset=true))
-    # print(io, ")\n")
-    print(io, "Positions:   $(count(has_exposure.(acc.positions)))\n")
+    print(io, "\n")
+    print(io, "\033[1mPositions\033[0m ($(count(has_exposure.(acc.positions))))\n")
     print_positions(io, acc; kwargs...)
-    print(io, "Trades:      $(length(acc.trades))\n")
+    print(io, "\n")
+    print(io, "\033[1mTrades\033[0m ($(length(acc.trades)))\n")
     print_trades(io, acc; max_print=max_trades, kwargs...)
     println(io, '━'^display_width)
     print(io, "")

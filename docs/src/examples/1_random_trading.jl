@@ -22,14 +22,14 @@ Random.seed!(42);
 ## generate synthetic price series
 N = 2_000;
 prices = 1000.0 .+ cumsum(randn(N) .+ 0.1);
-dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N);
+dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N-1);
 
 ## create trading account with $10'000 start capital
-acc = Account{Nothing,Nothing}(Asset(1, :USD));
-add_funds!(acc, acc.base_asset, 10_000.0);
+acc = Account{Nothing,Nothing}(Asset(:USD));
+add_funds!(acc, 10_000.0);
 
 ## register a dummy instrument
-DUMMY = register_instrument!(acc, Instrument(1, Symbol("DUMMY/USD"), :DUMMY, :USD))
+DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
 
 ## data collector for account equity and drawdowns (sampling every hour)
 collect_equity, equity_data = periodic_collector(Float64, Hour(1));

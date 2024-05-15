@@ -9,7 +9,7 @@ mutable struct Order{OData,IData}
     data::OData
 
     function Order(
-        oid::Int,
+        oid,
         inst::Instrument{IData},
         date::DateTime,
         price::Price,

@@ -1,3 +1,18 @@
+@inline function update_pnl!(acc::Account, pos::Position, close_price)
+    # update P&L and account equity using delta of old and new P&L
+    new_pnl = calc_pnl(pos, close_price)
+    pnl_delta = new_pnl - pos.pnl
+    asset = get_asset(acc, pos.inst.quote_asset)
+    # TODO: Ccy conversion (settlement currency)
+    @inbounds acc.equities[asset.index] += pnl_delta
+    pos.pnl = new_pnl
+    return
+end
+
+@inline function update_pnl!(acc::Account, inst::Instrument, close_price)
+    update_pnl!(acc, get_position(acc, inst), close_price)
+end
+
 @inline function fill_order!(
     acc::Account{OData,IData,AData,ER},
     order::Order{OData,IData},

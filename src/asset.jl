@@ -1,20 +1,19 @@
 using Printf
 
 mutable struct Asset{AData}
-    const index::Int                # unique index for each asset starting from 1 (used for array indexing and hashing)
+    index::UInt              # unique index for each asset starting from 1 (used for array indexing and hashing)
     const symbol::Symbol
     const digits::Int
     const data::AData
 
     function Asset(
-        index::Int,
         symbol::Symbol
         ;
-        digits::Int=2,
+        digits=2,
         data::AData=nothing
     ) where {AData}
         new{AData}(
-            index,
+            0, # index
             symbol,
             digits,
             data
@@ -29,5 +28,6 @@ end
 function Base.show(io::IO, asset::Asset)
     print(io, "[Asset] " *
               "index=$(asset.index) " *
-              "symbol=$(asset.symbol)")
+              "symbol=$(asset.symbol) " *
+              "digits=$(asset.digits)")
 end

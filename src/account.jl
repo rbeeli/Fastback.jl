@@ -15,11 +15,11 @@ mutable struct Account{OData,IData,AData,ER<:ExchangeRates}
         base_asset::Asset{AData}
         ;
         date_format=dateformat"yyyy-mm-dd HH:MM:SS",
-        order_sequence::Int=0,
-        trade_sequence::Int=0,
+        order_sequence=0,
+        trade_sequence=0,
         exchange_rates::ER=OneExchangeRates{AData}()
     ) where {OData,IData,AData,ER<:ExchangeRates}
-        new{OData,IData,AData,ER}(
+        acc = new{OData,IData,AData,ER}(
             base_asset,
             Vector{Asset{AData}}(), # assets
             Dict{Symbol,Asset{AData}}(), # assets_by_symbol
@@ -32,6 +32,11 @@ mutable struct Account{OData,IData,AData,ER<:ExchangeRates}
             trade_sequence,
             date_format
         )
+        
+        # register base asset
+        register_asset!(acc, base_asset)
+
+        acc
     end
 end
 
@@ -51,9 +56,23 @@ see `register_asset!`.
 """
 Returns the balance of the given asset in the account.
 
-This does not include the equity of open positions, i.e. unrealized P&L.
+This does not include the value of open positions.
 """
 @inline get_asset_value(acc::Account, asset::Asset) = @inbounds acc.balances[asset.index]
+
+"""
+Returns the balance of the given asset in the account in the account base currency.
+
+This does not include the value of open positions.
+"""
+@inline function get_asset_value_base(acc::Account, asset::Asset)
+    get_rate(acc.exchange_rates, asset, acc.base_asset) * get_asset_value(acc, asset)
+end
+
+"""
+Checks if the account has the given asset registered.
+"""
+@inline has_asset(acc::Account, symbol::Symbol) = haskey(acc.assets_by_symbol, symbol)
 
 """
 Registers a new asset in the account.
@@ -62,17 +81,10 @@ An asset is a coin or currency that is used to trade instruments with, e.g. USD,
 When funding the trading account, the funds are added to the balance of the corresponding asset.
 """
 function register_asset!(acc::Account{OData,IData,AData,ER}, asset::Asset{AData}) where {OData,IData,AData,ER}
-    if asset.index <= length(acc.assets)
-        throw(ArgumentError("Asset $(asset.symbol) already registered"))
-    end
+    !has_asset(acc, asset.symbol) || throw(ArgumentError("Asset $(asset.symbol) already registered"))
 
-    if asset.index != length(acc.assets) + 1
-        throw(ArgumentError("Asset indices must be consecutive starting from 1"))
-    end
-
-    if haskey(acc.assets_by_symbol, asset.symbol)
-        throw(ArgumentError("Asset $(asset.symbol) already registered"))
-    end
+    # set asset index for fast array indexing and hashing
+    asset.index = length(acc.assets) + 1
 
     push!(acc.assets, asset)
     acc.assets_by_symbol[asset.symbol] = asset
@@ -86,21 +98,25 @@ Adds funds to the account.
 The funds are added to the balance of the corresponding asset.
 An asset is a coin or currency that is used to trade instruments with, e.g. USD, CHF, BTC, ETH.
 """
-function add_funds!(acc::Account{OData,IData,AData,ER}, asset::Asset{AData}, value::Price) where {OData,IData,AData,ER}
+function add_funds!(acc::Account{OData,IData,AData,ER}, asset::Asset{AData}, value::Real) where {OData,IData,AData,ER}
     # ensure funding amount is not negative
-    if value < zero(Price)
-        throw(ArgumentError("Funds value cannot be negative, got $value"))
-    end
+    value >= zero(value) || throw(ArgumentError("Funds value cannot be negative, got $value"))
 
     # register asset if not already registered
-    if asset.index > length(acc.balances)
-        register_asset!(acc, asset)
-    end
+    has_asset(acc, asset.symbol) || register_asset!(acc, asset)
 
-    @inbounds acc.balances[asset.index] += value
-    @inbounds acc.equities[asset.index] += value
+    # update balance and equity for the asset
+    @inbounds acc.balances[asset.index] += Price(value)
+    @inbounds acc.equities[asset.index] += Price(value)
 
     asset
+end
+
+"""
+Adds funds to the account in the account base currency.
+"""
+@inline function add_funds!(acc::Account{OData,IData,AData,ER}, value::Real) where {OData,IData,AData,ER}
+    add_funds!(acc, acc.base_asset, value)
 end
 
 """
@@ -113,13 +129,12 @@ function register_instrument!(
     acc::Account{OData,IData,AData,ER},
     inst::Instrument{OData}
 ) where {OData,IData,AData,ER}
-    if inst.index <= length(acc.positions)
+    if any(x -> x.inst.symbol == inst.symbol, acc.positions)
         throw(ArgumentError("Instrument $(inst.symbol) already registered"))
     end
 
-    if inst.index != length(acc.positions) + 1
-        throw(ArgumentError("Instrument indices must be consecutive starting from 1"))
-    end
+    # set asset index for fast array indexing and hashing
+    inst.index = length(acc.positions) + 1
 
     push!(acc.positions, Position{OData}(inst.index, inst))
 
@@ -135,7 +150,7 @@ without taking into consideration any open positions profit or loss.
 @inline function total_balance(acc::Account)
     total = 0.0
     for asset in acc.assets
-        er = get_exchange_rate(acc.exchange_rates, asset, acc.base_asset)
+        er = get_rate(acc.exchange_rates, asset, acc.base_asset)
         total += er * @inbounds acc.balances[asset.index]
     end
     total
@@ -150,7 +165,7 @@ not including closing fees.
 @inline function total_equity(acc::Account)
     total = 0.0
     for asset in acc.assets
-        er = get_exchange_rate(acc.exchange_rates, asset, acc.base_asset)
+        er = get_rate(acc.exchange_rates, asset, acc.base_asset)
         total += er * @inbounds acc.equities[asset.index]
     end
     total
@@ -166,20 +181,6 @@ end
 
 @inline function is_exposed_to(acc::Account, inst::Instrument, dir::TradeDir.T)
     trade_dir(get_position(acc, inst)) == sign(dir)
-end
-
-@inline function update_pnl!(acc::Account, pos::Position, close_price)
-    # update P&L and account equity using delta of old and new P&L
-    new_pnl = calc_pnl(pos, close_price)
-    pnl_delta = new_pnl - pos.pnl
-    asset = get_asset(acc, pos.inst.quote_asset)
-    @inbounds acc.equities[asset.index] += pnl_delta
-    pos.pnl = new_pnl
-    return
-end
-
-@inline function update_pnl!(acc::Account, inst::Instrument, close_price)
-    update_pnl!(acc, get_position(acc, inst), close_price)
 end
 
 # @inline total_pnl_net(acc::Account) = sum(map(pnl_net, acc.closed_positions))

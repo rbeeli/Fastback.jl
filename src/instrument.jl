@@ -1,7 +1,7 @@
 using Printf
 
 mutable struct Instrument{IData}
-    const index::Int              # unique index for each instrument starting from 1 (used for array indexing and hashing)
+    index::UInt                   # unique index for each instrument starting from 1 (used for array indexing and hashing)
     const symbol::Symbol
 
     const base_asset::Symbol
@@ -17,7 +17,6 @@ mutable struct Instrument{IData}
     const data::IData
 
     function Instrument(
-        index::Int,
         symbol::Symbol,
         base_asset::Symbol,
         quote_asset::Symbol
@@ -25,13 +24,13 @@ mutable struct Instrument{IData}
         base_tick::Quantity=0.01,
         base_min::Quantity=-Inf,
         base_max::Quantity=Inf,
-        base_digits::Int=2,
+        base_digits=2,
         quote_tick::Price=0.01,
-        quote_digits::Int=2,
+        quote_digits=2,
         data::IData=nothing
     ) where {IData}
         new{IData}(
-            index,
+            0, # index
             symbol,
             base_asset,
             base_tick,

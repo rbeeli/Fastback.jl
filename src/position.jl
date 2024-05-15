@@ -1,12 +1,12 @@
 mutable struct Position{OData,IData}
-    const index::Int                  # unique index for each position starting from 1 (used for array indexing and hashing)
+    const index::UInt               # unique index for each position starting from 1 (used for array indexing and hashing)
     const inst::Instrument{IData}
     avg_price::Price
-    quantity::Quantity          # negative = short selling
+    quantity::Quantity              # negative = short selling
     pnl::Price
 
     function Position{OData}(
-        index::Int,
+        index,
         inst::Instrument{IData}
         ;
         avg_price::Price=0.0,

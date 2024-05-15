@@ -3,10 +3,10 @@ using Test
 using Dates
 
 @testset "Position calc_pnl calc_return" begin
-    acc = Account{Nothing,Nothing}(Asset(1, :USD))
-    add_funds!(acc, acc.base_asset, 100_000.0)
+    acc = Account{Nothing,Nothing}(Asset(:USD))
+    add_funds!(acc, 100_000.0)
 
-    TEST = register_instrument!(acc, Instrument(1, Symbol("TEST/USD"), :TEST, :USD))
+    TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD))
 
     dt1, px1 = DateTime(2000, 1, 1), 500.0
     dt2, px2 = DateTime(2000, 1, 2), 505.0

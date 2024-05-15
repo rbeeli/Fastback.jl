@@ -4,15 +4,15 @@ using Dates
 
 @testset "Account long order w/o fees" begin
     # create trading account
-    acc = Account{Nothing,Nothing}(Asset(1, :USD))
-    add_funds!(acc, acc.base_asset, 100_000.0)
+    acc = Account{Nothing,Nothing}(Asset(:USD))
+    add_funds!(acc, 100_000.0)
 
     @test total_balance(acc) == 100_000.0
     @test total_equity(acc) == 100_000.0
     @test length(acc.assets) == 1
 
     # create instrument
-    DUMMY = register_instrument!(acc, Instrument(1, Symbol("DUMMY/USD"), :DUMMY, :USD))
+    DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
 
     pos = get_position(acc, DUMMY)
 
@@ -48,14 +48,14 @@ using Dates
 
     @test pos.pnl ≈ 0
     @test total_balance(acc) ≈ 100_000.0 + (prices[3] - prices[1]) * qty
-    @test total_equity(acc) ≈ total_balance(acc)[1]
+    @test total_equity(acc) ≈ total_balance(acc)
 
     show(acc)
 end
 
 @testset "Account long order w/ fees ccy" begin
     # create trading account
-    acc = Account{Nothing,Nothing}(Asset(1, :USD))
+    acc = Account{Nothing,Nothing}(Asset(:USD))
     add_funds!(acc, acc.base_asset, 100_000.0)
 
     @test total_balance(acc) == 100_000.0
@@ -63,7 +63,7 @@ end
     @test length(acc.assets) == 1
 
     # create instrument
-    DUMMY = register_instrument!(acc, Instrument(1, Symbol("DUMMY/USD"), :DUMMY, :USD))
+    DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
 
     pos = get_position(acc, DUMMY)
 
@@ -107,15 +107,15 @@ end
 
 @testset "Account long order w/ fees pct" begin
     # create trading account
-    acc = Account{Nothing,Nothing}(Asset(1, :USD))
-    add_funds!(acc, acc.base_asset, 100_000.0)
+    acc = Account{Nothing,Nothing}(Asset(:USD))
+    add_funds!(acc, 100_000.0)
 
     @test total_balance(acc) == 100_000.0
     @test total_equity(acc) == 100_000.0
     @test length(acc.assets) == 1
 
     # create instrument
-    DUMMY = register_instrument!(acc, Instrument(1, Symbol("DUMMY/USD"), :DUMMY, :USD))
+    DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
 
     pos = get_position(acc, DUMMY)
 
