@@ -39,5 +39,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/build # This is where Documenter.jl outputs the generated docs.
-          keep_files: false # Remove all existing files in the target directory before publishing.
+          publish_dir: docs/build
+          force_orphan: true
