@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 ![Maintenance](https://img.shields.io/maintenance/yes/2024)
-[![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://rbeeli.github.io/Fastback.jl/docs/build/index.html)
+[![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://rbeeli.github.io/Fastback.jl/)
 
 Fastback provides a lightweight, flexible and highly efficient event-based backtesting library for quantitative trading strategies.
 
@@ -32,7 +32,7 @@ This reduces the implementation gap from backtesting to real-world execution sig
 
 ## Documentation & Examples
 
-Full documentation and examples are available [here](https://rbeeli.github.io/Fastback.jl/docs/build/index.html).
+Full documentation and examples are available [here](https://rbeeli.github.io/Fastback.jl/).
 
 ## Bug reports and feature requests
 
