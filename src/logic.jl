@@ -18,24 +18,25 @@ end
     dt::DateTime,
     fill_price::Price
     ;
-    fill_qty::Quantity=0.0,    # fill quantity, if not provided, order quantity is used (complete fill)
-    fee_ccy::Price=0.0,        # fixed fees in account currency
-    fee_pct::Price=0.0,        # relative fees as percentage of order value, e.g. 0.001 = 0.1%
+    fill_qty::Quantity=0.0,      # fill quantity, if not provided, order quantity is used (complete fill)
+    commission::Price=0.0,       # fixed commission in quote (local) currency
+    commission_pct::Price=0.0,   # percentage commission of nominal order value, e.g. 0.001 = 0.1%
 )::Trade{OData,IData} where {OData,IData,CData}
     # get quote asset
     quote_cash = cash_object(acc, order.inst.quote_symbol)
 
     # positions are netted using weighted average price,
     # hence only one static position per instrument is maintained
-    pos = @inbounds acc.positions[order.inst.index]
+    pos = get_position(acc, order.inst)
     pos_qty = pos.quantity
 
     # set fill quantity if not provided
     fill_qty = fill_qty > 0 ? fill_qty : order.quantity
     remaining_qty = order.quantity - fill_qty
 
-    # calculate paid fees
-    fee_ccy += fee_pct * fill_price * abs(fill_qty)
+    # calculate absolute paid commissions in quote currency
+    nominal_value = fill_price * fill_qty
+    commission += commission_pct * nominal_value
 
     # realized P&L
     realized_qty = calc_realized_qty(pos_qty, fill_qty)
@@ -50,9 +51,9 @@ end
         # remove realized P&L from position P&L
         pos.pnl_local -= realized_pnl
     end
-    realized_pnl -= fee_ccy
+    realized_pnl -= commission
 
-    # trade sequence number
+    # generate trade sequence number
     tid = tid!(acc)
 
     # create trade object
@@ -65,7 +66,7 @@ end
         remaining_qty,
         realized_pnl,
         realized_qty,
-        fee_ccy,
+        commission,
         pos_qty,
         pos.avg_price
     )
@@ -90,11 +91,11 @@ end
     # update position quantity
     pos.quantity = new_exposure
 
-    # subtract fees from account balance and equity
-    @inbounds acc.balances[quote_cash.index] -= fee_ccy
-    @inbounds acc.equities[quote_cash.index] -= fee_ccy
+    # subtract paid commissions from account balance and equity
+    @inbounds acc.balances[quote_cash.index] -= commission
+    @inbounds acc.equities[quote_cash.index] -= commission
 
-    # update P&L of position and account equity (w/o fees, already accounted for)
+    # update P&L of position and account equity (w/o commissions, already accounted for)
     update_pnl!(acc, pos, fill_price)
 
     push!(acc.trades, exe)

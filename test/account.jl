@@ -2,7 +2,7 @@ using Fastback
 using Test
 using Dates
 
-@testset "Account long order w/o fees" begin
+@testset "Account long order w/o commission" begin
     # create trading account
     acc = Account()
     add_cash!(acc, Cash(:USD), 100_000.0)
@@ -26,7 +26,7 @@ using Dates
     exe1 = fill_order!(acc, order, dates[1], prices[1])
 
     @test exe1 == acc.trades[end]
-    @test exe1.fee_ccy == 0.0
+    @test exe1.commission == 0.0
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.realized_pnl == 0.0
     # @test realized_return(exe1) == 0.0
@@ -53,7 +53,7 @@ using Dates
     show(acc)
 end
 
-@testset "Account long order w/ fees ccy" begin
+@testset "Account long order w/ commission ccy" begin
     # create trading account
     acc = Account()
     add_cash!(acc, Cash(:USD), 100_000.0)
@@ -74,38 +74,38 @@ end
     # buy order
     qty = 100.0
     order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
-    fee_ccy = 1.0
-    exe1 = fill_order!(acc, order, dates[1], prices[1]; fee_ccy=fee_ccy)
+    commission = 1.0
+    exe1 = fill_order!(acc, order, dates[1], prices[1]; commission=commission)
 
     @test exe1 == acc.trades[end]
     @test nominal_value(exe1) == qty * prices[1]
-    @test exe1.fee_ccy == fee_ccy
-    @test exe1.realized_pnl == -fee_ccy
+    @test exe1.commission == commission
+    @test exe1.realized_pnl == -commission
     # @test realized_return(exe1) == 0.0
     @test pos.avg_price == 100.0
 
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
 
-    @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include fees!
-    @test cash(acc, :USD) ≈ 100_000.0 - fee_ccy
-    @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - fee_ccy
+    @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
+    @test cash(acc, :USD) ≈ 100_000.0 - commission
+    @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - commission
 
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
-    exe2 = fill_order!(acc, order, dates[3], prices[3]; fee_ccy=0.5)
+    exe2 = fill_order!(acc, order, dates[3], prices[3]; commission=0.5)
 
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
 
     @test pos.pnl_local ≈ 0
-    @test cash(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - fee_ccy - 0.5
+    @test cash(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - commission - 0.5
     @test equity(acc, :USD) ≈ cash(acc, :USD)
 
     show(acc)
 end
 
-@testset "Account long order w/ fees pct" begin
+@testset "Account long order w/ commission pct" begin
     # create trading account
     acc = Account()
     add_cash!(acc, Cash(:USD), 100_000.0)
@@ -126,31 +126,31 @@ end
     # buy order
     qty = 100.0
     order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
-    fee_pct1 = 0.001
-    exe1 = fill_order!(acc, order, dates[1], prices[1]; fee_pct=fee_pct1)
+    commission_pct1 = 0.001
+    exe1 = fill_order!(acc, order, dates[1], prices[1]; commission_pct=commission_pct1)
 
     @test nominal_value(exe1) == qty * prices[1]
-    @test exe1.fee_ccy == fee_pct1*nominal_value(exe1)
-    @test acc.trades[end].realized_pnl == -fee_pct1*nominal_value(exe1)
+    @test exe1.commission == commission_pct1*nominal_value(exe1)
+    @test acc.trades[end].realized_pnl == -commission_pct1*nominal_value(exe1)
     # @test realized_return(acc.trades[end]) == 0.0
     @test pos.avg_price == 100.0
 
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
 
-    @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include fees
-    @test cash(acc, :USD) ≈ 100_000.0 - exe1.fee_ccy
-    @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - exe1.fee_ccy
+    @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
+    @test cash(acc, :USD) ≈ 100_000.0 - exe1.commission
+    @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - exe1.commission
 
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
-    exe2 = fill_order!(acc, order, dates[3], prices[3]; fee_pct=0.0005)
+    exe2 = fill_order!(acc, order, dates[3], prices[3]; commission_pct=0.0005)
 
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
 
     @test pos.pnl_local ≈ 0
-    @test cash(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.fee_ccy - exe2.fee_ccy
+    @test cash(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.commission - exe2.commission
     @test equity(acc, :USD) ≈ cash(acc, :USD)
 
     show(acc)

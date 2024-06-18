@@ -32,7 +32,7 @@ end
     quantity = 1.0
     dt = DateTime(2021, 1, 1, 0, 0, 0)
     order = Order(oid!(acc), DUMMY, dt, price, quantity)
-    fill_order!(acc, order, dt, price; fee_pct=0.001)
+    fill_order!(acc, order, dt, price; commission_pct=0.001)
 
     update_pnl!(acc, DUMMY, price)
 

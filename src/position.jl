@@ -28,7 +28,7 @@ end
 Calculates the P&L of a position in local currency.
 
 The P&L is based on the weighted average price of the position
-and the current closing price, without considering fees.
+and the current closing price, without considering commissions.
 Fees are accounted for in the account equity calculation and execution P&L.
 
 # Arguments
@@ -45,7 +45,7 @@ end
 Calculates the return of a position in local currency.
 
 The return is based on the weighted average price of the position
-and the current closing price, without considering fees.
+and the current closing price, without considering commissions.
 Fees are accounted for in the account equity calculation and execution P&L.
 
 # Arguments

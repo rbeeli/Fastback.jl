@@ -70,11 +70,12 @@ function register_cash!(acc::Account{OData,IData,CData}, cash::Cash{CData}) wher
 end
 
 """
-Adds cash funds to the account.
+Adds cash to the account balance.
+
+Cash is a liquid coin or currency that is used to trade instruments with, e.g. USD, CHF, BTC, ETH.
 
 The funds are added to the balance of the corresponding cash asset.
-Cash is a liquid coin or currency that is used to trade instruments with,
-e.g. USD, CHF, BTC, ETH.
+To withdraw (subtract) cash from the account, simply pass a negative value.
 """
 function add_cash!(acc::Account{OData,IData,CData}, cash::Cash{CData}, value::Real) where {OData,IData,CData}
     # register cash object if not already registered
@@ -152,7 +153,7 @@ The returned value does not include the P&L value of open positions.
 Returns the equity value of the provided cash asset in the account.
 
 Equity is calculated as your cash balance +/- the floating profit/loss
-of your open positions in the same currency, not including closing fees.
+of your open positions in the same currency, not including closing commission.
 """
 @inline equity(acc::Account, cash::Cash) = @inbounds acc.equities[cash.index]
 
@@ -160,6 +161,6 @@ of your open positions in the same currency, not including closing fees.
 Returns the equity value of the provided cash asset in the account.
 
 Equity is calculated as your cash balance +/- the floating profit/loss
-of your open positions in the same currency, not including closing fees.
+of your open positions in the same currency, not including closing commission.
 """
 @inline equity(acc::Account, cash_symbol::Symbol) = equity(acc, cash_object(acc, cash_symbol))

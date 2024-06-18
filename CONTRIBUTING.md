@@ -4,10 +4,6 @@ Pull requests and issues are welcome.
 
 ## TODOs
 
-- Account base currency != instrument currency
-  - Add currency conversion rates
-  - P&L in quote or base currency?
-  - Fee currency?
 - Fee model object
 - Slippage model object
 - Order sizer object
@@ -31,7 +27,7 @@ end
 Computes the total account equity in the base currency.
 
 Equity is your balance +/- the floating profit/loss of your open positions,
-not including closing fees.
+not including closing commissions.
 """
 @inline function total_equity(acc::Account)
     total = 0.0

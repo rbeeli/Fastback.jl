@@ -6,7 +6,7 @@
 # 
 # The strategy randomly buys or sells an instrument with a probability of 1%.
 # Buy and sell orders use the same price series, implying a spread of 0.
-# Each trade is executed at a fee of 0.1%.
+# Each trade is executed at a commission of 0.1%.
 # For the sake of illustration, only 75% of the order quantity is filled.
 # 
 # The account equity and drawdowns are collected for every hour
@@ -41,7 +41,7 @@ for (dt, price) in zip(dts, prices)
     if rand() < 0.01
         quantity = rand() > 0.4 ? 1.0 : -1.0
         order = Order(oid!(acc), DUMMY, dt, price, quantity)
-        fill_order!(acc, order, dt, price; fill_qty=0.75order.quantity, fee_pct=0.001)
+        fill_order!(acc, order, dt, price; fill_qty=0.75order.quantity, commission_pct=0.001)
     end
 
     ## update position and account P&L

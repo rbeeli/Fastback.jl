@@ -4,12 +4,13 @@ using Fastback
 using InteractiveUtils
 
 function run_backtest()
-    # define instrument
-    DUMMY = Instrument(1, Symbol("DUMMY"))
-    instruments = [DUMMY]
-
     # create trading account
-    acc = Account(instruments, 100_000.0)
+    acc = Account()
+    add_cash!(acc, Cash(:USD), 100_000.0)
+
+    # define instrument
+    DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD)
+    register_instrument!(acc, DUMMY)
 
     dt = DateTime(2018, 1, 2, 9, 30, 0)
     for i = 1:1_000_000
@@ -32,12 +33,13 @@ using ProfileView
 ProfileView.@profview map(i -> run_backtest(), 1:10)
 
 
-# define instrument
-const DUMMY = Instrument(1, Symbol("DUMMY"))
-const instruments = [DUMMY]
-
 # create trading account
-const acc = Account(instruments, 100_000.0)
+const acc = Account()
+add_cash!(acc, Cash(:USD), 100_000.0)
+
+# define instrument
+const DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD)
+register_instrument!(acc, DUMMY)
 
 # get position for instrument
 const pos = get_position(acc, DUMMY)
@@ -52,8 +54,8 @@ const price = 100.0
 @code_native update_pnl!(acc, pos, price)
 
 const order = Order(oid!(acc), DUMMY, dt, price, 1.0)
-@code_warntype fill_order!(acc, order, dt, price; fill_qty=0.0, fee_ccy=0.0, fee_pct=0.0)
-@code_llvm fill_order!(acc, order, dt, price; fill_qty=0.0, fee_ccy=0.0, fee_pct=0.0)
-@code_native fill_order!(acc, order, dt, price; fill_qty=0.0, fee_ccy=0.0, fee_pct=0.0)
+@code_warntype fill_order!(acc, order, dt, price; fill_qty=0.0, commission=0.0, commission_pct=0.0)
+@code_llvm fill_order!(acc, order, dt, price; fill_qty=0.0, commission=0.0, commission_pct=0.0)
+@code_native fill_order!(acc, order, dt, price; fill_qty=0.0, commission=0.0, commission_pct=0.0)
 
-@benchmark fill_order!(acc, order, dt, price; fill_qty=0.0, fee_ccy=0.0, fee_pct=0.0)
+@benchmark fill_order!(acc, order, dt, price; fill_qty=0.0, commission=0.0, commission_pct=0.0)

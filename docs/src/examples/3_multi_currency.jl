@@ -67,7 +67,7 @@ for i in 1:N
         price = df[i, inst.symbol]
         quantity = rand() > 0.5 ? 10.0 : -10.0
         order = Order(oid!(acc), inst, dt, price, quantity)
-        fill_order!(acc, order, dt, price; fee_pct=0.001)
+        fill_order!(acc, order, dt, price; commission_pct=0.001)
     end
 
     ## update position and account P&L

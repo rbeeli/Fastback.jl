@@ -23,13 +23,13 @@ function print_trades(
         Dict(:name => "Symbol", :val => t -> t.order.inst.symbol, :fmt => (t, v) -> v),
         # Dict(:name => "Date", :val => t -> "$(format_date(acc, t.order.date)) +$(Dates.value(round(t.date - t.order.date, Millisecond))) ms", :fmt => (e, v) -> v),
         Dict(:name => "Date", :val => t -> "$(format_date(acc, t.date))", :fmt => (e, v) -> v),
-        # Dict(:name => "Qty", :val => t -> t.order.quantity, :fmt => (e, v) -> format_quantity(instrument(e), v)),
+        Dict(:name => "Quantity", :val => t -> t.order.quantity, :fmt => (t, v) -> format_base(t.order.inst, v)),
         Dict(:name => "Fill qty", :val => t -> t.fill_qty, :fmt => (t, v) -> format_base(t.order.inst, v)),
         Dict(:name => "Remain. qty", :val => t -> t.remaining_qty, :fmt => (t, v) -> format_base(t.order.inst, v)),
         Dict(:name => "Fill price", :val => t -> t.fill_price, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
-        Dict(:name => "Realized P&L", :val => t -> t.realized_pnl, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
-        Dict(:name => "Fee", :val => t -> t.fee_ccy, :fmt => (t, v) -> format_quote(t.order.inst, v)),
         Dict(:name => "Ccy", :val => t -> t.order.inst.quote_symbol, :fmt => (t, v) -> v),
+        Dict(:name => "Realized P&L", :val => t -> t.realized_pnl, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
+        Dict(:name => "Comm.", :val => t -> t.commission, :fmt => (t, v) -> format_quote(t.order.inst, v)),
     ]
     columns = [c[:name] for c in cols]
 
@@ -101,10 +101,10 @@ function print_positions(
 
     cols = [
         Dict(:name => "Symbol", :val => t -> t.inst.symbol, :fmt => (p, v) -> v),
-        Dict(:name => "Qty", :val => t -> t.quantity, :fmt => (p, v) -> format_base(p.inst, v)),
+        Dict(:name => "Quantity", :val => t -> t.quantity, :fmt => (p, v) -> format_base(p.inst, v)),
         Dict(:name => "Avg. price", :val => t -> t.avg_price, :fmt => (p, v) -> isnan(v) ? "—" : format_quote(p.inst, v)),
-        Dict(:name => "P&L", :val => t -> t.pnl_local, :fmt => (p, v) -> isnan(v) ? "—" : format_quote(p.inst, v)),
         Dict(:name => "Ccy", :val => t -> t.inst.quote_symbol, :fmt => (p, v) -> v),
+        Dict(:name => "P&L", :val => t -> t.pnl_local, :fmt => (p, v) -> isnan(v) ? "—" : format_quote(p.inst, v)),
     ]
     columns = [c[:name] for c in cols]
 
