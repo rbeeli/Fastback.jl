@@ -59,10 +59,10 @@ makedocs(
     pages=[
         "Home" => "index.md",
         "Examples" => [
-            "Basic Setup" => "examples/0_setup.md",
-            "1\\. Random Trading" => "examples/gen/1_random_trading.md",
-            "2\\. Portfolio Trading" => "examples/gen/2_portfolio_trading.md",
-            "3\\. Multi-Currency Trading" => "examples/gen/3_multi_currency.md",
+            "Basic setup" => "examples/0_setup.md",
+            "1\\. Random trading" => "examples/gen/1_random_trading.md",
+            "2\\. Portfolio trading" => "examples/gen/2_portfolio_trading.md",
+            "3\\. Multi-Currency trading" => "examples/gen/3_multi_currency.md",
         ]
     ]
 )
