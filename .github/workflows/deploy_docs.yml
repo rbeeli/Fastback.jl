@@ -22,7 +22,6 @@ jobs:
 
       - name: Set development mode for Fastback
         run: |
-          cd docs
           julia --project -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()))'
 
       - name: Install dependencies
