@@ -1,0 +1,38 @@
+name: Deploy Documenter.jl generated documentation
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1 # Only fetch the latest commit to keep the job light.
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v1
+        with:
+          version: "1.10" # Specify the Julia version you are using.
+
+      - name: Install dependencies
+        run: |
+          cd docs
+          julia --project --eval 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
+
+      - name: Build documentation
+        run: |
+          cd docs
+          julia --project make.jl
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/build # This is where Documenter.jl outputs the generated docs.
+          keep_files: false # Remove all existing files in the target directory before publishing.
