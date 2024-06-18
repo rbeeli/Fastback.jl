@@ -1,5 +1,7 @@
 [deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DisplayAs = "0b91fe84-8a4c-11e9-3e1d-67c38462b6d6"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Fastback = "2b92286b-cbc8-46f1-be48-a629b4baefca"
