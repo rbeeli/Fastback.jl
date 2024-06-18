@@ -1,122 +1,93 @@
-mutable struct Account{OData,IData,AData,ER<:ExchangeRates}
-    const base_asset::Asset{AData}
-    const assets::Vector{Asset{AData}}
-    const assets_by_symbol::Dict{Symbol,Asset{AData}}
-    const balances::Vector{Price}           # balance per asset
-    const equities::Vector{Price}           # equity per asset
+import Format
+
+mutable struct Account{OData,IData,CData}
+    const cash::Vector{Cash{CData}}
+    const cash_by_symbol::Dict{Symbol,Cash{CData}}
+    const balances::Vector{Price}           # balance per cash currency
+    const equities::Vector{Price}           # equity per cash currency
     const positions::Vector{Position{OData,IData}}
     const trades::Vector{Trade{OData,IData}}
-    const exchange_rates::ER
     order_sequence::Int
     trade_sequence::Int
     const date_format::Dates.DateFormat
 
-    function Account{OData,IData}(
-        base_asset::Asset{AData}
-        ;
+    function Account(
         date_format=dateformat"yyyy-mm-dd HH:MM:SS",
         order_sequence=0,
-        trade_sequence=0,
-        exchange_rates::ER=OneExchangeRates{AData}()
-    ) where {OData,IData,AData,ER<:ExchangeRates}
-        acc = new{OData,IData,AData,ER}(
-            base_asset,
-            Vector{Asset{AData}}(), # assets
-            Dict{Symbol,Asset{AData}}(), # assets_by_symbol
+        trade_sequence=0
+        ;
+        odata::Type{OData}=Nothing,
+        idata::Type{IData}=Nothing,
+        cdata::Type{CData}=Nothing
+    ) where {OData,IData,CData}
+        new{OData,IData,CData}(
+            Vector{Cash{CData}}(), # cash
+            Dict{Symbol,Cash{CData}}(), # cash_by_symbol
             Vector{Price}(), # balances
             Vector{Price}(), # equities
             Vector{Position{OData,IData}}(), # positions
             Vector{Trade{OData,IData}}(), # trades
-            exchange_rates,
             order_sequence,
             trade_sequence,
             date_format
         )
-        
-        # register base asset
-        register_asset!(acc, base_asset)
-
-        acc
     end
 end
 
-@inline format_base(acc::Account, value) = format_value(acc.base_asset, value)
 @inline format_date(acc::Account, x) = Dates.format(x, acc.date_format)
 @inline oid!(acc::Account) = acc.order_sequence += 1
 @inline tid!(acc::Account) = acc.trade_sequence += 1
 
 """
-Returns the asset with the given symbol.
+Returns a `Cash` object with the given symbol.
 
-Assets must first be registered in the account before they can be accessed,
-see `register_asset!`.
+Cash objects must be registered first in the account before
+they can be accessed, see `register_cash!`.
 """
-@inline get_asset(acc::Account, symbol::Symbol) = @inbounds acc.assets_by_symbol[symbol]
-
-"""
-Returns the balance of the given asset in the account.
-
-This does not include the value of open positions.
-"""
-@inline get_asset_value(acc::Account, asset::Asset) = @inbounds acc.balances[asset.index]
+@inline cash_object(acc::Account, symbol::Symbol) = @inbounds acc.cash_by_symbol[symbol]
 
 """
-Returns the balance of the given asset in the account in the account base currency.
-
-This does not include the value of open positions.
+Checks if the account has the given cash symbol registered.
 """
-@inline function get_asset_value_base(acc::Account, asset::Asset)
-    get_rate(acc.exchange_rates, asset, acc.base_asset) * get_asset_value(acc, asset)
-end
+@inline hash_cash_symbol(acc::Account, symbol::Symbol) = haskey(acc.cash_by_symbol, symbol)
 
 """
-Checks if the account has the given asset registered.
+Registers a new cash asset in the account.
+
+Cash is a liquid coin or currency that is used to trade instruments with, e.g. USD, CHF, BTC, ETH.
+When funding the account, the funds are added to the balance of the corresponding cash asset.
 """
-@inline has_asset(acc::Account, symbol::Symbol) = haskey(acc.assets_by_symbol, symbol)
+function register_cash!(acc::Account{OData,IData,CData}, cash::Cash{CData}) where {OData,IData,CData}
+    !hash_cash_symbol(acc, cash.symbol) || throw(ArgumentError("Cash with symbol '$(cash.symbol)' already registered."))
 
-"""
-Registers a new asset in the account.
+    # set index for fast array indexing and hashing
+    cash.index = length(acc.cash) + 1
 
-An asset is a coin or currency that is used to trade instruments with, e.g. USD, CHF, BTC, ETH.
-When funding the trading account, the funds are added to the balance of the corresponding asset.
-"""
-function register_asset!(acc::Account{OData,IData,AData,ER}, asset::Asset{AData}) where {OData,IData,AData,ER}
-    !has_asset(acc, asset.symbol) || throw(ArgumentError("Asset $(asset.symbol) already registered"))
-
-    # set asset index for fast array indexing and hashing
-    asset.index = length(acc.assets) + 1
-
-    push!(acc.assets, asset)
-    acc.assets_by_symbol[asset.symbol] = asset
+    push!(acc.cash, cash)
+    acc.cash_by_symbol[cash.symbol] = cash
     push!(acc.balances, zero(Price))
     push!(acc.equities, zero(Price))
 end
 
 """
-Adds funds to the account.
+Adds cash funds to the account.
 
-The funds are added to the balance of the corresponding asset.
-An asset is a coin or currency that is used to trade instruments with, e.g. USD, CHF, BTC, ETH.
+The funds are added to the balance of the corresponding cash asset.
+Cash is a liquid coin or currency that is used to trade instruments with,
+e.g. USD, CHF, BTC, ETH.
 """
-function add_funds!(acc::Account{OData,IData,AData,ER}, asset::Asset{AData}, value::Real) where {OData,IData,AData,ER}
-    # ensure funding amount is not negative
-    value >= zero(value) || throw(ArgumentError("Funds value cannot be negative, got $value"))
+function add_cash!(acc::Account{OData,IData,CData}, cash::Cash{CData}, value::Real) where {OData,IData,CData}
+    # register cash object if not already registered
+    hash_cash_symbol(acc, cash.symbol) || register_cash!(acc, cash)
 
-    # register asset if not already registered
-    has_asset(acc, asset.symbol) || register_asset!(acc, asset)
+    # ensure cash object was registered
+    cash.index > 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered."))
 
     # update balance and equity for the asset
-    @inbounds acc.balances[asset.index] += Price(value)
-    @inbounds acc.equities[asset.index] += Price(value)
+    @inbounds acc.balances[cash.index] += Price(value)
+    @inbounds acc.equities[cash.index] += Price(value)
 
-    asset
-end
-
-"""
-Adds funds to the account in the account base currency.
-"""
-@inline function add_funds!(acc::Account{OData,IData,AData,ER}, value::Real) where {OData,IData,AData,ER}
-    add_funds!(acc, acc.base_asset, value)
+    cash
 end
 
 """
@@ -126,9 +97,9 @@ An instrument can only be registered once.
 Before trading any instrument, it must be registered in the account.
 """
 function register_instrument!(
-    acc::Account{OData,IData,AData,ER},
+    acc::Account{OData,IData,CData},
     inst::Instrument{OData}
-) where {OData,IData,AData,ER}
+) where {OData,IData,CData}
     if any(x -> x.inst.symbol == inst.symbol, acc.positions)
         throw(ArgumentError("Instrument $(inst.symbol) already registered"))
     end
@@ -142,49 +113,53 @@ function register_instrument!(
 end
 
 """
-Computes the total account balance in the base currency.
-
-Balance on your account reflects the amount of funds you currently have in your account,
-without taking into consideration any open positions profit or loss.
+Returns the position object of the given instrument in the account.
 """
-@inline function total_balance(acc::Account)
-    total = 0.0
-    for asset in acc.assets
-        er = get_rate(acc.exchange_rates, asset, acc.base_asset)
-        total += er * @inbounds acc.balances[asset.index]
-    end
-    total
-end
-
-"""
-Computes the total account equity in the base currency.
-
-Equity is your balance +/- the floating profit/loss of your open positions,
-not including closing fees.
-"""
-@inline function total_equity(acc::Account)
-    total = 0.0
-    for asset in acc.assets
-        er = get_rate(acc.exchange_rates, asset, acc.base_asset)
-        total += er * @inbounds acc.equities[asset.index]
-    end
-    total
-end
-
 @inline function get_position(acc::Account, inst::Instrument)
     @inbounds acc.positions[inst.index]
 end
 
+"""
+Determines if the account has non-zero exposure to the given instrument.
+"""
 @inline function is_exposed_to(acc::Account, inst::Instrument)
     has_exposure(get_position(acc, inst))
 end
 
+"""
+Determines if the account has non-zero exposure to the given instrument
+in the given direction (`Buy`, `Sell`).
+"""
 @inline function is_exposed_to(acc::Account, inst::Instrument, dir::TradeDir.T)
     trade_dir(get_position(acc, inst)) == sign(dir)
 end
 
-# @inline total_pnl_net(acc::Account) = sum(map(pnl_net, acc.closed_positions))
-# @inline total_pnl_gross(acc::Account) = sum(map(pnl_gross, acc.closed_positions))
+"""
+Returns the cash balance of the cash asset in the account.
 
-# @inline count_winners_net(acc::Account) = count(map(x -> pnl_net(x) > 0.0, acc.closed_positions))
-# @inline count_winners_gross(acc::Account) = count(map(x -> pnl_gross(x) > 0.0, acc.closed_positions))
+The returned value does not include the P&L value of open positions.
+"""
+@inline cash(acc::Account, cash::Cash) = @inbounds acc.balances[cash.index]
+
+"""
+Returns the cash balance of the cash asset in the account.
+
+The returned value does not include the P&L value of open positions.
+"""
+@inline cash(acc::Account, cash_symbol::Symbol) = cash(acc, cash_object(acc, cash_symbol))
+
+"""
+Returns the equity value of the provided cash asset in the account.
+
+Equity is calculated as your cash balance +/- the floating profit/loss
+of your open positions in the same currency, not including closing fees.
+"""
+@inline equity(acc::Account, cash::Cash) = @inbounds acc.equities[cash.index]
+
+"""
+Returns the equity value of the provided cash asset in the account.
+
+Equity is calculated as your cash balance +/- the floating profit/loss
+of your open positions in the same currency, not including closing fees.
+"""
+@inline equity(acc::Account, cash_symbol::Symbol) = equity(acc, cash_object(acc, cash_symbol))

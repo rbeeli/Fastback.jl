@@ -31,8 +31,13 @@ using Dates
 using CSV
 using DataFrames
 
+data_path = "../data/stocks_1d.csv";
+
+# if data path doesn't exist, try to change working directory
+isfile(data_path) || cd("docs/src/examples")
+
 # load CSV daily stock data for symbols AAPL, NVDA, TSLA, GE
-df_csv = DataFrame(CSV.File("../data/stocks_1d.csv"; dateformat="yyyy-mm-dd HH:MM:SS"));
+df_csv = DataFrame(CSV.File(data_path; dateformat="yyyy-mm-dd HH:MM:SS"));
 df_csv.symbol = Symbol.(df_csv.symbol); # convert string to symbol type
 df = unstack(df_csv, :dt_close, :symbol, :close) # pivot long to wide format
 symbols = Symbol.(names(df)[2:end]);
@@ -40,13 +45,12 @@ symbols = Symbol.(names(df)[2:end]);
 # print summary
 describe(df)
 
-# create trading account with $100'000 start capital
-base_asset = Asset(1, :USD);
-acc = Account{Nothing,Nothing}(base_asset);
-add_funds!(acc, base_asset, 100_000.0);
+# create trading account with $10'000 start capital
+acc = Account();
+add_cash!(acc, Cash(:USD), 10_000.0);
 
 # register instruments for all symbols
-instruments = map(((i, symbol),) -> Instrument(i, symbol, symbol, :USD), enumerate(symbols));
+instruments = map(sym -> Instrument(sym, sym, :USD), symbols);
 register_instrument!.(Ref(acc), instruments);
 
 # data collector for account balance, equity and drawdowns (sampling every day)
@@ -56,7 +60,7 @@ collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Da
 
 function open_position!(acc, inst, dt, price)
     # invest 20% of equity in the position
-    qty = 0.2total_equity(acc) / price
+    qty = 0.2equity(acc, :USD) / price
     order = Order(oid!(acc), inst, dt, price, qty)
     fill_order!(acc, order, dt, price; fee_pct=0.001)
 end
@@ -110,10 +114,10 @@ for i in 6:nrow(df)
 
     # collect data for plotting
     if should_collect(equity_data, dt)
-        equity = total_equity(acc)
-        collect_balance(dt, total_balance(acc))
-        collect_equity(dt, equity)
-        collect_drawdown(dt, equity)
+        equity_value = equity(acc, :USD)
+        collect_balance(dt, cash(acc, :USD))
+        collect_equity(dt, equity_value)
+        collect_drawdown(dt, equity_value)
     end
 end
 
@@ -128,11 +132,11 @@ using Plots, Query, Printf, Measures
 
 theme(:juno; titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false)
 
-# equity / balance
+# equity / cash balance
 p1 = plot(
     dates(balance_data), values(balance_data);
     title="Account",
-    label="Balance",
+    label="Cash balance",
     linetype=:steppost,
     yformatter=:plain,
     color="#0088DD");
@@ -175,7 +179,7 @@ pnl_by_inst = acc.trades |>
               }) |> DataFrame
 p4 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
     legend=false,
-    title="P&L breakdown by stocks",
+    title="P&L breakdown by stocks [USD]",
     permute=(:x, :y),
     xlims=(0, size(pnl_by_inst)[1]),
     yformatter=y -> @sprintf("%.0f", y),
@@ -183,9 +187,10 @@ p4 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
     linecolor=nothing,
     bar_width=0.5)
 
-plot(p1, p2, p3, p4;
+p = plot(p1, p2, p3, p4;
     layout=@layout[a{0.4h}; b{0.15h}; c{0.3h}; d{0.15h}],
-    size=(800, 800), margin=0mm, left_margin=5mm)
+    size=(800, 800), margin=0mm, left_margin=5mm);
+p
 ````
 
 ### Calculate statistics per stock

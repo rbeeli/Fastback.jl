@@ -25,8 +25,8 @@ prices = 1000.0 .+ cumsum(randn(N) .+ 0.1);
 dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N-1);
 
 ## create trading account with $10'000 start capital
-acc = Account{Nothing,Nothing}(Asset(:USD));
-add_funds!(acc, 10_000.0);
+acc = Account();
+add_cash!(acc, Cash(:USD), 10_000.0);
 
 ## register a dummy instrument
 DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
@@ -41,7 +41,7 @@ for (dt, price) in zip(dts, prices)
     if rand() < 0.01
         quantity = rand() > 0.4 ? 1.0 : -1.0
         order = Order(oid!(acc), DUMMY, dt, price, quantity)
-        fill_order!(acc, order, dt, price; fill_quantity=0.75order.quantity, fee_pct=0.001)
+        fill_order!(acc, order, dt, price; fill_qty=0.75order.quantity, fee_pct=0.001)
     end
 
     ## update position and account P&L
@@ -49,9 +49,9 @@ for (dt, price) in zip(dts, prices)
 
     ## collect data for plotting
     if should_collect(equity_data, dt)
-        equity = total_equity(acc)
-        collect_equity(dt, equity)
-        collect_drawdown(dt, equity)
+        equity_value = equity(acc, :USD)
+        collect_equity(dt, equity_value)
+        collect_drawdown(dt, equity_value)
     end
 end
 
@@ -66,24 +66,26 @@ using Plots, Printf
 theme(:juno; titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false)
 
 ## plot equity curve
-plot(dates(equity_data), values(equity_data);
+p = plot(dates(equity_data), values(equity_data);
     title="Account",
     label="Equity",
     linetype=:steppost,
     yformatter=:plain,
     size=(800, 400),
-    color="#BBBB00")
+    color="#BBBB00");
+p
 
 #---------------------------------------------------------
 
 # ### Plot account equity drawdown curve
 
 ## plot drawdown curve
-plot(dates(drawdown_data), 100values(drawdown_data);
+p = plot(dates(drawdown_data), 100values(drawdown_data);
     title="Equity drawdowns [%]",
     legend=false,
     linetype=:steppost,
     color="#BB0000",
     yformatter=y -> @sprintf("%.1f%%", y),
     size=(800, 200),
-    fill=(0, "#BB000033"))
+    fill=(0, "#BB000033"));
+p

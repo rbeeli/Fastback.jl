@@ -1,11 +1,10 @@
 @inline function update_pnl!(acc::Account, pos::Position, close_price)
     # update P&L and account equity using delta of old and new P&L
-    new_pnl = calc_pnl(pos, close_price)
-    pnl_delta = new_pnl - pos.pnl
-    asset = get_asset(acc, pos.inst.quote_asset)
-    # TODO: Ccy conversion (settlement currency)
-    @inbounds acc.equities[asset.index] += pnl_delta
-    pos.pnl = new_pnl
+    new_pnl = calc_pnl_local(pos, close_price)
+    pnl_delta = new_pnl - pos.pnl_local
+    cash = cash_object(acc, pos.inst.quote_symbol)
+    @inbounds acc.equities[cash.index] += pnl_delta
+    pos.pnl_local = new_pnl
     return
 end
 
@@ -14,17 +13,17 @@ end
 end
 
 @inline function fill_order!(
-    acc::Account{OData,IData,AData,ER},
+    acc::Account{OData,IData,CData},
     order::Order{OData,IData},
     dt::DateTime,
     fill_price::Price
     ;
-    fill_quantity::Quantity=0.0,    # fill quantity, if not provided, order quantity is used (complete fill)
-    fee_ccy::Price=0.0,            # fixed fees in account currency
-    fee_pct::Price=0.0,            # relative fees as percentage of order value, e.g. 0.001 = 0.1%
-)::Trade{OData,IData} where {OData,IData,AData,ER}
+    fill_qty::Quantity=0.0,    # fill quantity, if not provided, order quantity is used (complete fill)
+    fee_ccy::Price=0.0,        # fixed fees in account currency
+    fee_pct::Price=0.0,        # relative fees as percentage of order value, e.g. 0.001 = 0.1%
+)::Trade{OData,IData} where {OData,IData,CData}
     # get quote asset
-    quote_asset = get_asset(acc, order.inst.quote_asset)
+    quote_cash = cash_object(acc, order.inst.quote_symbol)
 
     # positions are netted using weighted average price,
     # hence only one static position per instrument is maintained
@@ -32,24 +31,24 @@ end
     pos_qty = pos.quantity
 
     # set fill quantity if not provided
-    fill_quantity = fill_quantity > 0 ? fill_quantity : order.quantity
-    remaining_quantity = order.quantity - fill_quantity
+    fill_qty = fill_qty > 0 ? fill_qty : order.quantity
+    remaining_qty = order.quantity - fill_qty
 
     # calculate paid fees
-    fee_ccy += fee_pct * fill_price * abs(fill_quantity)
+    fee_ccy += fee_pct * fill_price * abs(fill_qty)
 
     # realized P&L
-    realized_quantity = calc_realized_quantity(pos_qty, fill_quantity)
+    realized_qty = calc_realized_qty(pos_qty, fill_qty)
     realized_pnl = 0.0
-    if realized_quantity != 0.0
+    if realized_qty != 0.0
         # order is reducing exposure (covering), calculate realized P&L
-        realized_pnl = (fill_price - pos.avg_price) * realized_quantity
+        realized_pnl = (fill_price - pos.avg_price) * realized_qty
 
         # add realized P&L to account balance
-        @inbounds acc.balances[quote_asset.index] += realized_pnl
+        @inbounds acc.balances[quote_cash.index] += realized_pnl
 
         # remove realized P&L from position P&L
-        pos.pnl -= realized_pnl
+        pos.pnl_local -= realized_pnl
     end
     realized_pnl -= fee_ccy
 
@@ -62,17 +61,17 @@ end
         tid,
         dt,
         fill_price,
-        fill_quantity,
-        remaining_quantity,
+        fill_qty,
+        remaining_qty,
         realized_pnl,
-        realized_quantity,
+        realized_qty,
         fee_ccy,
         pos_qty,
         pos.avg_price
     )
 
     # calculate new exposure
-    new_exposure = pos_qty + fill_quantity
+    new_exposure = pos_qty + fill_qty
     if new_exposure == 0.0
         # no more exposure
         pos.avg_price = zero(Price)
@@ -83,7 +82,7 @@ end
             pos.avg_price = fill_price
         elseif abs(new_exposure) > abs(pos_qty)
             # exposure is increased, update average price
-            pos.avg_price = (pos.avg_price * pos_qty + fill_price * fill_quantity) / new_exposure
+            pos.avg_price = (pos.avg_price * pos_qty + fill_price * fill_qty) / new_exposure
         end
         # else: exposure is reduced, no need to update average price
     end
@@ -92,8 +91,8 @@ end
     pos.quantity = new_exposure
 
     # subtract fees from account balance and equity
-    @inbounds acc.balances[quote_asset.index] -= fee_ccy
-    @inbounds acc.equities[quote_asset.index] -= fee_ccy
+    @inbounds acc.balances[quote_cash.index] -= fee_ccy
+    @inbounds acc.equities[quote_cash.index] -= fee_ccy
 
     # update P&L of position and account equity (w/o fees, already accounted for)
     update_pnl!(acc, pos, fill_price)

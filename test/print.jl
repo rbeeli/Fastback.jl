@@ -2,8 +2,8 @@ using Fastback
 using Test
 using Dates
 
-@testset "Print Asset" begin
-    show(Asset(:USD))
+@testset "Print Cash" begin
+    show(Cash(:USD))
 end
 
 @testset "Print Instrument" begin
@@ -11,8 +11,8 @@ end
 end
 
 @testset "Print Order" begin
-    acc = Account{Nothing,Nothing}(Asset(:USD))
-    add_funds!(acc, acc.base_asset, 10_000.0)
+    acc = Account()
+    add_cash!(acc, Cash(:USD), 10_000.0)
 
     DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
 
@@ -23,8 +23,8 @@ end
 end
 
 @testset "Print Account" begin
-    acc = Account{Nothing,Nothing}(Asset(:USD))
-    add_funds!(acc, acc.base_asset, 10_000.0)
+    acc = Account()
+    add_cash!(acc, Cash(:USD), 10_000.0)
 
     DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
 

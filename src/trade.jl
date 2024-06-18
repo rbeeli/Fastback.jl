@@ -4,23 +4,23 @@ mutable struct Trade{OData,IData}
     const order::Order{OData,IData}
     const tid::Int
     const date::DateTime
-    const fill_price::Price              # price at which the order was filled
-    const fill_quantity::Quantity        # negative = short selling
-    const remaining_quantity::Quantity   # remaining (unfilled) quantity after the order was (partially) filled
-    const realized_pnl::Price            # realized P&L from exposure reduction (covering) incl. fees
-    const realized_quantity::Quantity    # quantity of the existing position that was covered by the order
-    const fee_ccy::Price                 # paid fees in account currency
-    const pos_quantity::Quantity         # quantity of the existing position
-    const pos_price::Price               # average price of the existing position
+    const fill_price::Price         # price at which the order was filled
+    const fill_qty::Quantity        # negative = short selling
+    const remaining_qty::Quantity   # remaining (unfilled) quantity after the order was (partially) filled
+    const realized_pnl::Price       # realized P&L from exposure reduction (covering) incl. fees
+    const realized_qty::Quantity    # quantity of the existing position that was covered by the order
+    const fee_ccy::Price            # paid fees in account currency
+    const pos_qty::Quantity         # quantity of the existing position
+    const pos_price::Price          # average price of the existing position
 end
 
-@inline nominal_value(t::Trade) = t.fill_price * abs(t.fill_quantity)
-@inline is_realizing(t::Trade) = t.realized_quantity != 0
+@inline nominal_value(t::Trade) = t.fill_price * abs(t.fill_qty)
+@inline is_realizing(t::Trade) = t.realized_qty != 0
 
 # @inline function realized_return(t::Trade; zero_value=0.0)
 #     # TODO: fees calculation
 #     if t.realized_pnl != 0
-#         sign(t.pos_quantity) * (t.price / t.pos_avg_price - 1)
+#         sign(t.pos_qty) * (t.price / t.pos_avg_price - 1)
 #     else
 #         zero_value
 #     end
@@ -31,15 +31,15 @@ function Base.show(io::IO, t::Trade)
     ccy_formatter = x -> @sprintf("%.2f", x)
     inst = t.order.inst
     print(io, "[Trade] " *
-              "dt=$(date_formatter(t.date)) " *
-              "fill_px=$(format_quote(inst, t.fill_price)) $(inst.quote_asset) " *
-              "fill_qty=$(format_base(inst, t.fill_quantity)) $(inst.base_asset) " *
-              "remain_qty=$(format_base(inst, t.remaining_quantity)) $(inst.base_asset) " *
-              "real_pnl=$(ccy_formatter(t.realized_pnl)) $(inst.quote_asset) " *
-              "real_qty=$(format_base(inst, t.realized_quantity)) $(inst.base_asset) " *
-              "fee_ccy=$(ccy_formatter(t.fee_ccy)) $(inst.quote_asset) " *
-              "pos_px=$(format_quote(inst, t.pos_price)) $(inst.quote_asset) " *
-              "pos_qty=$(format_base(inst, t.pos_quantity)) $(inst.base_asset)")
+              "date=$(date_formatter(t.date)) " *
+              "fill_px=$(format_quote(inst, t.fill_price)) $(inst.quote_symbol) " *
+              "fill_qty=$(format_base(inst, t.fill_qty)) $(inst.base_symbol) " *
+              "remain_qty=$(format_base(inst, t.remaining_qty)) $(inst.base_symbol) " *
+              "real_pnl=$(ccy_formatter(t.realized_pnl)) $(inst.quote_symbol) " *
+              "real_qty=$(format_base(inst, t.realized_qty)) $(inst.base_symbol) " *
+              "fee_ccy=$(ccy_formatter(t.fee_ccy)) $(inst.quote_symbol) " *
+              "pos_px=$(format_quote(inst, t.pos_price)) $(inst.quote_symbol) " *
+              "pos_qty=$(format_base(inst, t.pos_qty)) $(inst.base_symbol)")
 end
 
 Base.show(obj::Trade) = Base.show(stdout, obj)

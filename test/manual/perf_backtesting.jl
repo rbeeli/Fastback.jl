@@ -9,7 +9,7 @@ function run_backtest()
     instruments = [DUMMY]
 
     # create trading account
-    acc = Account{Nothing}(instruments, 100_000.0)
+    acc = Account(instruments, 100_000.0)
 
     dt = DateTime(2018, 1, 2, 9, 30, 0)
     for i = 1:1_000_000
@@ -37,7 +37,7 @@ const DUMMY = Instrument(1, Symbol("DUMMY"))
 const instruments = [DUMMY]
 
 # create trading account
-const acc = Account{Nothing}(instruments, 100_000.0)
+const acc = Account(instruments, 100_000.0)
 
 # get position for instrument
 const pos = get_position(acc, DUMMY)
@@ -52,8 +52,8 @@ const price = 100.0
 @code_native update_pnl!(acc, pos, price)
 
 const order = Order(oid!(acc), DUMMY, dt, price, 1.0)
-@code_warntype fill_order!(acc, order, dt, price; fill_quantity=0.0, fee_ccy=0.0, fee_pct=0.0)
-@code_llvm fill_order!(acc, order, dt, price; fill_quantity=0.0, fee_ccy=0.0, fee_pct=0.0)
-@code_native fill_order!(acc, order, dt, price; fill_quantity=0.0, fee_ccy=0.0, fee_pct=0.0)
+@code_warntype fill_order!(acc, order, dt, price; fill_qty=0.0, fee_ccy=0.0, fee_pct=0.0)
+@code_llvm fill_order!(acc, order, dt, price; fill_qty=0.0, fee_ccy=0.0, fee_pct=0.0)
+@code_native fill_order!(acc, order, dt, price; fill_qty=0.0, fee_ccy=0.0, fee_pct=0.0)
 
-@benchmark fill_order!(acc, order, dt, price; fill_quantity=0.0, fee_ccy=0.0, fee_pct=0.0)
+@benchmark fill_order!(acc, order, dt, price; fill_qty=0.0, fee_ccy=0.0, fee_pct=0.0)

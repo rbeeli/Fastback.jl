@@ -1,20 +1,25 @@
-# # Multi-currency trading example
-#
-# This example demonstrates how to trade assets quoted in different currencies.
-# The account has balances in USD, EUR and GBP, and trades stocks denoted
-# in those currencies.
-# The total equity is calculated in USD.
-# A spot exchange rate helper is used to convert between different currencies.
+```@meta
+EditURL = "../3_multi_currency.jl"
+```
 
+# Multi-currency trading example
+
+This example demonstrates how to trade assets quoted in different currencies.
+The account has balances in USD, EUR and GBP, and trades stocks denoted
+in those currencies.
+The total equity is calculated in USD.
+A spot exchange rate helper is used to convert between different currencies.
+
+````@example 3_multi_currency
 using Fastback
 using Dates
 using Random
 using DataFrames
 
-## set RNG seed for reproducibility
+# set RNG seed for reproducibility
 Random.seed!(42);
 
-## generate synthetic price series for Tesla (USD), Porsche (EUR) and Tesco (GBP)
+# generate synthetic price series for Tesla (USD), Porsche (EUR) and Tesco (GBP)
 N = 2_000;
 df = DataFrame([
     :date => map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N-1),
@@ -23,21 +28,21 @@ df = DataFrame([
     :TSCO_L => 307 .+ cumsum(randn(N) .+ 0.08)
 ]);
 
-## create cash objects for USD, EUR and GBP
+# create cash objects for USD, EUR and GBP
 USD = Cash(:USD; digits=2);
 EUR = Cash(:EUR; digits=2);
 GBP = Cash(:GBP; digits=2);
 
-## create trading account with 10'000 USD, 5'000 EUR and 20'000 GBP cash
+# create trading account with 10'000 USD, 5'000 EUR and 20'000 GBP cash
 acc = Account();
 add_cash!(acc, USD, 10_000);
 add_cash!(acc, EUR, 5_000);
 add_cash!(acc, GBP, 20_000);
 
-## exchange rates for spot rates
+# exchange rates for spot rates
 er = SpotExchangeRates();
 
-## set spot exchange rates once
+# set spot exchange rates once
 add_asset!(er, USD);
 add_asset!(er, EUR);
 add_asset!(er, GBP);
@@ -46,22 +51,22 @@ update_rate!(er, GBP, USD, 1.27);
 
 show(er)
 
-## register stock instruments 
+# register stock instruments
 instruments = [
     register_instrument!(acc, Instrument(:TSLA, :TSLA, :USD)), # Tesla (USD denominated)
     register_instrument!(acc, Instrument(:POAHY, :POAHY, :EUR)), # Porsche (EUR denominated)
     register_instrument!(acc, Instrument(:TSCO_L, :TSCO_L, :GBP)), # Tesco (GBP denominated)
 ];
 
-## data collector for account equity and drawdowns (sampling every hour)
+# data collector for account equity and drawdowns (sampling every hour)
 collect_equity, equity_data = periodic_collector(Float64, Hour(1));
 collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Hour(1));
 
-## loop over price series
+# loop over price series
 for i in 1:N
     dt = df.date[i]
 
-    ## randomly trade with 1% probability
+    # randomly trade with 1% probability
     if rand() < 0.01
         inst = rand(instruments)
         price = df[i, inst.symbol]
@@ -70,13 +75,13 @@ for i in 1:N
         fill_order!(acc, order, dt, price; fee_pct=0.001)
     end
 
-    ## update position and account P&L
+    # update position and account P&L
     for inst in instruments
         price = df[i, inst.symbol]
         update_pnl!(acc, inst, price)
     end
 
-    ## collect data for plotting
+    # collect data for plotting
     if should_collect(equity_data, dt)
         total_equity = (
             equity(acc, :USD) +
@@ -88,17 +93,17 @@ for i in 1:N
     end
 end
 
-## print account statistics
+# print account statistics
 show(acc)
+````
 
-#---------------------------------------------------------
+### Plot account equity curve
 
-# ### Plot account equity curve
-
+````@example 3_multi_currency
 using Plots, Printf
 theme(:juno; titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false)
 
-## plot equity curve
+# plot equity curve
 p = plot(dates(equity_data), values(equity_data);
     title="Account",
     label="Equity",
@@ -107,12 +112,12 @@ p = plot(dates(equity_data), values(equity_data);
     size=(800, 400),
     color="#BBBB00");
 p
+````
 
-#---------------------------------------------------------
+### Plot account equity drawdown curve
 
-# ### Plot account equity drawdown curve
-
-## plot drawdown curve
+````@example 3_multi_currency
+# plot drawdown curve
 p = plot(dates(drawdown_data), 100values(drawdown_data);
     title="Equity drawdowns [%]",
     legend=false,
@@ -122,3 +127,5 @@ p = plot(dates(drawdown_data), 100values(drawdown_data);
     size=(800, 200),
     fill=(0, "#BB000033"));
 p
+````
+

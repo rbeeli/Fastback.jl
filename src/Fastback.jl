@@ -5,7 +5,7 @@ const Quantity = Float64        # trade volume / number of shares
 
 include("utils.jl")
 include("enums.jl")
-include("asset.jl")
+include("cash.jl")
 include("instrument.jl")
 include("order.jl")
 include("trade.jl")

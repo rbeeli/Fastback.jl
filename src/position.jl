@@ -3,7 +3,7 @@ mutable struct Position{OData,IData}
     const inst::Instrument{IData}
     avg_price::Price
     quantity::Quantity              # negative = short selling
-    pnl::Price
+    pnl_local::Price                # local currency P&L
 
     function Position{OData}(
         index,
@@ -11,9 +11,9 @@ mutable struct Position{OData,IData}
         ;
         avg_price::Price=0.0,
         quantity::Quantity=0.0,
-        pnl::Price=0.0
+        pnl_local::Price=0.0
     ) where {OData,IData}
-        new{OData,IData}(index, inst, avg_price, quantity, pnl)
+        new{OData,IData}(index, inst, avg_price, quantity, pnl_local)
     end
 end
 
@@ -25,7 +25,7 @@ end
 @inline has_exposure(pos::Position) = pos.quantity != zero(Quantity)
 
 """
-Calculates the P&L of a position.
+Calculates the P&L of a position in local currency.
 
 The P&L is based on the weighted average price of the position
 and the current closing price, without considering fees.
@@ -35,14 +35,14 @@ Fees are accounted for in the account equity calculation and execution P&L.
 - `position`: Position object.
 - `close_price`: Current closing price.
 """
-@inline function calc_pnl(pos::Position, close_price)
+@inline function calc_pnl_local(pos::Position, close_price)
     # quantity negative for shorts, thus works for both long and short
     pos.quantity * (close_price - pos.avg_price)
 end
 
 
 """
-Calculates the return of a position.
+Calculates the return of a position in local currency.
 
 The return is based on the weighted average price of the position
 and the current closing price, without considering fees.
@@ -52,7 +52,7 @@ Fees are accounted for in the account equity calculation and execution P&L.
 - `position`: Position object.
 - `close_price`: Current closing price.
 """
-@inline function calc_return(pos::Position{O,I}, close_price) where {O,I}
+@inline function calc_return_local(pos::Position{O,I}, close_price) where {O,I}
     sign(pos.quantity) * (close_price / pos.avg_price - one(close_price))
 end
 
@@ -73,12 +73,12 @@ the function returns 0.
 
 # Examples
 ```julia
-calc_realized_quantity(10, -30) # returns 10
-calc_realized_quantity(-10, 30) # returns -10
-calc_realized_quantity(10, 5)   # returns 0
+calc_realized_qty(10, -30) # returns 10
+calc_realized_qty(-10, 30) # returns -10
+calc_realized_qty(10, 5)   # returns 0
 ```
 """
-@inline function calc_realized_quantity(position_qty, order_qty)
+@inline function calc_realized_qty(position_qty, order_qty)
     if position_qty * order_qty < zero(position_qty)
         sign(position_qty) * min(abs(position_qty), abs(order_qty))
     else
@@ -119,9 +119,9 @@ end
 
 function Base.show(io::IO, pos::Position)
     print(io, "[Position] $(pos.inst.symbol) " *
-              "px=$(format_quote(pos.inst, pos.avg_price)) $(pos.inst.quote_asset) " *
-              "qty=$(format_base(pos.inst, pos.quantity)) $(pos.inst.base_asset) " *
-              "pnl=$(format_quote(pos.inst, pos.pnl)) $(pos.inst.quote_asset)")
+              "price=$(format_quote(pos.inst, pos.avg_price)) $(pos.inst.quote_symbol) " *
+              "qty=$(format_base(pos.inst, pos.quantity)) $(pos.inst.base_symbol) " *
+              "pnl_local=$(format_quote(pos.inst, pos.pnl_local)) $(pos.inst.quote_symbol)")
 end
 
 Base.show(pos::Position) = Base.show(stdout, pos)

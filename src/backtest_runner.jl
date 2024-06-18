@@ -47,7 +47,7 @@ function batch_backtest(
             if progress_log_interval > 0 && (n_done % progress_log_interval == 0 || n_done == n_params)
                 # ETA string
                 elapsed = now() - start_time
-                eta = estimate_eta(elapsed, n_done / n_params)
+                eta = compute_eta(elapsed, n_done / n_params)
                 eta_str = format_period_HHMMSS(eta)
 
                 # progress

@@ -1,18 +1,18 @@
 import Base: *, sign
 using EnumX
 
-@enumx TradeDir::Int8 Null = 0 Long = 1 Short = -1
+@enumx TradeDir::Int8 Null = 0 Buy = 1 Sell = -1
 
 @inline sign(x::TradeDir.T) = Quantity(Int8(x))
-@inline is_long(dir::TradeDir.T) = dir == TradeDir.Long
-@inline is_short(dir::TradeDir.T) = dir == TradeDir.Short
+@inline is_long(dir::TradeDir.T) = dir == TradeDir.Buy
+@inline is_short(dir::TradeDir.T) = dir == TradeDir.Sell
 
 @inline function opposite_dir(dir::TradeDir.T)
-    dir == TradeDir.Long ? TradeDir.Short : (dir == TradeDir.Short ? TradeDir.Long : TradeDir.Null)
+    dir == TradeDir.Buy ? TradeDir.Sell : (dir == TradeDir.Sell ? TradeDir.Buy : TradeDir.Null)
 end
 
 @inline function trade_dir(volume::T) where {T<:Number}
-    volume > 0 ? Long : ((volume < 0) ? TradeDir.Short : TradeDir.Null)
+    volume > 0 ? Buy : ((volume < 0) ? TradeDir.Sell : TradeDir.Null)
 end
 
 @inline *(x::TQuantity, dir::TradeDir.T) where {TQuantity<:Number} = TQuantity(x * sign(dir))

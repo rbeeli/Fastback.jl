@@ -49,11 +49,11 @@ using Dates
     end
 end
 
-@testset "estimate_eta / format_period_HHMMSS" begin
-    @testset "estimate_eta" begin
-        @test estimate_eta(Dates.Hour(1), 0.5) == convert(Millisecond, Hour(1))
-        @test estimate_eta(Dates.Second(30), 0.1) == convert(Millisecond, Second(270))
-        @test isnan(estimate_eta(Dates.Minute(20), 0))
+@testset "compute_eta / format_period_HHMMSS" begin
+    @testset "compute_eta" begin
+        @test compute_eta(Dates.Hour(1), 0.5) == convert(Millisecond, Hour(1))
+        @test compute_eta(Dates.Second(30), 0.1) == convert(Millisecond, Second(270))
+        @test isnan(compute_eta(Dates.Minute(20), 0))
     end
 
     @testset "format_period_HHMMSS" begin

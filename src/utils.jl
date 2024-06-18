@@ -107,7 +107,7 @@ If this value is 0, the function returns "Inf" indicating that the task has not 
 # Returns
 - Calculated ETA value as Period object. Returns NaN if frac_processed is 0.
 """
-function estimate_eta(elapsed, frac_processed)
+function compute_eta(elapsed, frac_processed)
     # check if fraction_processed is zero to avoid division by zero
     if frac_processed == 0
         return NaN

@@ -2,9 +2,9 @@ using Fastback
 using Test
 using Dates
 
-@testset "Position calc_pnl calc_return" begin
-    acc = Account{Nothing,Nothing}(Asset(:USD))
-    add_funds!(acc, 100_000.0)
+@testset "Position calc_pnl_local calc_return_local" begin
+    acc = Account()
+    add_cash!(acc, Cash(:USD), 100_000.0)
 
     TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD))
 
@@ -20,8 +20,8 @@ using Dates
         @test pos.avg_price == px1
         @test pos.quantity == 500.0
 
-        @test calc_pnl(pos, px2) == pos.quantity * (px2 - pos.avg_price)
-        @test calc_return(pos, px2) ≈ (px2 - px1) / px1
+        @test calc_pnl_local(pos, px2) == pos.quantity * (px2 - pos.avg_price)
+        @test calc_return_local(pos, px2) ≈ (px2 - px1) / px1
     end
 
     begin
@@ -33,42 +33,42 @@ using Dates
         @test pos.avg_price == px1
         @test pos.quantity == -500.0
 
-        @test calc_pnl(pos, px2) == pos.quantity * (px2 - pos.avg_price)
-        @test calc_return(pos, px2) ≈ -(px2 - px1) / px1
+        @test calc_pnl_local(pos, px2) == pos.quantity * (px2 - pos.avg_price)
+        @test calc_return_local(pos, px2) ≈ -(px2 - px1) / px1
     end
 end
 
 
-@testset "Position calc_realized_quantity" begin
+@testset "Position calc_realized_qty" begin
     # Test 1: long position, sell order more than position
-    @test calc_realized_quantity(10, -30) == 10
+    @test calc_realized_qty(10, -30) == 10
 
     # Test 2: long position, sell order less than position
-    @test calc_realized_quantity(10, -5) == 5
+    @test calc_realized_qty(10, -5) == 5
 
     # Test 3: short position, buy order more than position
-    @test calc_realized_quantity(-10, 30) == -10
+    @test calc_realized_qty(-10, 30) == -10
 
     # Test 4: short position, buy order less than position
-    @test calc_realized_quantity(-10, 5) == -5
+    @test calc_realized_qty(-10, 5) == -5
 
     # Test 4: short position, buy order same as position
-    @test calc_realized_quantity(-10, 10) == -10
+    @test calc_realized_qty(-10, 10) == -10
 
     # Test 5: long position, buy order
-    @test calc_realized_quantity(10, 5) == 0
+    @test calc_realized_qty(10, 5) == 0
 
     # Test 6: short position, sell order
-    @test calc_realized_quantity(-10, -5) == 0
+    @test calc_realized_qty(-10, -5) == 0
 
     # Test 7: no position, sell order
-    @test calc_realized_quantity(0, -5) == 0
+    @test calc_realized_qty(0, -5) == 0
 
     # Test 8: no position, buy order
-    @test calc_realized_quantity(0, 5) == 0
+    @test calc_realized_qty(0, 5) == 0
 
     # Test 9: no op
-    @test calc_realized_quantity(0, 0) == 0
+    @test calc_realized_qty(0, 0) == 0
 end
 
 
