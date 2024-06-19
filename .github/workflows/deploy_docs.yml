@@ -20,15 +20,10 @@ jobs:
         with:
           version: "1.10" # Specify the Julia version you are using.
 
-      - name: Set development mode for Fastback
-        run: |
-          cd docs
-          julia --project -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()*"/../"))'
-
       - name: Install dependencies
         run: |
           cd docs
-          julia --project --eval 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
+          julia --project -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()*"/../")); Pkg.add("https://github.com/rbeeli/Documenter.jl"); Pkg.resolve(); Pkg.instantiate()'
 
       - name: Build documentation
         run: |
