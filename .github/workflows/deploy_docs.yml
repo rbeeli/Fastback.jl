@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd docs
-          julia --project -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()*"/../")); Pkg.add("https://github.com/rbeeli/Documenter.jl"); Pkg.resolve(); Pkg.instantiate()'
+          julia --project -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()*"/../")); Pkg.add(url="https://github.com/rbeeli/Documenter.jl"); Pkg.resolve(); Pkg.instantiate()'
 
       - name: Build documentation
         run: |
