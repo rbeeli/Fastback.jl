@@ -99,7 +99,7 @@ Before trading any instrument, it must be registered in the account.
 """
 function register_instrument!(
     acc::Account{OData,IData,CData},
-    inst::Instrument{OData}
+    inst::Instrument{IData}
 ) where {OData,IData,CData}
     if any(x -> x.inst.symbol == inst.symbol, acc.positions)
         throw(ArgumentError("Instrument $(inst.symbol) already registered"))

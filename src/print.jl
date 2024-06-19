@@ -31,6 +31,12 @@ function print_trades(
         Dict(:name => "Realized P&L", :val => t -> t.realized_pnl, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
         Dict(:name => "Comm.", :val => t -> t.commission, :fmt => (t, v) -> format_quote(t.order.inst, v)),
     ]
+
+    # add "Metadata" column if OData is not Nothing
+    if OData !== Nothing
+        push!(cols, Dict(:name => "Metadata", :val => t -> t.order.metadata, :fmt => (t, v) -> v))
+    end
+
     columns = [c[:name] for c in cols]
 
     data_columns = []

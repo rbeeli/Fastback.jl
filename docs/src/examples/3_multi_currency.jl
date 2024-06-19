@@ -88,7 +88,7 @@ for i in 1:N
     end
 end
 
-## print account statistics
+## print account summary
 show(acc)
 
 #---------------------------------------------------------

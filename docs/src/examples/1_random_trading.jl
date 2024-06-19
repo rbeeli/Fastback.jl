@@ -55,7 +55,7 @@ for (dt, price) in zip(dts, prices)
     end
 end
 
-## print account statistics
+## print account summary
 show(acc)
 
 #---------------------------------------------------------

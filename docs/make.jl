@@ -43,11 +43,13 @@ end
 gen_markdown("src/examples/1_random_trading.jl");
 gen_markdown("src/examples/2_portfolio_trading.jl");
 gen_markdown("src/examples/3_multi_currency.jl");
+gen_markdown("src/examples/4_metadata.jl");
 
 # generate notebook files
 gen_notebook("src/examples/1_random_trading.jl");
 gen_notebook("src/examples/2_portfolio_trading.jl");
 gen_notebook("src/examples/3_multi_currency.jl");
+gen_notebook("src/examples/4_metadata.jl");
 
 makedocs(
     sitename="Fastback.jl",
@@ -58,11 +60,12 @@ makedocs(
     ),
     pages=[
         "Home" => "index.md",
+        "Basic setup" => "basic_setup.md",
         "Examples" => [
-            "Basic setup" => "examples/0_setup.md",
             "1\\. Random trading" => "examples/gen/1_random_trading.md",
             "2\\. Portfolio trading" => "examples/gen/2_portfolio_trading.md",
             "3\\. Multi-Currency trading" => "examples/gen/3_multi_currency.md",
+            "4\\. Attach metadata" => "examples/gen/4_metadata.md",
         ]
     ]
 )

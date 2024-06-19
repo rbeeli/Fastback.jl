@@ -6,7 +6,7 @@ mutable struct Order{OData,IData}
     const date::DateTime
     const price::Price
     const quantity::Quantity   # negative = short selling
-    data::OData
+    metadata::OData
 
     function Order(
         oid,
@@ -15,9 +15,9 @@ mutable struct Order{OData,IData}
         price::Price,
         quantity::Quantity
         ;
-        data::OData=nothing
+        metadata::OData=nothing
     ) where {OData,IData}
-        new{OData,IData}(oid, inst, date, price, quantity, data)
+        new{OData,IData}(oid, inst, date, price, quantity, metadata)
     end
 end
 

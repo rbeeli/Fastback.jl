@@ -116,7 +116,7 @@ for i in 6:nrow(df)
     end
 end
 
-## print account statistics
+## print account summary
 show(acc)
 
 #---------------------------------------------------------
