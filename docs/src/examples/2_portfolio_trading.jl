@@ -96,7 +96,7 @@ for i in 6:nrow(df)
         end
 
         ## update position and account P&L
-        update_pnl!(acc, inst, price)
+        update_pnl!(acc, inst, price, price)
     end
 
     ## close all positions at the end of backtest

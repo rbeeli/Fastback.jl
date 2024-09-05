@@ -1,8 +1,8 @@
 # To run a subset of tests, call Pkg.test as follows:
 #
-#   Pkg.test("Fastback", test_args=["utils.jl"])
-#   Pkg.test("Fastback", test_args=["account.jl"])
-#   Pkg.test("Fastback", test_args=["print.jl"])
+# import Pkg; Pkg.test("Fastback", test_args=["utils.jl"])
+# import Pkg; Pkg.test("Fastback", test_args=["account.jl"])
+# import Pkg; Pkg.test("Fastback", test_args=["print.jl"])
 
 requested_tests = lowercase.(ARGS)
 

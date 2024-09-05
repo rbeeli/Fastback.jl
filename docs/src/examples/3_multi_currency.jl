@@ -73,7 +73,7 @@ for i in 1:N
     ## update position and account P&L
     for inst in instruments
         price = df[i, inst.symbol]
-        update_pnl!(acc, inst, price)
+        update_pnl!(acc, inst, price, price)
     end
 
     ## collect data for plotting

@@ -84,7 +84,7 @@ function get_rates_matrix(er::SpotExchangeRates)
     mat = fill(NaN, length(er.assets), length(er.assets))
     for f in 1:length(er.assets)
         for t in 1:length(er.assets)
-            mat[f, t] = get_rate(er, er.assets[f], er.assets[t])
+            @inbounds mat[f, t] = get_rate(er, er.assets[f], er.assets[t])
         end
     end
     mat

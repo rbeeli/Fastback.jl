@@ -34,7 +34,7 @@ end
     order = Order(oid!(acc), DUMMY, dt, price, quantity)
     fill_order!(acc, order, dt, price; commission_pct=0.001)
 
-    update_pnl!(acc, DUMMY, price)
+    update_pnl!(acc, DUMMY, price, price)
 
     show(acc)
 end

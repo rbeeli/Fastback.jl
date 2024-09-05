@@ -75,7 +75,7 @@ for (dt, price) in zip(dts, prices)
     end
 
     ## update position and account P&L
-    update_pnl!(acc, DUMMY, price)
+    update_pnl!(acc, DUMMY, price, price)
 
     ## collect data for plotting
     if should_collect(equity_data, dt)

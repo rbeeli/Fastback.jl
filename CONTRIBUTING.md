@@ -12,31 +12,31 @@ Pull requests and issues are welcome.
 - Backtesting portfolios (rebalancing, weights)
 - More unit tests
 
-@inline format_base(acc::Account, value) = Format.format(value; precision=acc.base_asset.digits, commas=true)
+        @inline format_base(acc::Account, value) = Format.format(value; precision=acc.base_asset.digits, commas=true)
 
-"""
-Returns the balance of the given asset in the account in the account base currency.
+        """
+        Returns the balance of the given asset in the account in the account base currency.
 
-This does not include the value of open positions.
-"""
-@inline function get_asset_value_base(acc::Account, asset::Asset)
-    get_rate(acc.exchange_rates, asset, acc.base_asset) * get_asset_value(acc, asset)
-end
+        This does not include the value of open positions.
+        """
+        @inline function get_asset_value_base(acc::Account, asset::Asset)
+            get_rate(acc.exchange_rates, asset, acc.base_asset) * get_asset_value(acc, asset)
+        end
 
-"""
-Computes the total account equity in the base currency.
+        """
+        Computes the total account equity in the base currency.
 
-Equity is your balance +/- the floating profit/loss of your open positions,
-not including closing commissions.
-"""
-@inline function total_equity(acc::Account)
-    total = 0.0
-    for asset in acc.assets
-        er = get_rate(acc.exchange_rates, asset, acc.base_asset)
-        total += er * @inbounds acc.equities[asset.index]
-    end
-    total
-end
+        Equity is your balance +/- the floating profit/loss of your open positions,
+        not including closing commissions.
+        """
+        @inline function total_equity(acc::Account)
+            total = 0.0
+            for asset in acc.assets
+                er = get_rate(acc.exchange_rates, asset, acc.base_asset)
+                total += er * @inbounds acc.equities[asset.index]
+            end
+            total
+        end
 
 
 
