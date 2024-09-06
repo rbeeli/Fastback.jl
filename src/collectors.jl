@@ -28,7 +28,7 @@ function periodic_collector(::Type{T}, period::TPeriod) where {T,TPeriod<:Period
         return
     end
 
-    return collector, pv
+    collector, pv
 end
 
 @inline function should_collect(pv::PeriodicValues{T,TPeriod}, dt) where {T,TPeriod<:Period}
@@ -63,7 +63,7 @@ function predicate_collector(::Type{T}, predicate::TPredicate, init_value::T) wh
         return
     end
 
-    return collector, pv
+    collector, pv
 end
 
 @inline function should_collect(pv::PredicateValues{T,TPredicate}, dt) where {T,TPredicate<:Function}
@@ -88,7 +88,7 @@ function min_value_collector(::Type{T}) where {T}
         return
     end
 
-    return collector, mv
+    collector, mv
 end
 
 # ----------------------------------------------------------
@@ -109,7 +109,7 @@ function max_value_collector(::Type{T}) where {T}
         return
     end
 
-    return collector, mv
+    collector, mv
 end
 
 # ----------------------------------------------------------
@@ -159,7 +159,7 @@ function drawdown_collector(mode::DrawdownMode.T, predicate::TFunc) where {TFunc
         return
     end
 
-    return collector, dv
+    collector, dv
 end
 
 # ----------------------------------------------------------

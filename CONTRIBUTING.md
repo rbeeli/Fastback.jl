@@ -4,6 +4,8 @@ Pull requests and issues are welcome.
 
 ## TODOs
 
+- Have some types for base quantities and quote quantities
+  that are checked at compile time?
 - Fee model object
 - Slippage model object
 - Order sizer object
