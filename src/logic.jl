@@ -37,7 +37,7 @@ end
     remaining_qty = order.quantity - fill_qty
 
     # calculate absolute paid commissions in quote currency
-    nominal_value = fill_price * fill_qty
+    nominal_value = fill_price * abs(fill_qty)
     commission += commission_pct * nominal_value
 
     # realized P&L
