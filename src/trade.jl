@@ -17,14 +17,13 @@ end
 @inline nominal_value(t::Trade) = t.fill_price * abs(t.fill_qty)
 @inline is_realizing(t::Trade) = t.realized_qty != 0
 
-# @inline function realized_return(t::Trade; zero_value=0.0)
-#     # TODO: commission calculation
-#     if t.realized_pnl != 0
-#         sign(t.pos_qty) * (t.price / t.pos_avg_price - 1)
-#     else
-#         zero_value
-#     end
-# end
+@inline function realized_return(t::Trade; zero_value=0.0)
+    return if t.realized_pnl != 0 && t.pos_price != 0
+        sign(t.pos_qty) * (t.fill_price / t.pos_price - 1)
+    else
+        zero_value
+    end
+end
 
 function Base.show(io::IO, t::Trade)
     date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS")
