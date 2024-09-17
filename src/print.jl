@@ -23,12 +23,13 @@ function print_trades(
         Dict(:name => "Symbol", :val => t -> t.order.inst.symbol, :fmt => (t, v) -> v),
         # Dict(:name => "Date", :val => t -> "$(format_date(acc, t.order.date)) +$(Dates.value(round(t.date - t.order.date, Millisecond))) ms", :fmt => (e, v) -> v),
         Dict(:name => "Date", :val => t -> "$(format_date(acc, t.date))", :fmt => (e, v) -> v),
-        Dict(:name => "Quantity", :val => t -> t.order.quantity, :fmt => (t, v) -> format_base(t.order.inst, v)),
-        Dict(:name => "Fill qty", :val => t -> t.fill_qty, :fmt => (t, v) -> format_base(t.order.inst, v)),
-        Dict(:name => "Remain. qty", :val => t -> t.remaining_qty, :fmt => (t, v) -> format_base(t.order.inst, v)),
-        Dict(:name => "Fill price", :val => t -> t.fill_price, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
+        Dict(:name => "Qty", :val => t -> t.order.quantity, :fmt => (t, v) -> format_base(t.order.inst, v)),
+        Dict(:name => "Filled", :val => t -> t.fill_qty, :fmt => (t, v) -> format_base(t.order.inst, v)),
+        # Dict(:name => "Remain. qty", :val => t -> t.remaining_qty, :fmt => (t, v) -> format_base(t.order.inst, v)),
+        Dict(:name => "Price", :val => t -> t.fill_price, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
         Dict(:name => "Ccy", :val => t -> t.order.inst.quote_symbol, :fmt => (t, v) -> v),
-        Dict(:name => "Realized P&L", :val => t -> t.realized_pnl, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
+        Dict(:name => "P&L", :val => t -> t.realized_pnl, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
+        Dict(:name => "Return", :val => t -> realized_return(t), :fmt => (t, v) -> @sprintf("%.2f%%", 100v)),
         Dict(:name => "Comm.", :val => t -> t.commission, :fmt => (t, v) -> format_quote(t.order.inst, v)),
     ]
 
@@ -47,10 +48,12 @@ function print_trades(
 
     formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](trades[row_ix], v)
 
-    h_pnl_pos = Highlighter((data, i, j) -> cols[j][:name] == "Realized P&L" && data_columns[j][i] > 0, foreground=0x11BF11)
-    h_pnl_neg = Highlighter((data, i, j) -> cols[j][:name] == "Realized P&L" && data_columns[j][i] < 0, foreground=0xDD0000)
-    h_qty_pos = Highlighter((data, i, j) -> cols[j][:name] == "Fill qty" && data_columns[j][i] > 0, foreground=0xDD00DD)
-    h_qty_neg = Highlighter((data, i, j) -> cols[j][:name] == "Fill qty" && data_columns[j][i] < 0, foreground=0xDDDD00)
+    h_pnl_pos = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] > 0, foreground=0x11BF11)
+    h_pnl_neg = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] < 0, foreground=0xDD0000)
+    h_qty_pos = Highlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] > 0, foreground=0xDD00DD)
+    h_qty_neg = Highlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] < 0, foreground=0xDDDD00)
+    h_ret_pos = Highlighter((data, i, j) -> cols[j][:name] == "Return" && data_columns[j][i] > 0, foreground=0x11BF11)
+    h_ret_neg = Highlighter((data, i, j) -> cols[j][:name] == "Return" && data_columns[j][i] < 0, foreground=0xDD0000)
 
     if n_hidden > 0
         pretty_table(
@@ -58,7 +61,7 @@ function print_trades(
             data_matrix
             ;
             header=columns,
-            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg),
+            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_pos, h_ret_neg),
             formatters=formatter,
             compact_printing=true)
         println(io, " [...] $n_hidden more trades")
@@ -68,7 +71,7 @@ function print_trades(
             data_matrix
             ;
             header=columns,
-            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg),
+            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_pos, h_ret_neg),
             formatters=formatter,
             compact_printing=true)
     end
