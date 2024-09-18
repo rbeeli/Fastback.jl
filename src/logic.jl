@@ -59,7 +59,7 @@ end
     tid = tid!(acc)
 
     # create trade object
-    exe = Trade(
+    trade = Trade(
         order,
         tid,
         dt,
@@ -100,7 +100,7 @@ end
     # update P&L of position and account equity (w/o commissions, already accounted for)
     update_pnl!(acc, pos, fill_price)
 
-    push!(acc.trades, exe)
+    push!(acc.trades, trade)
 
-    exe
+    trade
 end
