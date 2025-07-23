@@ -1,7 +1,7 @@
 # Fastback.jl - Blazingly fast Julia backtester 🚀
 
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-![Maintenance](https://img.shields.io/maintenance/yes/2024)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/rbeeli/Fastback.jl/blob/main/LICENSE)
+![Maintenance](https://img.shields.io/maintenance/yes/2025)
 [![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://rbeeli.github.io/Fastback.jl/)
 
 Fastback provides a lightweight, flexible and highly efficient event-based backtesting library for quantitative trading strategies.
@@ -17,7 +17,7 @@ For example, Fastback has no notion of "strategy" or "indicator", such construct
 The event-based architecture aims to mimic the way a real-world trading systems works, where new data is ingested as a continuous data stream, i.e. events.
 This reduces the implementation gap from backtesting to real-world execution significantly compared to a vectorized backtesting frameworks.
 
-## Features
+### Features
 
 - Event-based, modular architecture
 - Multi-currency support
@@ -32,10 +32,10 @@ This reduces the implementation gap from backtesting to real-world execution sig
   - Maintains single position per instrument using weighted average cost method
 - Ability to attach arbirary metadata to instruments and orders in type-safe manner
 
-## Documentation & Examples
+### Documentation & Examples
 
-Full documentation and examples are available [here](https://rbeeli.github.io/Fastback.jl/).
+Full documentation and examples are available at [Fastback.jl documentation page](https://rbeeli.github.io/Fastback.jl/).
 
-## Bug reports and feature requests
+### Bug reports and feature requests
 
 Please report any issues via the [GitHub issue tracker](https://github.com/rbeeli/Fastback.jl/issues).

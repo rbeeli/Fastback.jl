@@ -1,5 +1,9 @@
 # Fastback.jl - Blazingly fast Julia backtester 🚀
 
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/rbeeli/Fastback.jl/blob/main/LICENSE)
+![Maintenance](https://img.shields.io/maintenance/yes/2025)
+[![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://rbeeli.github.io/Fastback.jl/)
+
 Fastback provides a lightweight, flexible and highly efficient event-based backtesting library for quantitative trading strategies.
 
 The main value of Fastback is provided by the account and bookkeeping implementation.
@@ -27,6 +31,10 @@ This reduces the implementation gap from backtesting to real-world execution sig
 - Uses position netting approach for bookkeeping
   - Maintains single position per instrument using weighted average cost method
 - Ability to attach arbirary metadata to instruments and orders in type-safe manner
+
+### Documentation & Examples
+
+Full documentation and examples are available at [Fastback.jl documentation page](https://rbeeli.github.io/Fastback.jl/).
 
 ### Bug reports and feature requests
 
