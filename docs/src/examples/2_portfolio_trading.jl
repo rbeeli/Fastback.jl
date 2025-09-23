@@ -29,7 +29,7 @@ using DataFrames
 data_path = "data/stocks_1d.csv";
 
 ## if data path doesn't exist, try to change working directory
-isfile(data_path) || cd("docs/src/examples")
+isfile(data_path) || cd("src/examples")
 
 ## load CSV daily stock data for symbols AAPL, NVDA, TSLA, GE
 df_csv = DataFrame(CSV.File(data_path; dateformat="yyyy-mm-dd HH:MM:SS"));
@@ -209,4 +209,4 @@ df = acc.trades |>
     win_rate = round.(count(getfield.(_, :realized_pnl) .> 0) / count(is_realizing.(_)), sigdigits=2),
 }) |> DataFrame
 
-pretty_table(df; header=["Symbol", "Avg P&L", "Worst P&L", "Best P&L", "Win Rate"])
+pretty_table(df; column_labels=["Symbol", "Avg P&L", "Worst P&L", "Best P&L", "Win Rate"])

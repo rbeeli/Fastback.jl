@@ -1,4 +1,5 @@
 using PrettyTables
+using Crayons
 using Dates
 import Printf
 
@@ -48,21 +49,21 @@ function print_trades(
 
     formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](trades[row_ix], v)
 
-    h_pnl_pos = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] > 0, foreground=0x11BF11)
-    h_pnl_neg = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] < 0, foreground=0xDD0000)
-    h_qty_pos = Highlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] > 0, foreground=0xDD00DD)
-    h_qty_neg = Highlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] < 0, foreground=0xDDDD00)
-    h_ret_pos = Highlighter((data, i, j) -> cols[j][:name] == "Return" && data_columns[j][i] > 0, foreground=0x11BF11)
-    h_ret_neg = Highlighter((data, i, j) -> cols[j][:name] == "Return" && data_columns[j][i] < 0, foreground=0xDD0000)
+    h_pnl_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] > 0, crayon"#11BF11")
+    h_pnl_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] < 0, crayon"#DD0000")
+    h_qty_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] > 0, crayon"#DD00DD")
+    h_qty_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] < 0, crayon"#DDDD00")
+    h_ret_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Return" && data_columns[j][i] > 0, crayon"#11BF11")
+    h_ret_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Return" && data_columns[j][i] < 0, crayon"#DD0000")
 
     if n_hidden > 0
         pretty_table(
             io,
             data_matrix
             ;
-            header=columns,
-            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_pos, h_ret_neg),
-            formatters=formatter,
+            column_labels=columns,
+            highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_pos, h_ret_neg],
+            formatters=[formatter],
             compact_printing=true)
         println(io, " [...] $n_hidden more trades")
     else
@@ -70,9 +71,9 @@ function print_trades(
             io,
             data_matrix
             ;
-            header=columns,
-            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_pos, h_ret_neg),
-            formatters=formatter,
+            column_labels=columns,
+            highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_pos, h_ret_neg],
+            formatters=[formatter],
             compact_printing=true)
     end
 end
@@ -125,19 +126,19 @@ function print_positions(
 
     formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](positions[row_ix], v)
 
-    h_pnl_pos = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] > 0, foreground=0x11BF11)
-    h_pnl_neg = Highlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] < 0, foreground=0xDD0000)
-    h_qty_pos = Highlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] > 0, foreground=0xDD00DD)
-    h_qty_neg = Highlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] < 0, foreground=0xDDDD00)
+    h_pnl_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] > 0, crayon"#11BF11")
+    h_pnl_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] < 0, crayon"#DD0000")
+    h_qty_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] > 0, crayon"#DD00DD")
+    h_qty_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] < 0, crayon"#DDDD00")
 
     if n_hidden > 0
         pretty_table(
             io,
             data_matrix
             ;
-            header=columns,
-            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg),
-            formatters=formatter,
+            column_labels=columns,
+            highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg],
+            formatters=[formatter],
             compact_printing=true)
         println(io, " [...] $n_hidden more positions")
     else
@@ -145,9 +146,9 @@ function print_positions(
             io,
             data_matrix
             ;
-            header=columns,
-            highlighters=(h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg),
-            formatters=formatter,
+            column_labels=columns,
+            highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg],
+            formatters=[formatter],
             compact_printing=true)
     end
 end
@@ -182,16 +183,16 @@ function print_cash_balances(
 
     formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](acc.cash[row_ix], v)
 
-    h_val_pos = Highlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] > 0, foreground=0x11BF11)
-    h_val_neg = Highlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] < 0, foreground=0xDD0000)
+    h_val_pos = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] > 0, crayon"#11BF11")
+    h_val_neg = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] < 0, crayon"#DD0000")
 
     pretty_table(
         io,
         data_matrix
         ;
-        header=columns,
-        highlighters=(h_val_pos, h_val_neg),
-        formatters=formatter,
+        column_labels=columns,
+        highlighters=[h_val_pos, h_val_neg],
+        formatters=[formatter],
         compact_printing=true)
 end
 
@@ -225,16 +226,16 @@ function print_equity_balances(
 
     formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](acc.cash[row_ix], v)
 
-    h_val_pos = Highlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] > 0, foreground=0x11BF11)
-    h_val_neg = Highlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] < 0, foreground=0xDD0000)
+    h_val_pos = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] > 0, crayon"#11BF11")
+    h_val_neg = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] < 0, crayon"#DD0000")
 
     pretty_table(
         io,
         data_matrix
         ;
-        header=columns,
-        highlighters=(h_val_pos, h_val_neg),
-        formatters=formatter,
+        column_labels=columns,
+        highlighters=[h_val_pos, h_val_neg],
+        formatters=[formatter],
         compact_printing=true)
 end
 

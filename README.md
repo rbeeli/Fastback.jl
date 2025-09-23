@@ -36,6 +36,10 @@ This reduces the implementation gap from backtesting to real-world execution sig
 
 Full documentation and examples are available at [Fastback.jl documentation page](https://rbeeli.github.io/Fastback.jl/).
 
+### Changelog
+
+See the [CHANGELOG](https://github.com/rbeeli/Fastback.jl/blob/main/CHANGELOG.md).
+
 ### Bug reports and feature requests
 
 Please report any issues via the [GitHub issue tracker](https://github.com/rbeeli/Fastback.jl/issues).

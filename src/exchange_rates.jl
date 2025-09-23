@@ -105,7 +105,7 @@ function Base.show(io::IO, er::SpotExchangeRates)
         io,
         get_rates_matrix(er),
         ;
-        header=getfield.(er.assets, :symbol),
+        column_labels=getfield.(er.assets, :symbol),
         row_labels=getfield.(er.assets, :symbol),
         compact_printing=true)
 end
