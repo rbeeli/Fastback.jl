@@ -1,4 +1,5 @@
 using Dates
+using Tables
 
 mutable struct Trade{OData,IData}
     const order::Order{OData,IData}
@@ -42,3 +43,28 @@ function Base.show(io::IO, t::Trade)
 end
 
 Base.show(obj::Trade) = Base.show(stdout, obj)
+
+# Tables.jl interface for Vector{Trade}
+Tables.istable(::Type{<:Vector{<:Trade}}) = true
+Tables.rowaccess(::Type{<:Vector{<:Trade}}) = true
+Tables.rows(x::Vector{<:Trade}) = x
+
+Tables.schema(x::Vector{<:Trade}) = Tables.Schema((:id, :symbol, :date, :quantity, :filled, :price, :currency, :pnl, :commission, :realized_pnl, :realized_qty, :pos_qty, :pos_price), Tuple{Int, String, DateTime, Float64, Float64, Float64, String, Float64, Float64, Float64, Float64, Float64, Float64})
+
+# Tables.jl interface for individual Trade objects
+Tables.getcolumn(t::Trade, nm::Symbol) = Tables.getcolumn(t, Val(nm))
+Tables.getcolumn(t::Trade, ::Val{:id}) = t.tid
+Tables.getcolumn(t::Trade, ::Val{:symbol}) = string(t.order.inst.symbol)
+Tables.getcolumn(t::Trade, ::Val{:date}) = t.date
+Tables.getcolumn(t::Trade, ::Val{:quantity}) = Float64(t.order.quantity)
+Tables.getcolumn(t::Trade, ::Val{:filled}) = Float64(t.fill_qty)
+Tables.getcolumn(t::Trade, ::Val{:price}) = Float64(t.fill_price)
+Tables.getcolumn(t::Trade, ::Val{:currency}) = string(t.order.inst.quote_symbol)
+Tables.getcolumn(t::Trade, ::Val{:pnl}) = Float64(t.fill_price * t.fill_qty - t.commission)
+Tables.getcolumn(t::Trade, ::Val{:commission}) = Float64(t.commission)
+Tables.getcolumn(t::Trade, ::Val{:realized_pnl}) = Float64(t.realized_pnl)
+Tables.getcolumn(t::Trade, ::Val{:realized_qty}) = Float64(t.realized_qty)
+Tables.getcolumn(t::Trade, ::Val{:pos_qty}) = Float64(t.pos_qty)
+Tables.getcolumn(t::Trade, ::Val{:pos_price}) = Float64(t.pos_price)
+
+Tables.columnnames(::Trade) = (:id, :symbol, :date, :quantity, :filled, :price, :currency, :pnl, :commission, :realized_pnl, :realized_qty, :pos_qty, :pos_price)

@@ -31,3 +31,5 @@ function Base.show(io::IO, cash::Cash)
               "symbol=$(cash.symbol) " *
               "digits=$(cash.digits)")
 end
+
+Base.show(cash::Cash) = Base.show(stdout, cash)

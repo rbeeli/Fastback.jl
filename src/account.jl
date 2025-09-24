@@ -1,4 +1,5 @@
 import Format
+using Tables
 
 mutable struct Account{OData,IData,CData}
     const cash::Vector{Cash{CData}}
@@ -164,3 +165,60 @@ Equity is calculated as your cash balance +/- the floating profit/loss
 of your open positions in the same currency, not including closing commission.
 """
 @inline equity(acc::Account, cash_symbol::Symbol) = equity(acc, cash_object(acc, cash_symbol))
+
+# Wrapper structures for Tables.jl interface
+struct AccountBalances
+    account::Account
+end
+
+struct AccountEquities
+    account::Account
+end
+
+# Tables.jl interface for AccountBalances
+Tables.istable(::Type{AccountBalances}) = true
+Tables.rowaccess(::Type{AccountBalances}) = true
+Tables.rows(x::AccountBalances) = [(symbol=c.symbol, balance=x.account.balances[c.index]) for c in x.account.cash]
+
+Tables.schema(x::AccountBalances) = Tables.Schema((:symbol, :balance), Tuple{Symbol, Float64})
+
+# Tables.jl interface for AccountEquities
+Tables.istable(::Type{AccountEquities}) = true
+Tables.rowaccess(::Type{AccountEquities}) = true
+Tables.rows(x::AccountEquities) = [(symbol=c.symbol, equity=x.account.equities[c.index]) for c in x.account.cash]
+
+Tables.schema(x::AccountEquities) = Tables.Schema((:symbol, :equity), Tuple{Symbol, Float64})
+
+# Convenience functions to create Tables.jl compatible objects
+balances_table(acc::Account) = AccountBalances(acc)
+equities_table(acc::Account) = AccountEquities(acc)
+
+# Direct Tables.jl interface for Account.balances and Account.equities
+# These methods make acc.balances and acc.equities directly compatible with Tables.jl
+
+# For Account.balances (Vector{Price}) in context of Account
+struct AccountBalancesProperty{A <: Account}
+    account::A
+    balances::Vector{Float64}
+end
+
+struct AccountEquitiesProperty{A <: Account}
+    account::A
+    equities::Vector{Float64}
+end
+
+# Direct accessor functions that return Tables.jl compatible wrappers
+balances(acc::Account) = AccountBalancesProperty(acc, getfield(acc, :balances))
+equities(acc::Account) = AccountEquitiesProperty(acc, getfield(acc, :equities))
+
+# Tables.jl interface for AccountBalancesProperty
+Tables.istable(::Type{<:AccountBalancesProperty}) = true
+Tables.rowaccess(::Type{<:AccountBalancesProperty}) = true
+Tables.rows(x::AccountBalancesProperty) = [(symbol=c.symbol, balance=x.balances[c.index]) for c in x.account.cash]
+Tables.schema(x::AccountBalancesProperty) = Tables.Schema((:symbol, :balance), Tuple{Symbol, Float64})
+
+# Tables.jl interface for AccountEquitiesProperty
+Tables.istable(::Type{<:AccountEquitiesProperty}) = true
+Tables.rowaccess(::Type{<:AccountEquitiesProperty}) = true
+Tables.rows(x::AccountEquitiesProperty) = [(symbol=c.symbol, equity=x.equities[c.index]) for c in x.account.cash]
+Tables.schema(x::AccountEquitiesProperty) = Tables.Schema((:symbol, :equity), Tuple{Symbol, Float64})

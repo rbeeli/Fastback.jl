@@ -125,3 +125,20 @@ function Base.show(io::IO, pos::Position)
 end
 
 Base.show(pos::Position) = Base.show(stdout, pos)
+
+# Tables.jl interface for Vector{Position}
+Tables.istable(::Type{<:Vector{<:Position}}) = true
+Tables.rowaccess(::Type{<:Vector{<:Position}}) = true
+Tables.rows(x::Vector{<:Position}) = x
+
+Tables.schema(x::Vector{<:Position}) = Tables.Schema((:symbol, :quantity, :avg_price, :currency, :pnl), Tuple{String, Float64, Float64, String, Float64})
+
+# Tables.jl interface for individual Position objects
+Tables.getcolumn(p::Position, nm::Symbol) = Tables.getcolumn(p, Val(nm))
+Tables.getcolumn(p::Position, ::Val{:symbol}) = string(p.inst.symbol)
+Tables.getcolumn(p::Position, ::Val{:quantity}) = Float64(p.quantity)
+Tables.getcolumn(p::Position, ::Val{:avg_price}) = Float64(p.avg_price)
+Tables.getcolumn(p::Position, ::Val{:currency}) = string(p.inst.quote_symbol)
+Tables.getcolumn(p::Position, ::Val{:pnl}) = Float64(p.pnl_local)
+
+Tables.columnnames(::Position) = (:symbol, :quantity, :avg_price, :currency, :pnl)
