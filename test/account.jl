@@ -1,8 +1,8 @@
-using Fastback
-using Test
 using Dates
+using TestItemRunner
 
-@testset "Account long order w/o commission" begin
+@testitem "Account long order w/o commission" begin
+    using Test, Fastback, Dates
     # create trading account
     acc = Account()
     add_cash!(acc, Cash(:USD), 100_000.0)
@@ -10,50 +10,40 @@ using Dates
     @test cash(acc, :USD) == 100_000.0
     @test equity(acc, :USD) == 100_000.0
     @test length(acc.cash) == 1
-
     # create instrument
     DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
-
     pos = get_position(acc, DUMMY)
-
     # generate data
     dates = collect(DateTime(2018, 1, 2):Day(1):DateTime(2018, 1, 4))
     prices = [100.0, 100.5, 102.5]
-
     # buy order
     qty = 100.0
     order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
     exe1 = fill_order!(acc, order, dates[1], prices[1])
-
     @test exe1 == acc.trades[end]
     @test exe1.commission == 0.0
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.realized_pnl == 0.0
     # @test realized_return(exe1) == 0.0
     @test pos.avg_price == 100.0
-
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
-
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity
     @test cash(acc, :USD) ≈ 100_000.0
     @test equity(acc, :USD) ≈ 100_000.0 + (prices[2] - prices[1]) * pos.quantity
-
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
     fill_order!(acc, order, dates[3], prices[3])
-
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
-
     @test pos.pnl_local ≈ 0
     @test cash(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty
     @test equity(acc, :USD) ≈ cash(acc, :USD)
-
     show(acc)
 end
 
-@testset "Account long order w/ commission ccy" begin
+@testitem "Account long order w/ commission ccy" begin
+    using Test, Fastback, Dates
     # create trading account
     acc = Account()
     add_cash!(acc, Cash(:USD), 100_000.0)
@@ -61,98 +51,77 @@ end
     @test cash(acc, :USD) == 100_000.0
     @test equity(acc, :USD) == 100_000.0
     @test length(acc.cash) == 1
-
     # create instrument
     DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
-
     pos = get_position(acc, DUMMY)
-
     # generate data
     dates = collect(DateTime(2018, 1, 2):Day(1):DateTime(2018, 1, 4))
     prices = [100.0, 100.5, 102.5]
-
     # buy order
     qty = 100.0
     order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
     commission = 1.0
     exe1 = fill_order!(acc, order, dates[1], prices[1]; commission=commission)
-
     @test exe1 == acc.trades[end]
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.commission == commission
     @test exe1.realized_pnl == -commission
     # @test realized_return(exe1) == 0.0
     @test pos.avg_price == 100.0
-
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
 
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
     @test cash(acc, :USD) ≈ 100_000.0 - commission
     @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - commission
-
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
     exe2 = fill_order!(acc, order, dates[3], prices[3]; commission=0.5)
-
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
-
     @test pos.pnl_local ≈ 0
     @test cash(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - commission - 0.5
     @test equity(acc, :USD) ≈ cash(acc, :USD)
-
     show(acc)
 end
 
-@testset "Account long order w/ commission pct" begin
+@testitem "Account long order w/ commission pct" begin
+    using Test, Fastback, Dates
     # create trading account
-    acc = Account()
-    add_cash!(acc, Cash(:USD), 100_000.0)
-
+    acc = Account(); add_cash!(acc, Cash(:USD), 100_000.0)
     @test cash(acc, :USD) == 100_000.0
     @test equity(acc, :USD) == 100_000.0
     @test length(acc.cash) == 1
-
     # create instrument
     DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
-
     pos = get_position(acc, DUMMY)
-
     # generate data
     dates = collect(DateTime(2018, 1, 2):Day(1):DateTime(2018, 1, 4))
     prices = [100.0, 100.5, 102.5]
-
     # buy order
     qty = 100.0
     order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
     commission_pct1 = 0.001
     exe1 = fill_order!(acc, order, dates[1], prices[1]; commission_pct=commission_pct1)
-
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.commission == commission_pct1*nominal_value(exe1)
     @test acc.trades[end].realized_pnl == -commission_pct1*nominal_value(exe1)
     # @test realized_return(acc.trades[end]) == 0.0
     @test pos.avg_price == 100.0
-
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
 
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
     @test cash(acc, :USD) ≈ 100_000.0 - exe1.commission
     @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - exe1.commission
-
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
     exe2 = fill_order!(acc, order, dates[3], prices[3]; commission_pct=0.0005)
-
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
-
     @test pos.pnl_local ≈ 0
     @test cash(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.commission - exe2.commission
     @test equity(acc, :USD) ≈ cash(acc, :USD)
-
     show(acc)
 end
 
