@@ -30,7 +30,7 @@ Supports spot exchange rates between assets.
 """
 mutable struct SpotExchangeRates{CData} <: ExchangeRates{CData}
     const rates::Vector{Vector{Float64}} # rates[from][to] using internal index
-    const indices::Dict{Cash{CData},UInt} # cash object -> index
+    const indices::Dict{Cash{CData},Int} # cash object -> index
     const assets::Vector{Cash{CData}}
 
     function SpotExchangeRates(

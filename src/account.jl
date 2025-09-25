@@ -132,7 +132,7 @@ Determines if the account has non-zero exposure to the given instrument
 in the given direction (`Buy`, `Sell`).
 """
 @inline function is_exposed_to(acc::Account, inst::Instrument, dir::TradeDir.T)
-    trade_dir(get_position(acc, inst)) == sign(dir)
+    sign(trade_dir(get_position(acc, inst))) == sign(dir)
 end
 
 """

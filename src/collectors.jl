@@ -78,7 +78,7 @@ mutable struct MinValue{T}
 end
 
 function min_value_collector(::Type{T}) where {T}
-    mv = MinValue{T}(DateTime(0), 1e50)
+    mv = MinValue{T}(DateTime(0), typemax(T))
 
     @inline function collector(dt::DateTime, value::T)
         if value < mv.min_value
