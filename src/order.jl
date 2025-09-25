@@ -1,9 +1,9 @@
 using Dates
 
-mutable struct Order{OData,IData}
+mutable struct Order{OData,IData,TTime}
     const oid::Int
     const inst::Instrument{IData}
-    const date::DateTime
+    const date::TTime
     const price::Price
     const quantity::Quantity   # negative = short selling
     take_profit::Price
@@ -13,15 +13,15 @@ mutable struct Order{OData,IData}
     function Order(
         oid,
         inst::Instrument{IData},
-        date::DateTime,
+        date::TTime,
         price::Price,
         quantity::Quantity
         ;
         take_profit::Price=Price(NaN),
         stop_loss::Price=Price(NaN),
         metadata::OData=nothing
-    ) where {OData,IData}
-        new{OData,IData}(
+    ) where {OData,IData,TTime}
+        new{OData,IData,TTime}(
             oid,
             inst,
             date,

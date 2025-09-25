@@ -16,14 +16,14 @@ end
 
 @inline function fill_order!(
     acc::Account{OData,IData,CData},
-    order::Order{OData,IData},
-    dt::DateTime,
+    order::Order{OData,IData,TTime},
+    dt::TTime,
     fill_price::Price
     ;
     fill_qty::Quantity=0.0,      # fill quantity, if not provided, order quantity is used (complete fill)
     commission::Price=0.0,       # fixed commission in quote (local) currency
     commission_pct::Price=0.0,   # percentage commission of nominal order value, e.g. 0.001 = 0.1%
-)::Trade{OData,IData} where {OData,IData,CData}
+)::Trade{OData,IData,TTime} where {OData,IData,CData,TTime}
     # get quote asset
     quote_cash = cash_object(acc, order.inst.quote_symbol)
 
