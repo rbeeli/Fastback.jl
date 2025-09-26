@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Consistently use of `qty` instead of `quantity` for display outputs
+- Explicitly export all public API functions in `Fastback.jl`
 
 ## [0.3.0] - 2025-09-25
 
