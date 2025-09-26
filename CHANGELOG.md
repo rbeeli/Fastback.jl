@@ -17,6 +17,8 @@ All notable changes to this project will be documented in this file.
 
     `format_date` -> `format_datetime`
 
+    `register_cash!` -> `register_cash_asset!`
+
 ### Added
 
 - Add [Tables.jl](https://github.com/JuliaData/Tables.jl) integration for account artefacts and collectors

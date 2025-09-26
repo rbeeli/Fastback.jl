@@ -1,5 +1,3 @@
-import Format
-
 mutable struct Account{OData,IData,CData}
     const cash::Vector{Cash{CData}}
     const cash_by_symbol::Dict{Symbol,Cash{CData}}
@@ -42,7 +40,7 @@ end
 Returns a `Cash` object with the given symbol.
 
 Cash objects must be registered first in the account before
-they can be accessed, see `register_cash!`.
+they can be accessed, see `register_cash_asset!`.
 """
 @inline cash_asset(acc::Account, symbol::Symbol) = @inbounds acc.cash_by_symbol[symbol]
 
@@ -57,7 +55,7 @@ Registers a new cash asset in the account.
 Cash is a liquid coin or currency that is used to trade instruments with, e.g. USD, CHF, BTC, ETH.
 When funding the account, the funds are added to the balance of the corresponding cash asset.
 """
-function register_cash!(
+function register_cash_asset!(
     acc::Account{OData,IData,CData},
     cash::Cash{CData}
 ) where {OData,IData,CData}
@@ -86,7 +84,7 @@ function add_cash!(
     amount::Real
 ) where {OData,IData,CData}
     # register cash object if not already registered
-    has_cash_asset(acc, cash.symbol) || register_cash!(acc, cash)
+    has_cash_asset(acc, cash.symbol) || register_cash_asset!(acc, cash)
 
     # ensure cash object was registered
     cash.index > 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered."))
