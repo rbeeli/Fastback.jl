@@ -31,7 +31,10 @@ This reduces the implementation gap from backtesting to real-world execution sig
 - Uses position netting approach for bookkeeping
   - Maintains single position per instrument using weighted average cost method
 - Ability to attach arbirary metadata to instruments and orders in type-safe manner
-- Tables.jl integration for `Account` related data like trades, positions, balances, etc.
+- Integrations
+  - [Tables.jl](https://github.com/JuliaData/Tables.jl) integration for `Account` related data like trades, positions, balances, etc.
+  - [NanoDates.jl](https://juliatime.github.io/NanoDates.jl/stable/) integration for nanosecond-resolution timestamps
+  - [Timestamps64.jl](https://rbeeli.github.io/Timestamps64.jl/stable/) integration for more efficient nanosecond-resolution timestamps
 
 ## Documentation & Examples
 
