@@ -142,6 +142,33 @@ end
 end
 
 
+@testitem "Account with Date timestamps" begin
+    using Test, Fastback, Dates, Tables
+
+    acc = Account(; time_type=Date, date_format=dateformat"yyyy-mm-dd")
+    deposit!(acc, Cash(:USD), 1_000.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("DATE/USD"), :DATE, :USD))
+
+    d₁ = Date(2020, 1, 1)
+    order₁ = Order(oid!(acc), inst, d₁, 10.0, 1.0)
+    fill_order!(acc, order₁, d₁, 10.0)
+
+    d₂ = Date(2020, 1, 2)
+    order₂ = Order(oid!(acc), inst, d₂, 9.5, -1.0)
+    fill_order!(acc, order₂, d₂, 9.5)
+
+    @test all(t.date isa Date for t in acc.trades)
+
+    tbl = trades_table(acc)
+    schema = Tables.schema(tbl)
+    @test schema.types[3] == Date
+    rows = collect(Tables.rows(tbl))
+    @test rows[1].trade_date isa Date
+    @test rows[end].order_date == d₂
+end
+
+
 # @testset "Backtesting single ticker net long/short swap" begin
 #     # create instrument
 #     inst = Instrument(1, "TICKER")

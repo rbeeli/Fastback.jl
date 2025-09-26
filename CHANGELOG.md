@@ -20,11 +20,15 @@ All notable changes to this project will be documented in this file.
     `register_cash!` -> `register_cash_asset!`
 
 - Split `add_cash!` function into `deposit!` and `withdraw!`  (update any usages accordingly!)
+- `should_collect` function must be called for all collectors to determine if a value should be collected
+- `predicate` parameter removed from `drawdown_collector` function, only `Period` remains supported
 
 ### Added
 
 - Add [Tables.jl](https://github.com/JuliaData/Tables.jl) integration for account artefacts and collectors
 - New Glossary page in docs
+- Generalized support for arbitrary `Dates.AbstractTime` types across the package for date/time handling instead of just `DateTime`
+- Example integrations for `NanoDates.jl` and `Timestamps64.jl` time provider packages
 
 ### Changed
 

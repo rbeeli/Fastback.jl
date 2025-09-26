@@ -1,9 +1,9 @@
 using Dates
 
-mutable struct Order{OData,IData}
+mutable struct Order{TTime<:Dates.AbstractTime,OData,IData}
     const oid::Int
     const inst::Instrument{IData}
-    const date::DateTime
+    const date::TTime
     const price::Price
     const quantity::Quantity   # negative = short selling
     take_profit::Price
@@ -13,15 +13,15 @@ mutable struct Order{OData,IData}
     function Order(
         oid,
         inst::Instrument{IData},
-        date::DateTime,
+        date::TTime,
         price::Price,
         quantity::Quantity
         ;
         take_profit::Price=Price(NaN),
         stop_loss::Price=Price(NaN),
         metadata::OData=nothing
-    ) where {OData,IData}
-        new{OData,IData}(
+    ) where {TTime<:Dates.AbstractTime,OData,IData}
+        new{TTime,OData,IData}(
             oid,
             inst,
             date,
@@ -38,7 +38,7 @@ end
 @inline trade_dir(order::Order) = trade_dir(order.quantity)
 @inline nominal_value(order::Order) = abs(order.quantity) * order.price
 
-function Base.show(io::IO, o::Order{O,I}) where {O,I}
+function Base.show(io::IO, o::Order{TTime,O,I}) where {TTime,O,I}
     date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS")
     tp_str = isnan(o.take_profit) ? "—" : "$(format_quote(o.inst, o.take_profit)) $(o.inst.quote_symbol)"
     sl_str = isnan(o.stop_loss) ? "—" : "$(format_quote(o.inst, o.stop_loss)) $(o.inst.quote_symbol)"
@@ -50,4 +50,4 @@ function Base.show(io::IO, o::Order{O,I}) where {O,I}
               "sl=$(sl_str)")
 end
 
-Base.show(order::Order{O,I}) where {O,I} = Base.show(stdout, order)
+Base.show(order::Order{TTime,O,I}) where {TTime,O,I} = Base.show(stdout, order)

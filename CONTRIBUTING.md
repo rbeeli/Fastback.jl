@@ -4,6 +4,10 @@ Pull requests and issues are welcome.
 
 ## TODOs
 
+- Renamings:
+  - date/time -> dt
+  - qty/quantity -> size
+
 - Have some types for base quantities and quote quantities
   that are checked at compile time?
 - Fee model object

@@ -1,9 +1,9 @@
 using Dates
 
-mutable struct Trade{OData,IData}
-    const order::Order{OData,IData}
+mutable struct Trade{TTime<:Dates.AbstractTime,OData,IData}
+    const order::Order{TTime,OData,IData}
     const tid::Int
-    const date::DateTime
+    const date::TTime
     const fill_price::Price         # price at which the order was filled
     const fill_qty::Quantity        # negative = short selling
     const remaining_qty::Quantity   # remaining (unfilled) quantity after the order was (partially) filled

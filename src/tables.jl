@@ -10,14 +10,14 @@ import Tables
 Provides a Tables.jl compatible view over the trades contained in an `Account` or
 an arbitrary vector of `Trade`s.
 """
-struct TradesTable{OData,IData}
-    trades::Vector{Trade{OData,IData}}
+struct TradesTable{TTime<:Dates.AbstractTime,OData,IData}
+    trades::Vector{Trade{TTime,OData,IData}}
 end
 
 Tables.istable(::Type{<:TradesTable}) = true
 Tables.rowaccess(::Type{<:TradesTable}) = true
 
-Tables.schema(::TradesTable{OData,IData}) where {OData,IData} = Tables.Schema(
+Tables.schema(::TradesTable{TTime,OData,IData}) where {TTime<:Dates.AbstractTime,OData,IData} = Tables.Schema(
     (
         :tid,
         :oid,
@@ -40,8 +40,8 @@ Tables.schema(::TradesTable{OData,IData}) where {OData,IData} = Tables.Schema(
     (
         Int,
         Int,
-        DateTime,
-        DateTime,
+        TTime,
+        TTime,
         Symbol,
         TradeDir.T,
         Price,
@@ -58,15 +58,15 @@ Tables.schema(::TradesTable{OData,IData}) where {OData,IData} = Tables.Schema(
     )
 )
 
-struct TradeRows{OData,IData}
-    trades::Vector{Trade{OData,IData}}
+struct TradeRows{TTime<:Dates.AbstractTime,OData,IData}
+    trades::Vector{Trade{TTime,OData,IData}}
 end
 
-Tables.rows(tbl::TradesTable{OData,IData}) where {OData,IData} = TradeRows{OData,IData}(tbl.trades)
+Tables.rows(tbl::TradesTable{TTime,OData,IData}) where {TTime<:Dates.AbstractTime,OData,IData} = TradeRows{TTime,OData,IData}(tbl.trades)
 
 Base.length(iter::TradeRows) = length(iter.trades)
 
-function Base.iterate(iter::TradeRows{OData,IData}, idx::Int=1) where {OData,IData}
+function Base.iterate(iter::TradeRows{TTime,OData,IData}, idx::Int=1) where {TTime<:Dates.AbstractTime,OData,IData}
     idx > length(iter.trades) && return nothing
     t = @inbounds iter.trades[idx]
     order = t.order
@@ -93,7 +93,7 @@ function Base.iterate(iter::TradeRows{OData,IData}, idx::Int=1) where {OData,IDa
     return row, idx + 1
 end
 
-trades_table(acc::Account{OData,IData,CData}) where {OData,IData,CData} = TradesTable{OData,IData}(acc.trades)
+trades_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.AbstractTime,OData,IData,CData} = TradesTable{TTime,OData,IData}(acc.trades)
 
 # -----------------------------------------------------------------------------
 
@@ -153,7 +153,7 @@ function Base.iterate(iter::PositionRows{OData,IData}, idx::Int=1) where {OData,
     return row, idx + 1
 end
 
-positions_table(acc::Account{OData,IData,CData}) where {OData,IData,CData} = PositionsTable{OData,IData}(acc.positions)
+positions_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.AbstractTime,OData,IData,CData} = PositionsTable{OData,IData}(acc.positions)
 
 # -----------------------------------------------------------------------------
 
@@ -197,7 +197,7 @@ function Base.iterate(iter::CashBalanceRows{CData}, idx::Int=1) where {CData}
     return row, idx + 1
 end
 
-balances_table(acc::Account{OData,IData,CData}) where {OData,IData,CData} = CashBalancesTable{CData}(acc.cash, acc.balances)
+balances_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.AbstractTime,OData,IData,CData} = CashBalancesTable{CData}(acc.cash, acc.balances)
 
 # -----------------------------------------------------------------------------
 
@@ -241,34 +241,34 @@ function Base.iterate(iter::EquityBalanceRows{CData}, idx::Int=1) where {CData}
     return row, idx + 1
 end
 
-equities_table(acc::Account{OData,IData,CData}) where {OData,IData,CData} = EquityBalancesTable{CData}(acc.cash, acc.equities)
+equities_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.AbstractTime,OData,IData,CData} = EquityBalancesTable{CData}(acc.cash, acc.equities)
 
 # -------------------------- Collectors -----------------------------------
 
 ## PeriodicValues
 
-Tables.istable(::Type{PeriodicValues{T,TPeriod}}) where {T,TPeriod} = true
-Tables.rowaccess(::Type{PeriodicValues{T,TPeriod}}) where {T,TPeriod} = true
+Tables.istable(::Type{PeriodicValues{TTime,T,TPeriod}}) where {TTime<:Dates.AbstractTime,T,TPeriod} = true
+Tables.rowaccess(::Type{PeriodicValues{TTime,T,TPeriod}}) where {TTime<:Dates.AbstractTime,T,TPeriod} = true
 
-Tables.schema(::PeriodicValues{T,TPeriod}) where {T,TPeriod} = Tables.Schema((:date, :value), (DateTime, T))
+Tables.schema(::PeriodicValues{TTime,T,TPeriod}) where {TTime<:Dates.AbstractTime,T,TPeriod} = Tables.Schema((:date, :value), (TTime, T))
 
-Tables.istable(::Type{PredicateValues{T,TPredicate}}) where {T,TPredicate} = true
-Tables.rowaccess(::Type{PredicateValues{T,TPredicate}}) where {T,TPredicate} = true
+Tables.istable(::Type{PredicateValues{TTime,T,TPredicate}}) where {TTime<:Dates.AbstractTime,T,TPredicate} = true
+Tables.rowaccess(::Type{PredicateValues{TTime,T,TPredicate}}) where {TTime<:Dates.AbstractTime,T,TPredicate} = true
 
-Tables.schema(::PredicateValues{T,TPredicate}) where {T,TPredicate} = Tables.Schema((:date, :value), (DateTime, T))
+Tables.schema(::PredicateValues{TTime,T,TPredicate}) where {TTime<:Dates.AbstractTime,T,TPredicate} = Tables.Schema((:date, :value), (TTime, T))
 
-struct CollectorRows{T}
-    dates::Vector{DateTime}
+struct CollectorRows{TTime<:Dates.AbstractTime,T}
+    dates::Vector{TTime}
     values::Vector{T}
 end
 
-Tables.rows(pv::PeriodicValues{T,TPeriod}) where {T,TPeriod} = CollectorRows{T}(dates(pv), Base.values(pv))
+Tables.rows(pv::PeriodicValues{TTime,T,TPeriod}) where {TTime<:Dates.AbstractTime,T,TPeriod} = CollectorRows{TTime,T}(dates(pv), Base.values(pv))
 
-Tables.rows(pv::PredicateValues{T,TPredicate}) where {T,TPredicate} = CollectorRows{T}(dates(pv), Base.values(pv))
+Tables.rows(pv::PredicateValues{TTime,T,TPredicate}) where {TTime<:Dates.AbstractTime,T,TPredicate} = CollectorRows{TTime,T}(dates(pv), Base.values(pv))
 
 Base.length(iter::CollectorRows) = length(iter.dates)
 
-function Base.iterate(iter::CollectorRows{T}, idx::Int=1) where {T}
+function Base.iterate(iter::CollectorRows{TTime,T}, idx::Int=1) where {TTime<:Dates.AbstractTime,T}
     idx > length(iter.dates) && return nothing
     date_ = @inbounds iter.dates[idx]
     value = @inbounds iter.values[idx]
@@ -280,21 +280,21 @@ end
 
 ## DrawdownValues
 
-Tables.istable(::Type{DrawdownValues}) = true
-Tables.rowaccess(::Type{DrawdownValues}) = true
+Tables.istable(::Type{DrawdownValues{TTime,TPeriod}}) where {TTime<:Dates.AbstractTime,TPeriod} = true
+Tables.rowaccess(::Type{DrawdownValues{TTime,TPeriod}}) where {TTime<:Dates.AbstractTime,TPeriod} = true
 
-Tables.schema(::DrawdownValues) = Tables.Schema((:date, :drawdown), (DateTime, Price))
+Tables.schema(::DrawdownValues{TTime,TPeriod}) where {TTime<:Dates.AbstractTime,TPeriod} = Tables.Schema((:date, :drawdown), (TTime, Price))
 
-struct DrawdownRows
-    dates::Vector{DateTime}
+struct DrawdownRows{TTime<:Dates.AbstractTime,TPeriod}
+    dates::Vector{TTime}
     values::Vector{Price}
 end
 
-Tables.rows(dv::DrawdownValues) = DrawdownRows(dates(dv), Base.values(dv))
+Tables.rows(dv::DrawdownValues{TTime,TPeriod}) where {TTime<:Dates.AbstractTime,TPeriod} = DrawdownRows{TTime,TPeriod}(dates(dv), Base.values(dv))
 
 Base.length(iter::DrawdownRows) = length(iter.dates)
 
-function Base.iterate(iter::DrawdownRows, idx::Int=1)
+function Base.iterate(iter::DrawdownRows{TTime,TPeriod}, idx::Int=1) where {TTime<:Dates.AbstractTime,TPeriod}
     idx > length(iter.dates) && return nothing
     date_ = @inbounds iter.dates[idx]
     value = @inbounds iter.values[idx]

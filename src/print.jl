@@ -7,10 +7,10 @@ import Printf
 
 function print_trades(
     io::IO,
-    acc::Account{OData,IData,CData}
+    acc::Account{TTime,OData,IData,CData}
     ;
     max_print=25
-) where {OData,IData,CData}
+) where {TTime<:Dates.AbstractTime,OData,IData,CData}
     trades = acc.trades
 
     length(trades) == 0 && return
@@ -83,11 +83,11 @@ end
 # --------------- Positions ---------------
 
 function print_positions(
-    acc::Account{OData,IData,CData}
+    acc::Account{TTime,OData,IData,CData}
     ;
     max_print=50,
     kwargs...
-) where {OData,IData,CData}
+) where {TTime<:Dates.AbstractTime,OData,IData,CData}
     print_positions(
         stdout,
         acc
@@ -99,10 +99,10 @@ end
 
 function print_positions(
     io::IO,
-    acc::Account{OData,IData,CData}
+    acc::Account{TTime,OData,IData,CData}
     ;
     max_print=50
-) where {OData,IData,CData}
+) where {TTime<:Dates.AbstractTime,OData,IData,CData}
     positions = filter(p -> p.quantity != 0, acc.positions)
 
     length(positions) == 0 && return
@@ -159,8 +159,8 @@ end
 
 function print_cash_balances(
     io::IO,
-    acc::Account{OData,IData,CData}
-) where {OData,IData,CData}
+    acc::Account{TTime,OData,IData,CData}
+) where {TTime<:Dates.AbstractTime,OData,IData,CData}
     length(acc.balances) == 0 && return
 
     cols = [
@@ -202,8 +202,8 @@ end
 
 function print_equity_balances(
     io::IO,
-    acc::Account{OData,IData,CData}
-) where {OData,IData,CData}
+    acc::Account{TTime,OData,IData,CData}
+) where {TTime<:Dates.AbstractTime,OData,IData,CData}
     length(acc.equities) == 0 && return
 
     cols = [
@@ -245,11 +245,11 @@ end
 
 function Base.show(
     io::IO,
-    acc::Account{OData,IData,CData}
+    acc::Account{TTime,OData,IData,CData}
     ;
     max_trades=50,
     kwargs...
-) where {OData,IData,CData}
+) where {TTime<:Dates.AbstractTime,OData,IData,CData}
     display_width = displaysize(io)[2]
 
     function get_color(val)
