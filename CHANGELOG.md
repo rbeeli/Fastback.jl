@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add [Tables.jl](https://github.com/JuliaData/Tables.jl) integration for account artefacts and collectors
+- New Glossary page in docs
 
 ## [0.3.0] - 2025-09-25
 
