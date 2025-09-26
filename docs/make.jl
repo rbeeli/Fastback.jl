@@ -29,6 +29,10 @@ end
 const EXAMPLES_ROOT = joinpath(DOCS_ROOT, "src", "examples")
 const GENERATED_EXAMPLES_ROOT = joinpath(EXAMPLES_ROOT, "gen")
 
+if isdir(GENERATED_EXAMPLES_ROOT)
+    rm(GENERATED_EXAMPLES_ROOT; recursive=true)
+end
+
 mkpath(GENERATED_EXAMPLES_ROOT)
 
 function gen_markdown(path)
