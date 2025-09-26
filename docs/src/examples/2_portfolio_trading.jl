@@ -42,7 +42,7 @@ describe(df)
 
 ## create trading account with $10'000 start capital
 acc = Account();
-add_cash!(acc, Cash(:USD), 10_000.0);
+deposit!(acc, Cash(:USD), 10_000.0);
 
 ## register instruments for all symbols
 instruments = map(sym -> Instrument(sym, sym, :USD), symbols);

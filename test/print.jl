@@ -13,7 +13,9 @@ end
 
 @testitem "Print Order" begin
     using Test, Fastback, Dates
-    acc = Account(); add_cash!(acc, Cash(:USD), 10_000.0)
+
+    acc = Account();
+    deposit!(acc, Cash(:USD), 10_000.0)
     DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0; quantity = 1.0; dt = DateTime(2021, 1, 1, 0, 0, 0)
     show(Order(oid!(acc), DUMMY, dt, price, quantity))
@@ -21,7 +23,9 @@ end
 
 @testitem "Print Account" begin
     using Test, Fastback, Dates
-    acc = Account(); add_cash!(acc, Cash(:USD), 10_000.0)
+
+    acc = Account();
+    deposit!(acc, Cash(:USD), 10_000.0)
     DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0; quantity = 1.0; dt = DateTime(2021, 1, 1, 0, 0, 0)
     order = Order(oid!(acc), DUMMY, dt, price, quantity)

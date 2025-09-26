@@ -9,7 +9,7 @@ using TestItemRunner
     const CashMeta = NamedTuple{(:tag,),Tuple{Symbol}}
 
     acc = Account(; odata=OrderMeta, idata=InstMeta, cdata=CashMeta)
-    add_cash!(acc, Cash(:USD; digits=2, data=(tag=:base,)), 1_000.0)
+    deposit!(acc, Cash(:USD; digits=2, data=(tag=:base,)), 1_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("ABC/USD"), :ABC, :USD; metadata=(sector=:tech,)))
 

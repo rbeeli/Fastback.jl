@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
     # create trading account
     acc = Account()
-    add_cash!(acc, Cash(:USD), 100_000.0)
+    deposit!(acc, Cash(:USD), 100_000.0)
 
     @test cash_balance(acc, :USD) == 100_000.0
     @test equity(acc, :USD) == 100_000.0
@@ -42,11 +42,26 @@ using TestItemRunner
     show(acc)
 end
 
+@testitem "Deposit & withdraw cash" begin
+    using Test, Fastback
+
+    acc = Account()
+    usd = Cash(:USD)
+
+    deposit!(acc, usd, 1_000.0)
+    @test cash_balance(acc, usd) == 1_000.0
+    @test equity(acc, usd) == 1_000.0
+
+    withdraw!(acc, usd, 400.0)
+    @test cash_balance(acc, usd) == 600.0
+    @test equity(acc, usd) == 600.0
+end
+
 @testitem "Account long order w/ commission ccy" begin
     using Test, Fastback, Dates
     # create trading account
     acc = Account()
-    add_cash!(acc, Cash(:USD), 100_000.0)
+    deposit!(acc, Cash(:USD), 100_000.0)
 
     @test cash_balance(acc, :USD) == 100_000.0
     @test equity(acc, :USD) == 100_000.0
@@ -88,7 +103,8 @@ end
 @testitem "Account long order w/ commission pct" begin
     using Test, Fastback, Dates
     # create trading account
-    acc = Account(); add_cash!(acc, Cash(:USD), 100_000.0)
+    acc = Account();
+    deposit!(acc, Cash(:USD), 100_000.0)
     @test cash_balance(acc, :USD) == 100_000.0
     @test equity(acc, :USD) == 100_000.0
     @test length(acc.cash) == 1

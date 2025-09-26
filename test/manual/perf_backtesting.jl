@@ -6,7 +6,7 @@ using InteractiveUtils
 function run_backtest()
     # create trading account
     acc = Account()
-    add_cash!(acc, Cash(:USD), 100_000.0)
+    deposit!(acc, Cash(:USD), 100_000.0)
 
     # define instrument
     DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD)
@@ -35,7 +35,7 @@ ProfileView.@profview map(i -> run_backtest(), 1:10)
 
 # create trading account
 const acc = Account()
-add_cash!(acc, Cash(:USD), 100_000.0)
+deposit!(acc, Cash(:USD), 100_000.0)
 
 # define instrument
 const DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD)

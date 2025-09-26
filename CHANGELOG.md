@@ -2,12 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.0] - 2025-09-25
+## [0.4.0] - 2025-09-26
 
 ### Breaking changes ⚠️
 
 - `Account` now only uses keyword arguments in constructor
-- Renamings for clarity (update any usages accordingly):
+- Renamings for clarity (update any usages accordingly!):
 
     `cash` -> `cash_balance`
 
@@ -18,6 +18,8 @@ All notable changes to this project will be documented in this file.
     `format_date` -> `format_datetime`
 
     `register_cash!` -> `register_cash_asset!`
+
+- Split `add_cash!` function into `deposit!` and `withdraw!`  (update any usages accordingly!)
 
 ### Added
 

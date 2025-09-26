@@ -26,7 +26,7 @@ const OrderMeta = NamedTuple{(:signal,),Tuple{String}}
 const InstMeta = NamedTuple{(:sector,),Tuple{Symbol}}
 
 acc = Account(; odata=OrderMeta, idata=InstMeta);
-add_cash!(acc, Cash(:USD), 5_000.0);
+deposit!(acc, Cash(:USD), 5_000.0);
 
 ## register instruments with metadata
 AAPL = register_instrument!(acc, Instrument(Symbol("AAPL/USD"), :AAPL, :USD; metadata=(sector=:tech,)));

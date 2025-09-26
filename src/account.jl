@@ -70,15 +70,7 @@ function register_cash_asset!(
     push!(acc.equities, zero(Price))
 end
 
-"""
-Adds cash to the account balance.
-
-Cash is a liquid coin or currency that is used to trade instruments with, e.g. USD, CHF, BTC, ETH.
-
-The funds are added to the balance of the corresponding cash asset.
-To withdraw (subtract) cash from the account, simply pass a negative value.
-"""
-function add_cash!(
+@inline function _adjust_cash!(
     acc::Account{OData,IData,CData},
     cash::Cash{CData},
     amount::Real
@@ -90,10 +82,44 @@ function add_cash!(
     cash.index > 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered."))
 
     # update balance and equity for the asset
-    @inbounds acc.balances[cash.index] += Price(amount)
-    @inbounds acc.equities[cash.index] += Price(amount)
+    @inbounds begin
+        acc.balances[cash.index] += Price(amount)
+        acc.equities[cash.index] += Price(amount)
+    end
 
     cash
+end
+
+"""
+Deposits cash into the account balance.
+
+Cash is a liquid coin or currency that is used to trade instruments with, e.g. USD, CHF, BTC, ETH.
+
+The funds are added to the balance and equity of the corresponding cash asset.
+Use `withdraw!` to reduce the balance again.
+"""
+function deposit!(
+    acc::Account{OData,IData,CData},
+    cash::Cash{CData},
+    amount::Real
+) where {OData,IData,CData}
+    isless(amount, zero(amount)) && throw(ArgumentError("Deposit amount must be non-negative."))
+    _adjust_cash!(acc, cash, amount)
+end
+
+"""
+Withdraws cash from the account balance.
+
+The funds are subtracted from the balance and equity of the corresponding cash asset.
+Use `deposit!` to fund an account.
+"""
+function withdraw!(
+    acc::Account{OData,IData,CData},
+    cash::Cash{CData},
+    amount::Real
+) where {OData,IData,CData}
+    isless(amount, zero(amount)) && throw(ArgumentError("Withdraw amount must be non-negative."))
+    _adjust_cash!(acc, cash, -amount)
 end
 
 """

@@ -12,7 +12,7 @@ Ideally, it can be looped over, or streamed efficiently.
 
 Initialize the account you want to backtest with.
 The account holds the assets (funds), positions, trades, and does all the bookkeeping.
-Specify the initial funds for the account used by adding cash amounts.
+Fund the account with `deposit!(account, cash_asset, amount)` and reduce balances later with `withdraw!` when simulating outflows.
 
 ### 3. Instruments
 
