@@ -79,5 +79,6 @@ makedocs(
             "5\\. Tables.jl integration" => "examples/gen/5_tables_integration.md",
         ],
         "Integrations" => "integrations.md",
+        "Glossary" => "glossary.md",
     ]
 )
