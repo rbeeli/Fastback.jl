@@ -30,9 +30,9 @@ GBP = Cash(:GBP; digits=2);
 
 ## create trading account with 10'000 USD, 5'000 EUR and 20'000 GBP cash
 acc = Account();
-add_cash!(acc, USD, 10_000);
-add_cash!(acc, EUR, 5_000);
-add_cash!(acc, GBP, 20_000);
+deposit!(acc, USD, 10_000);
+deposit!(acc, EUR, 5_000);
+deposit!(acc, GBP, 20_000);
 
 ## exchange rates for spot rates
 er = SpotExchangeRates();

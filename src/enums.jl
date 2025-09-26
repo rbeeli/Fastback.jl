@@ -12,8 +12,8 @@ using EnumX
 end
 
 @inline function trade_dir(volume::T) where {T<:Number}
-    volume > 0 ? Buy : ((volume < 0) ? TradeDir.Sell : TradeDir.Null)
+    volume > 0 ? TradeDir.Buy : (volume < 0 ? TradeDir.Sell : TradeDir.Null)
 end
 
-@inline *(x::TQuantity, dir::TradeDir.T) where {TQuantity<:Number} = TQuantity(x * sign(dir))
-@inline *(dir::TradeDir.T, x::TQuantity) where {TQuantity<:Number} = TQuantity(x * sign(dir))
+@inline *(qty::TQuantity, dir::TradeDir.T) where {TQuantity<:Number} = TQuantity(qty * sign(dir))
+@inline *(dir::TradeDir.T, qty::TQuantity) where {TQuantity<:Number} = TQuantity(qty * sign(dir))

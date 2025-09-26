@@ -14,14 +14,107 @@ include("exchange_rates.jl")
 include("account.jl")
 include("logic.jl")
 include("collectors.jl")
+include("tables.jl")
 include("print.jl")
 include("backtest_runner.jl")
 
-# export all
-for n in names(@__MODULE__; all=true)
-    if Base.isidentifier(n) && n ∉ (Symbol(@__MODULE__), :eval, :include)
-        @eval export $n
-    end
-end
+# Core types
+export Fastback,
+    Price,
+    Quantity,
+    TradeDir,
+    Cash,
+    Instrument,
+    Order,
+    Trade,
+    Position,
+    Account,
+    ExchangeRates,
+    OneExchangeRates,
+    SpotExchangeRates
+
+# Trade direction helpers
+export trade_dir,
+    is_long,
+    is_short,
+    opposite_dir
+
+# Order and trade utilities
+export symbol,
+    nominal_value,
+    fill_order!,
+    is_realizing,
+    realized_return
+
+# Account operations
+export cash_asset,
+    has_cash_asset,
+    register_cash_asset!,
+    cash_balance,
+    equity,
+    deposit!,
+    withdraw!,
+    register_instrument!,
+    get_position,
+    is_exposed_to,
+    oid!,
+    tid!,
+    format_datetime
+
+# Position analytics
+export has_exposure,
+    calc_pnl_local,
+    calc_return_local,
+    calc_realized_qty,
+    calc_exposure_increase_quantity
+
+# Exchange rate utilities
+export add_asset!,
+    get_rate,
+    get_rates_matrix,
+    update_rate!
+
+# Portfolio logic
+export update_pnl!
+
+# Collectors
+export PeriodicValues,
+    PredicateValues,
+    DrawdownValues,
+    DrawdownMode,
+    dates,
+    periodic_collector,
+    predicate_collector,
+    drawdown_collector,
+    should_collect,
+    MinValue,
+    MaxValue,
+    min_value_collector,
+    max_value_collector
+
+# Backtesting
+export batch_backtest
+
+# Tables integration
+export balances_table,
+    equities_table,
+    positions_table,
+    trades_table
+
+# Formatting helpers
+export format_cash,
+    format_base,
+    format_quote,
+    format_period_HHMMSS
+
+# Printing helpers
+export print_cash_balances,
+    print_equity_balances,
+    print_positions,
+    print_trades
+
+# Utilities
+export params_combinations,
+    compute_eta
 
 end # module

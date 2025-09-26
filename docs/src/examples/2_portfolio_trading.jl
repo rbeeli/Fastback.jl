@@ -42,7 +42,7 @@ describe(df)
 
 ## create trading account with $10'000 start capital
 acc = Account();
-add_cash!(acc, Cash(:USD), 10_000.0);
+deposit!(acc, Cash(:USD), 10_000.0);
 
 ## register instruments for all symbols
 instruments = map(sym -> Instrument(sym, sym, :USD), symbols);
@@ -110,7 +110,7 @@ for i in 6:nrow(df)
     ## collect data for plotting
     if should_collect(equity_data, dt)
         equity_value = equity(acc, :USD)
-        collect_balance(dt, cash(acc, :USD))
+        collect_balance(dt, cash_balance(acc, :USD))
         collect_equity(dt, equity_value)
         collect_drawdown(dt, equity_value)
     end

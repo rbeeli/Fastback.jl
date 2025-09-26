@@ -5,9 +5,9 @@ using TestItemRunner
     using Test, Fastback, Dates
     # create trading account
     acc = Account()
-    add_cash!(acc, Cash(:USD), 100_000.0)
+    deposit!(acc, Cash(:USD), 100_000.0)
 
-    @test cash(acc, :USD) == 100_000.0
+    @test cash_balance(acc, :USD) == 100_000.0
     @test equity(acc, :USD) == 100_000.0
     @test length(acc.cash) == 1
     # create instrument
@@ -29,7 +29,7 @@ using TestItemRunner
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity
-    @test cash(acc, :USD) ≈ 100_000.0
+    @test cash_balance(acc, :USD) ≈ 100_000.0
     @test equity(acc, :USD) ≈ 100_000.0 + (prices[2] - prices[1]) * pos.quantity
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
@@ -37,18 +37,33 @@ using TestItemRunner
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
     @test pos.pnl_local ≈ 0
-    @test cash(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty
-    @test equity(acc, :USD) ≈ cash(acc, :USD)
+    @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty
+    @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
     show(acc)
+end
+
+@testitem "Deposit & withdraw cash" begin
+    using Test, Fastback
+
+    acc = Account()
+    usd = Cash(:USD)
+
+    deposit!(acc, usd, 1_000.0)
+    @test cash_balance(acc, usd) == 1_000.0
+    @test equity(acc, usd) == 1_000.0
+
+    withdraw!(acc, usd, 400.0)
+    @test cash_balance(acc, usd) == 600.0
+    @test equity(acc, usd) == 600.0
 end
 
 @testitem "Account long order w/ commission ccy" begin
     using Test, Fastback, Dates
     # create trading account
     acc = Account()
-    add_cash!(acc, Cash(:USD), 100_000.0)
+    deposit!(acc, Cash(:USD), 100_000.0)
 
-    @test cash(acc, :USD) == 100_000.0
+    @test cash_balance(acc, :USD) == 100_000.0
     @test equity(acc, :USD) == 100_000.0
     @test length(acc.cash) == 1
     # create instrument
@@ -72,7 +87,7 @@ end
     update_pnl!(acc, pos, prices[2])
 
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
-    @test cash(acc, :USD) ≈ 100_000.0 - commission
+    @test cash_balance(acc, :USD) ≈ 100_000.0 - commission
     @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - commission
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
@@ -80,16 +95,17 @@ end
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
     @test pos.pnl_local ≈ 0
-    @test cash(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - commission - 0.5
-    @test equity(acc, :USD) ≈ cash(acc, :USD)
+    @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - commission - 0.5
+    @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
     show(acc)
 end
 
 @testitem "Account long order w/ commission pct" begin
     using Test, Fastback, Dates
     # create trading account
-    acc = Account(); add_cash!(acc, Cash(:USD), 100_000.0)
-    @test cash(acc, :USD) == 100_000.0
+    acc = Account();
+    deposit!(acc, Cash(:USD), 100_000.0)
+    @test cash_balance(acc, :USD) == 100_000.0
     @test equity(acc, :USD) == 100_000.0
     @test length(acc.cash) == 1
     # create instrument
@@ -112,7 +128,7 @@ end
     update_pnl!(acc, pos, prices[2])
 
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
-    @test cash(acc, :USD) ≈ 100_000.0 - exe1.commission
+    @test cash_balance(acc, :USD) ≈ 100_000.0 - exe1.commission
     @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - exe1.commission
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
@@ -120,8 +136,8 @@ end
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
     @test pos.pnl_local ≈ 0
-    @test cash(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.commission - exe2.commission
-    @test equity(acc, :USD) ≈ cash(acc, :USD)
+    @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.commission - exe2.commission
+    @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
     show(acc)
 end
 

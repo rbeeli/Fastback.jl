@@ -3,7 +3,8 @@ using TestItemRunner
 
 @testitem "Position long pnl/return" begin
     using Test, Fastback, Dates
-    acc = Account(); add_cash!(acc, Cash(:USD), 100_000.0)
+    acc = Account();
+    deposit!(acc, Cash(:USD), 100_000.0)
     TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD))
     px1, px2 = 500.0, 505.0
     # long
@@ -16,7 +17,8 @@ end
 
 @testitem "Position short pnl/return" begin
     using Test, Fastback, Dates
-    acc = Account(); add_cash!(acc, Cash(:USD), 100_000.0)
+    acc = Account();
+    deposit!(acc, Cash(:USD), 100_000.0)
     TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD))
     px1, px2 = 500.0, 505.0
     # short

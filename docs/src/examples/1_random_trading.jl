@@ -26,7 +26,7 @@ dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N-1);
 
 ## create trading account with $10'000 start capital
 acc = Account();
-add_cash!(acc, Cash(:USD), 10_000.0);
+deposit!(acc, Cash(:USD), 10_000.0);
 
 ## register a dummy instrument
 DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))

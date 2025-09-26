@@ -22,8 +22,8 @@ function print_trades(
     cols = [
         Dict(:name => "ID", :val => t -> t.tid, :fmt => (t, v) -> v),
         Dict(:name => "Symbol", :val => t -> t.order.inst.symbol, :fmt => (t, v) -> v),
-        # Dict(:name => "Date", :val => t -> "$(format_date(acc, t.order.date)) +$(Dates.value(round(t.date - t.order.date, Millisecond))) ms", :fmt => (e, v) -> v),
-        Dict(:name => "Date", :val => t -> "$(format_date(acc, t.date))", :fmt => (e, v) -> v),
+        # Dict(:name => "Date", :val => t -> "$(format_datetime(acc, t.order.date)) +$(Dates.value(round(t.date - t.order.date, Millisecond))) ms", :fmt => (e, v) -> v),
+        Dict(:name => "Date", :val => t -> "$(format_datetime(acc, t.date))", :fmt => (e, v) -> v),
         Dict(:name => "Qty", :val => t -> t.order.quantity, :fmt => (t, v) -> format_base(t.order.inst, v)),
         Dict(:name => "Filled", :val => t -> t.fill_qty, :fmt => (t, v) -> format_base(t.order.inst, v)),
         # Dict(:name => "Remain. qty", :val => t -> t.remaining_qty, :fmt => (t, v) -> format_base(t.order.inst, v)),
@@ -113,7 +113,7 @@ function print_positions(
 
     cols = [
         Dict(:name => "Symbol", :val => t -> t.inst.symbol, :fmt => (p, v) -> v),
-        Dict(:name => "Quantity", :val => t -> t.quantity, :fmt => (p, v) -> format_base(p.inst, v)),
+        Dict(:name => "Qty", :val => t -> t.quantity, :fmt => (p, v) -> format_base(p.inst, v)),
         Dict(:name => "Avg. price", :val => t -> t.avg_price, :fmt => (p, v) -> isnan(v) ? "—" : format_quote(p.inst, v)),
         Dict(:name => "Ccy", :val => t -> t.inst.quote_symbol, :fmt => (p, v) -> v),
         Dict(:name => "P&L", :val => t -> t.pnl_local, :fmt => (p, v) -> isnan(v) ? "—" : format_quote(p.inst, v)),
@@ -171,7 +171,7 @@ function print_cash_balances(
         ),
         Dict(
             :name => "Value",
-            :val => a -> cash(acc, a),
+            :val => a -> cash_balance(acc, a),
             :fmt => (a, v) -> format_cash(a, v)
         ),
     ]
