@@ -14,6 +14,7 @@ include("exchange_rates.jl")
 include("account.jl")
 include("logic.jl")
 include("collectors.jl")
+include("tables.jl")
 include("print.jl")
 include("backtest_runner.jl")
 

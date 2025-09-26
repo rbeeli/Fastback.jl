@@ -17,7 +17,7 @@ For example, Fastback has no notion of "strategy" or "indicator", such construct
 The event-based architecture aims to mimic the way a real-world trading systems works, where new data is ingested as a continuous data stream, i.e. events.
 This reduces the implementation gap from backtesting to real-world execution significantly compared to a vectorized backtesting frameworks.
 
-### Features
+## Features
 
 - Event-based, modular architecture
 - Multi-currency support
@@ -32,14 +32,14 @@ This reduces the implementation gap from backtesting to real-world execution sig
   - Maintains single position per instrument using weighted average cost method
 - Ability to attach arbirary metadata to instruments and orders in type-safe manner
 
-### Documentation & Examples
+## Documentation & Examples
 
 Full documentation and examples are available at [Fastback.jl documentation page](https://rbeeli.github.io/Fastback.jl/).
 
-### Changelog
+## Changelog
 
 See the [CHANGELOG](https://github.com/rbeeli/Fastback.jl/blob/main/CHANGELOG.md).
 
-### Bug reports and feature requests
+## Bug reports and feature requests
 
 Please report any issues via the [GitHub issue tracker](https://github.com/rbeeli/Fastback.jl/issues).
