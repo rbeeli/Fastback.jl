@@ -112,7 +112,7 @@ Tables.schema(::PositionsTable{OData,IData}) where {OData,IData} = Tables.Schema
     (
         :index,
         :symbol,
-        :quantity,
+        :qty,
         :avg_price,
         :pnl_local,
         :base_ccy,
@@ -144,7 +144,7 @@ function Base.iterate(iter::PositionRows{OData,IData}, idx::Int=1) where {OData,
     row = (
         index=pos.index,
         symbol=inst.symbol,
-        quantity=pos.quantity,
+        qty=pos.quantity,
         avg_price=pos.avg_price,
         pnl_local=pos.pnl_local,
         base_ccy=inst.base_symbol,

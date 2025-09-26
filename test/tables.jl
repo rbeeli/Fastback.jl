@@ -43,7 +43,7 @@ end
     @test schema.names == (
         :index,
         :symbol,
-        :quantity,
+        :qty,
         :avg_price,
         :pnl_local,
         :base_ccy,
@@ -54,7 +54,7 @@ end
     @test length(rows) == length(acc.positions)
     pos_row = only(rows)
     @test pos_row.symbol == inst.symbol
-    @test pos_row.quantity ≈ -1.0
+    @test pos_row.qty ≈ -1.0
     @test pos_row.avg_price ≈ 12.0
     @test pos_row.base_ccy == inst.base_symbol
     @test pos_row.quote_ccy == inst.quote_symbol

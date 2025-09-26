@@ -45,7 +45,7 @@ function Base.show(io::IO, o::Order{O,I}) where {O,I}
     print(io, "[Order] $(o.inst.symbol) " *
               "date=$(date_formatter(o.date)) " *
               "price=$(format_quote(o.inst, o.price)) $(o.inst.quote_symbol) " *
-              "quantity=$(format_base(o.inst, o.quantity)) $(o.inst.base_symbol) " *
+              "qty=$(format_base(o.inst, o.quantity)) $(o.inst.base_symbol) " *
               "tp=$(tp_str) " *
               "sl=$(sl_str)")
 end
