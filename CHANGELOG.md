@@ -26,6 +26,10 @@ All notable changes to this project will be documented in this file.
 - Add [Tables.jl](https://github.com/JuliaData/Tables.jl) integration for account artefacts and collectors
 - New Glossary page in docs
 
+### Changed
+
+- Consistently use of `qty` instead of `quantity` for display outputs
+
 ## [0.3.0] - 2025-09-25
 
 - Introduce optional take_profit and stop_loss fields for Order
