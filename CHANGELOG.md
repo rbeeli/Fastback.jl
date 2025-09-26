@@ -6,8 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Breaking changes ⚠️
 
-- Renaming of `hash_cash_symbol` to `has_cash_symbol` due to typo
-- `Account` now only using keyword arguments for constructor
+- `Account` now only uses keyword arguments in constructor
+- Renamings for clarity (update any usages accordingly):
+
+    `cash` -> `cash_balance`
+
+    `cash_object` -> `cash_asset`
+
+    `hash_cash_symbol` -> `has_cash_asset`
+
+    `format_date` -> `format_datetime`
 
 ### Added
 

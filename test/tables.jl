@@ -67,7 +67,7 @@ end
     balance_row = only(Tables.rows(tbl))
     @test balance_row.symbol == :USD
     @test balance_row.metadata == (tag=:base,)
-    @test balance_row.balance ≈ cash(acc, :USD)
+    @test balance_row.balance ≈ cash_balance(acc, :USD)
 
     println(DataFrame(tbl))
 end

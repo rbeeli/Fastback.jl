@@ -2,7 +2,7 @@
     # update P&L and account equity using delta of old and new P&L
     new_pnl = calc_pnl_local(pos, close_price)
     pnl_delta = new_pnl - pos.pnl_local
-    cash = cash_object(acc, pos.inst.quote_symbol)
+    cash = cash_asset(acc, pos.inst.quote_symbol)
     @inbounds acc.equities[cash.index] += pnl_delta
     pos.pnl_local = new_pnl
     return
@@ -25,7 +25,7 @@ end
     commission_pct::Price=0.0,   # percentage commission of nominal order value, e.g. 0.001 = 0.1%
 )::Trade{OData,IData} where {OData,IData,CData}
     # get quote asset
-    quote_cash = cash_object(acc, order.inst.quote_symbol)
+    quote_cash = cash_asset(acc, order.inst.quote_symbol)
 
     # positions are netted using weighted average price,
     # hence only one static position per instrument is maintained

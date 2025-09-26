@@ -22,8 +22,8 @@ function print_trades(
     cols = [
         Dict(:name => "ID", :val => t -> t.tid, :fmt => (t, v) -> v),
         Dict(:name => "Symbol", :val => t -> t.order.inst.symbol, :fmt => (t, v) -> v),
-        # Dict(:name => "Date", :val => t -> "$(format_date(acc, t.order.date)) +$(Dates.value(round(t.date - t.order.date, Millisecond))) ms", :fmt => (e, v) -> v),
-        Dict(:name => "Date", :val => t -> "$(format_date(acc, t.date))", :fmt => (e, v) -> v),
+        # Dict(:name => "Date", :val => t -> "$(format_datetime(acc, t.order.date)) +$(Dates.value(round(t.date - t.order.date, Millisecond))) ms", :fmt => (e, v) -> v),
+        Dict(:name => "Date", :val => t -> "$(format_datetime(acc, t.date))", :fmt => (e, v) -> v),
         Dict(:name => "Qty", :val => t -> t.order.quantity, :fmt => (t, v) -> format_base(t.order.inst, v)),
         Dict(:name => "Filled", :val => t -> t.fill_qty, :fmt => (t, v) -> format_base(t.order.inst, v)),
         # Dict(:name => "Remain. qty", :val => t -> t.remaining_qty, :fmt => (t, v) -> format_base(t.order.inst, v)),
@@ -171,7 +171,7 @@ function print_cash_balances(
         ),
         Dict(
             :name => "Value",
-            :val => a -> cash(acc, a),
+            :val => a -> cash_balance(acc, a),
             :fmt => (a, v) -> format_cash(a, v)
         ),
     ]

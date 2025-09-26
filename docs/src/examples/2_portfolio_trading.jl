@@ -110,7 +110,7 @@ for i in 6:nrow(df)
     ## collect data for plotting
     if should_collect(equity_data, dt)
         equity_value = equity(acc, :USD)
-        collect_balance(dt, cash(acc, :USD))
+        collect_balance(dt, cash_balance(acc, :USD))
         collect_equity(dt, equity_value)
         collect_drawdown(dt, equity_value)
     end

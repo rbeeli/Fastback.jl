@@ -34,7 +34,7 @@ mutable struct Account{OData,IData,CData}
     end
 end
 
-@inline format_date(acc::Account, x) = Dates.format(x, acc.date_format)
+@inline format_datetime(acc::Account, x) = Dates.format(x, acc.date_format)
 @inline oid!(acc::Account) = acc.order_sequence += 1
 @inline tid!(acc::Account) = acc.trade_sequence += 1
 
@@ -44,12 +44,12 @@ Returns a `Cash` object with the given symbol.
 Cash objects must be registered first in the account before
 they can be accessed, see `register_cash!`.
 """
-@inline cash_object(acc::Account, symbol::Symbol) = @inbounds acc.cash_by_symbol[symbol]
+@inline cash_asset(acc::Account, symbol::Symbol) = @inbounds acc.cash_by_symbol[symbol]
 
 """
 Checks if the account has the given cash symbol registered.
 """
-@inline has_cash_symbol(acc::Account, symbol::Symbol) = haskey(acc.cash_by_symbol, symbol)
+@inline has_cash_asset(acc::Account, symbol::Symbol) = haskey(acc.cash_by_symbol, symbol)
 
 """
 Registers a new cash asset in the account.
@@ -57,8 +57,11 @@ Registers a new cash asset in the account.
 Cash is a liquid coin or currency that is used to trade instruments with, e.g. USD, CHF, BTC, ETH.
 When funding the account, the funds are added to the balance of the corresponding cash asset.
 """
-function register_cash!(acc::Account{OData,IData,CData}, cash::Cash{CData}) where {OData,IData,CData}
-    !has_cash_symbol(acc, cash.symbol) || throw(ArgumentError("Cash with symbol '$(cash.symbol)' already registered."))
+function register_cash!(
+    acc::Account{OData,IData,CData},
+    cash::Cash{CData}
+) where {OData,IData,CData}
+    !has_cash_asset(acc, cash.symbol) || throw(ArgumentError("Cash with symbol '$(cash.symbol)' already registered."))
 
     # set index for fast array indexing and hashing
     cash.index = length(acc.cash) + 1
@@ -77,16 +80,20 @@ Cash is a liquid coin or currency that is used to trade instruments with, e.g. U
 The funds are added to the balance of the corresponding cash asset.
 To withdraw (subtract) cash from the account, simply pass a negative value.
 """
-function add_cash!(acc::Account{OData,IData,CData}, cash::Cash{CData}, value::Real) where {OData,IData,CData}
+function add_cash!(
+    acc::Account{OData,IData,CData},
+    cash::Cash{CData},
+    amount::Real
+) where {OData,IData,CData}
     # register cash object if not already registered
-    has_cash_symbol(acc, cash.symbol) || register_cash!(acc, cash)
+    has_cash_asset(acc, cash.symbol) || register_cash!(acc, cash)
 
     # ensure cash object was registered
     cash.index > 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered."))
 
     # update balance and equity for the asset
-    @inbounds acc.balances[cash.index] += Price(value)
-    @inbounds acc.equities[cash.index] += Price(value)
+    @inbounds acc.balances[cash.index] += Price(amount)
+    @inbounds acc.equities[cash.index] += Price(amount)
 
     cash
 end
@@ -136,18 +143,19 @@ in the given direction (`Buy`, `Sell`).
 end
 
 """
-Returns the cash balance of the cash asset in the account.
+Returns the cash balance of the provided cash asset in the account.
 
 The returned value does not include the P&L value of open positions.
 """
-@inline cash(acc::Account, cash::Cash) = @inbounds acc.balances[cash.index]
+@inline cash_balance(acc::Account, cash::Cash) = @inbounds acc.balances[cash.index]
 
 """
-Returns the cash balance of the cash asset in the account.
+Returns the cash balance of the provided cash asset in the account.
 
+Convenience method dispatching on the cash symbol instead of the `Cash` object.
 The returned value does not include the P&L value of open positions.
 """
-@inline cash(acc::Account, cash_symbol::Symbol) = cash(acc, cash_object(acc, cash_symbol))
+@inline cash_balance(acc::Account, cash_symbol::Symbol) = cash_balance(acc, cash_asset(acc, cash_symbol))
 
 """
 Returns the equity value of the provided cash asset in the account.
@@ -163,4 +171,4 @@ Returns the equity value of the provided cash asset in the account.
 Equity is calculated as your cash balance +/- the floating profit/loss
 of your open positions in the same currency, not including closing commission.
 """
-@inline equity(acc::Account, cash_symbol::Symbol) = equity(acc, cash_object(acc, cash_symbol))
+@inline equity(acc::Account, cash_symbol::Symbol) = equity(acc, cash_asset(acc, cash_symbol))
