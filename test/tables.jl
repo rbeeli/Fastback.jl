@@ -48,6 +48,8 @@ end
         :pnl_local,
         :base_ccy,
         :quote_ccy,
+        :last_oid,
+        :last_tid,
     )
 
     rows = collect(Tables.rows(tbl))
@@ -58,6 +60,8 @@ end
     @test pos_row.avg_price ≈ 12.0
     @test pos_row.base_ccy == inst.base_symbol
     @test pos_row.quote_ccy == inst.quote_symbol
+    @test pos_row.last_oid == order₂.oid
+    @test pos_row.last_tid == acc.trades[end].tid
 end
 
 @testitem "balances_table" setup=[TablesTestSetup] begin

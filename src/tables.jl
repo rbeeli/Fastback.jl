@@ -101,14 +101,14 @@ trades_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.Abstract
 Provides a Tables.jl compatible view over the positions contained in an `Account` or
 an arbitrary vector of `Position`s.
 """
-struct PositionsTable{OData,IData}
-    positions::Vector{Position{OData,IData}}
+struct PositionsTable{TTime<:Dates.AbstractTime,OData,IData}
+    positions::Vector{Position{TTime,OData,IData}}
 end
 
 Tables.istable(::Type{<:PositionsTable}) = true
 Tables.rowaccess(::Type{<:PositionsTable}) = true
 
-Tables.schema(::PositionsTable{OData,IData}) where {OData,IData} = Tables.Schema(
+Tables.schema(::PositionsTable{TTime,OData,IData}) where {TTime<:Dates.AbstractTime,OData,IData} = Tables.Schema(
     (
         :index,
         :symbol,
@@ -117,6 +117,8 @@ Tables.schema(::PositionsTable{OData,IData}) where {OData,IData} = Tables.Schema
         :pnl_local,
         :base_ccy,
         :quote_ccy,
+        :last_oid,
+        :last_tid,
     ),
     (
         UInt,
@@ -126,18 +128,20 @@ Tables.schema(::PositionsTable{OData,IData}) where {OData,IData} = Tables.Schema
         Price,
         Symbol,
         Symbol,
+        Int,
+        Int,
     )
 )
 
-struct PositionRows{OData,IData}
-    positions::Vector{Position{OData,IData}}
+struct PositionRows{TTime<:Dates.AbstractTime,OData,IData}
+    positions::Vector{Position{TTime,OData,IData}}
 end
 
-Tables.rows(tbl::PositionsTable{OData,IData}) where {OData,IData} = PositionRows{OData,IData}(tbl.positions)
+Tables.rows(tbl::PositionsTable{TTime,OData,IData}) where {TTime<:Dates.AbstractTime,OData,IData} = PositionRows{TTime,OData,IData}(tbl.positions)
 
 Base.length(iter::PositionRows) = length(iter.positions)
 
-function Base.iterate(iter::PositionRows{OData,IData}, idx::Int=1) where {OData,IData}
+function Base.iterate(iter::PositionRows{TTime,OData,IData}, idx::Int=1) where {TTime<:Dates.AbstractTime,OData,IData}
     idx > length(iter.positions) && return nothing
     pos = @inbounds iter.positions[idx]
     inst = pos.inst
@@ -149,11 +153,13 @@ function Base.iterate(iter::PositionRows{OData,IData}, idx::Int=1) where {OData,
         pnl_local=pos.pnl_local,
         base_ccy=inst.base_symbol,
         quote_ccy=inst.quote_symbol,
+        last_oid=isnothing(pos.last_order) ? 0 : pos.last_order.oid,
+        last_tid=isnothing(pos.last_trade) ? 0 : pos.last_trade.tid,
     )
     return row, idx + 1
 end
 
-positions_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.AbstractTime,OData,IData,CData} = PositionsTable{OData,IData}(acc.positions)
+positions_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.AbstractTime,OData,IData,CData} = PositionsTable{TTime,OData,IData}(acc.positions)
 
 # -----------------------------------------------------------------------------
 

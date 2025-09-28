@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2025-09-28
+
+### Added
+
+- New field `Position.last_order` for tracking the last order that modified the position
+- New field `Position.last_trade` for tracking the last trade that modified the position
+
 ## [0.4.0] - 2025-09-26
 
 ### Breaking changes ⚠️

@@ -3,7 +3,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,OData,IData,CData}
     const cash_by_symbol::Dict{Symbol,Cash{CData}}
     const balances::Vector{Price}           # balance per cash currency
     const equities::Vector{Price}           # equity per cash currency
-    const positions::Vector{Position{OData,IData}}
+    const positions::Vector{Position{TTime,OData,IData}}
     const trades::Vector{Trade{TTime,OData,IData}}
     order_sequence::Int
     trade_sequence::Int
@@ -24,7 +24,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,OData,IData,CData}
             Dict{Symbol,Cash{CData}}(), # cash_by_symbol
             Vector{Price}(), # balances
             Vector{Price}(), # equities
-            Vector{Position{OData,IData}}(), # positions
+            Vector{Position{TTime,OData,IData}}(), # positions
             Vector{Trade{TTime,OData,IData}}(), # trades
             order_sequence,
             trade_sequence,
@@ -140,7 +140,7 @@ function register_instrument!(
     # set asset index for fast array indexing and hashing
     inst.index = length(acc.positions) + 1
 
-    push!(acc.positions, Position{OData}(inst.index, inst))
+    push!(acc.positions, Position{TTime,OData}(inst.index, inst))
 
     inst
 end

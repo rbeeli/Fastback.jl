@@ -1,19 +1,23 @@
-mutable struct Position{OData,IData}
+mutable struct Position{TTime<:Dates.AbstractTime,OData,IData}
     const index::UInt               # unique index for each position starting from 1 (used for array indexing and hashing)
     const inst::Instrument{IData}
     avg_price::Price
     quantity::Quantity              # negative = short selling
     pnl_local::Price                # local currency P&L
+    last_order::Union{Nothing,Order{TTime,OData,IData}}
+    last_trade::Union{Nothing,Trade{TTime,OData,IData}}
 
-    function Position{OData}(
+    function Position{TTime,OData}(
         index,
         inst::Instrument{IData}
         ;
         avg_price::Price=0.0,
         quantity::Quantity=0.0,
-        pnl_local::Price=0.0
-    ) where {OData,IData}
-        new{OData,IData}(index, inst, avg_price, quantity, pnl_local)
+        pnl_local::Price=0.0,
+        last_order::Union{Nothing,Order{TTime,OData,IData}}=nothing,
+        last_trade::Union{Nothing,Trade{TTime,OData,IData}}=nothing,
+    ) where {TTime<:Dates.AbstractTime,OData,IData}
+        new{TTime,OData,IData}(index, inst, avg_price, quantity, pnl_local, last_order, last_trade)
     end
 end
 
@@ -52,7 +56,7 @@ Fees are accounted for in the account equity calculation and execution P&L.
 - `position`: Position object.
 - `close_price`: Current closing price.
 """
-@inline function calc_return_local(pos::Position{O,I}, close_price) where {O,I}
+@inline function calc_return_local(pos::Position{T,O,I}, close_price) where {T<:Dates.AbstractTime,O,I}
     sign(pos.quantity) * (close_price / pos.avg_price - one(close_price))
 end
 

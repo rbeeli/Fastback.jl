@@ -73,6 +73,10 @@ end
         pos.avg_price
     )
 
+    # track last order and trade that touched the position
+    pos.last_order = order
+    pos.last_trade = trade
+
     # calculate new exposure
     new_exposure = pos_qty + fill_qty
     if new_exposure == 0.0
