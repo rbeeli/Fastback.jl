@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.2] - 2025-09-29
+
+### Changed
+
+- Improve printing in `show(acc)` of trades and positions by showing first and last few entries when there are many, not only the first few
+
 ## [0.4.1] - 2025-09-28
 
 ### Added
