@@ -12,12 +12,7 @@ function print_trades(
     max_print=25
 ) where {TTime<:Dates.AbstractTime,OData,IData,CData}
     trades = acc.trades
-
     length(trades) == 0 && return
-
-    n_total = length(trades)
-    n_shown = min(n_total, max_print)
-    n_hidden = n_total - n_shown
 
     cols = [
         Dict(:name => "ID", :val => t -> t.tid, :fmt => (t, v) -> v),
@@ -41,11 +36,10 @@ function print_trades(
         push!(cols, Dict(:name => "Metadata", :val => t -> t.order.metadata, :fmt => (t, v) -> v))
     end
 
-    columns = [c[:name] for c in cols]
-
+    column_labels = [c[:name] for c in cols]
     data_columns = []
     for col in cols
-        push!(data_columns, map(col[:val], first(trades, n_shown)))
+        push!(data_columns, map(col[:val], trades))
     end
     data_matrix = reduce(hcat, data_columns)
 
@@ -58,26 +52,18 @@ function print_trades(
     h_ret_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Return" && data_columns[j][i] > 0, crayon"#11BF11")
     h_ret_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Return" && data_columns[j][i] < 0, crayon"#DD0000")
 
-    if n_hidden > 0
-        pretty_table(
-            io,
-            data_matrix
-            ;
-            column_labels=columns,
-            highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_pos, h_ret_neg],
-            formatters=[formatter],
-            compact_printing=true)
-        println(io, " [...] $n_hidden more trades")
-    else
-        pretty_table(
-            io,
-            data_matrix
-            ;
-            column_labels=columns,
-            highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_pos, h_ret_neg],
-            formatters=[formatter],
-            compact_printing=true)
-    end
+    pretty_table(
+        io,
+        data_matrix
+        ;
+        column_labels=column_labels,
+        highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_pos, h_ret_neg],
+        formatters=[formatter],
+        compact_printing=true,
+        vertical_crop_mode=:middle,
+        maximum_number_of_rows=max_print,
+        fit_table_in_display_vertically=false,
+    )
 end
 
 # --------------- Positions ---------------
@@ -104,12 +90,7 @@ function print_positions(
     max_print=50
 ) where {TTime<:Dates.AbstractTime,OData,IData,CData}
     positions = filter(p -> p.quantity != 0, acc.positions)
-
     length(positions) == 0 && return
-
-    n_total = length(positions)
-    n_shown = min(n_total, max_print)
-    n_hidden = n_total - n_shown
 
     cols = [
         Dict(:name => "Symbol", :val => t -> t.inst.symbol, :fmt => (p, v) -> v),
@@ -118,11 +99,11 @@ function print_positions(
         Dict(:name => "Ccy", :val => t -> t.inst.quote_symbol, :fmt => (p, v) -> v),
         Dict(:name => "P&L", :val => t -> t.pnl_local, :fmt => (p, v) -> isnan(v) ? "—" : format_quote(p.inst, v)),
     ]
-    columns = [c[:name] for c in cols]
 
+    column_labels = [c[:name] for c in cols]
     data_columns = []
     for col in cols
-        push!(data_columns, map(col[:val], first(positions, n_shown)))
+        push!(data_columns, map(col[:val], positions))
     end
     data_matrix = reduce(hcat, data_columns)
 
@@ -133,26 +114,18 @@ function print_positions(
     h_qty_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] > 0, crayon"#DD00DD")
     h_qty_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] < 0, crayon"#DDDD00")
 
-    if n_hidden > 0
-        pretty_table(
-            io,
-            data_matrix
-            ;
-            column_labels=columns,
-            highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg],
-            formatters=[formatter],
-            compact_printing=true)
-        println(io, " [...] $n_hidden more positions")
-    else
-        pretty_table(
-            io,
-            data_matrix
-            ;
-            column_labels=columns,
-            highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg],
-            formatters=[formatter],
-            compact_printing=true)
-    end
+    pretty_table(
+        io,
+        data_matrix
+        ;
+        column_labels=column_labels,
+        highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg],
+        formatters=[formatter],
+        compact_printing=true,
+        vertical_crop_mode=:middle,
+        maximum_number_of_rows=max_print,
+        fit_table_in_display_vertically=false,
+    )
 end
 
 # ---------------- Cash balances ----------------
@@ -195,7 +168,9 @@ function print_cash_balances(
         column_labels=columns,
         highlighters=[h_val_pos, h_val_neg],
         formatters=[formatter],
-        compact_printing=true)
+        compact_printing=true,
+        fit_table_in_display_vertically=false,
+    )
 end
 
 # ---------------- Equity balances ----------------
@@ -238,7 +213,9 @@ function print_equity_balances(
         column_labels=columns,
         highlighters=[h_val_pos, h_val_neg],
         formatters=[formatter],
-        compact_printing=true)
+        compact_printing=true,
+        fit_table_in_display_vertically=false,
+    )
 end
 
 # --------------- Account ---------------
@@ -247,7 +224,7 @@ function Base.show(
     io::IO,
     acc::Account{TTime,OData,IData,CData}
     ;
-    max_trades=50,
+    max_trades=30,
     kwargs...
 ) where {TTime<:Dates.AbstractTime,OData,IData,CData}
     display_width = displaysize(io)[2]
