@@ -14,6 +14,50 @@ end
     update_pnl!(acc, pos, close_price)
 end
 
+"""
+    fill_order!(account::Account, order::Order, datetime, fill_price; kwargs...) -> Trade
+
+Execute an order and update the account state accordingly.
+
+This is the core function for trade execution. It processes an order by:
+1. Calculating commissions and fill quantities
+2. Updating the position using weighted average price method
+3. Computing realized P&L for position reductions
+4. Updating account balances and equities
+5. Creating a Trade record
+
+# Arguments
+- `account::Account`: The account to execute the order in
+- `order::Order`: The order to execute
+- `datetime`: The execution timestamp
+- `fill_price::Price`: The actual execution price
+
+# Keyword Arguments
+- `fill_qty::Quantity=0.0`: Quantity filled (defaults to full order quantity)
+- `commission::Price=0.0`: Fixed commission in quote currency
+- `commission_pct::Price=0.0`: Percentage commission (e.g., 0.001 = 0.1%)
+
+# Returns
+- `Trade`: A trade record with execution details and P&L information
+
+# Examples
+```julia
+# Create and execute a buy order
+order = Order(oid!(account), instrument, DateTime("2023-01-01"), 100.0, 10.0)
+trade = fill_order!(account, order, DateTime("2023-01-01"), 100.50;
+                    commission=1.0, commission_pct=0.001)
+
+# Partial fill example
+trade = fill_order!(account, order, DateTime("2023-01-01"), 100.50;
+                    fill_qty=5.0, commission=0.50)
+
+# Check if trade realized P&L
+is_realizing(trade)      # true if closing part of existing position
+realized_return(trade)   # percentage return on realized portion
+```
+
+See also: [`Order`](@ref), [`Trade`](@ref), [`is_realizing`](@ref), [`realized_return`](@ref)
+"""
 @inline function fill_order!(
     acc::Account{TTime,OData,IData,CData},
     order::Order{TTime,OData,IData},
