@@ -1,5 +1,44 @@
 using Dates
 
+"""
+    Order{TTime,OData,IData}
+
+Represents a trading order with all necessary execution parameters.
+
+An order encapsulates an instruction to trade an instrument at a specific time, price, and quantity,
+with optional take-profit and stop-loss levels and custom metadata.
+
+# Type Parameters
+- `TTime<:Dates.AbstractTime`: The time type used for timestamps
+- `OData`: Type for custom order metadata (can be `Nothing` if unused)
+- `IData`: Type for custom instrument metadata
+
+# Fields
+- `oid::Int`: Unique order identifier
+- `inst::Instrument{IData}`: The instrument to trade
+- `date::TTime`: Order timestamp
+- `price::Price`: Order price in quote currency
+- `quantity::Quantity`: Order quantity in base currency (negative for short selling)
+- `take_profit::Price`: Optional take-profit price (NaN if not set)
+- `stop_loss::Price`: Optional stop-loss price (NaN if not set)
+- `metadata::OData`: Optional custom order metadata
+
+# Examples
+```julia
+# Create a simple buy order
+order = Order(1, instrument, DateTime("2023-01-01"), 100.0, 10.0)
+
+# Create an order with take-profit and stop-loss
+order = Order(2, instrument, DateTime("2023-01-01"), 100.0, 10.0;
+              take_profit=110.0, stop_loss=95.0)
+
+# Create an order with custom metadata
+order = Order(3, instrument, DateTime("2023-01-01"), 100.0, 10.0;
+              metadata="signal_strength_0.8")
+```
+
+See also: [`Trade`](@ref), [`fill_order!`](@ref), [`Instrument`](@ref)
+"""
 mutable struct Order{TTime<:Dates.AbstractTime,OData,IData}
     const oid::Int
     const inst::Instrument{IData}
@@ -34,8 +73,64 @@ mutable struct Order{TTime<:Dates.AbstractTime,OData,IData}
     end
 end
 
+"""
+    symbol(order::Order) -> Symbol
+
+Get the symbol of the instrument associated with this order.
+
+# Arguments
+- `order::Order`: The order to get the symbol from
+
+# Returns
+- `Symbol`: The instrument symbol
+
+# Examples
+```julia
+order = Order(1, instrument, DateTime("2023-01-01"), 100.0, 10.0)
+symbol(order)  # Returns the instrument's symbol, e.g., :AAPL
+```
+"""
 @inline symbol(order::Order) = symbol(order.inst)
+
+"""
+    trade_dir(order::Order) -> TradeDir
+
+Determine the trade direction (Buy, Sell, or Null) based on order quantity.
+
+# Arguments
+- `order::Order`: The order to analyze
+
+# Returns
+- `TradeDir`: Buy for positive quantity, Sell for negative, Null for zero
+
+# Examples
+```julia
+buy_order = Order(1, instrument, DateTime("2023-01-01"), 100.0, 10.0)
+trade_dir(buy_order)   # Returns TradeDir.Buy
+
+sell_order = Order(2, instrument, DateTime("2023-01-01"), 100.0, -10.0)
+trade_dir(sell_order)  # Returns TradeDir.Sell
+```
+"""
 @inline trade_dir(order::Order) = trade_dir(order.quantity)
+
+"""
+    nominal_value(order::Order) -> Price
+
+Calculate the nominal value of an order (price × absolute quantity).
+
+# Arguments
+- `order::Order`: The order to calculate nominal value for
+
+# Returns
+- `Price`: The nominal value in quote currency
+
+# Examples
+```julia
+order = Order(1, instrument, DateTime("2023-01-01"), 100.0, 10.0)
+nominal_value(order)  # Returns 1000.0 (100.0 * 10.0)
+```
+"""
 @inline nominal_value(order::Order) = abs(order.quantity) * order.price
 
 function Base.show(io::IO, o::Order{TTime,O,I}) where {TTime,O,I}

@@ -1,3 +1,43 @@
+"""
+    Position{TTime,OData,IData}
+
+Represents a net position in a financial instrument using weighted average cost method.
+
+A position maintains the aggregated exposure for an instrument, tracking the average price,
+net quantity, unrealized P&L, and references to the most recent order and trade. Positions
+use netting, meaning multiple trades in the same instrument are combined into a single position.
+
+# Type Parameters
+- `TTime<:Dates.AbstractTime`: The time type used for timestamps
+- `OData`: Type for custom order metadata
+- `IData`: Type for custom instrument metadata
+
+# Fields
+- `index::UInt`: Unique position index for fast array access and hashing
+- `inst::Instrument{IData}`: The instrument this position represents
+- `avg_price::Price`: Weighted average entry price in quote currency
+- `quantity::Quantity`: Net position size (positive for long, negative for short)
+- `pnl_local::Price`: Current unrealized P&L in quote currency
+- `last_order::Union{Nothing,Order}`: Reference to the most recent order for this instrument
+- `last_trade::Union{Nothing,Trade}`: Reference to the most recent trade for this instrument
+
+# Examples
+```julia
+# Positions are typically created and managed by the Account
+position = get_position(account, instrument)
+
+# Check position state
+has_exposure(position)    # true if position is open
+is_long(position)        # true for positive quantity
+is_short(position)       # true for negative quantity
+
+# Calculate P&L at current market price
+current_pnl = calc_pnl_local(position, current_price)
+current_return = calc_return_local(position, current_price)
+```
+
+See also: `Account`, `Instrument`, `calc_pnl_local`, `has_exposure`
+"""
 mutable struct Position{TTime<:Dates.AbstractTime,OData,IData}
     const index::UInt               # unique index for each position starting from 1 (used for array indexing and hashing)
     const inst::Instrument{IData}
@@ -23,9 +63,72 @@ end
 
 @inline Base.hash(pos::Position) = pos.index  # custom hash for better performance
 
+"""
+    is_long(position::Position) -> Bool
+
+Check if a position represents a long exposure (positive quantity).
+
+# Arguments
+- `position::Position`: The position to check
+
+# Returns
+- `Bool`: `true` if the position quantity is positive, `false` otherwise
+"""
 @inline is_long(pos::Position) = pos.quantity > zero(Quantity)
+
+"""
+    is_short(position::Position) -> Bool
+
+Check if a position represents a short exposure (negative quantity).
+
+# Arguments
+- `position::Position`: The position to check
+
+# Returns
+- `Bool`: `true` if the position quantity is negative, `false` otherwise
+"""
 @inline is_short(pos::Position) = pos.quantity < zero(Quantity)
+
+"""
+    trade_dir(position::Position) -> TradeDir
+
+Get the trade direction of a position based on its quantity.
+
+# Arguments
+- `position::Position`: The position to analyze
+
+# Returns
+- `TradeDir`: Buy for positive quantity, Sell for negative, Null for zero
+"""
 @inline trade_dir(pos::Position) = trade_dir(pos.quantity)
+
+"""
+    has_exposure(position::Position) -> Bool
+
+Check if a position has any exposure (non-zero quantity).
+
+Returns `true` if the position quantity is non-zero, indicating an open position.
+This is equivalent to checking `!iszero(position.quantity)`.
+
+# Arguments
+- `position::Position`: The position to check
+
+# Returns
+- `Bool`: `true` if position has exposure, `false` if flat (no position)
+
+# Examples
+```julia
+position = get_position(account, instrument)
+has_exposure(position)     # false initially
+
+# After opening a position
+order = Order(oid!(account), instrument, DateTime("2023-01-01"), 100.0, 10.0)
+fill_order!(account, order, DateTime("2023-01-01"), 100.0)
+has_exposure(position)     # true after trade
+```
+
+See also: [`is_long`](@ref), [`is_short`](@ref), [`Position`](@ref)
+"""
 @inline has_exposure(pos::Position) = pos.quantity != zero(Quantity)
 
 """
