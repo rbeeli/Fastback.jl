@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>7. Timestamps64.jl integration · Fastback.jl</title><meta name="title" content="7. Timestamps64.jl integration · Fastback.jl"/><meta property="og:title" content="7. Timestamps64.jl integration · Fastback.jl"/><meta property="twitter:title" content="7. Timestamps64.jl integration · Fastback.jl"/><meta name="description" content="Documentation for Fastback.jl."/><meta property="og:description" content="Documentation for Fastback.jl."/><meta property="twitter:description" content="Documentation for Fastback.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><script type="module" defer>
+    import { codeToHtml } from 'https://esm.sh/shiki@1.3.0'
+
+    async function highlightCode(lang, el) {
+        const code = el.textContent
+        if (lang == "julia-repl")
+            lang = "julia"
+        try {
+            el.outerHTML = await codeToHtml(code, {
+                lang: lang,
+                theme: 'monokai',
+                //theme: 'github-light-default',
+                //theme: 'github-dark-dimmed',
+                //theme: 'dark-plus',
+                //themes: {
+                //    light: 'github-dark-dimmed',
+                //    dark: 'github-dark',
+                //}
+            })
+        } catch (e) {
+            console.error(`Failed to highlight code on element with class="${el.classList}" using shiki: `, e)
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('run code highlighting using shiki')
+        const els = document.querySelectorAll("code[class^='language-']")
+        const promises = []
+        for (const el of els) {
+            const cls = Array.from(el.classList).filter(x => x.startsWith("language-"))
+            if (!cls.length)
+                continue
+            const lang = cls[0].substring(9)
+            el.classList.add('shiki-highlighted')
+            
+            promises.push(highlightCode(lang, el))
+        }
+        await Promise.all(promises)
+    })
+</script>
+<link href="../../../assets/styles.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img class="docs-light-only" src="../../../assets/logo.png" alt="Fastback.jl logo"/><img class="docs-dark-only" src="../../../assets/logo-dark.png" alt="Fastback.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../basic_setup/">Basic setup</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../1_random_trading/">1. Random trading</a></li><li><a class="tocitem" href="../2_portfolio_trading/">2. Portfolio trading</a></li><li><a class="tocitem" href="../3_multi_currency/">3. Multi-Currency trading</a></li><li><a class="tocitem" href="../4_metadata/">4. Attach metadata</a></li><li><a class="tocitem" href="../5_Tables_integration/">5. Tables.jl integration</a></li><li><a class="tocitem" href="../6_NanoDates_integration/">6. NanoDates.jl integration</a></li><li class="is-active"><a class="tocitem" href>7. Timestamps64.jl integration</a></li></ul></li><li><a class="tocitem" href="../../../integrations/">Integrations</a></li><li><a class="tocitem" href="../../../glossary/">Glossary</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>7. Timestamps64.jl integration</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>7. Timestamps64.jl integration</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl/blob/main/docs/src/examples/7_Timestamps64_integration.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Timestamps64-integration-example"><a class="docs-heading-anchor" href="#Timestamps64-integration-example">Timestamps64 integration example</a><a id="Timestamps64-integration-example-1"></a><a class="docs-heading-anchor-permalink" href="#Timestamps64-integration-example" title="Permalink"></a></h1><p>This example shows how to pair Fastback&#39;s timestamp parametrization with high-resolution <code>Timestamp64</code> values from Timestamps64.jl.</p><p>Timestamps64.jl provides nanosecond-resolution timestamps based on <code>Int64</code> values, which makes them very efficient in terms of memory and performance. They are particularly useful for high-frequency trading applications. Compared to NanoDates.jl, Timestamps64.jl has a smaller memory footprint (8 bytes vs. 16 bytes), and is faster for arithmetic operations.</p><p>This example is derived from the random trading walkthrough but focuses on exercising the integration, so plotting has been omitted.</p><pre><code class="language-julia hljs">using Fastback
+using Dates
+using Timestamps64
+using Random
+
+# set RNG seed for reproducibility
+Random.seed!(42);
+
+# generate synthetic price series
+N = 2_000
+prices = 1000.0 .+ cumsum(randn(N) .+ 0.1)
+start_dt = Timestamp64(2020, 1, 1)
+dts = [start_dt + Hour(i) for i in 0:N-1]
+
+# create trading account with $10&#39;000 start capital and Timestamp64 support
+acc = Account(; time_type=Timestamp64)
+deposit!(acc, Cash(:USD), 10_000.0)
+
+# register a dummy instrument
+DUMMY = register_instrument!(acc, Instrument(Symbol(&quot;DUMMY/USD&quot;), :DUMMY, :USD))
+
+# data collector for account equity and drawdowns (sampling every hour)
+collect_equity, equity_data = periodic_collector(Float64, Hour(1); time_type=Timestamp64)
+collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Hour(1); time_type=Timestamp64)
+
+# loop over price series
+for (dt, price) in zip(dts, prices)
+    # randomly trade with 1% probability
+    if rand() &lt; 0.01
+        quantity = rand() &gt; 0.4 ? 1.0 : -1.0
+        order = Order(oid!(acc), DUMMY, dt, price, quantity)
+        fill_order!(acc, order, dt, price; fill_qty=0.75order.quantity, commission_pct=0.001)
+    end
+
+    # update position and account P&amp;L
+    update_pnl!(acc, DUMMY, price, price)
+
+    # collect data for analysis
+    if should_collect(equity_data, dt)
+        equity_value = equity(acc, :USD)
+        collect_equity(dt, equity_value)
+        collect_drawdown(dt, equity_value)
+    end
+end
+
+# print account summary
+show(acc)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ACCOUNT SUMMARY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<span class="sgr1">Cash balances</span> (1)
+┌─────┬──────────┐
+│     │    Value │
+├─────┼──────────┤
+│ USD │ 10123.98 │
+└─────┴──────────┘
+
+<span class="sgr1">Equity balances</span> (1)
+┌─────┬──────────┐
+│     │    Value │
+├─────┼──────────┤
+│ USD │ 10244.09 │
+└─────┴──────────┘
+
+<span class="sgr1">Positions</span> (1)
+┌───────────┬──────┬────────────┬─────┬────────┐
+│    Symbol │  Qty │ Avg. price │ Ccy │    P&amp;L │
+├───────────┼──────┼────────────┼─────┼────────┤
+│ DUMMY/USD │ 3.25 │    1086.99 │ USD │ 120.11 │
+└───────────┴──────┴────────────┴─────┴────────┘
+
+<span class="sgr1">Trades</span> (23)
+┌────┬───────────┬─────────────────────┬───────┬────────┬─────────┬────┬────┬───
+│ ID │    Symbol │                Date │   Qty │ Filled │   Price │ TP │ SL │  ⋯
+├────┼───────────┼─────────────────────┼───────┼────────┼─────────┼────┼────┼───
+│  1 │ DUMMY/USD │ 2020-01-01 03:00:00 │  1.00 │   0.75 │  999.66 │  — │  — │  ⋯
+│  2 │ DUMMY/USD │ 2020-01-05 02:00:00 │  1.00 │   0.75 │ 1004.04 │  — │  — │  ⋯
+│  3 │ DUMMY/USD │ 2020-01-07 18:00:00 │  1.00 │   0.75 │ 1005.23 │  — │  — │  ⋯
+│  4 │ DUMMY/USD │ 2020-01-10 04:00:00 │ -1.00 │  -1.00 │ 1014.50 │  — │  — │  ⋯
+│  5 │ DUMMY/USD │ 2020-01-14 05:00:00 │  1.00 │   0.75 │ 1005.24 │  — │  — │  ⋯
+│  6 │ DUMMY/USD │ 2020-01-16 05:00:00 │ -1.00 │  -1.00 │  998.26 │  — │  — │  ⋯
+│  7 │ DUMMY/USD │ 2020-01-16 18:00:00 │  1.00 │   0.75 │  998.62 │  — │  — │  ⋯
+│  8 │ DUMMY/USD │ 2020-01-18 03:00:00 │  1.00 │   0.75 │ 1002.23 │  — │  — │  ⋯
+│  9 │ DUMMY/USD │ 2020-01-18 10:00:00 │ -1.00 │  -1.00 │ 1003.12 │  — │  — │  ⋯
+│ 10 │ DUMMY/USD │ 2020-01-19 02:00:00 │ -1.00 │  -1.00 │ 1007.68 │  — │  — │  ⋯
+│ 11 │ DUMMY/USD │ 2020-01-30 02:00:00 │  1.00 │   0.75 │ 1014.10 │  — │  — │  ⋯
+│ 12 │ DUMMY/USD │ 2020-02-03 14:00:00 │  1.00 │   0.75 │ 1026.44 │  — │  — │  ⋯
+│ 13 │ DUMMY/USD │ 2020-02-10 16:00:00 │  1.00 │   0.75 │ 1039.42 │  — │  — │  ⋯
+│ 14 │ DUMMY/USD │ 2020-02-12 20:00:00 │  1.00 │   0.75 │ 1050.59 │  — │  — │  ⋯
+│ 15 │ DUMMY/USD │ 2020-02-27 17:00:00 │  1.00 │   0.75 │ 1049.16 │  — │  — │  ⋯
+│ 16 │ DUMMY/USD │ 2020-02-27 23:00:00 │ -1.00 │  -1.00 │ 1044.86 │  — │  — │  ⋯
+│ 17 │ DUMMY/USD │ 2020-03-04 21:00:00 │ -1.00 │  -1.00 │ 1069.05 │  — │  — │  ⋯
+│ 18 │ DUMMY/USD │ 2020-03-07 17:00:00 │ -1.00 │  -1.00 │ 1076.76 │  — │  — │  ⋯
+│ 19 │ DUMMY/USD │ 2020-03-10 02:00:00 │  1.00 │   0.75 │ 1090.97 │  — │  — │  ⋯
+│ 20 │ DUMMY/USD │ 2020-03-18 04:00:00 │  1.00 │   0.75 │ 1113.01 │  — │  — │  ⋯
+│ 21 │ DUMMY/USD │ 2020-03-18 23:00:00 │  1.00 │   0.75 │ 1114.18 │  — │  — │  ⋯
+│ 22 │ DUMMY/USD │ 2020-03-22 17:00:00 │  1.00 │   0.75 │ 1121.58 │  — │  — │  ⋯
+│ 23 │ DUMMY/USD │ 2020-03-23 00:00:00 │ -1.00 │  -1.00 │ 1122.93 │  — │  — │  ⋯
+└────┴───────────┴─────────────────────┴───────┴────────┴─────────┴────┴────┴───
+                                                               4 columns omitted
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../6_NanoDates_integration/">« 6. NanoDates.jl integration</a><a class="docs-footer-nextpage" href="../../../integrations/">Integrations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Saturday 4 October 2025 02:07">Saturday 4 October 2025</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
