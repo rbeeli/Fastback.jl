@@ -89,6 +89,7 @@ makedocs(
             "6\\. NanoDates.jl integration" => "examples/gen/6_NanoDates_integration.md",
             "7\\. Timestamps64.jl integration" => "examples/gen/7_Timestamps64_integration.md",
         ],
+        "API Reference" => "api.md",
         "Integrations" => "integrations.md",
         "Glossary" => "glossary.md",
     ]
