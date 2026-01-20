@@ -24,6 +24,7 @@ export Fastback,
     Quantity,
     TradeDir,
     SettlementStyle,
+    MarginMode,
     Cash,
     Instrument,
     Order,
@@ -66,6 +67,8 @@ export cash_asset,
 export has_exposure,
     calc_pnl_local,
     calc_return_local,
+    margin_init_local,
+    margin_maint_local,
     calc_realized_qty,
     calc_exposure_increase_quantity
 
@@ -77,7 +80,9 @@ export add_asset!,
 
 # Portfolio logic
 export update_pnl!,
-    update_valuation!
+    update_valuation!,
+    update_margin!,
+    update_marks!
 
 # Collectors
 export PeriodicValues,

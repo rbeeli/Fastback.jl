@@ -2,13 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.3] - 2026-01-20
+## [0.5.0] - 2026-01-20
 
 ### Added
 
 - Support for optional Instrument `multiplier` value
 - `Position.value_local` and `update_valuation! = update_pnl!` functions
 - `SettlementType` enum for specifying settlement types of instruments (Asset vs. Cash)
+- `MarginMode` enum + `update_margin!` + `update_marks!` functions for margin calculations and extended `Position` struct and `Account` struct to support margin trading
 
 ### Changed
 

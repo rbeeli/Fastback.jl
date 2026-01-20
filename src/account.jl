@@ -3,6 +3,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,OData,IData,CData}
     const cash_by_symbol::Dict{Symbol,Cash{CData}}
     const balances::Vector{Price}           # balance per cash currency
     const equities::Vector{Price}           # equity per cash currency
+    const init_margin_used::Vector{Price}   # initial margin used per cash currency
+    const maint_margin_used::Vector{Price}  # maintenance margin used per cash currency
     const positions::Vector{Position{TTime,OData,IData}}
     const trades::Vector{Trade{TTime,OData,IData}}
     order_sequence::Int
@@ -24,6 +26,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,OData,IData,CData}
             Dict{Symbol,Cash{CData}}(), # cash_by_symbol
             Vector{Price}(), # balances
             Vector{Price}(), # equities
+            Vector{Price}(), # init_margin_used
+            Vector{Price}(), # maint_margin_used
             Vector{Position{TTime,OData,IData}}(), # positions
             Vector{Trade{TTime,OData,IData}}(), # trades
             order_sequence,
@@ -69,6 +73,8 @@ function register_cash_asset!(
     acc.cash_by_symbol[cash.symbol] = cash
     push!(acc.balances, zero(Price))
     push!(acc.equities, zero(Price))
+    push!(acc.init_margin_used, zero(Price))
+    push!(acc.maint_margin_used, zero(Price))
 end
 
 @inline function _adjust_cash!(

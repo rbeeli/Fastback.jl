@@ -216,6 +216,109 @@ end
     @test equity(acc, :USD) ≈ 9_000.0
 end
 
+@testitem "Margin disabled stays zero" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("NOMARGIN/USD"), :NOMARGIN, :USD))
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2021, 1, 1)
+    order = Order(oid!(acc), inst, dt, 100.0, 10.0)
+    fill_order!(acc, order, dt, 100.0)
+    update_pnl!(acc, pos, 101.0)
+
+    usd_index = cash_asset(acc, :USD).index
+    @test pos.margin_init_local == 0.0
+    @test pos.margin_maint_local == 0.0
+    @test acc.init_margin_used[usd_index] == 0.0
+    @test acc.maint_margin_used[usd_index] == 0.0
+end
+
+@testitem "Margin percent notional updates with mark" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("MARGIN/USD"),
+        :MARGIN,
+        :USD;
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.2,
+        margin_maint_long=0.05,
+        margin_maint_short=0.1
+    ))
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2021, 1, 1)
+    price = 100.0
+    qty = 10.0
+    order = Order(oid!(acc), inst, dt, price, qty)
+    fill_order!(acc, order, dt, price)
+
+    usd_index = cash_asset(acc, :USD).index
+    @test pos.margin_init_local ≈ qty * price * 0.1
+    @test pos.margin_maint_local ≈ qty * price * 0.05
+    @test acc.init_margin_used[usd_index] ≈ qty * price * 0.1
+    @test acc.maint_margin_used[usd_index] ≈ qty * price * 0.05
+
+    update_pnl!(acc, pos, 120.0)
+    @test pos.margin_init_local ≈ qty * 120.0 * 0.1
+    @test pos.margin_maint_local ≈ qty * 120.0 * 0.05
+    @test acc.init_margin_used[usd_index] ≈ qty * 120.0 * 0.1
+    @test acc.maint_margin_used[usd_index] ≈ qty * 120.0 * 0.05
+end
+
+@testitem "Margin fixed per contract uses per-contract rates" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("FIXED/USD"),
+        :FIXED,
+        :USD;
+        margin_mode=MarginMode.FixedPerContract,
+        margin_init_long=100.0,
+        margin_init_short=150.0,
+        margin_maint_long=50.0,
+        margin_maint_short=75.0
+    ))
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2021, 1, 1)
+    price = 20.0
+    qty = 2.0
+    order = Order(oid!(acc), inst, dt, price, qty)
+    fill_order!(acc, order, dt, price)
+
+    usd_index = cash_asset(acc, :USD).index
+    @test pos.margin_init_local ≈ qty * 100.0
+    @test pos.margin_maint_local ≈ qty * 50.0
+    @test acc.init_margin_used[usd_index] ≈ qty * 100.0
+    @test acc.maint_margin_used[usd_index] ≈ qty * 50.0
+
+    update_pnl!(acc, pos, 25.0)
+    @test pos.margin_init_local ≈ qty * 100.0
+    @test pos.margin_maint_local ≈ qty * 50.0
+    @test acc.init_margin_used[usd_index] ≈ qty * 100.0
+    @test acc.maint_margin_used[usd_index] ≈ qty * 50.0
+
+    order2 = Order(oid!(acc), inst, dt, price, -3.0)
+    fill_order!(acc, order2, dt, price)
+    @test pos.quantity ≈ -1.0
+    @test pos.margin_init_local ≈ 150.0
+    @test pos.margin_maint_local ≈ 75.0
+    @test acc.init_margin_used[usd_index] ≈ 150.0
+    @test acc.maint_margin_used[usd_index] ≈ 75.0
+end
+
 
 @testitem "Account with Date timestamps" begin
     using Test, Fastback, Dates, Tables

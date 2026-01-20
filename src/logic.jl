@@ -1,3 +1,9 @@
+"""
+Updates position valuation and account equity using the latest mark price.
+
+For asset-settled instruments, value is mark-to-market notional.
+For cash-settled instruments, value equals local P&L.
+"""
 @inline function update_valuation!(acc::Account, pos::Position, close_price)
     # update position valuation and account equity using delta of old and new value
     inst = pos.inst
@@ -15,8 +21,39 @@
     return
 end
 
-@inline function update_pnl!(acc::Account, pos::Position, close_price)
+"""
+Updates margin usage for a position and corresponding account totals.
+
+The function applies deltas to account margin vectors and stores the new
+margin values on the position.
+"""
+@inline function update_margin!(acc::Account, pos::Position, close_price)
+    inst = pos.inst
+    new_init_margin = margin_init_local(inst, pos.quantity, close_price)
+    new_maint_margin = margin_maint_local(inst, pos.quantity, close_price)
+    init_delta = new_init_margin - pos.margin_init_local
+    maint_delta = new_maint_margin - pos.margin_maint_local
+    quote_cash_index = inst.quote_cash_index
+    @inbounds begin
+        acc.init_margin_used[quote_cash_index] += init_delta
+        acc.maint_margin_used[quote_cash_index] += maint_delta
+    end
+    pos.margin_init_local = new_init_margin
+    pos.margin_maint_local = new_maint_margin
+    return
+end
+
+"""
+Updates valuation and margin for a position using the latest mark price.
+"""
+@inline function update_marks!(acc::Account, pos::Position, close_price)
     update_valuation!(acc, pos, close_price)
+    update_margin!(acc, pos, close_price)
+    return
+end
+
+@inline function update_pnl!(acc::Account, pos::Position, close_price)
+    update_marks!(acc, pos, close_price)
 end
 
 @inline function update_pnl!(acc::Account, inst::Instrument, bid_price, ask_price)
@@ -114,7 +151,7 @@ end
     pos.quantity = new_exposure
 
     # update P&L of position and account equity
-    update_pnl!(acc, pos, fill_price)
+    update_marks!(acc, pos, fill_price)
 
     push!(acc.trades, trade)
 

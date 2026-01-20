@@ -5,6 +5,8 @@ mutable struct Position{TTime<:Dates.AbstractTime,OData,IData}
     quantity::Quantity              # negative = short selling
     pnl_local::Price                # local currency P&L
     value_local::Price              # position value contribution in local currency
+    margin_init_local::Price        # initial margin used in local currency
+    margin_maint_local::Price       # maintenance margin used in local currency
     last_order::Union{Nothing,Order{TTime,OData,IData}}
     last_trade::Union{Nothing,Trade{TTime,OData,IData}}
 
@@ -16,10 +18,23 @@ mutable struct Position{TTime<:Dates.AbstractTime,OData,IData}
         quantity::Quantity=0.0,
         pnl_local::Price=0.0,
         value_local::Price=0.0,
+        margin_init_local::Price=0.0,
+        margin_maint_local::Price=0.0,
         last_order::Union{Nothing,Order{TTime,OData,IData}}=nothing,
         last_trade::Union{Nothing,Trade{TTime,OData,IData}}=nothing,
     ) where {TTime<:Dates.AbstractTime,OData,IData}
-        new{TTime,OData,IData}(index, inst, avg_price, quantity, pnl_local, value_local, last_order, last_trade)
+        new{TTime,OData,IData}(
+            index,
+            inst,
+            avg_price,
+            quantity,
+            pnl_local,
+            value_local,
+            margin_init_local,
+            margin_maint_local,
+            last_order,
+            last_trade
+        )
     end
 end
 
@@ -60,6 +75,60 @@ Fees are accounted for in the account equity calculation and execution P&L.
 """
 @inline function calc_return_local(pos::Position{T,O,I}, close_price) where {T<:Dates.AbstractTime,O,I}
     sign(pos.quantity) * (close_price / pos.avg_price - one(close_price))
+end
+
+"""
+Calculates the initial margin requirement in local currency.
+
+The margin is computed based on the instrument's margin mode and parameters.
+For percent notional, the requirement scales with notional value and multiplier.
+For fixed per contract, the requirement scales with absolute quantity.
+
+# Arguments
+- `inst`: Instrument definition.
+- `qty`: Position quantity (positive for long, negative for short).
+- `mark`: Current mark or close price.
+"""
+function margin_init_local(inst::Instrument, qty, mark)
+    qty == 0 && return zero(Price)
+    mode = inst.margin_mode
+    if mode == MarginMode.None
+        return zero(Price)
+    elseif mode == MarginMode.PercentNotional
+        rate = qty > 0 ? inst.margin_init_long : inst.margin_init_short
+        return abs(qty) * mark * inst.multiplier * rate
+    elseif mode == MarginMode.FixedPerContract
+        per_contract = qty > 0 ? inst.margin_init_long : inst.margin_init_short
+        return abs(qty) * per_contract
+    end
+    return zero(Price)
+end
+
+"""
+Calculates the maintenance margin requirement in local currency.
+
+The margin is computed based on the instrument's margin mode and parameters.
+For percent notional, the requirement scales with notional value and multiplier.
+For fixed per contract, the requirement scales with absolute quantity.
+
+# Arguments
+- `inst`: Instrument definition.
+- `qty`: Position quantity (positive for long, negative for short).
+- `mark`: Current mark or close price.
+"""
+function margin_maint_local(inst::Instrument, qty, mark)
+    qty == 0 && return zero(Price)
+    mode = inst.margin_mode
+    if mode == MarginMode.None
+        return zero(Price)
+    elseif mode == MarginMode.PercentNotional
+        rate = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
+        return abs(qty) * mark * inst.multiplier * rate
+    elseif mode == MarginMode.FixedPerContract
+        per_contract = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
+        return abs(qty) * per_contract
+    end
+    return zero(Price)
 end
 
 

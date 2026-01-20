@@ -15,6 +15,11 @@ mutable struct Instrument{IData}
     const quote_digits::Int       # number of digits after the decimal point for display
 
     const settlement::SettlementStyle.T
+    const margin_mode::MarginMode.T
+    const margin_init_long::Price
+    const margin_init_short::Price
+    const margin_maint_long::Price
+    const margin_maint_short::Price
     quote_cash_index::Int
 
     const multiplier::Float64
@@ -32,6 +37,11 @@ mutable struct Instrument{IData}
         quote_tick::Price=0.01,
         quote_digits=2,
         settlement::SettlementStyle.T=SettlementStyle.Cash,
+        margin_mode::MarginMode.T=MarginMode.None,
+        margin_init_long::Price=0.0,
+        margin_init_short::Price=0.0,
+        margin_maint_long::Price=0.0,
+        margin_maint_short::Price=0.0,
         multiplier::Float64=1.0,
         metadata::IData=nothing
     ) where {IData}
@@ -47,6 +57,11 @@ mutable struct Instrument{IData}
             quote_tick,
             quote_digits,
             settlement,
+            margin_mode,
+            margin_init_long,
+            margin_init_short,
+            margin_maint_long,
+            margin_maint_short,
             0, # quote_cash_index
             multiplier,
             metadata
