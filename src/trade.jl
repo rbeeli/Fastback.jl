@@ -14,7 +14,7 @@ mutable struct Trade{TTime<:Dates.AbstractTime,OData,IData}
     const pos_price::Price          # average price of the existing position
 end
 
-@inline nominal_value(t::Trade) = t.fill_price * abs(t.fill_qty)
+@inline nominal_value(t::Trade) = t.fill_price * abs(t.fill_qty) * t.order.inst.multiplier
 @inline is_realizing(t::Trade) = t.realized_qty != 0
 
 @inline function realized_return(t::Trade; zero_value=0.0)

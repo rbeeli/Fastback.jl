@@ -36,7 +36,7 @@ end
 
 @inline symbol(order::Order) = symbol(order.inst)
 @inline trade_dir(order::Order) = trade_dir(order.quantity)
-@inline nominal_value(order::Order) = abs(order.quantity) * order.price
+@inline nominal_value(order::Order) = abs(order.quantity) * order.price * order.inst.multiplier
 
 function Base.show(io::IO, o::Order{TTime,O,I}) where {TTime,O,I}
     date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS")

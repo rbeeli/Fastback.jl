@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.3] - 2026-01-20
+
+### Added
+
+- Support for optional Instrument `multiplier` value
+
 ## [0.4.2] - 2025-09-29
 
 ### Changed

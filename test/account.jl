@@ -141,6 +141,27 @@ end
     show(acc)
 end
 
+@testitem "Commission pct uses instrument multiplier" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 100_000.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("MULTI/USD"), :MULTI, :USD; multiplier=10.0))
+
+    dates = collect(DateTime(2018, 1, 2):Day(1):DateTime(2018, 1, 3))
+    price = 100.0
+    qty = 2.0
+    order = Order(oid!(acc), inst, dates[1], price, qty)
+    commission_pct = 0.001
+    trade = fill_order!(acc, order, dates[1], price; commission_pct=commission_pct)
+
+    expected_nominal = qty * price * inst.multiplier
+    @test nominal_value(order) == expected_nominal
+    @test nominal_value(trade) == expected_nominal
+    @test trade.commission == commission_pct * expected_nominal
+end
+
 
 @testitem "Account with Date timestamps" begin
     using Test, Fastback, Dates, Tables
