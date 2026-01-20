@@ -1,9 +1,14 @@
 @inline function update_valuation!(acc::Account, pos::Position, close_price)
     # update position valuation and account equity using delta of old and new value
+    inst = pos.inst
     new_pnl = calc_pnl_local(pos, close_price)
-    new_value = new_pnl
+    if inst.settlement == SettlementStyle.Asset
+        new_value = pos.quantity * close_price * inst.multiplier
+    else
+        new_value = new_pnl
+    end
     value_delta = new_value - pos.value_local
-    quote_cash_index = pos.inst.quote_cash_index
+    quote_cash_index = inst.quote_cash_index
     @inbounds acc.equities[quote_cash_index] += value_delta
     pos.pnl_local = new_pnl
     pos.value_local = new_value
@@ -30,12 +35,13 @@ end
     commission::Price=0.0,       # fixed commission in quote (local) currency
     commission_pct::Price=0.0,   # percentage commission of nominal order value, e.g. 0.001 = 0.1%
 )::Trade{TTime,OData,IData} where {TTime<:Dates.AbstractTime,OData,IData,CData}
+    inst = order.inst
     # get quote asset index
-    quote_cash_index = order.inst.quote_cash_index
+    quote_cash_index = inst.quote_cash_index
 
     # positions are netted using weighted average price,
     # hence only one static position per instrument is maintained
-    pos = get_position(acc, order.inst)
+    pos = get_position(acc, inst)
     pos_qty = pos.quantity
 
     # set fill quantity if not provided
@@ -43,24 +49,27 @@ end
     remaining_qty = order.quantity - fill_qty
 
     # calculate absolute paid commissions in quote currency
-    nominal_value = fill_price * abs(fill_qty) * order.inst.multiplier
+    nominal_value = fill_price * abs(fill_qty) * inst.multiplier
     commission += commission_pct * nominal_value
 
     # realized P&L
     realized_qty = calc_realized_qty(pos_qty, fill_qty)
-    realized_pnl = 0.0
+    realized_pnl_gross = 0.0
     if realized_qty != 0.0
         # order is reducing exposure (covering), calculate realized P&L
-        realized_pnl = (fill_price - pos.avg_price) * realized_qty
-
-        # add realized P&L to account balance
-        @inbounds acc.balances[quote_cash_index] += realized_pnl
-
-        # remove realized P&L from position P&L
-        pos.pnl_local -= realized_pnl
-        pos.value_local -= realized_pnl
+        realized_pnl_gross = (fill_price - pos.avg_price) * realized_qty * inst.multiplier
     end
-    realized_pnl -= commission
+
+    if inst.settlement == SettlementStyle.Asset
+        cash_delta = -(fill_price * fill_qty * inst.multiplier) - commission
+    else
+        cash_delta = realized_pnl_gross - commission
+    end
+    @inbounds begin
+        acc.balances[quote_cash_index] += cash_delta
+        acc.equities[quote_cash_index] += cash_delta
+    end
+    realized_pnl = realized_pnl_gross - commission
 
     # generate trade sequence number
     tid = tid!(acc)
@@ -104,11 +113,7 @@ end
     # update position quantity
     pos.quantity = new_exposure
 
-    # subtract paid commissions from account balance and equity
-    @inbounds acc.balances[quote_cash_index] -= commission
-    @inbounds acc.equities[quote_cash_index] -= commission
-
-    # update P&L of position and account equity (w/o commissions, already accounted for)
+    # update P&L of position and account equity
     update_pnl!(acc, pos, fill_price)
 
     push!(acc.trades, trade)

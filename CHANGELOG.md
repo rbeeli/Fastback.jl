@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Support for optional Instrument `multiplier` value
 - `Position.value_local` and `update_valuation! = update_pnl!` functions
+- `SettlementType` enum for specifying settlement types of instruments (Asset vs. Cash)
 
 ### Changed
 

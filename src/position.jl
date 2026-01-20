@@ -33,8 +33,8 @@ end
 """
 Calculates the P&L of a position in local currency.
 
-The P&L is based on the weighted average price of the position
-and the current closing price, without considering commissions.
+The P&L is based on the weighted average price of the position,
+the current closing price, and the contract multiplier, without considering commissions.
 Fees are accounted for in the account equity calculation and execution P&L.
 
 # Arguments
@@ -43,7 +43,7 @@ Fees are accounted for in the account equity calculation and execution P&L.
 """
 @inline function calc_pnl_local(pos::Position, close_price)
     # quantity negative for shorts, thus works for both long and short
-    pos.quantity * (close_price - pos.avg_price)
+    pos.quantity * (close_price - pos.avg_price) * pos.inst.multiplier
 end
 
 

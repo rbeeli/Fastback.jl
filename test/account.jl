@@ -168,6 +168,54 @@ end
     @test trade.commission == commission_pct * expected_nominal
 end
 
+@testitem "Spot long asset-settled valuation" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("SPOT/USD"), :SPOT, :USD; settlement=SettlementStyle.Asset))
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2021, 1, 1)
+    price = 50.0
+    qty = 100.0
+    order = Order(oid!(acc), inst, dt, price, qty)
+    fill_order!(acc, order, dt, price)
+
+    @test cash_balance(acc, :USD) ≈ 5_000.0
+    @test pos.value_local ≈ 5_000.0
+    @test equity(acc, :USD) ≈ 10_000.0
+
+    update_pnl!(acc, pos, 60.0)
+    @test pos.value_local ≈ 6_000.0
+    @test equity(acc, :USD) ≈ 11_000.0
+end
+
+@testitem "Spot short asset-settled valuation" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("SPOT/USD"), :SPOT, :USD; settlement=SettlementStyle.Asset))
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2021, 1, 1)
+    price = 50.0
+    qty = -100.0
+    order = Order(oid!(acc), inst, dt, price, qty)
+    fill_order!(acc, order, dt, price)
+
+    @test cash_balance(acc, :USD) ≈ 15_000.0
+    @test pos.value_local ≈ -5_000.0
+    @test equity(acc, :USD) ≈ 10_000.0
+
+    update_pnl!(acc, pos, 60.0)
+    @test pos.value_local ≈ -6_000.0
+    @test equity(acc, :USD) ≈ 9_000.0
+end
+
 
 @testitem "Account with Date timestamps" begin
     using Test, Fastback, Dates, Tables
