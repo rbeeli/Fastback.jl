@@ -28,6 +28,7 @@ using TestItemRunner
     @test pos.avg_price == 100.0
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
+    @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity
     @test cash_balance(acc, :USD) ≈ 100_000.0
     @test equity(acc, :USD) ≈ 100_000.0 + (prices[2] - prices[1]) * pos.quantity
@@ -36,6 +37,7 @@ using TestItemRunner
     fill_order!(acc, order, dates[3], prices[3])
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
+    @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ 0
     @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty
     @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
@@ -86,6 +88,7 @@ end
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
 
+    @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
     @test cash_balance(acc, :USD) ≈ 100_000.0 - commission
     @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - commission
@@ -94,6 +97,7 @@ end
     exe2 = fill_order!(acc, order, dates[3], prices[3]; commission=0.5)
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
+    @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ 0
     @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - commission - 0.5
     @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
@@ -127,6 +131,7 @@ end
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
 
+    @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
     @test cash_balance(acc, :USD) ≈ 100_000.0 - exe1.commission
     @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - exe1.commission
@@ -135,6 +140,7 @@ end
     exe2 = fill_order!(acc, order, dates[3], prices[3]; commission_pct=0.0005)
     # update position and account P&L
     update_pnl!(acc, pos, prices[3])
+    @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ 0
     @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.commission - exe2.commission
     @test equity(acc, :USD) ≈ cash_balance(acc, :USD)

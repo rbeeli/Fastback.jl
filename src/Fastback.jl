@@ -75,7 +75,8 @@ export add_asset!,
     update_rate!
 
 # Portfolio logic
-export update_pnl!
+export update_pnl!,
+    update_valuation!
 
 # Collectors
 export PeriodicValues,

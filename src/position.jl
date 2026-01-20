@@ -4,6 +4,7 @@ mutable struct Position{TTime<:Dates.AbstractTime,OData,IData}
     avg_price::Price
     quantity::Quantity              # negative = short selling
     pnl_local::Price                # local currency P&L
+    value_local::Price              # position value contribution in local currency
     last_order::Union{Nothing,Order{TTime,OData,IData}}
     last_trade::Union{Nothing,Trade{TTime,OData,IData}}
 
@@ -14,10 +15,11 @@ mutable struct Position{TTime<:Dates.AbstractTime,OData,IData}
         avg_price::Price=0.0,
         quantity::Quantity=0.0,
         pnl_local::Price=0.0,
+        value_local::Price=0.0,
         last_order::Union{Nothing,Order{TTime,OData,IData}}=nothing,
         last_trade::Union{Nothing,Trade{TTime,OData,IData}}=nothing,
     ) where {TTime<:Dates.AbstractTime,OData,IData}
-        new{TTime,OData,IData}(index, inst, avg_price, quantity, pnl_local, last_order, last_trade)
+        new{TTime,OData,IData}(index, inst, avg_price, quantity, pnl_local, value_local, last_order, last_trade)
     end
 end
 

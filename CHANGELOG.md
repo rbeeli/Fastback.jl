@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Support for optional Instrument `multiplier` value
+- `Position.value_local` and `update_valuation! = update_pnl!` functions
 
 ### Changed
 

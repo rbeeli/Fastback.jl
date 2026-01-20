@@ -1,11 +1,17 @@
-@inline function update_pnl!(acc::Account, pos::Position, close_price)
-    # update P&L and account equity using delta of old and new P&L
+@inline function update_valuation!(acc::Account, pos::Position, close_price)
+    # update position valuation and account equity using delta of old and new value
     new_pnl = calc_pnl_local(pos, close_price)
-    pnl_delta = new_pnl - pos.pnl_local
+    new_value = new_pnl
+    value_delta = new_value - pos.value_local
     quote_cash_index = pos.inst.quote_cash_index
-    @inbounds acc.equities[quote_cash_index] += pnl_delta
+    @inbounds acc.equities[quote_cash_index] += value_delta
     pos.pnl_local = new_pnl
+    pos.value_local = new_value
     return
+end
+
+@inline function update_pnl!(acc::Account, pos::Position, close_price)
+    update_valuation!(acc, pos, close_price)
 end
 
 @inline function update_pnl!(acc::Account, inst::Instrument, bid_price, ask_price)
@@ -52,6 +58,7 @@ end
 
         # remove realized P&L from position P&L
         pos.pnl_local -= realized_pnl
+        pos.value_local -= realized_pnl
     end
     realized_pnl -= commission
 
