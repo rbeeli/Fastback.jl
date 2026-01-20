@@ -2,8 +2,8 @@
     # update P&L and account equity using delta of old and new P&L
     new_pnl = calc_pnl_local(pos, close_price)
     pnl_delta = new_pnl - pos.pnl_local
-    cash = cash_asset(acc, pos.inst.quote_symbol)
-    @inbounds acc.equities[cash.index] += pnl_delta
+    quote_cash_index = pos.inst.quote_cash_index
+    @inbounds acc.equities[quote_cash_index] += pnl_delta
     pos.pnl_local = new_pnl
     return
 end
@@ -24,8 +24,8 @@ end
     commission::Price=0.0,       # fixed commission in quote (local) currency
     commission_pct::Price=0.0,   # percentage commission of nominal order value, e.g. 0.001 = 0.1%
 )::Trade{TTime,OData,IData} where {TTime<:Dates.AbstractTime,OData,IData,CData}
-    # get quote asset
-    quote_cash = cash_asset(acc, order.inst.quote_symbol)
+    # get quote asset index
+    quote_cash_index = order.inst.quote_cash_index
 
     # positions are netted using weighted average price,
     # hence only one static position per instrument is maintained
@@ -48,7 +48,7 @@ end
         realized_pnl = (fill_price - pos.avg_price) * realized_qty
 
         # add realized P&L to account balance
-        @inbounds acc.balances[quote_cash.index] += realized_pnl
+        @inbounds acc.balances[quote_cash_index] += realized_pnl
 
         # remove realized P&L from position P&L
         pos.pnl_local -= realized_pnl
@@ -98,8 +98,8 @@ end
     pos.quantity = new_exposure
 
     # subtract paid commissions from account balance and equity
-    @inbounds acc.balances[quote_cash.index] -= commission
-    @inbounds acc.equities[quote_cash.index] -= commission
+    @inbounds acc.balances[quote_cash_index] -= commission
+    @inbounds acc.equities[quote_cash_index] -= commission
 
     # update P&L of position and account equity (w/o commissions, already accounted for)
     update_pnl!(acc, pos, fill_price)

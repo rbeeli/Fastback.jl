@@ -137,8 +137,11 @@ function register_instrument!(
         throw(ArgumentError("Instrument $(inst.symbol) already registered"))
     end
 
+    quote_cash_index = cash_asset(acc, inst.quote_symbol).index
+
     # set asset index for fast array indexing and hashing
     inst.index = length(acc.positions) + 1
+    inst.quote_cash_index = quote_cash_index
 
     push!(acc.positions, Position{TTime,OData}(inst.index, inst))
 

@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Support for optional Instrument `multiplier` value
 
+### Changed
+
+- Quote cash lookup performance improvement by caching index in `Instrument` struct
+
 ## [0.4.2] - 2025-09-29
 
 ### Changed

@@ -13,7 +13,8 @@ mutable struct Instrument{IData}
     const quote_symbol::Symbol
     const quote_tick::Price       # minimum price increment of base asset
     const quote_digits::Int       # number of digits after the decimal point for display
-
+    quote_cash_index::Int
+ 
     const multiplier::Float64
     const metadata::IData
 
@@ -42,6 +43,7 @@ mutable struct Instrument{IData}
             quote_symbol,
             quote_tick,
             quote_digits,
+            0, # quote_cash_index
             multiplier,
             metadata
         )
