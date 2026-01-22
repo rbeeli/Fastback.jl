@@ -9,6 +9,13 @@ for example to convert account assets to the account's base currency.
 """
 abstract type ExchangeRates{CData} end
 
+"""
+Register a cash asset with the exchange rate provider.
+
+Default implementation is a no-op.
+"""
+@inline add_asset!(er::ExchangeRates, cash::Cash) = nothing
+
 # ---------------------------------------------------------
 
 """
@@ -22,6 +29,13 @@ Get the exchange rate between two assets.
 For `OneExchangeRates`, the exchange rate is always 1.0.
 """
 @inline get_rate(er::OneExchangeRates, from::Cash, to::Cash) = 1.0
+
+"""
+Register a cash asset with the exchange rate provider.
+
+For `OneExchangeRates`, this is a no-op.
+"""
+@inline add_asset!(er::OneExchangeRates, cash::Cash) = nothing
 
 # ---------------------------------------------------------
 
