@@ -25,6 +25,7 @@ export Fastback,
     TradeDir,
     SettlementStyle,
     MarginMode,
+    ContractKind,
     Cash,
     Instrument,
     Order,
@@ -112,7 +113,10 @@ export balances_table,
 export format_cash,
     format_base,
     format_quote,
-    format_period_HHMMSS
+    format_period_HHMMSS,
+    has_expiry,
+    is_expired,
+    is_active
 
 # Printing helpers
 export print_cash_balances,

@@ -18,7 +18,7 @@ A `Position` maintains the net exposure for an instrument using a weighted-avera
 
 ## Instrument
 
-`Instrument` models a tradable product, binding together the display symbol, base asset settings, and quote asset settings. Instruments must be registered with an account before use using the `register_instrument!` function.
+`Instrument` models a tradable product, binding together the display symbol, base asset settings, and quote asset settings. Instruments must be registered with an account before use using the `register_instrument!` function. Contract type (`contract_kind`) and lifecycle bounds (`start_time`, `expiry`) let you represent spot pairs, perpetual swaps, and dated futures explicitly.
 
 ## Base Asset
 

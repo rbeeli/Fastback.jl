@@ -21,6 +21,9 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
     const margin_init_short::Price
     const margin_maint_long::Price
     const margin_maint_short::Price
+    const contract_kind::ContractKind.T
+    const start_time::TTime
+    const expiry::TTime
     quote_cash_index::Int
 
     const multiplier::Float64
@@ -43,7 +46,10 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         margin_maint_long::Price=0.0,
         margin_maint_short::Price=0.0,
         multiplier::Float64=1.0,
+        contract_kind::ContractKind.T=ContractKind.Spot,
         time_type::Type{TTime}=DateTime,
+        start_time::TTime=time_type(0),
+        expiry::TTime=time_type(0),
     ) where {TTime<:Dates.AbstractTime}
         new{TTime}(
             0, # index
@@ -62,6 +68,9 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
             margin_init_short,
             margin_maint_long,
             margin_maint_short,
+            contract_kind,
+            start_time,
+            expiry,
             0, # quote_cash_index
             multiplier,
         )
@@ -80,3 +89,7 @@ function Base.show(io::IO, inst::Instrument)
           "quote=$(inst.quote_symbol)±$(format_quote(inst, inst.quote_tick))"
     print(io, str)
 end
+
+@inline has_expiry(inst::Instrument{TTime}) where {TTime<:Dates.AbstractTime} = inst.expiry != TTime(0)
+@inline is_expired(inst::Instrument{TTime}, dt::TTime) where {TTime<:Dates.AbstractTime} = has_expiry(inst) && dt >= inst.expiry
+@inline is_active(inst::Instrument{TTime}, dt::TTime) where {TTime<:Dates.AbstractTime} = (inst.start_time == TTime(0) || dt >= inst.start_time) && !is_expired(inst, dt)

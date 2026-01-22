@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.5.0] - 2026-01-20
+## [0.5.0] - 2026-01-22
 
 ### Added
 
@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
 - `Position.value_local` and `update_valuation! = update_pnl!` functions
 - `SettlementStyle` enum for specifying settlement types of instruments (Asset, Cash, Variation Margin)
 - `MarginMode` enum + `update_margin!` + `update_marks!` functions for margin calculations and extended `Position` struct and `Account` struct to support margin trading
+- `ContractKind` enum to distinguish spot, perpetual, and future instruments
+- New `Instrument` lifecycle fields (`contract_kind`, `start_time`, `expiry`) with helpers `has_expiry`, `is_expired`, and `is_active`
 
 ### Changed
 
