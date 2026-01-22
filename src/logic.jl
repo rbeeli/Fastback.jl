@@ -87,7 +87,7 @@ end
     update_marks!(acc, pos, close_price)
 end
 
-@inline function update_pnl!(acc::Account, inst::Instrument, bid_price, ask_price)
+@inline function update_pnl!(acc::Account{TTime}, inst::Instrument{TTime}, bid_price, ask_price) where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
     close_price = is_long(pos) ? bid_price : ask_price
     update_pnl!(acc, pos, close_price)

@@ -1,6 +1,6 @@
 mutable struct Position{TTime<:Dates.AbstractTime}
     const index::UInt               # unique index for each position starting from 1 (used for array indexing and hashing)
-    const inst::Instrument
+    const inst::Instrument{TTime}
     avg_price::Price
     quantity::Quantity              # negative = short selling
     pnl_local::Price                # local currency P&L
@@ -12,7 +12,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
 
     function Position{TTime}(
         index,
-        inst::Instrument
+        inst::Instrument{TTime}
         ;
         avg_price::Price=0.0,
         quantity::Quantity=0.0,

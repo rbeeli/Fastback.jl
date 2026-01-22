@@ -134,7 +134,7 @@ Before trading any instrument, it must be registered in the account.
 """
 function register_instrument!(
     acc::Account{TTime},
-    inst::Instrument
+    inst::Instrument{TTime}
 ) where {TTime<:Dates.AbstractTime}
     if any(x -> x.inst.symbol == inst.symbol, acc.positions)
         throw(ArgumentError("Instrument $(inst.symbol) already registered"))
@@ -154,14 +154,14 @@ end
 """
 Returns the position object of the given instrument in the account.
 """
-@inline function get_position(acc::Account, inst::Instrument)
+@inline function get_position(acc::Account{TTime}, inst::Instrument{TTime}) where {TTime<:Dates.AbstractTime}
     @inbounds acc.positions[inst.index]
 end
 
 """
 Determines if the account has non-zero exposure to the given instrument.
 """
-@inline function is_exposed_to(acc::Account, inst::Instrument)
+@inline function is_exposed_to(acc::Account{TTime}, inst::Instrument{TTime}) where {TTime<:Dates.AbstractTime}
     has_exposure(get_position(acc, inst))
 end
 
@@ -169,7 +169,7 @@ end
 Determines if the account has non-zero exposure to the given instrument
 in the given direction (`Buy`, `Sell`).
 """
-@inline function is_exposed_to(acc::Account, inst::Instrument, dir::TradeDir.T)
+@inline function is_exposed_to(acc::Account{TTime}, inst::Instrument{TTime}, dir::TradeDir.T) where {TTime<:Dates.AbstractTime}
     sign(trade_dir(get_position(acc, inst))) == sign(dir)
 end
 

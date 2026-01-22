@@ -2,7 +2,7 @@ using Dates
 
 mutable struct Order{TTime<:Dates.AbstractTime}
     const oid::Int
-    const inst::Instrument
+    const inst::Instrument{TTime}
     const date::TTime
     const price::Price
     const quantity::Quantity   # negative = short selling
@@ -11,7 +11,7 @@ mutable struct Order{TTime<:Dates.AbstractTime}
 
     function Order{TTime}(
         oid,
-        inst::Instrument,
+        inst::Instrument{TTime},
         date::TTime,
         price::Price,
         quantity::Quantity
@@ -33,7 +33,7 @@ end
 
 function Order(
     oid,
-    inst::Instrument,
+    inst::Instrument{TTime},
     date::TTime,
     price::Price,
     quantity::Quantity

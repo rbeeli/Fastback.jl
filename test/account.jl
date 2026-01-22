@@ -385,7 +385,7 @@ end
     acc = Account(; time_type=Date, date_format=dateformat"yyyy-mm-dd")
     deposit!(acc, Cash(:USD), 1_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("DATE/USD"), :DATE, :USD))
+    inst = register_instrument!(acc, Instrument(Symbol("DATE/USD"), :DATE, :USD; time_type=Date))
 
     d₁ = Date(2020, 1, 1)
     order₁ = Order(oid!(acc), inst, d₁, 10.0, 1.0)

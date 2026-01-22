@@ -1,6 +1,7 @@
+using Dates
 using Printf
 
-mutable struct Instrument
+mutable struct Instrument{TTime<:Dates.AbstractTime}
     index::UInt                   # unique index for each instrument starting from 1 (used for array indexing and hashing)
     const symbol::Symbol
 
@@ -42,8 +43,9 @@ mutable struct Instrument
         margin_maint_long::Price=0.0,
         margin_maint_short::Price=0.0,
         multiplier::Float64=1.0,
-    )
-        new(
+        time_type::Type{TTime}=DateTime,
+    ) where {TTime<:Dates.AbstractTime}
+        new{TTime}(
             0, # index
             symbol,
             base_symbol,
@@ -66,7 +68,7 @@ mutable struct Instrument
     end
 end
 
-@inline Base.hash(inst::Instrument) = inst.index  # custom hash for better performance
+@inline Base.hash(inst::Instrument{T}) where {T} = inst.index  # custom hash for better performance
 
 @inline format_base(inst::Instrument, value) = Printf.format(Printf.Format("%.$(inst.base_digits)f"), value)
 @inline format_quote(inst::Instrument, value) = Printf.format(Printf.Format("%.$(inst.quote_digits)f"), value)
