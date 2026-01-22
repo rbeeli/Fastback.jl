@@ -12,14 +12,15 @@ All notable changes to this project will be documented in this file.
 - `MarginMode` enum + `update_margin!` + `update_marks!` functions for margin calculations and extended `Position` struct and `Account` struct to support margin trading
 - `ContractKind` enum to distinguish spot, perpetual, and future instruments
 - New `Instrument` lifecycle fields (`contract_kind`, `start_time`, `expiry`) with helpers `has_expiry`, `is_expired`, and `is_active`
-
-### Changed
-
-- Quote cash lookup performance improvement by caching index in `Instrument` struct
+- `Position.mark_price` stores the latest valuation price, updated on fills and mark-to-market to support liquidation, expiry settlement, and borrow logic.
 
 ### Removed
 
 - Metadata type parameters (`OData`, `IData`, `CData`) and associated metadata fields were removed from core types, Tables outputs, and printing to simplify the API.
+
+### Changed
+
+- Quote cash lookup performance improvement by caching index in `Instrument` struct
 
 ## [0.4.2] - 2025-09-29
 

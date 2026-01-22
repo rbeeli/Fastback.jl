@@ -7,6 +7,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
     value_local::Price              # position value contribution in local currency
     margin_init_local::Price        # initial margin used in local currency
     margin_maint_local::Price       # maintenance margin used in local currency
+    mark_price::Price               # last valuation price
     last_order::Union{Nothing,Order{TTime}}
     last_trade::Union{Nothing,Trade{TTime}}
 
@@ -20,6 +21,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
         value_local::Price=0.0,
         margin_init_local::Price=0.0,
         margin_maint_local::Price=0.0,
+        mark_price::Price=Price(NaN),
         last_order::Union{Nothing,Order{TTime}}=nothing,
         last_trade::Union{Nothing,Trade{TTime}}=nothing,
     ) where {TTime<:Dates.AbstractTime}
@@ -32,6 +34,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
             value_local,
             margin_init_local,
             margin_maint_local,
+            mark_price,
             last_order,
             last_trade
         )

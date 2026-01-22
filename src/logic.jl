@@ -80,6 +80,7 @@ Updates valuation and margin for a position using the latest mark price.
 @inline function update_marks!(acc::Account, pos::Position, close_price)
     update_valuation!(acc, pos, close_price)
     update_margin!(acc, pos, close_price)
+    pos.mark_price = close_price
     return
 end
 

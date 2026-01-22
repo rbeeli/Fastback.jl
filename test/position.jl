@@ -74,3 +74,30 @@ end
     # Test 9: no op
     @test calc_exposure_increase_quantity(0, 0) == 0
 end
+
+@testitem "mark_price set on fills and marks" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 10_000.0)
+    inst = register_instrument!(acc, Instrument(Symbol("MK/USD"), :MK, :USD))
+
+    # Fill long; mark should be fill price
+    order = Order(oid!(acc), inst, DateTime(2026, 1, 1), 100.0, 1.0)
+    trade = fill_order!(acc, order, order.date, order.price)
+    pos = get_position(acc, inst)
+    @test pos.mark_price == 100.0
+
+    # Update with bid/ask; long uses bid as close
+    update_pnl!(acc, inst, 101.0, 102.0)
+    @test pos.mark_price == 101.0
+
+    # Flip to short; mark on fill should update
+    order2 = Order(oid!(acc), inst, DateTime(2026, 1, 2), 103.0, -2.0)
+    fill_order!(acc, order2, order2.date, order2.price)
+    @test pos.mark_price == 103.0
+
+    # For short, close price comes from ask
+    update_pnl!(acc, inst, 98.0, 99.0)
+    @test pos.mark_price == 99.0
+end
