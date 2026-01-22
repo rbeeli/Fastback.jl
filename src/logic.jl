@@ -111,6 +111,7 @@ end
     # positions are netted using weighted average price,
     # hence only one static position per instrument is maintained
     pos = get_position(acc, inst)
+    update_marks!(acc, pos, fill_price)
     pos_qty = pos.quantity
 
     # set fill quantity if not provided

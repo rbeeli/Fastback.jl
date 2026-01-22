@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- `fill_order!` now marks positions to the fill price before realizing P&L, ensuring correct variation-margin settlement and margin usage
 - Quote cash lookup performance improvement by caching index in `Instrument` struct
 
 ## [0.4.2] - 2025-09-29

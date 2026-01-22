@@ -275,6 +275,34 @@ end
     @test pos.avg_price == 0.0
 end
 
+@testitem "Variation margin marks to fill before realizing pnl" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("VMARK/USD"), :VMARK, :USD; settlement=SettlementStyle.VariationMargin))
+    pos = get_position(acc, inst)
+
+    dt_open = DateTime(2026, 1, 1)
+    open_price = 100.0
+    qty = 10.0
+    order_open = Order(oid!(acc), inst, dt_open, open_price, qty)
+    fill_order!(acc, order_open, dt_open, open_price)
+
+    close_price = 110.0
+    reduce_qty = -5.0
+    dt_close = dt_open + Day(1)
+    order_close = Order(oid!(acc), inst, dt_close, close_price, reduce_qty)
+    trade = fill_order!(acc, order_close, dt_close, close_price)
+
+    @test trade.realized_pnl ≈ 0.0
+    @test pos.quantity ≈ qty + reduce_qty
+    @test pos.avg_price ≈ close_price
+    @test cash_balance(acc, :USD) ≈ 10_000.0 + (close_price - open_price) * qty
+    @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
+end
+
 @testitem "Margin disabled stays zero" begin
     using Test, Fastback, Dates
 
