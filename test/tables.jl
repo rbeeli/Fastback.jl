@@ -4,33 +4,45 @@ using TestItemRunner
 @testsnippet TablesTestSetup begin
     using Test, Fastback, Dates, Tables, DataFrames
 
-    const OrderMeta = NamedTuple{(:signal,),Tuple{Float64}}
-    const InstMeta = NamedTuple{(:sector,),Tuple{Symbol}}
-    const CashMeta = NamedTuple{(:tag,),Tuple{Symbol}}
+    acc = Account()
+    deposit!(acc, Cash(:USD; digits=2), 1_000.0)
 
-    acc = Account(; odata=OrderMeta, idata=InstMeta, cdata=CashMeta)
-    deposit!(acc, Cash(:USD; digits=2, data=(tag=:base,)), 1_000.0)
-
-    inst = register_instrument!(acc, Instrument(Symbol("ABC/USD"), :ABC, :USD; metadata=(sector=:tech,)))
+    inst = register_instrument!(acc, Instrument(Symbol("ABC/USD"), :ABC, :USD))
 
     dt₁ = DateTime(2020, 1, 1, 9)
-    order₁ = Order(oid!(acc), inst, dt₁, 10.0, 1.0; metadata=(signal=1.0,))
+    order₁ = Order(oid!(acc), inst, dt₁, 10.0, 1.0)
     fill_order!(acc, order₁, dt₁, 10.0; commission=0.5)
 
     dt₂ = DateTime(2020, 1, 2, 9)
-    order₂ = Order(oid!(acc), inst, dt₂, 12.0, -2.0; metadata=(signal=-1.0,))
+    order₂ = Order(oid!(acc), inst, dt₂, 12.0, -2.0)
     fill_order!(acc, order₂, dt₂, 12.0; commission=0.25)
 end
 
 @testitem "trades_table" setup=[TablesTestSetup] begin
     tbl = trades_table(acc)
     trade_schema = Tables.schema(tbl)
-    @test (:oid in trade_schema.names) && (:order_metadata in trade_schema.names)
+    @test trade_schema.names == (
+        :tid,
+        :oid,
+        :trade_date,
+        :order_date,
+        :symbol,
+        :side,
+        :fill_price,
+        :fill_qty,
+        :remaining_qty,
+        :take_profit,
+        :stop_loss,
+        :realized_pnl,
+        :realized_qty,
+        :position_qty,
+        :position_price,
+        :commission,
+    )
     trade_rows = collect(Tables.rows(tbl))
     @test length(trade_rows) == length(acc.trades)
     @test trade_rows[1].oid == order₁.oid
     @test trade_rows[end].realized_pnl ≈ 1.75 atol = 1e-8
-    @test trade_rows[1].order_metadata == (signal=1.0,)
     trade_cols = Tables.columntable(tbl)
     @test trade_cols.symbol == fill(inst.symbol, length(acc.trades))
 
@@ -67,10 +79,9 @@ end
 @testitem "balances_table" setup=[TablesTestSetup] begin
     tbl = balances_table(acc)
     balance_schema = Tables.schema(tbl)
-    @test balance_schema.names == (:index, :symbol, :balance, :digits, :metadata)
+    @test balance_schema.names == (:index, :symbol, :balance, :digits)
     balance_row = only(Tables.rows(tbl))
     @test balance_row.symbol == :USD
-    @test balance_row.metadata == (tag=:base,)
     @test balance_row.balance ≈ cash_balance(acc, :USD)
 
     println(DataFrame(tbl))
@@ -79,11 +90,10 @@ end
 @testitem "equities_table" setup=[TablesTestSetup] begin
     tbl = equities_table(acc)
     equity_schema = Tables.schema(tbl)
-    @test equity_schema.names == (:index, :symbol, :equity, :digits, :metadata)
+    @test equity_schema.names == (:index, :symbol, :equity, :digits)
     equity_row = only(Tables.rows(tbl))
     @test equity_row.symbol == :USD
     @test equity_row.equity ≈ equity(acc, :USD)
-    @test equity_row.metadata == (tag=:base,)
 
     println(DataFrame(tbl))
 end

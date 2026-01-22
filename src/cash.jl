@@ -1,20 +1,17 @@
-mutable struct Cash{CData}
+mutable struct Cash
     index::UInt               # unique index starting from 1 (used for array indexing and hashing)
     const symbol::Symbol
     const digits::Int
-    const data::CData
 
     function Cash(
         symbol::Symbol
         ;
-        digits=2,
-        data::CData=nothing
-    ) where {CData}
-        new{CData}(
+        digits=2
+    )
+        new(
             0, # index
             symbol,
             digits,
-            data
         )
     end
 end

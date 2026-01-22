@@ -30,7 +30,6 @@ This reduces the implementation gap from backtesting to real-world execution sig
 - Facilities for parallelized backtesting and hyperparameter optimization
 - Uses position netting approach for bookkeeping
   - Maintains single position per instrument using weighted average cost method
-- Ability to attach arbirary metadata to instruments and orders in type-safe manner
 - Integrations
   - [Tables.jl](https://github.com/JuliaData/Tables.jl) integration for `Account` related data like trades, positions, balances, etc.
   - [NanoDates.jl](https://juliatime.github.io/NanoDates.jl/stable/) integration for nanosecond-resolution timestamps

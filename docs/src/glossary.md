@@ -6,7 +6,7 @@
 
 ## Order
 
-An `Order` encapsulates an instruction to trade an instrument at a specific time, price, and quantity, with optional `take_profit` and `stop_loss` levels and metadata. Orders translate into trades through `fill_order!`.
+An `Order` encapsulates an instruction to trade an instrument at a specific time, price, and quantity, with optional `take_profit` and `stop_loss` levels. Orders translate into trades through `fill_order!`.
 
 ## Trade
 
@@ -18,7 +18,7 @@ A `Position` maintains the net exposure for an instrument using a weighted-avera
 
 ## Instrument
 
-`Instrument` models a tradable product, binding together the display symbol, base asset settings, quote asset settings, and optional metadata. Instruments must be registered with an account before use using the `register_instrument!` function.
+`Instrument` models a tradable product, binding together the display symbol, base asset settings, and quote asset settings. Instruments must be registered with an account before use using the `register_instrument!` function.
 
 ## Base Asset
 
@@ -66,7 +66,7 @@ Equity is the balance of a cash asset plus the unrealized P&L of open positions 
 
 ## Cash Asset
 
-A `Cash` object models a funding currency (USD, EUR, BTC, …) with display precision and optional metadata. Cash assets must be registered with an account before funds can be deposited or withdrawn using the `register_cash_asset!` function.
+A `Cash` object models a funding currency (USD, EUR, BTC, …) with display precision. Cash assets must be registered with an account before funds can be deposited or withdrawn using the `register_cash_asset!` function.
 
 ## Collector
 

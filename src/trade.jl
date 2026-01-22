@@ -1,7 +1,7 @@
 using Dates
 
-mutable struct Trade{TTime<:Dates.AbstractTime,OData,IData}
-    const order::Order{TTime,OData,IData}
+mutable struct Trade{TTime<:Dates.AbstractTime}
+    const order::Order{TTime}
     const tid::Int
     const date::TTime
     const fill_price::Price         # price at which the order was filled

@@ -1,23 +1,20 @@
 using Dates
 import Tables
 
-@inline maybe_with_nothing(::Type{Nothing}) = Nothing
-@inline maybe_with_nothing(::Type{T}) where {T} = Union{Nothing,T}
-
 # -----------------------------------------------------------------------------
 
 """
 Provides a Tables.jl compatible view over the trades contained in an `Account` or
 an arbitrary vector of `Trade`s.
 """
-struct TradesTable{TTime<:Dates.AbstractTime,OData,IData}
-    trades::Vector{Trade{TTime,OData,IData}}
+struct TradesTable{TTime<:Dates.AbstractTime}
+    trades::Vector{Trade{TTime}}
 end
 
 Tables.istable(::Type{<:TradesTable}) = true
 Tables.rowaccess(::Type{<:TradesTable}) = true
 
-Tables.schema(::TradesTable{TTime,OData,IData}) where {TTime<:Dates.AbstractTime,OData,IData} = Tables.Schema(
+Tables.schema(::TradesTable{TTime}) where {TTime<:Dates.AbstractTime} = Tables.Schema(
     (
         :tid,
         :oid,
@@ -35,7 +32,6 @@ Tables.schema(::TradesTable{TTime,OData,IData}) where {TTime<:Dates.AbstractTime
         :position_qty,
         :position_price,
         :commission,
-        :order_metadata
     ),
     (
         Int,
@@ -54,19 +50,18 @@ Tables.schema(::TradesTable{TTime,OData,IData}) where {TTime<:Dates.AbstractTime
         Quantity,
         Price,
         Price,
-        maybe_with_nothing(OData)
     )
 )
 
-struct TradeRows{TTime<:Dates.AbstractTime,OData,IData}
-    trades::Vector{Trade{TTime,OData,IData}}
+struct TradeRows{TTime<:Dates.AbstractTime}
+    trades::Vector{Trade{TTime}}
 end
 
-Tables.rows(tbl::TradesTable{TTime,OData,IData}) where {TTime<:Dates.AbstractTime,OData,IData} = TradeRows{TTime,OData,IData}(tbl.trades)
+Tables.rows(tbl::TradesTable{TTime}) where {TTime<:Dates.AbstractTime} = TradeRows{TTime}(tbl.trades)
 
 Base.length(iter::TradeRows) = length(iter.trades)
 
-function Base.iterate(iter::TradeRows{TTime,OData,IData}, idx::Int=1) where {TTime<:Dates.AbstractTime,OData,IData}
+function Base.iterate(iter::TradeRows{TTime}, idx::Int=1) where {TTime<:Dates.AbstractTime}
     idx > length(iter.trades) && return nothing
     t = @inbounds iter.trades[idx]
     order = t.order
@@ -88,12 +83,11 @@ function Base.iterate(iter::TradeRows{TTime,OData,IData}, idx::Int=1) where {TTi
         position_qty=t.pos_qty,
         position_price=t.pos_price,
         commission=t.commission,
-        order_metadata=order.metadata,
     )
     return row, idx + 1
 end
 
-trades_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.AbstractTime,OData,IData,CData} = TradesTable{TTime,OData,IData}(acc.trades)
+trades_table(acc::Account{TTime}) where {TTime<:Dates.AbstractTime} = TradesTable{TTime}(acc.trades)
 
 # -----------------------------------------------------------------------------
 
@@ -101,14 +95,14 @@ trades_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.Abstract
 Provides a Tables.jl compatible view over the positions contained in an `Account` or
 an arbitrary vector of `Position`s.
 """
-struct PositionsTable{TTime<:Dates.AbstractTime,OData,IData}
-    positions::Vector{Position{TTime,OData,IData}}
+struct PositionsTable{TTime<:Dates.AbstractTime}
+    positions::Vector{Position{TTime}}
 end
 
 Tables.istable(::Type{<:PositionsTable}) = true
 Tables.rowaccess(::Type{<:PositionsTable}) = true
 
-Tables.schema(::PositionsTable{TTime,OData,IData}) where {TTime<:Dates.AbstractTime,OData,IData} = Tables.Schema(
+Tables.schema(::PositionsTable{TTime}) where {TTime<:Dates.AbstractTime} = Tables.Schema(
     (
         :index,
         :symbol,
@@ -133,15 +127,15 @@ Tables.schema(::PositionsTable{TTime,OData,IData}) where {TTime<:Dates.AbstractT
     )
 )
 
-struct PositionRows{TTime<:Dates.AbstractTime,OData,IData}
-    positions::Vector{Position{TTime,OData,IData}}
+struct PositionRows{TTime<:Dates.AbstractTime}
+    positions::Vector{Position{TTime}}
 end
 
-Tables.rows(tbl::PositionsTable{TTime,OData,IData}) where {TTime<:Dates.AbstractTime,OData,IData} = PositionRows{TTime,OData,IData}(tbl.positions)
+Tables.rows(tbl::PositionsTable{TTime}) where {TTime<:Dates.AbstractTime} = PositionRows{TTime}(tbl.positions)
 
 Base.length(iter::PositionRows) = length(iter.positions)
 
-function Base.iterate(iter::PositionRows{TTime,OData,IData}, idx::Int=1) where {TTime<:Dates.AbstractTime,OData,IData}
+function Base.iterate(iter::PositionRows{TTime}, idx::Int=1) where {TTime<:Dates.AbstractTime}
     idx > length(iter.positions) && return nothing
     pos = @inbounds iter.positions[idx]
     inst = pos.inst
@@ -159,7 +153,7 @@ function Base.iterate(iter::PositionRows{TTime,OData,IData}, idx::Int=1) where {
     return row, idx + 1
 end
 
-positions_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.AbstractTime,OData,IData,CData} = PositionsTable{TTime,OData,IData}(acc.positions)
+positions_table(acc::Account{TTime}) where {TTime<:Dates.AbstractTime} = PositionsTable{TTime}(acc.positions)
 
 # -----------------------------------------------------------------------------
 
@@ -167,29 +161,29 @@ positions_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.Abstr
 Provides a Tables.jl compatible view over the cash balances contained in an `Account` or
 an arbitrary vector of `Cash`es.
 """
-struct CashBalancesTable{CData}
-    cash::Vector{Cash{CData}}
+struct CashBalancesTable
+    cash::Vector{Cash}
     balances::Vector{Price}
 end
 
 Tables.istable(::Type{<:CashBalancesTable}) = true
 Tables.rowaccess(::Type{<:CashBalancesTable}) = true
 
-Tables.schema(::CashBalancesTable{CData}) where {CData} = Tables.Schema(
-    (:index, :symbol, :balance, :digits, :metadata),
-    (UInt, Symbol, Price, Int, maybe_with_nothing(CData))
+Tables.schema(::CashBalancesTable) = Tables.Schema(
+    (:index, :symbol, :balance, :digits),
+    (UInt, Symbol, Price, Int)
 )
 
-struct CashBalanceRows{CData}
-    cash::Vector{Cash{CData}}
+struct CashBalanceRows
+    cash::Vector{Cash}
     balances::Vector{Price}
 end
 
-Tables.rows(tbl::CashBalancesTable{CData}) where {CData} = CashBalanceRows{CData}(tbl.cash, tbl.balances)
+Tables.rows(tbl::CashBalancesTable) = CashBalanceRows(tbl.cash, tbl.balances)
 
 Base.length(iter::CashBalanceRows) = length(iter.cash)
 
-function Base.iterate(iter::CashBalanceRows{CData}, idx::Int=1) where {CData}
+function Base.iterate(iter::CashBalanceRows, idx::Int=1)
     idx > length(iter.cash) && return nothing
     cash = @inbounds iter.cash[idx]
     balance = @inbounds iter.balances[idx]
@@ -198,12 +192,11 @@ function Base.iterate(iter::CashBalanceRows{CData}, idx::Int=1) where {CData}
         symbol=cash.symbol,
         balance=balance,
         digits=cash.digits,
-        metadata=cash.data,
     )
     return row, idx + 1
 end
 
-balances_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.AbstractTime,OData,IData,CData} = CashBalancesTable{CData}(acc.cash, acc.balances)
+balances_table(acc::Account) = CashBalancesTable(acc.cash, acc.balances)
 
 # -----------------------------------------------------------------------------
 
@@ -211,29 +204,29 @@ balances_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.Abstra
 Provides a Tables.jl compatible view over the equity balances contained in an `Account` or
 an arbitrary vector of `Cash`es.
 """
-struct EquityBalancesTable{CData}
-    cash::Vector{Cash{CData}}
+struct EquityBalancesTable
+    cash::Vector{Cash}
     equities::Vector{Price}
 end
 
 Tables.istable(::Type{<:EquityBalancesTable}) = true
 Tables.rowaccess(::Type{<:EquityBalancesTable}) = true
 
-Tables.schema(::EquityBalancesTable{CData}) where {CData} = Tables.Schema(
-    (:index, :symbol, :equity, :digits, :metadata),
-    (UInt, Symbol, Price, Int, maybe_with_nothing(CData))
+Tables.schema(::EquityBalancesTable) = Tables.Schema(
+    (:index, :symbol, :equity, :digits),
+    (UInt, Symbol, Price, Int)
 )
 
-struct EquityBalanceRows{CData}
-    cash::Vector{Cash{CData}}
+struct EquityBalanceRows
+    cash::Vector{Cash}
     equities::Vector{Price}
 end
 
-Tables.rows(tbl::EquityBalancesTable{CData}) where {CData} = EquityBalanceRows{CData}(tbl.cash, tbl.equities)
+Tables.rows(tbl::EquityBalancesTable) = EquityBalanceRows(tbl.cash, tbl.equities)
 
 Base.length(iter::EquityBalanceRows) = length(iter.cash)
 
-function Base.iterate(iter::EquityBalanceRows{CData}, idx::Int=1) where {CData}
+function Base.iterate(iter::EquityBalanceRows, idx::Int=1)
     idx > length(iter.cash) && return nothing
     cash = @inbounds iter.cash[idx]
     equity_value = @inbounds iter.equities[idx]
@@ -242,12 +235,11 @@ function Base.iterate(iter::EquityBalanceRows{CData}, idx::Int=1) where {CData}
         symbol=cash.symbol,
         equity=equity_value,
         digits=cash.digits,
-        metadata=cash.data,
     )
     return row, idx + 1
 end
 
-equities_table(acc::Account{TTime,OData,IData,CData}) where {TTime<:Dates.AbstractTime,OData,IData,CData} = EquityBalancesTable{CData}(acc.cash, acc.equities)
+equities_table(acc::Account) = EquityBalancesTable(acc.cash, acc.equities)
 
 # -------------------------- Collectors -----------------------------------
 

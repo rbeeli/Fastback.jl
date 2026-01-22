@@ -55,19 +55,17 @@ end
 gen_markdown("1_random_trading.jl");
 gen_markdown("2_portfolio_trading.jl");
 gen_markdown("3_multi_currency.jl");
-gen_markdown("4_metadata.jl");
-gen_markdown("5_Tables_integration.jl");
-gen_markdown("6_NanoDates_integration.jl");
-gen_markdown("7_Timestamps64_integration.jl");
+gen_markdown("4_Tables_integration.jl");
+gen_markdown("5_NanoDates_integration.jl");
+gen_markdown("6_Timestamps64_integration.jl");
 
 # generate notebook files
 gen_notebook("1_random_trading.jl");
 gen_notebook("2_portfolio_trading.jl");
 gen_notebook("3_multi_currency.jl");
-gen_notebook("4_metadata.jl");
-gen_notebook("5_Tables_integration.jl");
-gen_notebook("6_NanoDates_integration.jl");
-gen_notebook("7_Timestamps64_integration.jl");
+gen_notebook("4_Tables_integration.jl");
+gen_notebook("5_NanoDates_integration.jl");
+gen_notebook("6_Timestamps64_integration.jl");
 
 makedocs(
     sitename="Fastback.jl",
@@ -84,10 +82,9 @@ makedocs(
             "1\\. Random trading" => "examples/gen/1_random_trading.md",
             "2\\. Portfolio trading" => "examples/gen/2_portfolio_trading.md",
             "3\\. Multi-Currency trading" => "examples/gen/3_multi_currency.md",
-            "4\\. Attach metadata" => "examples/gen/4_metadata.md",
-            "5\\. Tables.jl integration" => "examples/gen/5_Tables_integration.md",
-            "6\\. NanoDates.jl integration" => "examples/gen/6_NanoDates_integration.md",
-            "7\\. Timestamps64.jl integration" => "examples/gen/7_Timestamps64_integration.md",
+            "4\\. Tables.jl integration" => "examples/gen/4_Tables_integration.md",
+            "5\\. NanoDates.jl integration" => "examples/gen/5_NanoDates_integration.md",
+            "6\\. Timestamps64.jl integration" => "examples/gen/6_Timestamps64_integration.md",
         ],
         "Integrations" => "integrations.md",
         "Glossary" => "glossary.md",

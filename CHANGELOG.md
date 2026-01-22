@@ -15,6 +15,10 @@ All notable changes to this project will be documented in this file.
 
 - Quote cash lookup performance improvement by caching index in `Instrument` struct
 
+### Removed
+
+- Metadata type parameters (`OData`, `IData`, `CData`) and associated metadata fields were removed from core types, Tables outputs, and printing to simplify the API.
+
 ## [0.4.2] - 2025-09-29
 
 ### Changed

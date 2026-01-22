@@ -1,6 +1,6 @@
 using Printf
 
-mutable struct Instrument{IData}
+mutable struct Instrument
     index::UInt                   # unique index for each instrument starting from 1 (used for array indexing and hashing)
     const symbol::Symbol
 
@@ -23,7 +23,6 @@ mutable struct Instrument{IData}
     quote_cash_index::Int
 
     const multiplier::Float64
-    const metadata::IData
 
     function Instrument(
         symbol::Symbol,
@@ -43,9 +42,8 @@ mutable struct Instrument{IData}
         margin_maint_long::Price=0.0,
         margin_maint_short::Price=0.0,
         multiplier::Float64=1.0,
-        metadata::IData=nothing
-    ) where {IData}
-        new{IData}(
+    )
+        new(
             0, # index
             symbol,
             base_symbol,
@@ -64,7 +62,6 @@ mutable struct Instrument{IData}
             margin_maint_short,
             0, # quote_cash_index
             multiplier,
-            metadata
         )
     end
 end
@@ -74,13 +71,10 @@ end
 @inline format_base(inst::Instrument, value) = Printf.format(Printf.Format("%.$(inst.base_digits)f"), value)
 @inline format_quote(inst::Instrument, value) = Printf.format(Printf.Format("%.$(inst.quote_digits)f"), value)
 
-function Base.show(io::IO, inst::Instrument{IData}) where {IData}
+function Base.show(io::IO, inst::Instrument)
     str = "[Instrument] " *
           "symbol=$(inst.symbol) " *
           "base=$(inst.base_symbol) [$(format_base(inst, inst.base_min)), $(format_base(inst, inst.base_max))]±$(format_base(inst, inst.base_tick)) " *
           "quote=$(inst.quote_symbol)±$(format_quote(inst, inst.quote_tick))"
-    if IData !== nothing
-        str *= " metadata=$(inst.metadata)"
-    end
     print(io, str)
 end

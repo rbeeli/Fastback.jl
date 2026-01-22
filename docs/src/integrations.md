@@ -5,15 +5,15 @@
 Fastback ships with zero-copy views that make every major account artefact available through the **Tables.jl** interface.
 That means you can hand results straight to DataFrames.jl, CSV.jl, Arrow.jl, or any other package that consumes Tables-compatible sources.
 
-Example see [5_Tables_integration.jl](https://rbeeli.github.io/Fastback.jl/examples/gen/5_Tables_integration/).
+Example see [4_Tables_integration.jl](https://rbeeli.github.io/Fastback.jl/examples/gen/4_Tables_integration/).
 
 ### Account
 
 | accessor | description |
 | --- | --- |
-| `trades_table(acc)` | All executed trades with order, execution, and metadata fields |
+| `trades_table(acc)` | All executed trades with order and execution fields |
 | `positions_table(acc)` | Current positions |
-| `balances_table(acc)` | Cash balances per currency, preserving custom cash metadata |
+| `balances_table(acc)` | Cash balances per currency |
 | `equities_table(acc)` | Equity values per currency |
 
 ```julia

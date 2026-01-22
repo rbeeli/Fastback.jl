@@ -1,18 +1,18 @@
-mutable struct Position{TTime<:Dates.AbstractTime,OData,IData}
+mutable struct Position{TTime<:Dates.AbstractTime}
     const index::UInt               # unique index for each position starting from 1 (used for array indexing and hashing)
-    const inst::Instrument{IData}
+    const inst::Instrument
     avg_price::Price
     quantity::Quantity              # negative = short selling
     pnl_local::Price                # local currency P&L
     value_local::Price              # position value contribution in local currency
     margin_init_local::Price        # initial margin used in local currency
     margin_maint_local::Price       # maintenance margin used in local currency
-    last_order::Union{Nothing,Order{TTime,OData,IData}}
-    last_trade::Union{Nothing,Trade{TTime,OData,IData}}
+    last_order::Union{Nothing,Order{TTime}}
+    last_trade::Union{Nothing,Trade{TTime}}
 
-    function Position{TTime,OData}(
+    function Position{TTime}(
         index,
-        inst::Instrument{IData}
+        inst::Instrument
         ;
         avg_price::Price=0.0,
         quantity::Quantity=0.0,
@@ -20,10 +20,10 @@ mutable struct Position{TTime<:Dates.AbstractTime,OData,IData}
         value_local::Price=0.0,
         margin_init_local::Price=0.0,
         margin_maint_local::Price=0.0,
-        last_order::Union{Nothing,Order{TTime,OData,IData}}=nothing,
-        last_trade::Union{Nothing,Trade{TTime,OData,IData}}=nothing,
-    ) where {TTime<:Dates.AbstractTime,OData,IData}
-        new{TTime,OData,IData}(
+        last_order::Union{Nothing,Order{TTime}}=nothing,
+        last_trade::Union{Nothing,Trade{TTime}}=nothing,
+    ) where {TTime<:Dates.AbstractTime}
+        new{TTime}(
             index,
             inst,
             avg_price,
@@ -73,7 +73,7 @@ Fees are accounted for in the account equity calculation and execution P&L.
 - `position`: Position object.
 - `close_price`: Current closing price.
 """
-@inline function calc_return_local(pos::Position{T,O,I}, close_price) where {T<:Dates.AbstractTime,O,I}
+@inline function calc_return_local(pos::Position{T}, close_price) where {T<:Dates.AbstractTime}
     sign(pos.quantity) * (close_price / pos.avg_price - one(close_price))
 end
 

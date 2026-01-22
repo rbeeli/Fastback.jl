@@ -1,6 +1,23 @@
 using Dates
 using TestItemRunner
 
+@testitem "Order creation uses only time type parameter" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 1_000.0)
+    inst = register_instrument!(acc, Instrument(Symbol("META/USD"), :META, :USD))
+
+    dt = DateTime(2025, 1, 1)
+    order = Order{DateTime}(oid!(acc), inst, dt, 10.0, 1.0)
+
+    @test order isa Order{DateTime}
+
+    trade = fill_order!(acc, order, dt, 10.0)
+    @test trade.order === order
+    @test acc.trades[end] === trade
+end
+
 @testitem "Account long order w/o commission" begin
     using Test, Fastback, Dates
     # create trading account

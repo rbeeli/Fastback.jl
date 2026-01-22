@@ -8,7 +8,7 @@ using TestItemRunner
     TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD))
     px1, px2 = 500.0, 505.0
     # long
-    pos = Position{DateTime,Nothing}(1, TEST; avg_price=px1, quantity=500.0)
+    pos = Position{DateTime}(1, TEST; avg_price=px1, quantity=500.0)
     @test is_long(pos)
     @test !is_short(pos)
     @test calc_pnl_local(pos, px2) == pos.quantity * (px2 - pos.avg_price)
@@ -22,7 +22,7 @@ end
     TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD))
     px1, px2 = 500.0, 505.0
     # short
-    pos = Position{DateTime,Nothing}(2, TEST; avg_price=px1, quantity=-500.0)
+    pos = Position{DateTime}(2, TEST; avg_price=px1, quantity=-500.0)
     @test !is_long(pos)
     @test is_short(pos)
     @test calc_pnl_local(pos, px2) == pos.quantity * (px2 - pos.avg_price)

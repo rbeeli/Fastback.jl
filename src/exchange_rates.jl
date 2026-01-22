@@ -7,7 +7,7 @@ Abstract type for exchange rates.
 Exchange rates are used to convert between different assets,
 for example to convert account assets to the account's base currency.
 """
-abstract type ExchangeRates{CData} end
+abstract type ExchangeRates end
 
 """
 Register a cash asset with the exchange rate provider.
@@ -21,7 +21,7 @@ Default implementation is a no-op.
 """
 Dummy exchange rate implementation which always returns 1.0 as exchange rate.
 """
-struct OneExchangeRates{CData} <: ExchangeRates{CData} end
+struct OneExchangeRates <: ExchangeRates end
 
 """
 Get the exchange rate between two assets.
@@ -42,24 +42,21 @@ For `OneExchangeRates`, this is a no-op.
 """
 Supports spot exchange rates between assets.
 """
-mutable struct SpotExchangeRates{CData} <: ExchangeRates{CData}
+mutable struct SpotExchangeRates <: ExchangeRates
     const rates::Vector{Vector{Float64}} # rates[from][to] using internal index
-    const indices::Dict{Cash{CData},Int} # cash object -> index
-    const assets::Vector{Cash{CData}}
+    const indices::Dict{Cash,Int} # cash object -> index
+    const assets::Vector{Cash}
 
-    function SpotExchangeRates(
-        ;
-        cdata::Type{CData}=Nothing
-    ) where {CData}
-        new{CData}(
+    function SpotExchangeRates()
+        new(
             Vector{Vector{Float64}}(),
-            Dict{Cash{CData},Int}(),
-            Vector{Cash{CData}}()
+            Dict{Cash,Int}(),
+            Vector{Cash}()
         )
     end
 end
 
-function add_asset!(er::SpotExchangeRates, cash::Cash{CData}) where {CData}
+function add_asset!(er::SpotExchangeRates, cash::Cash)
     if haskey(er.indices, cash)
         throw(ArgumentError("Exchange cash asset '$(cash.symbol)' was already added."))
     end

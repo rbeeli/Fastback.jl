@@ -7,10 +7,10 @@ import Printf
 
 function print_trades(
     io::IO,
-    acc::Account{TTime,OData,IData,CData}
+    acc::Account{TTime}
     ;
     max_print=25
-) where {TTime<:Dates.AbstractTime,OData,IData,CData}
+) where {TTime<:Dates.AbstractTime}
     trades = acc.trades
     length(trades) == 0 && return
 
@@ -30,11 +30,6 @@ function print_trades(
         Dict(:name => "Return", :val => t -> realized_return(t), :fmt => (t, v) -> @sprintf("%.2f%%", 100v)),
         Dict(:name => "Comm.", :val => t -> t.commission, :fmt => (t, v) -> format_quote(t.order.inst, v)),
     ]
-
-    # add "Metadata" column if OData is not Nothing
-    if OData !== Nothing
-        push!(cols, Dict(:name => "Metadata", :val => t -> t.order.metadata, :fmt => (t, v) -> v))
-    end
 
     column_labels = [c[:name] for c in cols]
     data_columns = []
@@ -69,11 +64,11 @@ end
 # --------------- Positions ---------------
 
 function print_positions(
-    acc::Account{TTime,OData,IData,CData}
+    acc::Account{TTime}
     ;
     max_print=50,
     kwargs...
-) where {TTime<:Dates.AbstractTime,OData,IData,CData}
+) where {TTime<:Dates.AbstractTime}
     print_positions(
         stdout,
         acc
@@ -85,10 +80,10 @@ end
 
 function print_positions(
     io::IO,
-    acc::Account{TTime,OData,IData,CData}
+    acc::Account{TTime}
     ;
     max_print=50
-) where {TTime<:Dates.AbstractTime,OData,IData,CData}
+) where {TTime<:Dates.AbstractTime}
     positions = filter(p -> p.quantity != 0, acc.positions)
     length(positions) == 0 && return
 
@@ -132,8 +127,8 @@ end
 
 function print_cash_balances(
     io::IO,
-    acc::Account{TTime,OData,IData,CData}
-) where {TTime<:Dates.AbstractTime,OData,IData,CData}
+    acc::Account{TTime}
+) where {TTime<:Dates.AbstractTime}
     length(acc.balances) == 0 && return
 
     cols = [
@@ -177,8 +172,8 @@ end
 
 function print_equity_balances(
     io::IO,
-    acc::Account{TTime,OData,IData,CData}
-) where {TTime<:Dates.AbstractTime,OData,IData,CData}
+    acc::Account{TTime}
+) where {TTime<:Dates.AbstractTime}
     length(acc.equities) == 0 && return
 
     cols = [
@@ -222,11 +217,11 @@ end
 
 function Base.show(
     io::IO,
-    acc::Account{TTime,OData,IData,CData}
+    acc::Account{TTime}
     ;
     max_trades=30,
     kwargs...
-) where {TTime<:Dates.AbstractTime,OData,IData,CData}
+) where {TTime<:Dates.AbstractTime}
     display_width = displaysize(io)[2]
 
     function get_color(val)

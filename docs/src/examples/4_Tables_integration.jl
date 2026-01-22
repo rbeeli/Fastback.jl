@@ -21,16 +21,13 @@ N = 500;
 prices = 100.0 .+ cumsum(randn(N) .* 0.5 .+ 0.05);
 dts = map(x -> DateTime(2021, 1, 1) + Hour(x), 0:N-1);
 
-## create trading account with $5'000 start capital and custom metadata types
-const OrderMeta = NamedTuple{(:signal,),Tuple{String}}
-const InstMeta = NamedTuple{(:sector,),Tuple{Symbol}}
-
-acc = Account(; odata=OrderMeta, idata=InstMeta);
+## create trading account with $5'000 start capital
+acc = Account();
 deposit!(acc, Cash(:USD), 5_000.0);
 
-## register instruments with metadata
-AAPL = register_instrument!(acc, Instrument(Symbol("AAPL/USD"), :AAPL, :USD; metadata=(sector=:tech,)));
-MSFT = register_instrument!(acc, Instrument(Symbol("MSFT/USD"), :MSFT, :USD; metadata=(sector=:tech,)));
+## register instruments
+AAPL = register_instrument!(acc, Instrument(Symbol("AAPL/USD"), :AAPL, :USD));
+MSFT = register_instrument!(acc, Instrument(Symbol("MSFT/USD"), :MSFT, :USD));
 
 ## data collectors
 collect_equity, equity_data = periodic_collector(Float64, Hour(12));
@@ -47,12 +44,12 @@ for (i, (dt, price)) in enumerate(zip(dts, prices))
 
         if momentum > 0.02  # buy signal
             quantity = 10.0
-            order = Order(oid!(acc), AAPL, dt, price, quantity; metadata=(signal="mom",))
+            order = Order(oid!(acc), AAPL, dt, price, quantity)
             fill_order!(acc, order, dt, price; commission_pct=0.001)
 
         elseif momentum < -0.02  # sell signal
             quantity = -8.0
-            order = Order(oid!(acc), MSFT, dt, price, quantity; metadata=(signal="mom",))
+            order = Order(oid!(acc), MSFT, dt, price, quantity)
             fill_order!(acc, order, dt, price; commission_pct=0.001)
         end
 

@@ -1,12 +1,12 @@
-mutable struct Account{TTime<:Dates.AbstractTime,OData,IData,CData}
-    const cash::Vector{Cash{CData}}
-    const cash_by_symbol::Dict{Symbol,Cash{CData}}
+mutable struct Account{TTime<:Dates.AbstractTime}
+    const cash::Vector{Cash}
+    const cash_by_symbol::Dict{Symbol,Cash}
     const balances::Vector{Price}           # balance per cash currency
     const equities::Vector{Price}           # equity per cash currency
     const init_margin_used::Vector{Price}   # initial margin used per cash currency
     const maint_margin_used::Vector{Price}  # maintenance margin used per cash currency
-    const positions::Vector{Position{TTime,OData,IData}}
-    const trades::Vector{Trade{TTime,OData,IData}}
+    const positions::Vector{Position{TTime}}
+    const trades::Vector{Trade{TTime}}
     order_sequence::Int
     trade_sequence::Int
     const date_format::Dates.DateFormat
@@ -16,20 +16,17 @@ mutable struct Account{TTime<:Dates.AbstractTime,OData,IData,CData}
         date_format=dateformat"yyyy-mm-dd HH:MM:SS",
         order_sequence=0,
         trade_sequence=0,
-        odata::Type{OData}=Nothing,
-        idata::Type{IData}=Nothing,
-        cdata::Type{CData}=Nothing,
         time_type::Type{TTime}=DateTime,
-    ) where {TTime<:Dates.AbstractTime,OData,IData,CData}
-        new{TTime,OData,IData,CData}(
-            Vector{Cash{CData}}(), # cash
-            Dict{Symbol,Cash{CData}}(), # cash_by_symbol
+    ) where {TTime<:Dates.AbstractTime}
+        new{TTime}(
+            Vector{Cash}(), # cash
+            Dict{Symbol,Cash}(), # cash_by_symbol
             Vector{Price}(), # balances
             Vector{Price}(), # equities
             Vector{Price}(), # init_margin_used
             Vector{Price}(), # maint_margin_used
-            Vector{Position{TTime,OData,IData}}(), # positions
-            Vector{Trade{TTime,OData,IData}}(), # trades
+            Vector{Position{TTime}}(), # positions
+            Vector{Trade{TTime}}(), # trades
             order_sequence,
             trade_sequence,
             date_format
@@ -61,9 +58,9 @@ Cash is a liquid coin or currency that is used to trade instruments with, e.g. U
 When funding the account, the funds are added to the balance of the corresponding cash asset.
 """
 function register_cash_asset!(
-    acc::Account{TTime,OData,IData,CData},
-    cash::Cash{CData}
-) where {TTime<:Dates.AbstractTime,OData,IData,CData}
+    acc::Account{TTime},
+    cash::Cash
+) where {TTime<:Dates.AbstractTime}
     !has_cash_asset(acc, cash.symbol) || throw(ArgumentError("Cash with symbol '$(cash.symbol)' already registered."))
 
     # set index for fast array indexing and hashing
@@ -78,10 +75,10 @@ function register_cash_asset!(
 end
 
 @inline function _adjust_cash!(
-    acc::Account{TTime,OData,IData,CData},
-    cash::Cash{CData},
+    acc::Account{TTime},
+    cash::Cash,
     amount::Real
-) where {TTime<:Dates.AbstractTime,OData,IData,CData}
+) where {TTime<:Dates.AbstractTime}
     # register cash object if not already registered
     has_cash_asset(acc, cash.symbol) || register_cash_asset!(acc, cash)
 
@@ -106,10 +103,10 @@ The funds are added to the balance and equity of the corresponding cash asset.
 Use `withdraw!` to reduce the balance again.
 """
 function deposit!(
-    acc::Account{TTime,OData,IData,CData},
-    cash::Cash{CData},
+    acc::Account{TTime},
+    cash::Cash,
     amount::Real
-) where {TTime<:Dates.AbstractTime,OData,IData,CData}
+) where {TTime<:Dates.AbstractTime}
     isless(amount, zero(amount)) && throw(ArgumentError("Deposit amount must be non-negative."))
     _adjust_cash!(acc, cash, amount)
 end
@@ -121,10 +118,10 @@ The funds are subtracted from the balance and equity of the corresponding cash a
 Use `deposit!` to fund an account.
 """
 function withdraw!(
-    acc::Account{TTime,OData,IData,CData},
-    cash::Cash{CData},
+    acc::Account{TTime},
+    cash::Cash,
     amount::Real
-) where {TTime<:Dates.AbstractTime,OData,IData,CData}
+) where {TTime<:Dates.AbstractTime}
     isless(amount, zero(amount)) && throw(ArgumentError("Withdraw amount must be non-negative."))
     _adjust_cash!(acc, cash, -amount)
 end
@@ -136,9 +133,9 @@ An instrument can only be registered once.
 Before trading any instrument, it must be registered in the account.
 """
 function register_instrument!(
-    acc::Account{TTime,OData,IData,CData},
-    inst::Instrument{IData}
-) where {TTime<:Dates.AbstractTime,OData,IData,CData}
+    acc::Account{TTime},
+    inst::Instrument
+) where {TTime<:Dates.AbstractTime}
     if any(x -> x.inst.symbol == inst.symbol, acc.positions)
         throw(ArgumentError("Instrument $(inst.symbol) already registered"))
     end
@@ -149,7 +146,7 @@ function register_instrument!(
     inst.index = length(acc.positions) + 1
     inst.quote_cash_index = quote_cash_index
 
-    push!(acc.positions, Position{TTime,OData}(inst.index, inst))
+    push!(acc.positions, Position{TTime}(inst.index, inst))
 
     inst
 end
