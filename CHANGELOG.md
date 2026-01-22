@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Support for optional Instrument `multiplier` value
 - `Position.value_local` and `update_valuation! = update_pnl!` functions
-- `SettlementType` enum for specifying settlement types of instruments (Asset vs. Cash)
+- `SettlementStyle` enum for specifying settlement types of instruments (Asset, Cash, Variation Margin)
 - `MarginMode` enum + `update_margin!` + `update_marks!` functions for margin calculations and extended `Position` struct and `Account` struct to support margin trading
 
 ### Changed
