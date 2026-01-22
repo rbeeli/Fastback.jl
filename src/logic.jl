@@ -3,21 +3,52 @@ Updates position valuation and account equity using the latest mark price.
 
 For asset-settled instruments, value is mark-to-market notional.
 For cash-settled instruments, value equals local P&L.
+For variation-margin instruments, unrealized P&L is settled into cash at each update.
 """
 @inline function update_valuation!(acc::Account, pos::Position, close_price)
     # update position valuation and account equity using delta of old and new value
     inst = pos.inst
     new_pnl = calc_pnl_local(pos, close_price)
-    if inst.settlement == SettlementStyle.Asset
-        new_value = pos.quantity * close_price * inst.multiplier
-    else
-        new_value = new_pnl
-    end
-    value_delta = new_value - pos.value_local
+    settlement = inst.settlement
     quote_cash_index = inst.quote_cash_index
-    @inbounds acc.equities[quote_cash_index] += value_delta
-    pos.pnl_local = new_pnl
-    pos.value_local = new_value
+    if settlement == SettlementStyle.Asset
+        new_value = pos.quantity * close_price * inst.multiplier
+        value_delta = new_value - pos.value_local
+        @inbounds acc.equities[quote_cash_index] += value_delta
+        pos.pnl_local = new_pnl
+        pos.value_local = new_value
+        return
+    elseif settlement == SettlementStyle.Cash
+        new_value = new_pnl
+        value_delta = new_value - pos.value_local
+        @inbounds acc.equities[quote_cash_index] += value_delta
+        pos.pnl_local = new_pnl
+        pos.value_local = new_value
+        return
+    elseif settlement == SettlementStyle.VariationMargin
+        # Variation margin settlement: transfer P&L to cash and reset basis.
+        if pos.value_local != 0.0
+            @inbounds acc.equities[quote_cash_index] -= pos.value_local
+            pos.value_local = 0.0
+        end
+        if pos.quantity == 0.0
+            pos.avg_price = zero(Price)
+            pos.pnl_local = 0.0
+            return
+        end
+        if new_pnl != 0.0
+            @inbounds begin
+                acc.balances[quote_cash_index] += new_pnl
+                acc.equities[quote_cash_index] += new_pnl
+            end
+        end
+        pos.pnl_local = 0.0
+        pos.value_local = 0.0
+        pos.avg_price = close_price
+        return
+    else
+        throw(ArgumentError("Unsupported settlement style $(settlement)."))
+    end
     return
 end
 
@@ -99,8 +130,10 @@ end
 
     if inst.settlement == SettlementStyle.Asset
         cash_delta = -(fill_price * fill_qty * inst.multiplier) - commission
-    else
+    elseif inst.settlement == SettlementStyle.Cash || inst.settlement == SettlementStyle.VariationMargin
         cash_delta = realized_pnl_gross - commission
+    else
+        throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
     end
     @inbounds begin
         acc.balances[quote_cash_index] += cash_delta

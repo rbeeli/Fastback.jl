@@ -216,6 +216,48 @@ end
     @test equity(acc, :USD) ≈ 9_000.0
 end
 
+@testitem "Variation margin settles P&L into cash" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("FUT/USD"), :FUT, :USD; settlement=SettlementStyle.VariationMargin))
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2021, 1, 1)
+    price = 50.0
+    qty = 100.0
+    order = Order(oid!(acc), inst, dt, price, qty)
+    fill_order!(acc, order, dt, price)
+
+    @test cash_balance(acc, :USD) ≈ 10_000.0
+    @test equity(acc, :USD) ≈ 10_000.0
+    @test pos.value_local ≈ 0.0
+    @test pos.pnl_local ≈ 0.0
+    @test pos.avg_price ≈ price
+
+    update_pnl!(acc, pos, 60.0)
+    @test cash_balance(acc, :USD) ≈ 11_000.0
+    @test equity(acc, :USD) ≈ 11_000.0
+    @test pos.value_local ≈ 0.0
+    @test pos.pnl_local ≈ 0.0
+    @test pos.avg_price ≈ 60.0
+
+    update_pnl!(acc, pos, 55.0)
+    @test cash_balance(acc, :USD) ≈ 10_500.0
+    @test equity(acc, :USD) ≈ 10_500.0
+    @test pos.avg_price ≈ 55.0
+
+    order = Order(oid!(acc), inst, dt, 55.0, -qty)
+    fill_order!(acc, order, dt, 55.0)
+
+    @test pos.quantity ≈ 0.0
+    @test cash_balance(acc, :USD) ≈ 10_500.0
+    @test equity(acc, :USD) ≈ 10_500.0
+    @test pos.avg_price == 0.0
+end
+
 @testitem "Margin disabled stays zero" begin
     using Test, Fastback, Dates
 
