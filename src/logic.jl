@@ -103,8 +103,10 @@ end
     fill_qty::Quantity=0.0,      # fill quantity, if not provided, order quantity is used (complete fill)
     commission::Price=0.0,       # fixed commission in quote (local) currency
     commission_pct::Price=0.0,   # percentage commission of nominal order value, e.g. 0.001 = 0.1%
+    allow_inactive::Bool=false,
 )::Trade{TTime} where {TTime<:Dates.AbstractTime}
     inst = order.inst
+    allow_inactive || is_active(inst, dt) || throw(ArgumentError("Instrument $(inst.symbol) is not active at $dt"))
     # get quote asset index
     quote_cash_index = inst.quote_cash_index
 
@@ -191,4 +193,29 @@ end
     push!(acc.trades, trade)
 
     trade
+end
+
+"""
+Force-settles an expired instrument by synthetically closing any open position.
+
+If the instrument is expired at `dt` and the position quantity is non-zero,
+this generates a closing order with the provided settlement price and routes
+it through `fill_order!` to record a trade and release margin.
+"""
+function settle_expiry!(
+    acc::Account{TTime},
+    inst::Instrument{TTime},
+    dt::TTime
+    ;
+    settle_price=get_position(acc, inst).mark_price,
+    commission::Price=0.0,
+) where {TTime<:Dates.AbstractTime}
+    pos = get_position(acc, inst)
+    (pos.quantity == 0.0 || !is_expired(inst, dt)) && return nothing
+
+    qty = -pos.quantity
+    order = Order(oid!(acc), inst, dt, settle_price, qty)
+    trade = fill_order!(acc, order, dt, settle_price; commission=commission, allow_inactive=true)
+
+    return trade
 end

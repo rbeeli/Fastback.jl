@@ -303,6 +303,78 @@ end
     @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
 end
 
+@testitem "Trading after expiry throws" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    start_dt = DateTime(2026, 1, 1)
+    expiry_dt = DateTime(2026, 2, 1)
+    inst = register_instrument!(acc, Instrument(
+        Symbol("EXP/USD"),
+        :EXP,
+        :USD;
+        contract_kind=ContractKind.Future,
+        start_time=start_dt,
+        expiry=expiry_dt,
+    ))
+
+    open_dt = start_dt + Day(1)
+    order = Order(oid!(acc), inst, open_dt, 100.0, 1.0)
+    fill_order!(acc, order, open_dt, 100.0)
+
+    late_dt = expiry_dt + Day(1)
+    late_order = Order(oid!(acc), inst, late_dt, 110.0, 1.0)
+    @test_throws ArgumentError fill_order!(acc, late_order, late_dt, 110.0)
+end
+
+@testitem "settle_expiry! closes positions and releases margin" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 20_000.0)
+
+    start_dt = DateTime(2026, 1, 1)
+    expiry_dt = DateTime(2026, 2, 1)
+    inst = register_instrument!(acc, Instrument(
+        Symbol("FUT/USD"),
+        :FUT,
+        :USD;
+        contract_kind=ContractKind.Future,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.05,
+        start_time=start_dt,
+        expiry=expiry_dt,
+    ))
+    pos = get_position(acc, inst)
+
+    open_dt = start_dt + Day(10)
+    qty = 3.0
+    open_price = 100.0
+    open_order = Order(oid!(acc), inst, open_dt, open_price, qty)
+    fill_order!(acc, open_order, open_dt, open_price)
+
+    usd_index = cash_asset(acc, :USD).index
+    @test pos.quantity == qty
+    @test pos.margin_init_local > 0.0
+    @test acc.init_margin_used[usd_index] > 0.0
+
+    settle_price = 105.0
+    trade = settle_expiry!(acc, inst, expiry_dt; settle_price=settle_price)
+
+    @test trade isa Trade
+    @test acc.trades[end] === trade
+    @test trade.fill_qty ≈ -qty
+    @test pos.quantity == 0.0
+    @test pos.margin_init_local == 0.0
+    @test pos.margin_maint_local == 0.0
+    @test acc.init_margin_used[usd_index] == 0.0
+    @test acc.maint_margin_used[usd_index] == 0.0
+end
+
 @testitem "Margin disabled stays zero" begin
     using Test, Fastback, Dates
 

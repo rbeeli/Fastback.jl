@@ -93,3 +93,14 @@ end
 @inline has_expiry(inst::Instrument{TTime}) where {TTime<:Dates.AbstractTime} = inst.expiry != TTime(0)
 @inline is_expired(inst::Instrument{TTime}, dt::TTime) where {TTime<:Dates.AbstractTime} = has_expiry(inst) && dt >= inst.expiry
 @inline is_active(inst::Instrument{TTime}, dt::TTime) where {TTime<:Dates.AbstractTime} = (inst.start_time == TTime(0) || dt >= inst.start_time) && !is_expired(inst, dt)
+
+@inline function ensure_active(inst::Instrument{TTime}, dt::TTime) where {TTime<:Dates.AbstractTime}
+    if inst.start_time != TTime(0) && dt < inst.start_time
+        throw(ArgumentError("Instrument $(inst.symbol) is not active before $(inst.start_time)"))
+    elseif is_expired(inst, dt)
+        throw(ArgumentError("Instrument $(inst.symbol) expired at $(inst.expiry)"))
+    elseif !is_active(inst, dt)
+        throw(ArgumentError("Instrument $(inst.symbol) is not active at $dt"))
+    end
+    return inst
+end

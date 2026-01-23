@@ -49,3 +49,22 @@ using TestItemRunner
     @test !is_active(perp, start_date - Day(1))
     @test is_active(perp, start_date)
 end
+
+@testitem "ensure_active enforces lifecycle bounds" begin
+    using Test, Fastback, Dates
+
+    start_dt = DateTime(2026, 2, 1)
+    expiry_dt = DateTime(2026, 3, 1)
+    fut = Instrument(
+        Symbol("ENSURE/USD"),
+        :ENSURE,
+        :USD;
+        contract_kind=ContractKind.Future,
+        start_time=start_dt,
+        expiry=expiry_dt,
+    )
+
+    @test_throws ArgumentError ensure_active(fut, start_dt - Day(1))
+    @test ensure_active(fut, start_dt) === fut
+    @test_throws ArgumentError ensure_active(fut, expiry_dt)
+end

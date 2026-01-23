@@ -83,7 +83,8 @@ export add_asset!,
 export update_pnl!,
     update_valuation!,
     update_margin!,
-    update_marks!
+    update_marks!,
+    settle_expiry!
 
 # Collectors
 export PeriodicValues,
@@ -116,7 +117,8 @@ export format_cash,
     format_period_HHMMSS,
     has_expiry,
     is_expired,
-    is_active
+    is_active,
+    ensure_active
 
 # Printing helpers
 export print_cash_balances,
