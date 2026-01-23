@@ -433,6 +433,41 @@ end
     @test acc.maint_margin_used[usd_index] ≈ qty * 120.0 * 0.05
 end
 
+@testitem "Broker-style margin metrics" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    @test acc.mode == AccountMode.Cash
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("BROKER/USD"),
+        :BROKER,
+        :USD;
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.05,
+    ))
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2025, 1, 1)
+    price = 100.0
+    qty = 5.0
+    order = Order(oid!(acc), inst, dt, price, qty)
+    fill_order!(acc, order, dt, price)
+
+    usd = cash_asset(acc, :USD)
+    expected_init = qty * price * 0.1
+    expected_maint = qty * price * 0.05
+
+    @test init_margin_used(acc, usd) ≈ expected_init
+    @test init_margin_used(acc, :USD) ≈ expected_init
+    @test maint_margin_used(acc, usd) ≈ expected_maint
+    @test maint_margin_used(acc, :USD) ≈ expected_maint
+    @test available_funds(acc, usd) ≈ equity(acc, usd) - expected_init
+    @test excess_liquidity(acc, :USD) ≈ equity(acc, :USD) - expected_maint
+end
+
 @testitem "Margin fixed per contract uses per-contract rates" begin
     using Test, Fastback, Dates
 

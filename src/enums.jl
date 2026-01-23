@@ -5,6 +5,7 @@ using EnumX
 @enumx SettlementStyle::Int8 Asset = 1 Cash = 2 VariationMargin = 3
 @enumx MarginMode::Int8 None = 0 PercentNotional = 1 FixedPerContract = 2
 @enumx ContractKind::Int8 Spot = 1 Perpetual = 2 Future = 3
+@enumx AccountMode::Int8 Cash = 1 Margin = 2
 
 @inline sign(x::TradeDir.T) = Quantity(Int8(x))
 @inline is_long(dir::TradeDir.T) = dir == TradeDir.Buy

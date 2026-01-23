@@ -1,4 +1,5 @@
 mutable struct Account{TTime<:Dates.AbstractTime}
+    const mode::AccountMode.T
     const cash::Vector{Cash}
     const cash_by_symbol::Dict{Symbol,Cash}
     const balances::Vector{Price}           # balance per cash currency
@@ -13,12 +14,14 @@ mutable struct Account{TTime<:Dates.AbstractTime}
 
     function Account(
         ;
+        mode::AccountMode.T=AccountMode.Cash,
         date_format=dateformat"yyyy-mm-dd HH:MM:SS",
         order_sequence=0,
         trade_sequence=0,
         time_type::Type{TTime}=DateTime,
     ) where {TTime<:Dates.AbstractTime}
         new{TTime}(
+            mode,
             Vector{Cash}(), # cash
             Dict{Symbol,Cash}(), # cash_by_symbol
             Vector{Price}(), # balances
@@ -203,3 +206,15 @@ Equity is calculated as your cash balance +/- the floating profit/loss
 of your open positions in the same currency, not including closing commission.
 """
 @inline equity(acc::Account, cash_symbol::Symbol) = equity(acc, cash_asset(acc, cash_symbol))
+
+@inline init_margin_used(acc::Account, cash::Cash)::Price = @inbounds acc.init_margin_used[cash.index]
+@inline init_margin_used(acc::Account, cash_symbol::Symbol)::Price = init_margin_used(acc, cash_asset(acc, cash_symbol))
+
+@inline maint_margin_used(acc::Account, cash::Cash)::Price = @inbounds acc.maint_margin_used[cash.index]
+@inline maint_margin_used(acc::Account, cash_symbol::Symbol)::Price = maint_margin_used(acc, cash_asset(acc, cash_symbol))
+
+@inline available_funds(acc::Account, cash::Cash) = equity(acc, cash) - init_margin_used(acc, cash)
+@inline available_funds(acc::Account, cash_symbol::Symbol) = available_funds(acc, cash_asset(acc, cash_symbol))
+
+@inline excess_liquidity(acc::Account, cash::Cash) = equity(acc, cash) - maint_margin_used(acc, cash)
+@inline excess_liquidity(acc::Account, cash_symbol::Symbol) = excess_liquidity(acc, cash_asset(acc, cash_symbol))
