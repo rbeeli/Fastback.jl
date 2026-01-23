@@ -117,7 +117,7 @@ end
     pos_qty = pos.quantity
 
     # set fill quantity if not provided
-    fill_qty = fill_qty > 0 ? fill_qty : order.quantity
+    fill_qty = fill_qty != 0 ? fill_qty : order.quantity
     remaining_qty = order.quantity - fill_qty
 
     # calculate absolute paid commissions in quote currency
