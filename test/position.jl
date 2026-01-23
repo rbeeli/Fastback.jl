@@ -80,7 +80,16 @@ end
 
     acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 10_000.0)
-    inst = register_instrument!(acc, Instrument(Symbol("MK/USD"), :MK, :USD))
+    inst = register_instrument!(acc, Instrument(
+        Symbol("MK/USD"),
+        :MK,
+        :USD;
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.0,
+        margin_init_short=0.0,
+        margin_maint_long=0.0,
+        margin_maint_short=0.0,
+    ))
 
     # Fill long; mark should be fill price
     order = Order(oid!(acc), inst, DateTime(2026, 1, 1), 100.0, 1.0)

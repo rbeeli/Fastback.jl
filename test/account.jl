@@ -191,7 +191,17 @@ end
     acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("SPOT/USD"), :SPOT, :USD; settlement=SettlementStyle.Asset))
+    inst = register_instrument!(acc, Instrument(
+        Symbol("SPOT/USD"),
+        :SPOT,
+        :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.5,
+        margin_init_short=0.5,
+        margin_maint_long=0.25,
+        margin_maint_short=0.25,
+    ))
     pos = get_position(acc, inst)
 
     dt = DateTime(2021, 1, 1)
@@ -215,7 +225,17 @@ end
     acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("SPOT/USD"), :SPOT, :USD; settlement=SettlementStyle.Asset))
+    inst = register_instrument!(acc, Instrument(
+        Symbol("SPOT/USD"),
+        :SPOT,
+        :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.5,
+        margin_init_short=0.5,
+        margin_maint_long=0.25,
+        margin_maint_short=0.25,
+    ))
     pos = get_position(acc, inst)
 
     dt = DateTime(2021, 1, 1)
@@ -239,7 +259,17 @@ end
     acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("FUT/USD"), :FUT, :USD; settlement=SettlementStyle.VariationMargin))
+    inst = register_instrument!(acc, Instrument(
+        Symbol("FUT/USD"),
+        :FUT,
+        :USD;
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+    ))
     pos = get_position(acc, inst)
 
     dt = DateTime(2021, 1, 1)
@@ -281,7 +311,17 @@ end
     acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("VMARK/USD"), :VMARK, :USD; settlement=SettlementStyle.VariationMargin))
+    inst = register_instrument!(acc, Instrument(
+        Symbol("VMARK/USD"),
+        :VMARK,
+        :USD;
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+    ))
     pos = get_position(acc, inst)
 
     dt_open = DateTime(2026, 1, 1)

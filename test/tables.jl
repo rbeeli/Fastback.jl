@@ -7,7 +7,16 @@ using TestItemRunner
     acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD; digits=2), 1_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("ABC/USD"), :ABC, :USD))
+    inst = register_instrument!(acc, Instrument(
+        Symbol("ABC/USD"),
+        :ABC,
+        :USD;
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.0,
+        margin_init_short=0.0,
+        margin_maint_long=0.0,
+        margin_maint_short=0.0,
+    ))
 
     dt₁ = DateTime(2020, 1, 1, 9)
     order₁ = Order(oid!(acc), inst, dt₁, 10.0, 1.0)
