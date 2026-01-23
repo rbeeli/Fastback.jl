@@ -46,8 +46,6 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
         pos.value_local = 0.0
         pos.avg_price = close_price
         return
-    else
-        throw(ArgumentError("Unsupported settlement style $(settlement)."))
     end
     return
 end
