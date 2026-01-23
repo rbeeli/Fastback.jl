@@ -110,40 +110,32 @@ end
     # get quote asset index
     quote_cash_index = inst.quote_cash_index
 
-    # positions are netted using weighted average price,
-    # hence only one static position per instrument is maintained
     pos = get_position(acc, inst)
     update_marks!(acc, pos, fill_price)
     pos_qty = pos.quantity
+    pos_price = pos.avg_price
 
-    # set fill quantity if not provided
-    fill_qty = fill_qty != 0 ? fill_qty : order.quantity
-    remaining_qty = order.quantity - fill_qty
+    impact = compute_fill_impact(
+        acc,
+        pos,
+        order,
+        dt,
+        fill_price;
+        fill_qty=fill_qty,
+        commission=commission,
+        commission_pct=commission_pct,
+    )
 
-    # calculate absolute paid commissions in quote currency
-    nominal_value = fill_price * abs(fill_qty) * inst.multiplier
-    commission += commission_pct * nominal_value
-
-    # realized P&L
-    realized_qty = calc_realized_qty(pos_qty, fill_qty)
-    realized_pnl_gross = 0.0
-    if realized_qty != 0.0
-        # order is reducing exposure (covering), calculate realized P&L
-        realized_pnl_gross = (fill_price - pos.avg_price) * realized_qty * inst.multiplier
-    end
-
-    if inst.settlement == SettlementStyle.Asset
-        cash_delta = -(fill_price * fill_qty * inst.multiplier) - commission
-    elseif inst.settlement == SettlementStyle.Cash || inst.settlement == SettlementStyle.VariationMargin
-        cash_delta = realized_pnl_gross - commission
-    else
-        throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
-    end
     @inbounds begin
-        acc.balances[quote_cash_index] += cash_delta
-        acc.equities[quote_cash_index] += cash_delta
+        acc.balances[quote_cash_index] += impact.cash_delta
+        acc.equities[quote_cash_index] += impact.cash_delta
     end
-    realized_pnl = realized_pnl_gross - commission
+
+    pos.avg_price = impact.new_avg_price
+    pos.quantity = impact.new_qty
+
+    # update P&L of position and account equity
+    update_marks!(acc, pos, fill_price)
 
     # generate trade sequence number
     tid = tid!(acc)
@@ -154,41 +146,18 @@ end
         tid,
         dt,
         fill_price,
-        fill_qty,
-        remaining_qty,
-        realized_pnl,
-        realized_qty,
-        commission,
+        impact.fill_qty,
+        impact.remaining_qty,
+        impact.realized_pnl_net,
+        impact.realized_qty,
+        impact.commission,
         pos_qty,
-        pos.avg_price
+        pos_price
     )
 
     # track last order and trade that touched the position
     pos.last_order = order
     pos.last_trade = trade
-
-    # calculate new exposure
-    new_exposure = pos_qty + fill_qty
-    if new_exposure == 0.0
-        # no more exposure
-        pos.avg_price = zero(Price)
-    else
-        # update average price of position
-        if sign(new_exposure) != sign(pos_qty)
-            # handle transitions from long to short and vice versa
-            pos.avg_price = fill_price
-        elseif abs(new_exposure) > abs(pos_qty)
-            # exposure is increased, update average price
-            pos.avg_price = (pos.avg_price * pos_qty + fill_price * fill_qty) / new_exposure
-        end
-        # else: exposure is reduced, no need to update average price
-    end
-
-    # update position quantity
-    pos.quantity = new_exposure
-
-    # update P&L of position and account equity
-    update_marks!(acc, pos, fill_price)
 
     push!(acc.trades, trade)
 

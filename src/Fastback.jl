@@ -12,6 +12,7 @@ include("trade.jl")
 include("position.jl")
 include("exchange_rates.jl")
 include("account.jl")
+include("execution.jl")
 include("logic.jl")
 include("collectors.jl")
 include("tables.jl")
@@ -46,6 +47,8 @@ export trade_dir,
 # Order and trade utilities
 export symbol,
     nominal_value,
+    FillImpact,
+    compute_fill_impact,
     fill_order!,
     is_realizing,
     realized_return
