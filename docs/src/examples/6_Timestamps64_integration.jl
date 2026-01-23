@@ -26,8 +26,8 @@ prices = 1000.0 .+ cumsum(randn(N) .+ 0.1)
 start_dt = Timestamp64(2020, 1, 1)
 dts = [start_dt + Hour(i) for i in 0:N-1]
 
-## create trading account with $10'000 start capital and Timestamp64 support
-acc = Account(; time_type=Timestamp64)
+## create trading account with $10'000 start capital and Timestamp64 support (margin-enabled for shorting)
+acc = Account(; time_type=Timestamp64, mode=AccountMode.Margin)
 deposit!(acc, Cash(:USD), 10_000.0)
 
 ## register a dummy instrument

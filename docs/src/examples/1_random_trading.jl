@@ -24,8 +24,8 @@ N = 2_000;
 prices = 1000.0 .+ cumsum(randn(N) .+ 0.1);
 dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N-1);
 
-## create trading account with $10'000 start capital
-acc = Account();
+## create trading account with $10'000 start capital (margin-enabled for shorting)
+acc = Account(; mode=AccountMode.Margin);
 deposit!(acc, Cash(:USD), 10_000.0);
 
 ## register a dummy instrument

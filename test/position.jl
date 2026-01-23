@@ -78,7 +78,7 @@ end
 @testitem "mark_price set on fills and marks" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 10_000.0)
     inst = register_instrument!(acc, Instrument(Symbol("MK/USD"), :MK, :USD))
 

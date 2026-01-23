@@ -19,8 +19,8 @@ prices = 1000.0 .+ cumsum(randn(N) .+ 0.1)
 start_dt = NanoDate(2020, 1, 1)
 dts = [start_dt + Hour(i) for i in 0:N-1]
 
-## create trading account with $10'000 start capital and NanoDate support
-acc = Account(; time_type=NanoDate)
+## create trading account with $10'000 start capital and NanoDate support (margin-enabled for shorting)
+acc = Account(; time_type=NanoDate, mode=AccountMode.Margin)
 deposit!(acc, Cash(:USD), 10_000.0)
 
 ## register a dummy instrument
