@@ -5,7 +5,7 @@ using InteractiveUtils
 
 function run_backtest()
     # create trading account
-    acc = Account()
+    acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 100_000.0)
 
     # define instrument
@@ -34,7 +34,7 @@ ProfileView.@profview map(i -> run_backtest(), 1:10)
 
 
 # create trading account
-const acc = Account()
+const acc = Account(; mode=AccountMode.Margin)
 deposit!(acc, Cash(:USD), 100_000.0)
 
 # define instrument

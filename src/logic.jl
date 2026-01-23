@@ -92,37 +92,6 @@ end
     update_pnl!(acc, pos, close_price)
 end
 
-@inline function _evaluate_fill_constraints(
-    acc::Account{TTime},
-    pos::Position{TTime},
-    impact::FillImpact,
-    ;
-    mode::AccountMode.T=acc.mode,
-)::OrderRejectReason.T where {TTime<:Dates.AbstractTime}
-    inst = pos.inst
-    quote_cash_index = inst.quote_cash_index
-
-    # No shorting in cash accounts
-    if mode == AccountMode.Cash && impact.new_qty < 0
-        return OrderRejectReason.ShortNotAllowed
-    end
-
-    new_balance = acc.balances[quote_cash_index] + impact.cash_delta
-    if new_balance < 0
-        return OrderRejectReason.InsufficientCash
-    end
-
-    if mode == AccountMode.Margin
-        new_init_used = acc.init_margin_used[quote_cash_index] - pos.margin_init_local + impact.new_init_margin
-        equity_after = acc.equities[quote_cash_index] + impact.cash_delta + (impact.new_value_local - pos.value_local)
-        if equity_after - new_init_used < 0
-            return OrderRejectReason.InsufficientInitialMargin
-        end
-    end
-
-    return OrderRejectReason.None
-end
-
 @inline function fill_order!(
     acc::Account{TTime},
     order::Order{TTime},
@@ -155,7 +124,12 @@ end
         commission_pct=commission_pct,
     )
 
-    rejection = _evaluate_fill_constraints(acc, pos, impact)
+    if acc.mode == AccountMode.Cash
+        cash_reject = check_cash_account(acc, pos, inst, impact)
+        cash_reject == OrderRejectReason.None || return cash_reject
+    end
+
+    rejection = check_fill_constraints(acc, pos, impact)
     rejection == OrderRejectReason.None || return rejection
 
     @inbounds begin

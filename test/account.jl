@@ -124,7 +124,7 @@ end
 @testitem "Account long order w/ commission pct" begin
     using Test, Fastback, Dates
     # create trading account
-    acc = Account();
+    acc = Account(; mode=AccountMode.Margin);
     deposit!(acc, Cash(:USD), 100_000.0)
     @test cash_balance(acc, :USD) == 100_000.0
     @test equity(acc, :USD) == 100_000.0
@@ -167,7 +167,7 @@ end
 @testitem "Commission pct uses instrument multiplier" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 100_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("MULTI/USD"), :MULTI, :USD; multiplier=10.0))
@@ -306,7 +306,7 @@ end
 @testitem "Trading after expiry returns rejection" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 10_000.0)
 
     start_dt = DateTime(2026, 1, 1)
@@ -330,7 +330,7 @@ end
     @test rejection == OrderRejectReason.InstrumentNotAllowed
 end
 
-@testitem "Insufficient cash rejects fill" begin
+@testitem "Cash account: buy too large is rejected" begin
     using Test, Fastback, Dates
 
     acc = Account()
@@ -348,7 +348,7 @@ end
     @test cash_balance(acc, :USD) == 100.0
 end
 
-@testitem "Shorting disallowed in cash account" begin
+@testitem "Cash account: short sell is rejected" begin
     using Test, Fastback, Dates
 
     acc = Account()
@@ -359,6 +359,56 @@ end
     order = Order(oid!(acc), inst, dt, 10.0, -1.0)
     result = fill_order!(acc, order, dt, order.price)
     @test result == OrderRejectReason.ShortNotAllowed
+    @test isempty(acc.trades)
+    pos = get_position(acc, inst)
+    @test pos.quantity == 0.0
+end
+
+@testitem "Cash account: sell within holdings works" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 1_000.0)
+    inst = register_instrument!(acc, Instrument(Symbol("CASHSELL/USD"), :CASHSELL, :USD; settlement=SettlementStyle.Asset))
+
+    buy_dt = DateTime(2026, 1, 1)
+    buy_order = Order(oid!(acc), inst, buy_dt, 10.0, 50.0)
+    buy_trade = fill_order!(acc, buy_order, buy_dt, buy_order.price)
+    @test buy_trade isa Trade
+
+    sell_dt = buy_dt + Day(1)
+    sell_order = Order(oid!(acc), inst, sell_dt, 12.0, -20.0)
+    sell_trade = fill_order!(acc, sell_order, sell_dt, sell_order.price)
+    @test sell_trade isa Trade
+
+    pos = get_position(acc, inst)
+    @test pos.quantity == 30.0
+    @test pos.avg_price ≈ 10.0
+    @test cash_balance(acc, :USD) ≈ 740.0
+    @test equity(acc, :USD) ≈ 1_100.0
+end
+
+@testitem "Cash account rejects margin instruments" begin
+    using Test, Fastback, Dates
+
+    acc = Account()
+    deposit!(acc, Cash(:USD), 5_000.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("FUT/USD"),
+        :FUT,
+        :USD;
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.05,
+    ))
+
+    dt = DateTime(2026, 1, 1)
+    order = Order(oid!(acc), inst, dt, 100.0, 1.0)
+    result = fill_order!(acc, order, dt, order.price)
+
+    @test result == OrderRejectReason.InstrumentNotAllowed
     @test isempty(acc.trades)
     pos = get_position(acc, inst)
     @test pos.quantity == 0.0
@@ -390,7 +440,7 @@ end
 @testitem "settle_expiry! closes positions and releases margin" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 20_000.0)
 
     start_dt = DateTime(2026, 1, 1)
@@ -436,7 +486,7 @@ end
 @testitem "Margin disabled stays zero" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("NOMARGIN/USD"), :NOMARGIN, :USD))
@@ -457,7 +507,7 @@ end
 @testitem "Margin percent notional updates with mark" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -494,8 +544,8 @@ end
 @testitem "Broker-style margin metrics" begin
     using Test, Fastback, Dates
 
-    acc = Account()
-    @test acc.mode == AccountMode.Cash
+    acc = Account(; mode=AccountMode.Margin)
+    @test acc.mode == AccountMode.Margin
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -575,7 +625,7 @@ end
 @testitem "Account with Date timestamps" begin
     using Test, Fastback, Dates, Tables
 
-    acc = Account(; time_type=Date, date_format=dateformat"yyyy-mm-dd")
+    acc = Account(; mode=AccountMode.Margin, time_type=Date, date_format=dateformat"yyyy-mm-dd")
     deposit!(acc, Cash(:USD), 1_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("DATE/USD"), :DATE, :USD; time_type=Date))

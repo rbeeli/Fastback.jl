@@ -14,7 +14,7 @@ end
 @testitem "Print Order" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 10_000.0)
     DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0
@@ -26,7 +26,7 @@ end
 @testitem "Print Account" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; mode=AccountMode.Margin)
     deposit!(acc, Cash(:USD), 10_000.0)
     DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0
