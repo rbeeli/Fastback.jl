@@ -77,7 +77,8 @@ export cash_asset,
     is_exposed_to,
     oid!,
     tid!,
-    format_datetime
+    format_datetime,
+    exchange_rates
 
 # Position analytics
 export has_exposure,

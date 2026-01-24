@@ -1,7 +1,8 @@
-mutable struct Account{TTime<:Dates.AbstractTime}
+mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
     const mode::AccountMode.T
     const cash::Vector{Cash}
     const cash_by_symbol::Dict{Symbol,Cash}
+    const exchange_rates::TER
     const balances::Vector{Price}           # balance per cash currency
     const equities::Vector{Price}           # equity per cash currency
     const interest_borrow_rate::Vector{Price} # borrow interest per cash currency
@@ -17,16 +18,18 @@ mutable struct Account{TTime<:Dates.AbstractTime}
 
     function Account(
         ;
+        time_type::Type{TTime}=DateTime,
         mode::AccountMode.T=AccountMode.Cash,
         date_format=dateformat"yyyy-mm-dd HH:MM:SS",
         order_sequence=0,
         trade_sequence=0,
-        time_type::Type{TTime}=DateTime,
-    ) where {TTime<:Dates.AbstractTime}
-        new{TTime}(
+        exchange_rates::TER=OneExchangeRates(),
+    ) where {TTime<:Dates.AbstractTime, TER<:ExchangeRates}
+        new{TTime,TER}(
             mode,
             Vector{Cash}(), # cash
             Dict{Symbol,Cash}(), # cash_by_symbol
+            exchange_rates,
             Vector{Price}(), # balances
             Vector{Price}(), # equities
             Vector{Price}(), # interest_borrow_rate
@@ -46,6 +49,7 @@ end
 @inline format_datetime(acc::Account, x) = Dates.format(x, acc.date_format)
 @inline oid!(acc::Account) = acc.order_sequence += 1
 @inline tid!(acc::Account) = acc.trade_sequence += 1
+@inline exchange_rates(acc::Account)::ExchangeRates = acc.exchange_rates
 
 """
 Returns a `Cash` object with the given symbol.
@@ -74,6 +78,8 @@ function register_cash_asset!(
 
     # set index for fast array indexing and hashing
     cash.index = length(acc.cash) + 1
+
+    add_asset!(acc.exchange_rates, cash)
 
     push!(acc.cash, cash)
     acc.cash_by_symbol[cash.symbol] = cash
