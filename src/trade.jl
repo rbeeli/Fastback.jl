@@ -11,7 +11,7 @@ mutable struct Trade{TTime<:Dates.AbstractTime}
     const realized_qty::Quantity    # quantity of the existing position that was covered by the order
     const commission::Price         # paid commission in quote currency
     const pos_qty::Quantity         # quantity of the existing position
-    const pos_price::Price          # average price of the existing position
+    const pos_price::Price          # average entry price of the existing position
 end
 
 @inline nominal_value(t::Trade) = t.fill_price * abs(t.fill_qty) * t.order.inst.multiplier

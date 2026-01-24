@@ -8,10 +8,10 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
 @inline function update_valuation!(acc::Account, pos::Position, close_price)
     # update position valuation and account equity using delta of old and new value
     inst = pos.inst
-    new_pnl = calc_pnl_local(pos, close_price)
     settlement = inst.settlement
     quote_cash_index = inst.quote_cash_index
     if settlement == SettlementStyle.Asset
+        new_pnl = calc_pnl_local(pos, close_price)
         new_value = pos.quantity * close_price * inst.multiplier
         value_delta = new_value - pos.value_local
         @inbounds acc.equities[quote_cash_index] += value_delta
@@ -19,6 +19,7 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
         pos.value_local = new_value
         return
     elseif settlement == SettlementStyle.Cash
+        new_pnl = calc_pnl_local(pos, close_price)
         new_value = new_pnl
         value_delta = new_value - pos.value_local
         @inbounds acc.equities[quote_cash_index] += value_delta
@@ -26,16 +27,19 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
         pos.value_local = new_value
         return
     elseif settlement == SettlementStyle.VariationMargin
-        # Variation margin settlement: transfer P&L to cash and reset basis.
+        # Variation margin settlement: transfer P&L to cash and reset settle basis.
         if pos.value_local != 0.0
             @inbounds acc.equities[quote_cash_index] -= pos.value_local
             pos.value_local = 0.0
         end
         if pos.quantity == 0.0
-            pos.avg_price = zero(Price)
+            pos.avg_entry_price = zero(Price)
+            pos.avg_settle_price = zero(Price)
             pos.pnl_local = 0.0
+            pos.value_local = 0.0
             return
         end
+        new_pnl = calc_pnl_local(pos, close_price)
         if new_pnl != 0.0
             @inbounds begin
                 acc.balances[quote_cash_index] += new_pnl
@@ -44,7 +48,7 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
         end
         pos.pnl_local = 0.0
         pos.value_local = 0.0
-        pos.avg_price = close_price
+        pos.avg_settle_price = close_price
         return
     end
     return
@@ -77,6 +81,9 @@ Updates valuation and margin for a position using the latest mark price.
 """
 @inline function update_marks!(acc::Account, pos::Position, close_price)
     update_valuation!(acc, pos, close_price)
+    if pos.inst.settlement != SettlementStyle.VariationMargin
+        pos.avg_settle_price = pos.avg_entry_price
+    end
     update_margin!(acc, pos, close_price)
     pos.mark_price = close_price
     return
@@ -111,7 +118,7 @@ end
     pos = get_position(acc, inst)
     update_marks!(acc, pos, fill_price)
     pos_qty = pos.quantity
-    pos_price = pos.avg_price
+    pos_entry_price = pos.avg_entry_price
 
     impact = compute_fill_impact(
         acc,
@@ -137,8 +144,19 @@ end
         acc.equities[quote_cash_index] += impact.cash_delta
     end
 
-    pos.avg_price = impact.new_avg_price
+    old_qty = pos.quantity
+    pos.avg_entry_price = impact.new_avg_entry_price
     pos.quantity = impact.new_qty
+    if pos.quantity == 0.0
+        pos.avg_entry_price = 0.0
+        pos.avg_settle_price = 0.0
+    elseif old_qty == 0.0
+        pos.avg_settle_price = pos.inst.settlement == SettlementStyle.VariationMargin ? fill_price : pos.avg_entry_price
+    elseif sign(old_qty) != sign(pos.quantity)
+        pos.avg_settle_price = fill_price
+    elseif pos.inst.settlement != SettlementStyle.VariationMargin && abs(pos.quantity) > abs(old_qty)
+        pos.avg_settle_price = pos.avg_entry_price
+    end
 
     # update P&L of position and account equity
     update_marks!(acc, pos, fill_price)
@@ -158,7 +176,7 @@ end
         impact.realized_qty,
         impact.commission,
         pos_qty,
-        pos_price
+        pos_entry_price
     )
 
     # track last order and trade that touched the position

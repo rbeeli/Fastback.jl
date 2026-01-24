@@ -65,7 +65,8 @@ end
         :index,
         :symbol,
         :qty,
-        :avg_price,
+        :avg_entry_price,
+        :avg_settle_price,
         :pnl_local,
         :base_ccy,
         :quote_ccy,
@@ -78,7 +79,8 @@ end
     pos_row = only(rows)
     @test pos_row.symbol == inst.symbol
     @test pos_row.qty ≈ -1.0
-    @test pos_row.avg_price ≈ 12.0
+    @test pos_row.avg_entry_price ≈ 12.0
+    @test pos_row.avg_settle_price ≈ 12.0
     @test pos_row.base_ccy == inst.base_symbol
     @test pos_row.quote_ccy == inst.quote_symbol
     @test pos_row.last_oid == order₂.oid

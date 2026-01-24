@@ -1,7 +1,8 @@
 mutable struct Position{TTime<:Dates.AbstractTime}
     const index::UInt               # unique index for each position starting from 1 (used for array indexing and hashing)
     const inst::Instrument{TTime}
-    avg_price::Price
+    avg_entry_price::Price
+    avg_settle_price::Price
     quantity::Quantity              # negative = short selling
     pnl_local::Price                # local currency P&L
     value_local::Price              # position value contribution in local currency
@@ -15,7 +16,8 @@ mutable struct Position{TTime<:Dates.AbstractTime}
         index,
         inst::Instrument{TTime}
         ;
-        avg_price::Price=0.0,
+        avg_entry_price::Price=0.0,
+        avg_settle_price::Price=0.0,
         quantity::Quantity=0.0,
         pnl_local::Price=0.0,
         value_local::Price=0.0,
@@ -28,7 +30,8 @@ mutable struct Position{TTime<:Dates.AbstractTime}
         new{TTime}(
             index,
             inst,
-            avg_price,
+            avg_entry_price,
+            avg_settle_price,
             quantity,
             pnl_local,
             value_local,
@@ -49,11 +52,16 @@ end
 @inline has_exposure(pos::Position) = pos.quantity != zero(Quantity)
 
 """
-Calculates the P&L of a position in local currency.
+Calculates position P&L in local currency on the **settlement basis**.
 
-The P&L is based on the weighted average price of the position,
-the current closing price, and the contract multiplier, without considering commissions.
-Fees are accounted for in the account equity calculation and execution P&L.
+- Uses `avg_settle_price` (not the entry basis) so that variation-margin positions
+  compute P&L since the last settlement price.
+- For `SettlementStyle.Asset` / `Cash`, this is the usual unrealized P&L.
+- For `SettlementStyle.VariationMargin`, the caller settles this value into cash
+  and then resets `avg_settle_price` to the mark, so subsequent calls reflect only
+  moves after the last settlement.
+
+Fees/commissions are handled elsewhere (execution/account), not here.
 
 # Arguments
 - `position`: Position object.
@@ -61,23 +69,30 @@ Fees are accounted for in the account equity calculation and execution P&L.
 """
 @inline function calc_pnl_local(pos::Position, close_price)
     # quantity negative for shorts, thus works for both long and short
-    pos.quantity * (close_price - pos.avg_price) * pos.inst.multiplier
+    pos.quantity * (close_price - pos.avg_settle_price) * pos.inst.multiplier
 end
 
 
 """
-Calculates the return of a position in local currency.
+Calculates position return on the **entry basis** (strategy-facing).
 
-The return is based on the weighted average price of the position
-and the current closing price, without considering commissions.
-Fees are accounted for in the account equity calculation and execution P&L.
+- Uses `avg_entry_price` so it remains stable even when variation margin rolls the
+  settlement basis forward.
+- Returns zero when no entry price is defined (flat position or not yet set).
+- `avg_entry_price` itself resets when exposure flips sign (new trade reverses the
+  position) or when the position is closed to flat; returns are therefore measured
+  per exposure leg, not across unrelated long/short swings.
+- Ignores commissions/fees; those are incorporated in account equity elsewhere.
 
 # Arguments
 - `position`: Position object.
 - `close_price`: Current closing price.
 """
 @inline function calc_return_local(pos::Position{T}, close_price) where {T<:Dates.AbstractTime}
-    sign(pos.quantity) * (close_price / pos.avg_price - one(close_price))
+    if pos.avg_entry_price == 0
+        return zero(close_price)
+    end
+    sign(pos.quantity) * (close_price / pos.avg_entry_price - one(close_price))
 end
 
 """
@@ -197,7 +212,7 @@ end
 
 function Base.show(io::IO, pos::Position)
     print(io, "[Position] $(pos.inst.symbol) " *
-              "price=$(format_quote(pos.inst, pos.avg_price)) $(pos.inst.quote_symbol) " *
+              "entry=$(format_quote(pos.inst, pos.avg_entry_price)) $(pos.inst.quote_symbol) " *
               "qty=$(format_base(pos.inst, pos.quantity)) $(pos.inst.base_symbol) " *
               "pnl_local=$(format_quote(pos.inst, pos.pnl_local)) $(pos.inst.quote_symbol)")
 end

@@ -42,7 +42,8 @@ end
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.realized_pnl == 0.0
     # @test realized_return(exe1) == 0.0
-    @test pos.avg_price == 100.0
+    @test pos.avg_entry_price == 100.0
+    @test pos.avg_settle_price == 100.0
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
     @test pos.value_local == pos.pnl_local
@@ -101,7 +102,8 @@ end
     @test exe1.commission == commission
     @test exe1.realized_pnl == -commission
     # @test realized_return(exe1) == 0.0
-    @test pos.avg_price == 100.0
+    @test pos.avg_entry_price == 100.0
+    @test pos.avg_settle_price == 100.0
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
 
@@ -144,7 +146,8 @@ end
     @test exe1.commission == commission_pct1*nominal_value(exe1)
     @test acc.trades[end].realized_pnl == -commission_pct1*nominal_value(exe1)
     # @test realized_return(acc.trades[end]) == 0.0
-    @test pos.avg_price == 100.0
+    @test pos.avg_entry_price == 100.0
+    @test pos.avg_settle_price == 100.0
     # update position and account P&L
     update_pnl!(acc, pos, prices[2])
 
@@ -282,19 +285,22 @@ end
     @test equity(acc, :USD) ≈ 10_000.0
     @test pos.value_local ≈ 0.0
     @test pos.pnl_local ≈ 0.0
-    @test pos.avg_price ≈ price
+    @test pos.avg_entry_price ≈ price
+    @test pos.avg_settle_price ≈ price
 
     update_pnl!(acc, pos, 60.0)
     @test cash_balance(acc, :USD) ≈ 11_000.0
     @test equity(acc, :USD) ≈ 11_000.0
     @test pos.value_local ≈ 0.0
     @test pos.pnl_local ≈ 0.0
-    @test pos.avg_price ≈ 60.0
+    @test pos.avg_entry_price ≈ price
+    @test pos.avg_settle_price ≈ 60.0
 
     update_pnl!(acc, pos, 55.0)
     @test cash_balance(acc, :USD) ≈ 10_500.0
     @test equity(acc, :USD) ≈ 10_500.0
-    @test pos.avg_price ≈ 55.0
+    @test pos.avg_entry_price ≈ price
+    @test pos.avg_settle_price ≈ 55.0
 
     order = Order(oid!(acc), inst, dt, 55.0, -qty)
     fill_order!(acc, order, dt, 55.0)
@@ -302,7 +308,8 @@ end
     @test pos.quantity ≈ 0.0
     @test cash_balance(acc, :USD) ≈ 10_500.0
     @test equity(acc, :USD) ≈ 10_500.0
-    @test pos.avg_price == 0.0
+    @test pos.avg_entry_price == 0.0
+    @test pos.avg_settle_price == 0.0
 end
 
 @testitem "Variation margin marks to fill before realizing pnl" begin
@@ -336,9 +343,10 @@ end
     order_close = Order(oid!(acc), inst, dt_close, close_price, reduce_qty)
     trade = fill_order!(acc, order_close, dt_close, close_price)
 
-    @test trade.realized_pnl ≈ 0.0
+    @test trade.realized_pnl ≈ (close_price - open_price) * abs(reduce_qty)
     @test pos.quantity ≈ qty + reduce_qty
-    @test pos.avg_price ≈ close_price
+    @test pos.avg_entry_price ≈ open_price
+    @test pos.avg_settle_price ≈ close_price
     @test cash_balance(acc, :USD) ≈ 10_000.0 + (close_price - open_price) * qty
     @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
 end
@@ -423,7 +431,8 @@ end
 
     pos = get_position(acc, inst)
     @test pos.quantity == 30.0
-    @test pos.avg_price ≈ 10.0
+    @test pos.avg_entry_price ≈ 10.0
+    @test pos.avg_settle_price ≈ 10.0
     @test cash_balance(acc, :USD) ≈ 740.0
     @test equity(acc, :USD) ≈ 1_100.0
 end

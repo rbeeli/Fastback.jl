@@ -82,7 +82,7 @@ for i in 6:nrow(df)
 
         ## close position of instrument if missing data
         if any(ismissing.(window_open))
-            close_price = get_position(acc, inst).avg_price
+            close_price = get_position(acc, inst).avg_entry_price
             close_position!(acc, inst, dt, close_price)
             continue
         end

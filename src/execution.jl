@@ -7,7 +7,7 @@ struct FillImpact
     realized_pnl_net::Price
     realized_qty::Quantity
     new_qty::Quantity
-    new_avg_price::Price
+    new_avg_entry_price::Price
     new_value_local::Price
     new_pnl_local::Price
     new_init_margin::Price
@@ -43,13 +43,15 @@ Returns a `FillImpact` describing the resulting position metrics and account del
 
     realized_qty = calc_realized_qty(pos_qty, fill_qty)
     realized_pnl_gross = realized_qty != 0.0 ?
-        (fill_price - pos.avg_price) * realized_qty * inst.multiplier :
+        (fill_price - pos.avg_entry_price) * realized_qty * inst.multiplier :
         0.0
 
     cash_delta = if inst.settlement == SettlementStyle.Asset
         -(fill_price * fill_qty * inst.multiplier) - commission_total
-    elseif inst.settlement == SettlementStyle.Cash || inst.settlement == SettlementStyle.VariationMargin
+    elseif inst.settlement == SettlementStyle.Cash
         realized_pnl_gross - commission_total
+    elseif inst.settlement == SettlementStyle.VariationMargin
+        -commission_total
     else
         throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
     end
@@ -57,20 +59,20 @@ Returns a `FillImpact` describing the resulting position metrics and account del
     realized_pnl_net = realized_pnl_gross - commission_total
 
     new_qty = pos_qty + fill_qty
-    new_avg_price = if new_qty == 0.0
+    new_avg_entry_price = if new_qty == 0.0
         zero(Price)
     elseif sign(new_qty) != sign(pos_qty)
         fill_price
     elseif abs(new_qty) > abs(pos_qty)
-        (pos.avg_price * pos_qty + fill_price * fill_qty) / new_qty
+        (pos.avg_entry_price * pos_qty + fill_price * fill_qty) / new_qty
     else
-        pos.avg_price
+        pos.avg_entry_price
     end
 
     new_pnl_local = if inst.settlement == SettlementStyle.VariationMargin
         0.0
     else
-        new_qty * (fill_price - new_avg_price) * inst.multiplier
+        new_qty * (fill_price - new_avg_entry_price) * inst.multiplier
     end
 
     new_value_local = if inst.settlement == SettlementStyle.Asset
@@ -95,7 +97,7 @@ Returns a `FillImpact` describing the resulting position metrics and account del
         realized_pnl_net,
         realized_qty,
         new_qty,
-        new_avg_price,
+        new_avg_entry_price,
         new_value_local,
         new_pnl_local,
         new_init_margin,
