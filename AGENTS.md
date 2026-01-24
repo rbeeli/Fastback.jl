@@ -40,6 +40,7 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
 
 ## Coding conventions
 
+- Opt for efficient algorithms and approaches; prioritize clarity where possible.
 - Maintain `Price`/`Quantity` as `Float64`; keep structs concrete for performance.  
 - Follow existing docstring style (triple quotes, short summary, brief args/returns) and liberal `@inline` on tiny helpers.  
 - Preserve Tables.jl schemas (`balances_table`, `positions_table`, etc.) and PrettyTables formatting behavior.  
