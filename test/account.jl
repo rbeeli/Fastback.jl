@@ -18,6 +18,25 @@ using TestItemRunner
     @test acc.trades[end] === trade
 end
 
+@testitem "Instrument requires quote cash asset" begin
+    using Test, Fastback
+
+    acc = Account(; mode=AccountMode.Margin)
+
+    # register a different cash asset to ensure missing quote currency is detected
+    deposit!(acc, Cash(:EUR), 100.0)
+
+    inst = Instrument(Symbol("MISS/USD"), :MISS, :USD)
+    @test_throws ArgumentError register_instrument!(acc, inst)
+
+    # once the quote cash asset is registered, the instrument should register successfully
+    deposit!(acc, Cash(:USD), 0.0)
+    inst2 = Instrument(Symbol("MISS/USD"), :MISS, :USD)
+    registered = register_instrument!(acc, inst2)
+    @test registered === inst2
+    @test get_position(acc, inst2).inst === inst2
+end
+
 @testitem "Account long order w/o commission" begin
     using Test, Fastback, Dates
     # create trading account

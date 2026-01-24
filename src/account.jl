@@ -147,18 +147,27 @@ function register_instrument!(
     acc::Account{TTime},
     inst::Instrument{TTime}
 ) where {TTime<:Dates.AbstractTime}
+    # ensure instrument is not already registered
     if any(x -> x.inst.symbol == inst.symbol, acc.positions)
         throw(ArgumentError("Instrument $(inst.symbol) already registered"))
     end
 
+    # sanity check instrument parameters
     validate_instrument(inst)
 
+    # ensure quote cash asset is registered in account
+    if !has_cash_asset(acc, inst.quote_symbol)
+        throw(ArgumentError("Quote cash asset '$(inst.quote_symbol)' for instrument '$(inst.symbol)' not registered in account"))
+    end
+
+    # set quote cash index for fast array indexing and margin calculations
     quote_cash_index = cash_asset(acc, inst.quote_symbol).index
+    inst.quote_cash_index = quote_cash_index
 
     # set asset index for fast array indexing and hashing
     inst.index = length(acc.positions) + 1
-    inst.quote_cash_index = quote_cash_index
 
+    # create empty position for the instrument
     push!(acc.positions, Position{TTime}(inst.index, inst))
 
     inst
