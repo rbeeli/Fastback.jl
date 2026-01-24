@@ -2,7 +2,7 @@ using Dates
 using Printf
 
 mutable struct Instrument{TTime<:Dates.AbstractTime}
-    index::UInt                   # unique index for each instrument starting from 1 (used for array indexing and hashing)
+    index::Int                    # unique index for each instrument starting from 1 (used for array indexing and hashing)
     const symbol::Symbol
 
     const base_symbol::Symbol

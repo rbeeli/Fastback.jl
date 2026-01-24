@@ -116,7 +116,7 @@ Tables.schema(::PositionsTable{TTime}) where {TTime<:Dates.AbstractTime} = Table
         :last_tid,
     ),
     (
-        UInt,
+        Int,
         Symbol,
         Quantity,
         Price,
@@ -174,7 +174,7 @@ Tables.rowaccess(::Type{<:CashBalancesTable}) = true
 
 Tables.schema(::CashBalancesTable) = Tables.Schema(
     (:index, :symbol, :balance, :digits),
-    (UInt, Symbol, Price, Int)
+    (Int, Symbol, Price, Int)
 )
 
 struct CashBalanceRows
@@ -217,7 +217,7 @@ Tables.rowaccess(::Type{<:EquityBalancesTable}) = true
 
 Tables.schema(::EquityBalancesTable) = Tables.Schema(
     (:index, :symbol, :equity, :digits),
-    (UInt, Symbol, Price, Int)
+    (Int, Symbol, Price, Int)
 )
 
 struct EquityBalanceRows

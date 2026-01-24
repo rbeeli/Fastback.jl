@@ -1,5 +1,5 @@
 mutable struct Position{TTime<:Dates.AbstractTime}
-    const index::UInt               # unique index for each position starting from 1 (used for array indexing and hashing)
+    const index::Int                # unique index for each position starting from 1 (used for array indexing and hashing)
     const inst::Instrument{TTime}
     avg_entry_price::Price
     avg_settle_price::Price

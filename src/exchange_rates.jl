@@ -43,39 +43,46 @@ For `OneExchangeRates`, this is a no-op.
 Supports spot exchange rates between assets.
 """
 mutable struct SpotExchangeRates <: ExchangeRates
-    const rates::Vector{Vector{Float64}} # rates[from][to] using internal index
-    const indices::Dict{Cash,Int} # cash object -> index
+    const rates::Vector{Vector{Float64}} # rates[from.index][to.index]
     const assets::Vector{Cash}
 
     function SpotExchangeRates()
         new(
             Vector{Vector{Float64}}(),
-            Dict{Cash,Int}(),
             Vector{Cash}()
         )
     end
 end
 
+@inline function _ensure_rates_size!(er::SpotExchangeRates, required::Int)
+    current = length(er.rates)
+    if required > current
+        # extend existing rows with new NaN columns
+        for row in er.rates
+            append!(row, fill(NaN, required - length(row)))
+        end
+
+        # add new rows sized to the new dimension
+        for _ in current+1:required
+            push!(er.rates, fill(NaN, required))
+        end
+    end
+    nothing
+end
+
 function add_asset!(er::SpotExchangeRates, cash::Cash)
-    if haskey(er.indices, cash)
-        throw(ArgumentError("Exchange cash asset '$(cash.symbol)' was already added."))
+    idx = cash.index
+    idx > 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' has no index set. Register it before adding exchange rates."))
+
+    _ensure_rates_size!(er, idx)
+
+    existing = er.rates[idx][idx]
+    if !isnan(existing)
+        throw(ArgumentError("Exchange cash asset '$(cash.symbol)' with index $(cash.index) was already added."))
     end
 
     push!(er.assets, cash)
-
-    # add asset to internal index cache
-    er.indices[cash] = length(er.indices) + 1
-
-    # add new rates vector row in rates matrix
-    push!(er.rates, fill(NaN, length(er.rates)))
-
-    # add new rates column in rates matrix
-    for rates in er.rates
-        push!(rates, NaN)
-    end
-
-    # set exchange rate to itself to 1.0
-    update_rate!(er, cash, cash, 1.0)
+    er.rates[idx][idx] = 1.0
 
     nothing
 end
@@ -84,7 +91,7 @@ end
 Get the exchange rate between two assets according to the current rates.
 """
 @inline get_rate(er::SpotExchangeRates, from::Cash, to::Cash) =
-    @inbounds er.rates[er.indices[from]][er.indices[to]]
+    @inbounds er.rates[from.index][to.index]
 
 """
 Builds an exchange rate matrix for all assets.
@@ -105,9 +112,10 @@ end
 Update the exchange rate between two assets.
 """
 function update_rate!(er::SpotExchangeRates, from::Cash, to::Cash, rate::Real)
-    @inbounds er.rates[er.indices[from]][er.indices[to]] = Float64(rate)
-    @inbounds er.rates[er.indices[to]][er.indices[from]] = 1.0/Float64(rate)
-    nothing
+    r = Float64(rate)
+    @inbounds er.rates[from.index][to.index] = r
+    @inbounds er.rates[to.index][from.index] = 1.0 / r
+    return nothing
 end
 
 function Base.show(io::IO, er::SpotExchangeRates)

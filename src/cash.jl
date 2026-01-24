@@ -1,5 +1,5 @@
 mutable struct Cash
-    index::UInt               # unique index starting from 1 (used for array indexing and hashing)
+    index::Int                # unique index starting from 1 (used for array indexing and hashing)
     const symbol::Symbol
     const digits::Int
 
