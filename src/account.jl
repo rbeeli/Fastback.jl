@@ -4,12 +4,15 @@ mutable struct Account{TTime<:Dates.AbstractTime}
     const cash_by_symbol::Dict{Symbol,Cash}
     const balances::Vector{Price}           # balance per cash currency
     const equities::Vector{Price}           # equity per cash currency
+    const interest_borrow_rate::Vector{Price} # borrow interest per cash currency
+    const interest_lend_rate::Vector{Price} # lend interest per cash currency
     const init_margin_used::Vector{Price}   # initial margin used per cash currency
     const maint_margin_used::Vector{Price}  # maintenance margin used per cash currency
     const positions::Vector{Position{TTime}}
     const trades::Vector{Trade{TTime}}
     order_sequence::Int
     trade_sequence::Int
+    last_interest_dt::TTime
     const date_format::Dates.DateFormat
 
     function Account(
@@ -26,12 +29,15 @@ mutable struct Account{TTime<:Dates.AbstractTime}
             Dict{Symbol,Cash}(), # cash_by_symbol
             Vector{Price}(), # balances
             Vector{Price}(), # equities
+            Vector{Price}(), # interest_borrow_rate
+            Vector{Price}(), # interest_lend_rate
             Vector{Price}(), # init_margin_used
             Vector{Price}(), # maint_margin_used
             Vector{Position{TTime}}(), # positions
             Vector{Trade{TTime}}(), # trades
             order_sequence,
             trade_sequence,
+            TTime(0), # last_interest_dt
             date_format
         )
     end
@@ -73,6 +79,8 @@ function register_cash_asset!(
     acc.cash_by_symbol[cash.symbol] = cash
     push!(acc.balances, zero(Price))
     push!(acc.equities, zero(Price))
+    push!(acc.interest_borrow_rate, zero(Price))
+    push!(acc.interest_lend_rate, zero(Price))
     push!(acc.init_margin_used, zero(Price))
     push!(acc.maint_margin_used, zero(Price))
 end
