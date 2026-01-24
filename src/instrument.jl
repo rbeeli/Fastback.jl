@@ -104,3 +104,26 @@ end
     end
     return inst
 end
+
+"""
+Validates instrument configuration for common contract kinds.
+Throws an `ArgumentError` when mandatory invariants are violated.
+"""
+function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.AbstractTime}
+    kind = inst.contract_kind
+    settlement = inst.settlement
+
+    if kind == ContractKind.Spot
+        settlement == SettlementStyle.VariationMargin && throw(ArgumentError("Spot instrument $(inst.symbol) cannot use VariationMargin settlement."))
+    elseif kind == ContractKind.Perpetual
+        settlement == SettlementStyle.VariationMargin || throw(ArgumentError("Perpetual instrument $(inst.symbol) must use VariationMargin settlement."))
+        inst.expiry == TTime(0) || throw(ArgumentError("Perpetual instrument $(inst.symbol) must not define an expiry."))
+        inst.margin_mode != MarginMode.None || throw(ArgumentError("Perpetual instrument $(inst.symbol) must set margin_mode."))
+    elseif kind == ContractKind.Future
+        settlement == SettlementStyle.VariationMargin || throw(ArgumentError("Future instrument $(inst.symbol) must use VariationMargin settlement."))
+        has_expiry(inst) || throw(ArgumentError("Future instrument $(inst.symbol) must define an expiry."))
+        inst.margin_mode != MarginMode.None || throw(ArgumentError("Future instrument $(inst.symbol) must set margin_mode."))
+    end
+
+    return nothing
+end

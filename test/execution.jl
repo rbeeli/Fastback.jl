@@ -64,6 +64,7 @@ end
             Symbol("FUT/USD"),
             :FUT,
             :USD;
+            contract_kind=ContractKind.Perpetual,
             settlement=SettlementStyle.VariationMargin,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.1,

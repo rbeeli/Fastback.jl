@@ -266,6 +266,7 @@ end
         Symbol("FUT/USD"),
         :FUT,
         :USD;
+        contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
@@ -322,6 +323,7 @@ end
         Symbol("VMARK/USD"),
         :VMARK,
         :USD;
+        contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
@@ -364,6 +366,10 @@ end
         :EXP,
         :USD;
         contract_kind=ContractKind.Future,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.05,
         start_time=start_dt,
         expiry=expiry_dt,
     ))
@@ -447,6 +453,7 @@ end
         Symbol("FUT/USD"),
         :FUT,
         :USD;
+        contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
