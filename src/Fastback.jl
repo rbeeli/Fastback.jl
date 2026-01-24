@@ -13,6 +13,7 @@ include("position.jl")
 include("exchange_rates.jl")
 include("account.jl")
 include("interest.jl")
+include("funding.jl")
 include("execution.jl")
 include("risk.jl")
 include("logic.jl")
@@ -70,6 +71,7 @@ export cash_asset,
     withdraw!,
     set_interest_rates!,
     accrue_interest!,
+    apply_funding!,
     register_instrument!,
     get_position,
     is_exposed_to,
