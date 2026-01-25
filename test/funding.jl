@@ -4,7 +4,7 @@ using TestItemRunner
 @testitem "Perpetual funding debits longs and credits shorts" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     usd = Cash(:USD)
     deposit!(acc, usd, 1_000.0)
 

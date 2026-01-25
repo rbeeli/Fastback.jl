@@ -3,6 +3,8 @@ mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
     const cash::Vector{Cash}
     const cash_by_symbol::Dict{Symbol,Cash}
     const exchange_rates::TER
+    base_currency::Symbol
+    base_ccy_index::Int
     const balances::Vector{Price}           # balance per cash currency
     const equities::Vector{Price}           # equity per cash currency
     const interest_borrow_rate::Vector{Price} # borrow interest per cash currency
@@ -18,6 +20,7 @@ mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
 
     function Account(
         ;
+        base_currency::Symbol,
         time_type::Type{TTime}=DateTime,
         mode::AccountMode.T=AccountMode.Cash,
         date_format=dateformat"yyyy-mm-dd HH:MM:SS",
@@ -30,6 +33,8 @@ mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
             Vector{Cash}(), # cash
             Dict{Symbol,Cash}(), # cash_by_symbol
             exchange_rates,
+            base_currency,
+            0, # base_ccy_index
             Vector{Price}(), # balances
             Vector{Price}(), # equities
             Vector{Price}(), # interest_borrow_rate
@@ -89,6 +94,11 @@ function register_cash_asset!(
     push!(acc.interest_lend_rate, zero(Price))
     push!(acc.init_margin_used, zero(Price))
     push!(acc.maint_margin_used, zero(Price))
+
+    # set base cash when its currency is registered
+    if cash.symbol == acc.base_currency
+        acc.base_ccy_index = cash.index
+    end
 end
 
 @inline function _adjust_cash!(
@@ -243,3 +253,77 @@ of your open positions in the same currency, not including closing commission.
 
 @inline excess_liquidity(acc::Account, cash::Cash) = equity(acc, cash) - maint_margin_used(acc, cash)
 @inline excess_liquidity(acc::Account, cash_symbol::Symbol) = excess_liquidity(acc, cash_asset(acc, cash_symbol))
+
+# ---------------------------------------------------------
+# Base currency helpers
+
+@inline has_base_ccy(acc::Account)::Bool = acc.base_ccy_index > 0
+@inline function cash_base_ccy(acc::Account)::Cash
+    acc.base_ccy_index > 0 || throw(ArgumentError("Base currency cash asset is not registered in the account."))
+    @inbounds acc.cash[acc.base_ccy_index]
+end
+
+@inline function get_rate_base_ccy(acc::Account, i::Int)::Float64
+    acc.base_ccy_index > 0 || throw(ArgumentError("Base currency cash asset is not registered in the account."))
+    i == acc.base_ccy_index && return 1.0
+    from = @inbounds acc.cash[i]
+    to = cash_base_ccy(acc)
+    r = get_rate(acc.exchange_rates, from, to)
+    if isnan(r)
+        throw(ArgumentError("Missing FX rate from $(from.symbol) to base $(to.symbol)."))
+    end
+    r
+end
+
+@inline function get_rate_base_ccy(acc::Account, cash::Cash)::Float64
+    idx = cash.index
+    idx > 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered in account."))
+    get_rate_base_ccy(acc, idx)
+end
+
+function equity_base_ccy(acc::Account)::Price
+    has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
+    total = zero(Price)
+    @inbounds for i in eachindex(acc.equities)
+        val = acc.equities[i]
+        iszero(val) && continue  # avoid 0 * NaN when rate is missing
+        total += val * get_rate_base_ccy(acc, i)
+    end
+    total
+end
+
+function balance_base_ccy(acc::Account)::Price
+    has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
+    total = zero(Price)
+    @inbounds for i in eachindex(acc.balances)
+        val = acc.balances[i]
+        iszero(val) && continue
+        total += val * get_rate_base_ccy(acc, i)
+    end
+    total
+end
+
+function init_margin_used_base_ccy(acc::Account)::Price
+    has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
+    total = zero(Price)
+    @inbounds for i in eachindex(acc.init_margin_used)
+        val = acc.init_margin_used[i]
+        iszero(val) && continue
+        total += val * get_rate_base_ccy(acc, i)
+    end
+    total
+end
+
+function maint_margin_used_base_ccy(acc::Account)::Price
+    has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
+    total = zero(Price)
+    @inbounds for i in eachindex(acc.maint_margin_used)
+        val = acc.maint_margin_used[i]
+        iszero(val) && continue
+        total += val * get_rate_base_ccy(acc, i)
+    end
+    total
+end
+
+@inline available_funds_base_ccy(acc::Account)::Price = equity_base_ccy(acc) - init_margin_used_base_ccy(acc)
+@inline excess_liquidity_base_ccy(acc::Account)::Price = equity_base_ccy(acc) - maint_margin_used_base_ccy(acc)

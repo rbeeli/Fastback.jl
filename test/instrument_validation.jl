@@ -4,7 +4,7 @@ using TestItemRunner
 @testitem "Spot cannot use variation margin settlement" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 0.0)
 
     inst = Instrument(Symbol("SPOT/VM"), :SPOT, :USD;
@@ -18,7 +18,7 @@ end
 @testitem "Perpetual validations" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 0.0)
 
     bad_settle = Instrument(Symbol("PERP/BADSETTLE"), :PERP, :USD;
@@ -53,7 +53,7 @@ end
 @testitem "Future validations" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 0.0)
 
     bad_settle = Instrument(Symbol("FUT/BADSETTLE"), :FUT, :USD;

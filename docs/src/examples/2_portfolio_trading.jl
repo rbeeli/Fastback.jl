@@ -41,7 +41,7 @@ symbols = Symbol.(names(df)[2:end]);
 describe(df)
 
 ## create trading account with $10'000 start capital
-acc = Account();
+acc = Account(; base_currency=:USD);
 deposit!(acc, Cash(:USD), 10_000.0);
 
 ## register instruments for all symbols

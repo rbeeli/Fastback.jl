@@ -3,7 +3,7 @@ using TestItemRunner
 
 @testitem "Position long pnl/return" begin
     using Test, Fastback, Dates
-    acc = Account();
+    acc = Account(; base_currency=:USD);
     deposit!(acc, Cash(:USD), 100_000.0)
     TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD))
     px1, px2 = 500.0, 505.0
@@ -17,7 +17,7 @@ end
 
 @testitem "Position short pnl/return" begin
     using Test, Fastback, Dates
-    acc = Account();
+    acc = Account(; base_currency=:USD);
     deposit!(acc, Cash(:USD), 100_000.0)
     TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD))
     px1, px2 = 500.0, 505.0
@@ -78,7 +78,7 @@ end
 @testitem "mark_price set on fills and marks" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
     inst = register_instrument!(acc, Instrument(
         Symbol("MK/USD"),

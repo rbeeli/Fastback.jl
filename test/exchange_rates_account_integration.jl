@@ -4,7 +4,7 @@ using TestItemRunner
     using Test, Fastback
 
     er = SpotExchangeRates()
-    acc = Account(; exchange_rates=er)
+    acc = Account(; exchange_rates=er, base_currency=:USD)
 
     deposit!(acc, Cash(:USD), 1.0)
 

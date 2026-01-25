@@ -29,7 +29,7 @@ EUR = Cash(:EUR; digits=2);
 GBP = Cash(:GBP; digits=2);
 
 ## create trading account with 10'000 USD, 5'000 EUR and 20'000 GBP cash (margin-enabled for shorting)
-acc = Account(; mode=AccountMode.Margin);
+acc = Account(; mode=AccountMode.Margin, base_currency=:USD);
 deposit!(acc, USD, 10_000);
 deposit!(acc, EUR, 5_000);
 deposit!(acc, GBP, 20_000);

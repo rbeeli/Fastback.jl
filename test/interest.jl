@@ -4,7 +4,7 @@ using TestItemRunner
 @testitem "Accrues lend interest on positive balance" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     usd = Cash(:USD)
     deposit!(acc, usd, 1_000.0)
     set_interest_rates!(acc, :USD; borrow=0.10, lend=0.05)
@@ -20,7 +20,7 @@ end
 @testitem "Accrues borrow interest on negative balance" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     usd = Cash(:USD)
 
     withdraw!(acc, usd, 1_000.0) # creates and registers USD with negative balance

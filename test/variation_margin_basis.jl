@@ -4,7 +4,7 @@ using TestItemRunner
 @testitem "Variation margin keeps entry vs settlement basis" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     usd = Cash(:USD)
     deposit!(acc, usd, 1_000.0)
 

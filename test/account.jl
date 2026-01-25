@@ -4,7 +4,7 @@ using TestItemRunner
 @testitem "Order creation uses only time type parameter" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 1_000.0)
     inst = register_instrument!(acc, Instrument(Symbol("META/USD"), :META, :USD))
 
@@ -21,7 +21,7 @@ end
 @testitem "Instrument requires quote cash asset" begin
     using Test, Fastback
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
 
     # register a different cash asset to ensure missing quote currency is detected
     deposit!(acc, Cash(:EUR), 100.0)
@@ -40,7 +40,7 @@ end
 @testitem "Account long order w/o commission" begin
     using Test, Fastback, Dates
     # create trading account
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 100_000.0)
 
     @test cash_balance(acc, :USD) == 100_000.0
@@ -84,7 +84,7 @@ end
 @testitem "Deposit & withdraw cash" begin
     using Test, Fastback
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     usd = Cash(:USD)
 
     deposit!(acc, usd, 1_000.0)
@@ -99,7 +99,7 @@ end
 @testitem "Account long order w/ commission ccy" begin
     using Test, Fastback, Dates
     # create trading account
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 100_000.0)
 
     @test cash_balance(acc, :USD) == 100_000.0
@@ -145,7 +145,7 @@ end
 @testitem "Account long order w/ commission pct" begin
     using Test, Fastback, Dates
     # create trading account
-    acc = Account(; mode=AccountMode.Margin);
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD);
     deposit!(acc, Cash(:USD), 100_000.0)
     @test cash_balance(acc, :USD) == 100_000.0
     @test equity(acc, :USD) == 100_000.0
@@ -189,7 +189,7 @@ end
 @testitem "Commission pct uses instrument multiplier" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 100_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("MULTI/USD"), :MULTI, :USD; multiplier=10.0))
@@ -210,7 +210,7 @@ end
 @testitem "Spot long asset-settled valuation" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -244,7 +244,7 @@ end
 @testitem "Spot short asset-settled valuation" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -278,7 +278,7 @@ end
 @testitem "Variation margin settles P&L into cash" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -335,7 +335,7 @@ end
 @testitem "Variation margin marks to fill before realizing pnl" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -375,7 +375,7 @@ end
 @testitem "Trading after expiry returns rejection" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
 
     start_dt = DateTime(2026, 1, 1)
@@ -406,7 +406,7 @@ end
 @testitem "Cash account: buy too large is rejected" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; base_currency=:USD)
     deposit!(acc, Cash(:USD), 100.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("CASH/USD"), :CASH, :USD; settlement=SettlementStyle.Asset))
@@ -424,7 +424,7 @@ end
 @testitem "Cash account: short sell is rejected" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; base_currency=:USD)
     deposit!(acc, Cash(:USD), 1_000.0)
     inst = register_instrument!(acc, Instrument(Symbol("SHORT/USD"), :SHORT, :USD; settlement=SettlementStyle.Asset))
 
@@ -440,7 +440,7 @@ end
 @testitem "Cash account: sell within holdings works" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; base_currency=:USD)
     deposit!(acc, Cash(:USD), 1_000.0)
     inst = register_instrument!(acc, Instrument(Symbol("CASHSELL/USD"), :CASHSELL, :USD; settlement=SettlementStyle.Asset))
 
@@ -465,7 +465,7 @@ end
 @testitem "Cash account rejects margin instruments" begin
     using Test, Fastback, Dates
 
-    acc = Account()
+    acc = Account(; base_currency=:USD)
     deposit!(acc, Cash(:USD), 5_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -492,7 +492,7 @@ end
 @testitem "Insufficient initial margin rejects fill" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 100.0)
     inst = register_instrument!(acc, Instrument(
         Symbol("MARGINFAIL/USD"),
@@ -515,7 +515,7 @@ end
 @testitem "settle_expiry! closes positions and releases margin" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 20_000.0)
 
     start_dt = DateTime(2026, 1, 1)
@@ -561,7 +561,7 @@ end
 @testitem "Margin disabled stays zero" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("NOMARGIN/USD"), :NOMARGIN, :USD))
@@ -582,7 +582,7 @@ end
 @testitem "Margin percent notional updates with mark" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -619,7 +619,7 @@ end
 @testitem "Broker-style margin metrics" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     @test acc.mode == AccountMode.Margin
     deposit!(acc, Cash(:USD), 10_000.0)
 
@@ -654,7 +654,7 @@ end
 @testitem "Margin fixed per contract uses per-contract rates" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -700,7 +700,7 @@ end
 @testitem "Account with Date timestamps" begin
     using Test, Fastback, Dates, Tables
 
-    acc = Account(; mode=AccountMode.Margin, time_type=Date, date_format=dateformat"yyyy-mm-dd")
+    acc = Account(; mode=AccountMode.Margin, time_type=Date, date_format=dateformat"yyyy-mm-dd", base_currency=:USD)
     deposit!(acc, Cash(:USD), 1_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("DATE/USD"), :DATE, :USD; time_type=Date))

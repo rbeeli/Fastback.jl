@@ -6,7 +6,7 @@ using TestItemRunner
     usd = Cash(:USD)
     eur = Cash(:EUR)
 
-    acc = Account()
+    acc = Account(; base_currency=:USD)
     register_cash_asset!(acc, usd)
     register_cash_asset!(acc, eur)
 
@@ -30,7 +30,7 @@ end
 
     @test_throws ArgumentError add_asset!(er, nok)
 
-    acc = Account()
+    acc = Account(; base_currency=:USD)
     register_cash_asset!(acc, nok)
 
     add_asset!(er, nok)

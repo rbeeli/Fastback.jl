@@ -4,7 +4,7 @@ using TestItemRunner
 @testsnippet TablesTestSetup begin
     using Test, Fastback, Dates, Tables, DataFrames
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD; digits=2), 1_000.0)
 
     inst = register_instrument!(acc, Instrument(

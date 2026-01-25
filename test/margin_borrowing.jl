@@ -4,7 +4,7 @@ using TestItemRunner
 @testitem "margin account allows borrowing on margin-enabled instrument" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 6_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -32,7 +32,7 @@ end
 @testitem "non-marginable instrument stays cash-funded inside margin account" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 6_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -57,7 +57,7 @@ end
 @testitem "risk-reducing trades bypass initial margin check" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 1_000.0)
 
     inst = register_instrument!(acc, Instrument(

@@ -4,7 +4,7 @@ using TestItemRunner
 @testitem "compute_fill_impact mirrors fill_order! (cash-settled open)" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     usd = Cash(:USD)
     deposit!(acc, usd, 1_000.0)
 
@@ -54,7 +54,7 @@ end
 @testitem "compute_fill_impact mirrors fill_order! (variation margin reduce)" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     usd = Cash(:USD)
     deposit!(acc, usd, 10_000.0)
 
