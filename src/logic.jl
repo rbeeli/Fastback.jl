@@ -10,7 +10,7 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
     pos::Position{TTime},
     ;
     dt::TTime,
-    close_price
+    close_price,
 ) where {TTime<:Dates.AbstractTime}
     # update position valuation and account equity using delta of old and new value
     inst = pos.inst
@@ -70,7 +70,12 @@ Updates margin usage for a position and corresponding account totals.
 The function applies deltas to account margin vectors and stores the new
 margin values on the position.
 """
-@inline function update_margin!(acc::Account, pos::Position; close_price)
+@inline function update_margin!(
+    acc::Account,
+    pos::Position
+    ;
+    close_price,
+)
     inst = pos.inst
     quote_cash_index = inst.quote_cash_index
     margin_cash_index = inst.margin_cash_index
@@ -91,7 +96,13 @@ end
 """
 Updates valuation and margin for a position using the latest mark price.
 """
-@inline function update_marks!(acc::Account, pos::Position{TTime}; dt::TTime, close_price) where {TTime<:Dates.AbstractTime}
+@inline function update_marks!(
+    acc::Account,
+    pos::Position{TTime}
+    ;
+    dt::TTime,
+    close_price,
+) where {TTime<:Dates.AbstractTime}
     update_valuation!(acc, pos; dt=dt, close_price=close_price)
     if pos.inst.settlement != SettlementStyle.VariationMargin
         pos.avg_settle_price = pos.avg_entry_price
@@ -101,15 +112,22 @@ Updates valuation and margin for a position using the latest mark price.
     return
 end
 
-@inline function calc_mark_price(pos::Position, bid_price, ask_price)
+@inline function calc_mark_price(pos::Position, bid, ask)
     # Variation margin instruments should mark at a neutral price to avoid spread bleed.
     if pos.inst.settlement == SettlementStyle.VariationMargin
-        return (bid_price + ask_price) / 2
+        return (bid + ask) / 2
     end
-    return is_long(pos) ? bid_price : ask_price
+    is_long(pos) ? bid : ask
 end
 
-@inline function update_marks!(acc::Account{TTime}, inst::Instrument{TTime}; dt::TTime, bid, ask) where {TTime<:Dates.AbstractTime}
+@inline function update_marks!(
+    acc::Account{TTime},
+    inst::Instrument{TTime}
+    ;
+    dt::TTime,
+    bid,
+    ask,
+) where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
     close_price = calc_mark_price(pos, bid, ask)
     update_marks!(acc, pos; dt=dt, close_price=close_price)
@@ -229,5 +247,5 @@ function settle_expiry!(
     order = Order(oid!(acc), inst, dt, settle_price, qty)
     trade = fill_order!(acc, order, dt, settle_price; commission=commission, allow_inactive=true, trade_reason=TradeReason.Expiry)
 
-    return trade
+    trade
 end
