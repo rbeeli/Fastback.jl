@@ -76,7 +76,7 @@ end
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
     # update position and account P&L
-    update_pnl!(acc, pos, prices[2])
+    update_pnl!(acc, pos; dt=dates[2], close_price=prices[2])
     @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity
     @test cash_balance(acc, :USD) ≈ 100_000.0
@@ -85,7 +85,7 @@ end
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
     fill_order!(acc, order, dates[3], prices[3])
     # update position and account P&L
-    update_pnl!(acc, pos, prices[3])
+    update_pnl!(acc, pos; dt=dates[3], close_price=prices[3])
     @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ 0
     @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty
@@ -137,7 +137,7 @@ end
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
     # update position and account P&L
-    update_pnl!(acc, pos, prices[2])
+    update_pnl!(acc, pos; dt=dates[2], close_price=prices[2])
 
     @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
@@ -147,7 +147,7 @@ end
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
     exe2 = fill_order!(acc, order, dates[3], prices[3]; commission=0.5)
     # update position and account P&L
-    update_pnl!(acc, pos, prices[3])
+    update_pnl!(acc, pos; dt=dates[3], close_price=prices[3])
     @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ 0
     @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - commission - 0.5
@@ -181,7 +181,7 @@ end
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
     # update position and account P&L
-    update_pnl!(acc, pos, prices[2])
+    update_pnl!(acc, pos; dt=dates[2], close_price=prices[2])
 
     @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
@@ -191,7 +191,7 @@ end
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
     exe2 = fill_order!(acc, order, dates[3], prices[3]; commission_pct=0.0005)
     # update position and account P&L
-    update_pnl!(acc, pos, prices[3])
+    update_pnl!(acc, pos; dt=dates[3], close_price=prices[3])
     @test pos.value_local == pos.pnl_local
     @test pos.pnl_local ≈ 0
     @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.commission - exe2.commission
@@ -249,7 +249,7 @@ end
     @test pos.value_local ≈ 5_000.0
     @test equity(acc, :USD) ≈ 10_000.0
 
-    update_pnl!(acc, pos, 60.0)
+    update_pnl!(acc, pos; dt=dt, close_price=60.0)
     @test pos.value_local ≈ 6_000.0
     @test equity(acc, :USD) ≈ 11_000.0
 end
@@ -283,7 +283,7 @@ end
     @test pos.value_local ≈ -5_000.0
     @test equity(acc, :USD) ≈ 10_000.0
 
-    update_pnl!(acc, pos, 60.0)
+    update_pnl!(acc, pos; dt=dt, close_price=60.0)
     @test pos.value_local ≈ -6_000.0
     @test equity(acc, :USD) ≈ 9_000.0
 end
@@ -321,7 +321,7 @@ end
     @test pos.avg_entry_price ≈ price
     @test pos.avg_settle_price ≈ price
 
-    update_pnl!(acc, pos, 60.0)
+    update_pnl!(acc, pos; dt=dt, close_price=60.0)
     @test cash_balance(acc, :USD) ≈ 11_000.0
     @test equity(acc, :USD) ≈ 11_000.0
     @test pos.value_local ≈ 0.0
@@ -329,7 +329,7 @@ end
     @test pos.avg_entry_price ≈ price
     @test pos.avg_settle_price ≈ 60.0
 
-    update_pnl!(acc, pos, 55.0)
+    update_pnl!(acc, pos; dt=dt, close_price=55.0)
     @test cash_balance(acc, :USD) ≈ 10_500.0
     @test equity(acc, :USD) ≈ 10_500.0
     @test pos.avg_entry_price ≈ price
@@ -583,7 +583,7 @@ end
     dt = DateTime(2021, 1, 1)
     order = Order(oid!(acc), inst, dt, 100.0, 10.0)
     fill_order!(acc, order, dt, 100.0)
-    update_pnl!(acc, pos, 101.0)
+    update_pnl!(acc, pos; dt=dt, close_price=101.0)
 
     usd_index = cash_asset(acc, :USD).index
     @test pos.margin_init_local == 0.0
@@ -622,7 +622,7 @@ end
     @test acc.init_margin_used[usd_index] ≈ qty * price * 0.1
     @test acc.maint_margin_used[usd_index] ≈ qty * price * 0.05
 
-    update_pnl!(acc, pos, 120.0)
+    update_pnl!(acc, pos; dt=dt, close_price=120.0)
     @test pos.margin_init_local ≈ qty * 120.0 * 0.1
     @test pos.margin_maint_local ≈ qty * 120.0 * 0.05
     @test acc.init_margin_used[usd_index] ≈ qty * 120.0 * 0.1
@@ -694,7 +694,7 @@ end
     @test acc.init_margin_used[usd_index] ≈ qty * 100.0
     @test acc.maint_margin_used[usd_index] ≈ qty * 50.0
 
-    update_pnl!(acc, pos, 25.0)
+    update_pnl!(acc, pos; dt=dt, close_price=25.0)
     @test pos.margin_init_local ≈ qty * 100.0
     @test pos.margin_maint_local ≈ qty * 50.0
     @test acc.init_margin_used[usd_index] ≈ qty * 100.0

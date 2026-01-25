@@ -28,9 +28,12 @@ function apply_funding!(
     quote_idx = inst.quote_cash_index
     rate_q_to_settle = get_rate(acc, quote_idx, settle_idx)
     payment = payment_quote * rate_q_to_settle
-    @inbounds begin
-        acc.balances[settle_idx] += payment
-        acc.equities[settle_idx] += payment
+    if payment != 0.0
+        @inbounds begin
+            acc.balances[settle_idx] += payment
+            acc.equities[settle_idx] += payment
+        end
+        push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.Funding, settle_idx, payment, inst.index))
     end
     return acc
 end

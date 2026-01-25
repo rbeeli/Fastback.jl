@@ -17,7 +17,7 @@ end
 """
 Computes the cash, P&L, and margin impact of filling an order without mutating state.
 
-Assumes the caller already updated marks with `update_marks!(acc, pos, fill_price)`.
+Assumes the caller already updated marks with `update_marks!(acc, pos; dt, close_price=fill_price)`.
 Returns a `FillImpact` describing the resulting position metrics and account deltas.
 `cash_delta` is expressed in the instrument settlement currency.
 """

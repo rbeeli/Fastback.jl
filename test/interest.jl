@@ -11,10 +11,22 @@ using TestItemRunner
 
     start_dt = DateTime(2026, 1, 1)
     accrue_interest!(acc, start_dt) # initialize accrual clock
+    @test isempty(acc.cashflows)
+
+    bal_before = cash_balance(acc, usd)
+    eq_before = equity(acc, usd)
     accrue_interest!(acc, start_dt + Day(365))
 
-    @test cash_balance(acc, usd) ≈ 1_050.0 atol=1e-8
-    @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-8
+    expected_interest = 50.0
+    @test cash_balance(acc, usd) ≈ bal_before + expected_interest atol=1e-8
+    @test equity(acc, usd) ≈ eq_before + expected_interest atol=1e-8
+
+    cf = only(acc.cashflows)
+    @test cf.kind == CashflowKind.Interest
+    @test cf.cash_index == usd.index
+    @test cf.amount ≈ expected_interest atol=1e-8
+    @test cf.inst_index == 0
+    @test cash_balance(acc, usd) - bal_before ≈ sum(cf.amount for cf in acc.cashflows) atol=1e-8
 end
 
 @testitem "Accrues borrow interest on negative balance" begin
@@ -28,8 +40,20 @@ end
 
     start_dt = DateTime(2026, 1, 1)
     accrue_interest!(acc, start_dt) # initialize accrual clock
+    @test isempty(acc.cashflows)
+
+    bal_before = cash_balance(acc, usd)
+    eq_before = equity(acc, usd)
     accrue_interest!(acc, start_dt + Day(365))
 
-    @test cash_balance(acc, usd) ≈ -1_100.0 atol=1e-8
-    @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-8
+    expected_interest = -100.0
+    @test cash_balance(acc, usd) ≈ bal_before + expected_interest atol=1e-8
+    @test equity(acc, usd) ≈ eq_before + expected_interest atol=1e-8
+
+    cf = only(acc.cashflows)
+    @test cf.kind == CashflowKind.Interest
+    @test cf.cash_index == usd.index
+    @test cf.amount ≈ expected_interest atol=1e-8
+    @test cf.inst_index == 0
+    @test cash_balance(acc, usd) - bal_before ≈ sum(cf.amount for cf in acc.cashflows) atol=1e-8
 end

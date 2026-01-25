@@ -77,7 +77,7 @@ end
 
     pos = get_position(acc, inst)
     # Mark the position down sharply to become under-margined
-    update_marks!(acc, pos, 30.0)
+    update_marks!(acc, pos; dt=dt_open, close_price=30.0)
 
     @test equity(acc, :USD) < init_margin_used(acc, :USD)
 

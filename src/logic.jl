@@ -5,7 +5,13 @@ For asset-settled instruments, value is mark-to-market notional.
 For cash-settled instruments, value equals local P&L.
 For variation-margin instruments, unrealized P&L is settled into cash at each update.
 """
-@inline function update_valuation!(acc::Account, pos::Position, close_price)
+@inline function update_valuation!(
+    acc::Account,
+    pos::Position{TTime},
+    ;
+    dt::TTime,
+    close_price
+) where {TTime<:Dates.AbstractTime}
     # update position valuation and account equity using delta of old and new value
     inst = pos.inst
     settlement = inst.settlement
@@ -43,10 +49,12 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
         end
         new_pnl = calc_pnl_local(pos, close_price)
         if new_pnl != 0.0
+            settled_amount = new_pnl * rate_q_to_settle
             @inbounds begin
-                acc.balances[settle_cash_index] += new_pnl * rate_q_to_settle
-                acc.equities[settle_cash_index] += new_pnl * rate_q_to_settle
+                acc.balances[settle_cash_index] += settled_amount
+                acc.equities[settle_cash_index] += settled_amount
             end
+            push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.VariationMargin, settle_cash_index, settled_amount, inst.index))
         end
         pos.pnl_local = 0.0
         pos.value_local = 0.0
@@ -62,7 +70,7 @@ Updates margin usage for a position and corresponding account totals.
 The function applies deltas to account margin vectors and stores the new
 margin values on the position.
 """
-@inline function update_margin!(acc::Account, pos::Position, close_price)
+@inline function update_margin!(acc::Account, pos::Position; close_price)
     inst = pos.inst
     quote_cash_index = inst.quote_cash_index
     margin_cash_index = inst.margin_cash_index
@@ -83,18 +91,18 @@ end
 """
 Updates valuation and margin for a position using the latest mark price.
 """
-@inline function update_marks!(acc::Account, pos::Position, close_price)
-    update_valuation!(acc, pos, close_price)
+@inline function update_marks!(acc::Account, pos::Position{TTime}; dt::TTime, close_price) where {TTime<:Dates.AbstractTime}
+    update_valuation!(acc, pos; dt=dt, close_price=close_price)
     if pos.inst.settlement != SettlementStyle.VariationMargin
         pos.avg_settle_price = pos.avg_entry_price
     end
-    update_margin!(acc, pos, close_price)
+    update_margin!(acc, pos; close_price=close_price)
     pos.mark_price = close_price
     return
 end
 
-@inline function update_pnl!(acc::Account, pos::Position, close_price)
-    update_marks!(acc, pos, close_price)
+@inline function update_pnl!(acc::Account, pos::Position{TTime}; dt::TTime, close_price) where {TTime<:Dates.AbstractTime}
+    update_marks!(acc, pos; dt=dt, close_price=close_price)
 end
 
 @inline function calc_mark_price(pos::Position, bid_price, ask_price)
@@ -105,10 +113,10 @@ end
     return is_long(pos) ? bid_price : ask_price
 end
 
-@inline function update_pnl!(acc::Account{TTime}, inst::Instrument{TTime}, bid_price, ask_price) where {TTime<:Dates.AbstractTime}
+@inline function update_pnl!(acc::Account{TTime}, inst::Instrument{TTime}; dt::TTime, bid, ask) where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
-    close_price = calc_mark_price(pos, bid_price, ask_price)
-    update_pnl!(acc, pos, close_price)
+    close_price = calc_mark_price(pos, bid, ask)
+    update_pnl!(acc, pos; dt=dt, close_price=close_price)
 end
 
 @inline function fill_order!(
@@ -129,7 +137,7 @@ end
     settle_cash_index = inst.settle_cash_index
 
     pos = get_position(acc, inst)
-    update_marks!(acc, pos, fill_price)
+    update_marks!(acc, pos; dt=dt, close_price=fill_price)
     pos_qty = pos.quantity
     pos_entry_price = pos.avg_entry_price
 
@@ -172,7 +180,7 @@ end
     end
 
     # update P&L of position and account equity
-    update_marks!(acc, pos, fill_price)
+    update_marks!(acc, pos; dt=dt, close_price=fill_price)
 
     # generate trade sequence number
     tid = tid!(acc)

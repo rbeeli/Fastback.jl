@@ -34,6 +34,6 @@ end
     dt = DateTime(2021, 1, 1, 0, 0, 0)
     order = Order(oid!(acc), DUMMY, dt, price, quantity)
     fill_order!(acc, order, dt, price; commission_pct=0.001)
-    update_pnl!(acc, DUMMY, price, price)
+    update_pnl!(acc, DUMMY; dt=dt, bid=price, ask=price)
     show(acc)
 end

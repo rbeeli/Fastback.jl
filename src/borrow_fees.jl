@@ -36,8 +36,10 @@ function accrue_borrow_fees!(
         quote_idx = inst.quote_cash_index
         rate_q_to_settle = get_rate(acc, quote_idx, settle_idx)
         fee = fee_quote * rate_q_to_settle
+        fee == 0.0 && continue
         acc.balances[settle_idx] -= fee
         acc.equities[settle_idx] -= fee
+        push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.BorrowFee, settle_idx, -fee, inst.index))
     end
 
     acc.last_borrow_fee_dt = dt

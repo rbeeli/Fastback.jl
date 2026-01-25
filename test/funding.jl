@@ -30,8 +30,14 @@ using TestItemRunner
     funding_rate = 0.01
     apply_funding!(acc, inst, dt + Hour(8); funding_rate=funding_rate)
 
-    @test cash_balance(acc, usd) ≈ 1_000.0 - open_price * funding_rate atol=1e-8
+    expected_payment = -1.0 * open_price * inst.multiplier * funding_rate
+    @test cash_balance(acc, usd) ≈ 1_000.0 + expected_payment atol=1e-8
     @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-8
+    cf1 = only(acc.cashflows)
+    @test cf1.kind == CashflowKind.Funding
+    @test cf1.cash_index == inst.settle_cash_index
+    @test cf1.inst_index == inst.index
+    @test cf1.amount ≈ expected_payment atol=1e-8
 
     # Flip to short and apply funding again (short should receive)
     close_order = Order(oid!(acc), inst, dt + Day(1), open_price, -2.0)
@@ -40,7 +46,11 @@ using TestItemRunner
 
     pos = get_position(acc, inst)
     @test pos.quantity ≈ -1.0
-    expected_payment = -pos.quantity * open_price * inst.multiplier * funding_rate
-    @test cash_balance(acc, usd) ≈ 1_000.0 - open_price * funding_rate + expected_payment atol=1e-8
+    expected_payment2 = -pos.quantity * open_price * inst.multiplier * funding_rate
+    @test cash_balance(acc, usd) ≈ 1_000.0 + expected_payment + expected_payment2 atol=1e-8
     @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-8
+    @test length(acc.cashflows) == 2
+    cf2 = acc.cashflows[end]
+    @test cf2.amount ≈ expected_payment2 atol=1e-8
+    @test cf2.kind == CashflowKind.Funding
 end

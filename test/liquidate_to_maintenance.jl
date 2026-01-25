@@ -22,8 +22,8 @@ using TestItemRunner
 
     # Move against the short positions to trigger a maintenance breach
     dt2 = DateTime(2024, 1, 2)
-    update_pnl!(acc, get_position(acc, inst_big), 400.0)
-    update_pnl!(acc, get_position(acc, inst_small), 50.0)
+    update_pnl!(acc, get_position(acc, inst_big); dt=dt2, close_price=400.0)
+    update_pnl!(acc, get_position(acc, inst_small); dt=dt2, close_price=50.0)
 
     @test is_under_maintenance(acc)
 

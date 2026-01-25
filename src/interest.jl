@@ -44,12 +44,15 @@ function accrue_interest!(
 
     yearfrac = millis / (1000 * 60 * 60 * 24 * Price(year_basis))
 
-    @inbounds @simd for i in eachindex(acc.balances)
+    cfs = acc.cashflows
+    @inbounds for i in eachindex(acc.balances)
         bal = acc.balances[i]
         rate = bal >= 0 ? acc.interest_lend_rate[i] : acc.interest_borrow_rate[i]
         interest = bal * rate * yearfrac
+        interest == 0.0 && continue
         acc.balances[i] += interest
         acc.equities[i] += interest
+        push!(cfs, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.Interest, i, interest, 0))
     end
 
     acc.last_interest_dt = dt

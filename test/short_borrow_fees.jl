@@ -17,6 +17,7 @@ using TestItemRunner
     fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, -10.0), dt0, 100.0)
 
     accrue_borrow_fees!(acc, dt0) # initialize clock
+    @test isempty(acc.cashflows)
 
     before_bal = acc.balances[inst.quote_cash_index]
     dt1 = dt0 + Year(1)
@@ -26,4 +27,12 @@ using TestItemRunner
     fee = before_bal - after_bal
     @test fee ≈ 10 * 100.0 * 0.1 atol=1e-6
     @test get_position(acc, inst).quantity == -10.0
+
+    cf = only(acc.cashflows)
+    @test cf.kind == CashflowKind.BorrowFee
+    @test cf.cash_index == inst.settle_cash_index
+    @test cf.inst_index == inst.index
+    @test cf.amount ≈ -fee atol=1e-6
+    @test fee ≈ -cf.amount atol=1e-6
+    @test after_bal - before_bal ≈ cf.amount atol=1e-6
 end

@@ -15,7 +15,7 @@ using TestItemRunner
     price = 10.0
     order = Order(oid!(acc), inst, dt, price, 5.0)
 
-    update_marks!(acc, pos, price)
+    update_marks!(acc, pos; dt=dt, close_price=price)
     cash_before = cash_balance(acc, usd)
     pos_qty_before = pos.quantity
 
@@ -78,7 +78,7 @@ end
     qty = 3.0
     commission = 0.75
 
-    update_marks!(acc, pos, price)
+    update_marks!(acc, pos; dt=dt, close_price=price)
     cash_before = cash_balance(acc, usd)
 
     order = Order(oid!(acc), inst, dt, price, qty)
@@ -124,7 +124,7 @@ end
 
     dt_mark = DateTime(2025, 1, 2)
     price_mark = 110.0
-    update_marks!(acc, pos, price_mark)
+    update_marks!(acc, pos; dt=dt_mark, close_price=price_mark)
 
     cash_before = cash_balance(acc, usd)
     init_before = acc.init_margin_used[inst.quote_cash_index]

@@ -35,7 +35,7 @@ using TestItemRunner
     @test acc.balances[eur_idx] == 0.0
 
     # VM P&L goes to settlement currency
-    update_pnl!(acc, inst, 21_000.0, 21_000.0)
+    update_pnl!(acc, inst; dt=dt, bid=21_000.0, ask=21_000.0)
     @test acc.balances[usd_idx] ≈ 11_000.0 atol=1e-8
     @test acc.balances[eur_idx] == 0.0
 
@@ -43,6 +43,57 @@ using TestItemRunner
     apply_funding!(acc, inst, dt + Day(1); funding_rate=0.01, mark_price=21_000.0)
     @test acc.balances[usd_idx] ≈ 11_000.0 - 210.0 atol=1e-8
     @test acc.balances[eur_idx] == 0.0
+end
+
+@testitem "Variation margin settlements recorded as cashflows" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 10_000.0)
+
+    inst = register_instrument!(
+        acc,
+        Instrument(
+            Symbol("VM/USD"),
+            :VM,
+            :USD;
+            contract_kind=ContractKind.Perpetual,
+            settlement=SettlementStyle.VariationMargin,
+            margin_mode=MarginMode.PercentNotional,
+            margin_init_long=0.1,
+            margin_maint_long=0.05,
+            multiplier=1.0,
+        ),
+    )
+
+    dt0 = DateTime(2026, 1, 1)
+    order = Order(oid!(acc), inst, dt0, 100.0, 1.0)
+    fill_order!(acc, order, dt0, order.price)
+
+    usd_idx = usd.index
+    @test isempty(acc.cashflows)
+
+    bal_before_up = acc.balances[usd_idx]
+    update_pnl!(acc, inst; dt=dt0 + Hour(1), bid=109.0, ask=111.0) # mark at mid=110
+    cf1 = only(acc.cashflows)
+    @test cf1.kind == CashflowKind.VariationMargin
+    @test cf1.cash_index == usd_idx
+    @test cf1.inst_index == inst.index
+    @test cf1.amount ≈ 10.0 atol=1e-8
+    @test acc.balances[usd_idx] - bal_before_up ≈ cf1.amount atol=1e-8
+    @test get_position(acc, inst).pnl_local == 0.0
+
+    bal_before_down = acc.balances[usd_idx]
+    update_pnl!(acc, inst; dt=dt0 + Hour(2), bid=95.0, ask=105.0) # mid=100, settle loss
+    @test length(acc.cashflows) == 2
+    cf2 = acc.cashflows[end]
+    @test cf2.kind == CashflowKind.VariationMargin
+    @test cf2.amount ≈ -10.0 atol=1e-8
+    @test acc.balances[usd_idx] - bal_before_down ≈ cf2.amount atol=1e-8
+    pos = get_position(acc, inst)
+    @test pos.pnl_local == 0.0
+    @test pos.avg_settle_price ≈ 100.0 atol=1e-8
 end
 
 @testitem "Margin requirement recorded in margin currency when different from settlement" begin
@@ -118,7 +169,7 @@ end
     @test acc.init_margin_used[usd_idx] ≈ 20_000.0 * 0.1 * 1.1 atol=1e-8
 
     # Mark up by 1000 EUR => 1100 USD to settlement
-    update_pnl!(acc, inst, 21_000.0, 21_000.0)
+    update_pnl!(acc, inst; dt=dt, bid=21_000.0, ask=21_000.0)
     @test acc.balances[usd_idx] ≈ 11_100.0 atol=1e-8
     @test acc.balances[eur_idx] == 0.0
 end
