@@ -101,10 +101,6 @@ Updates valuation and margin for a position using the latest mark price.
     return
 end
 
-@inline function update_pnl!(acc::Account, pos::Position{TTime}; dt::TTime, close_price) where {TTime<:Dates.AbstractTime}
-    update_marks!(acc, pos; dt=dt, close_price=close_price)
-end
-
 @inline function calc_mark_price(pos::Position, bid_price, ask_price)
     # Variation margin instruments should mark at a neutral price to avoid spread bleed.
     if pos.inst.settlement == SettlementStyle.VariationMargin
@@ -113,10 +109,10 @@ end
     return is_long(pos) ? bid_price : ask_price
 end
 
-@inline function update_pnl!(acc::Account{TTime}, inst::Instrument{TTime}; dt::TTime, bid, ask) where {TTime<:Dates.AbstractTime}
+@inline function update_marks!(acc::Account{TTime}, inst::Instrument{TTime}; dt::TTime, bid, ask) where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
     close_price = calc_mark_price(pos, bid, ask)
-    update_pnl!(acc, pos; dt=dt, close_price=close_price)
+    update_marks!(acc, pos; dt=dt, close_price=close_price)
 end
 
 @inline function fill_order!(

@@ -15,8 +15,7 @@ function run_backtest()
     dt = DateTime(2018, 1, 2, 9, 30, 0)
     for i = 1:1_000_000
         price = 100.0 + i / 1000
-        
-        update_pnl!(acc, DUMMY; dt=dt, bid=price, ask=price)
+        update_marks!(acc, DUMMY; dt=dt, bid=price, ask=price)
 
         order = Order(oid!(acc), DUMMY, dt, price, 1.0)
         fill_order!(acc, order, dt, price)
@@ -47,11 +46,11 @@ const pos = get_position(acc, DUMMY)
 const dt = DateTime(2018, 1, 2, 9, 30, 0)
 const price = 100.0
 
-@benchmark update_pnl!(acc, pos; dt=dt, close_price=price)
+@benchmark update_marks!(acc, pos; dt=dt, close_price=price)
 
-@code_warntype update_pnl!(acc, pos; dt=dt, close_price=price)
-@code_llvm update_pnl!(acc, pos; dt=dt, close_price=price)
-@code_native update_pnl!(acc, pos; dt=dt, close_price=price)
+@code_warntype update_marks!(acc, pos; dt=dt, close_price=price)
+@code_llvm update_marks!(acc, pos; dt=dt, close_price=price)
+@code_native update_marks!(acc, pos; dt=dt, close_price=price)
 
 const order = Order(oid!(acc), DUMMY, dt, price, 1.0)
 @code_warntype fill_order!(acc, order, dt, price; fill_qty=0.0, commission=0.0, commission_pct=0.0)

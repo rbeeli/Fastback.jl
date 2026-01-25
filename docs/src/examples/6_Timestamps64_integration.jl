@@ -47,7 +47,7 @@ for (dt, price) in zip(dts, prices)
     end
 
     ## update position and account P&L
-    update_pnl!(acc, DUMMY; dt=dt, bid=price, ask=price)
+    update_marks!(acc, DUMMY; dt=dt, bid=price, ask=price)
 
     ## collect data for analysis
     if should_collect(equity_data, dt)

@@ -98,7 +98,7 @@ end
     @test pos.mark_price == 100.0
 
     # Update with bid/ask; long uses bid as close
-    update_pnl!(acc, inst; dt=order.date, bid=101.0, ask=102.0)
+    update_marks!(acc, inst; dt=order.date, bid=101.0, ask=102.0)
     @test pos.mark_price == 101.0
 
     # Flip to short; mark on fill should update
@@ -107,6 +107,6 @@ end
     @test pos.mark_price == 103.0
 
     # For short, close price comes from ask
-    update_pnl!(acc, inst; dt=order2.date, bid=98.0, ask=99.0)
+    update_marks!(acc, inst; dt=order2.date, bid=98.0, ask=99.0)
     @test pos.mark_price == 99.0
 end

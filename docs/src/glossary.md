@@ -50,7 +50,7 @@ Realized P&L is produced when exposure decreases. `fill_order!` computes realize
 
 ## Unrealized P&L
 
-Unrealized P&L (stored as `pnl_local` on a `Position`) reflects the floating profit or loss based on the current mark price. `update_pnl!` keeps it in sync and mirrors the change into account equity without touching balances.
+Unrealized P&L (stored as `pnl_local` on a `Position`) reflects the floating profit or loss based on the current mark price. `update_marks!` keeps it in sync and mirrors the change into account equity without touching balances.
 
 ## Trade Direction
 

@@ -24,7 +24,7 @@ using TestItemRunner
     @test trade isa Trade
 
     # Mark price down to trigger maintenance breach: PnL = (20-100)*10 = -800, equity = 200 < maint 250
-    update_pnl!(acc, inst; dt=dt, bid=20.0, ask=20.0)
+    update_marks!(acc, inst; dt=dt, bid=20.0, ask=20.0)
 
     @test is_under_maintenance(acc) == true
     @test maint_deficit_base_ccy(acc) > 0

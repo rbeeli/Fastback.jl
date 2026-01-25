@@ -36,13 +36,13 @@ using TestItemRunner
     @test cash_balance(acc, usd) ≈ 1_000.0
 
     mark_one = 110.0
-    update_pnl!(acc, pos; dt=dt_open, close_price=mark_one)
+    update_marks!(acc, pos; dt=dt_open, close_price=mark_one)
     @test cash_balance(acc, usd) ≈ 1_000.0 + qty * (mark_one - open_price)
     @test pos.avg_entry_price ≈ open_price
     @test pos.avg_settle_price ≈ mark_one
 
     mark_two = 105.0
-    update_pnl!(acc, pos; dt=dt_open + Hour(1), close_price=mark_two)
+    update_marks!(acc, pos; dt=dt_open + Hour(1), close_price=mark_two)
     @test cash_balance(acc, usd) ≈ 1_000.0 + qty * (mark_two - open_price)
     @test pos.avg_entry_price ≈ open_price
     @test pos.avg_settle_price ≈ mark_two
@@ -94,7 +94,7 @@ end
     cash_before = cash_balance(acc, usd)
     bid = 99.0
     ask = 101.0
-    update_pnl!(acc, inst; dt=dt, bid=bid, ask=ask)
+    update_marks!(acc, inst; dt=dt, bid=bid, ask=ask)
 
     @test cash_balance(acc, usd) ≈ cash_before
     @test pos.avg_settle_price ≈ open_price
@@ -126,7 +126,7 @@ end
     fill_order!(acc2, short_order, dt, open_price)
 
     cash_before_short = cash_balance(acc2, usd2)
-    update_pnl!(acc2, inst2; dt=dt, bid=bid, ask=ask)
+    update_marks!(acc2, inst2; dt=dt, bid=bid, ask=ask)
 
     @test cash_balance(acc2, usd2) ≈ cash_before_short
     @test pos2.avg_settle_price ≈ open_price

@@ -57,8 +57,8 @@ for (i, (dt, price)) in enumerate(zip(dts, prices))
     end
 
     ## update positions P&L
-    update_pnl!(acc, AAPL; dt=dt, bid=price, ask=price)
-    update_pnl!(acc, MSFT; dt=dt, bid=price, ask=price)
+    update_marks!(acc, AAPL; dt=dt, bid=price, ask=price)
+    update_marks!(acc, MSFT; dt=dt, bid=price, ask=price)
 
     ## collect equity data
     if should_collect(equity_data, dt)

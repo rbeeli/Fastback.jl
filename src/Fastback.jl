@@ -121,8 +121,7 @@ export add_asset!,
     update_rate!
 
 # Portfolio logic
-export update_pnl!,
-    update_valuation!,
+export update_valuation!,
     update_margin!,
     update_marks!,
     settle_expiry!

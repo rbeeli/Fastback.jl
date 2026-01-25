@@ -35,7 +35,7 @@ using TestItemRunner
     @test acc.balances[eur_idx] == 0.0
 
     # VM P&L goes to settlement currency
-    update_pnl!(acc, inst; dt=dt, bid=21_000.0, ask=21_000.0)
+    update_marks!(acc, inst; dt=dt, bid=21_000.0, ask=21_000.0)
     @test acc.balances[usd_idx] ≈ 11_000.0 atol=1e-8
     @test acc.balances[eur_idx] == 0.0
 
@@ -75,7 +75,7 @@ end
     @test isempty(acc.cashflows)
 
     bal_before_up = acc.balances[usd_idx]
-    update_pnl!(acc, inst; dt=dt0 + Hour(1), bid=109.0, ask=111.0) # mark at mid=110
+    update_marks!(acc, inst; dt=dt0 + Hour(1), bid=109.0, ask=111.0) # mark at mid=110
     cf1 = only(acc.cashflows)
     @test cf1.kind == CashflowKind.VariationMargin
     @test cf1.cash_index == usd_idx
@@ -85,7 +85,7 @@ end
     @test get_position(acc, inst).pnl_local == 0.0
 
     bal_before_down = acc.balances[usd_idx]
-    update_pnl!(acc, inst; dt=dt0 + Hour(2), bid=95.0, ask=105.0) # mid=100, settle loss
+    update_marks!(acc, inst; dt=dt0 + Hour(2), bid=95.0, ask=105.0) # mid=100, settle loss
     @test length(acc.cashflows) == 2
     cf2 = acc.cashflows[end]
     @test cf2.kind == CashflowKind.VariationMargin
@@ -169,7 +169,7 @@ end
     @test acc.init_margin_used[usd_idx] ≈ 20_000.0 * 0.1 * 1.1 atol=1e-8
 
     # Mark up by 1000 EUR => 1100 USD to settlement
-    update_pnl!(acc, inst; dt=dt, bid=21_000.0, ask=21_000.0)
+    update_marks!(acc, inst; dt=dt, bid=21_000.0, ask=21_000.0)
     @test acc.balances[usd_idx] ≈ 11_100.0 atol=1e-8
     @test acc.balances[eur_idx] == 0.0
 end
