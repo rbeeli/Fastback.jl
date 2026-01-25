@@ -62,6 +62,62 @@ function print_trades(
     )
 end
 
+# --------------- Cashflows ---------------
+
+function print_cashflows(
+    acc::Account{TTime}
+    ;
+    max_print=50
+) where {TTime<:Dates.AbstractTime}
+    print_cashflows(stdout, acc; max_print)
+end
+
+function print_cashflows(
+    io::IO,
+    acc::Account{TTime}
+    ;
+    max_print=50
+) where {TTime<:Dates.AbstractTime}
+    flows = acc.cashflows
+    isempty(flows) && return
+    cash = acc.cash
+    positions = acc.positions
+
+    cols = [
+        Dict(:name => "ID", :val => cf -> cf.id, :fmt => (cf, v) -> v),
+        Dict(:name => "Date", :val => cf -> format_datetime(acc, cf.dt), :fmt => (cf, v) -> v),
+        Dict(:name => "Kind", :val => cf -> cf.kind, :fmt => (cf, v) -> v),
+        Dict(:name => "Cash", :val => cf -> cash[cf.cash_index].symbol, :fmt => (cf, v) -> v),
+        Dict(:name => "Amount", :val => cf -> cf.amount, :fmt => (cf, v) -> format_cash(cash[cf.cash_index], v)),
+        Dict(:name => "Inst", :val => cf -> cf.inst_index, :fmt => (cf, v) -> v == 0 ? "—" : string(positions[v].inst.symbol)),
+    ]
+
+    column_labels = [c[:name] for c in cols]
+    data_columns = []
+    for col in cols
+        push!(data_columns, map(col[:val], flows))
+    end
+    data_matrix = reduce(hcat, data_columns)
+
+    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](flows[row_ix], v)
+
+    h_amt_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Amount" && data_columns[j][i] > 0, crayon"#11BF11")
+    h_amt_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Amount" && data_columns[j][i] < 0, crayon"#DD0000")
+
+    pretty_table(
+        io,
+        data_matrix
+        ;
+        column_labels=column_labels,
+        highlighters=[h_amt_pos, h_amt_neg],
+        formatters=[formatter],
+        compact_printing=true,
+        vertical_crop_mode=:middle,
+        maximum_number_of_rows=max_print,
+        fit_table_in_display_vertically=false,
+    )
+end
+
 # --------------- Positions ---------------
 
 function print_positions(

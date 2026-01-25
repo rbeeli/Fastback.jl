@@ -14,8 +14,10 @@ mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
     const maint_margin_used::Vector{Price}  # maintenance margin used per cash currency
     const positions::Vector{Position{TTime}}
     const trades::Vector{Trade{TTime}}
+    const cashflows::Vector{Cashflow{TTime}}
     order_sequence::Int
     trade_sequence::Int
+    cashflow_sequence::Int
     last_interest_dt::TTime
     last_borrow_fee_dt::TTime
     const date_format::Dates.DateFormat
@@ -47,8 +49,10 @@ mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
             Vector{Price}(), # maint_margin_used
             Vector{Position{TTime}}(), # positions
             Vector{Trade{TTime}}(), # trades
+            Vector{Cashflow{TTime}}(), # cashflows
             order_sequence,
             trade_sequence,
+            0, # cashflow_sequence
             TTime(0), # last_interest_dt
             TTime(0), # last_borrow_fee_dt
             date_format
@@ -59,6 +63,7 @@ end
 @inline format_datetime(acc::Account, x) = Dates.format(x, acc.date_format)
 @inline oid!(acc::Account) = acc.order_sequence += 1
 @inline tid!(acc::Account) = acc.trade_sequence += 1
+@inline cfid!(acc::Account) = acc.cashflow_sequence += 1
 @inline exchange_rates(acc::Account)::ExchangeRates = acc.exchange_rates
 
 """

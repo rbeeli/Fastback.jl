@@ -98,6 +98,65 @@ trades_table(acc::Account{TTime}) where {TTime<:Dates.AbstractTime} = TradesTabl
 # -----------------------------------------------------------------------------
 
 """
+Provides a Tables.jl compatible view over the cashflows contained in an `Account`.
+"""
+struct CashflowsTable{TTime<:Dates.AbstractTime}
+    cashflows::Vector{Cashflow{TTime}}
+    cash::Vector{Cash}
+end
+
+Tables.istable(::Type{<:CashflowsTable}) = true
+Tables.rowaccess(::Type{<:CashflowsTable}) = true
+
+Tables.schema(::CashflowsTable{TTime}) where {TTime<:Dates.AbstractTime} = Tables.Schema(
+    (
+        :id,
+        :date,
+        :kind,
+        :cash_symbol,
+        :amount,
+        :inst_index,
+    ),
+    (
+        Int,
+        TTime,
+        CashflowKind.T,
+        Symbol,
+        Price,
+        Int,
+    )
+)
+
+struct CashflowRows{TTime<:Dates.AbstractTime}
+    cashflows::Vector{Cashflow{TTime}}
+    cash::Vector{Cash}
+end
+
+Tables.rows(tbl::CashflowsTable{TTime}) where {TTime<:Dates.AbstractTime} = CashflowRows{TTime}(tbl.cashflows, tbl.cash)
+
+Base.length(iter::CashflowRows) = length(iter.cashflows)
+
+function Base.iterate(iter::CashflowRows{TTime}, idx::Int=1) where {TTime<:Dates.AbstractTime}
+    idx > length(iter.cashflows) && return nothing
+    cf = @inbounds iter.cashflows[idx]
+    cash = iter.cash
+    cash_symbol = @inbounds cash[cf.cash_index].symbol
+    row = (
+        id=cf.id,
+        date=cf.dt,
+        kind=cf.kind,
+        cash_symbol=cash_symbol,
+        amount=cf.amount,
+        inst_index=cf.inst_index,
+    )
+    return row, idx + 1
+end
+
+cashflows_table(acc::Account{TTime}) where {TTime<:Dates.AbstractTime} = CashflowsTable{TTime}(acc.cashflows, acc.cash)
+
+# -----------------------------------------------------------------------------
+
+"""
 Provides a Tables.jl compatible view over the positions contained in an `Account` or
 an arbitrary vector of `Position`s.
 """

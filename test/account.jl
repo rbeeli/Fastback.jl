@@ -1,6 +1,18 @@
 using Dates
 using TestItemRunner
 
+@testitem "Account initializes cashflows ledger" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 0.0)
+
+    @test isempty(acc.cashflows)
+    @test acc.cashflow_sequence == 0
+    @test cfid!(acc) == 1
+    @test acc.cashflow_sequence == 1
+end
+
 @testitem "Order creation uses only time type parameter" begin
     using Test, Fastback, Dates
 
@@ -94,6 +106,7 @@ end
     withdraw!(acc, usd, 400.0)
     @test cash_balance(acc, usd) == 600.0
     @test equity(acc, usd) == 600.0
+    @test isempty(acc.cashflows)
 end
 
 @testitem "Account long order w/ commission ccy" begin

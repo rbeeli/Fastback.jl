@@ -11,6 +11,7 @@ include("order.jl")
 include("trade.jl")
 include("position.jl")
 include("exchange_rates.jl")
+include("cashflows.jl")
 include("account.jl")
 include("interest.jl")
 include("borrow_fees.jl")
@@ -36,12 +37,14 @@ export Fastback,
     MarginingStyle,
     ContractKind,
     AccountMode,
+    CashflowKind,
     OrderRejectReason,
     TradeReason,
     Cash,
     Instrument,
     Order,
     Trade,
+    Cashflow,
     Position,
     Account,
     ExchangeRates,
@@ -61,7 +64,8 @@ export symbol,
     compute_fill_impact,
     fill_order!,
     is_realizing,
-    realized_return
+    realized_return,
+    cfid!
 
 # Account operations
 export cash_asset,
@@ -145,7 +149,8 @@ export batch_backtest
 export balances_table,
     equities_table,
     positions_table,
-    trades_table
+    trades_table,
+    cashflows_table
 
 # Formatting helpers
 export format_cash,
@@ -161,7 +166,8 @@ export format_cash,
 export print_cash_balances,
     print_equity_balances,
     print_positions,
-    print_trades
+    print_trades,
+    print_cashflows
 
 # Utilities
 export params_combinations,
