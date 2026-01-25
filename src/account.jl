@@ -281,9 +281,17 @@ end
     from = @inbounds acc.cash[i]
     to = cash_base_ccy(acc)
     r = get_rate(acc.exchange_rates, from, to)
-    if isnan(r)
-        throw(ArgumentError("Missing FX rate from $(from.symbol) to base $(to.symbol)."))
-    end
+    r
+end
+
+@inline function get_rate(
+    acc::Account,
+    from_idx::Int,
+    to_idx::Int,
+)
+    from = @inbounds acc.cash[from_idx]
+    to = @inbounds acc.cash[to_idx]
+    r = get_rate(acc.exchange_rates, from, to)
     r
 end
 

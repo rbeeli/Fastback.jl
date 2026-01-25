@@ -19,6 +19,7 @@ Computes the cash, P&L, and margin impact of filling an order without mutating s
 
 Assumes the caller already updated marks with `update_marks!(acc, pos, fill_price)`.
 Returns a `FillImpact` describing the resulting position metrics and account deltas.
+`cash_delta` is expressed in the instrument settlement currency.
 """
 @inline function compute_fill_impact(
     acc::Account{TTime},
@@ -42,21 +43,28 @@ Returns a `FillImpact` describing the resulting position metrics and account del
     commission_total = commission + commission_pct * nominal_value
 
     realized_qty = calc_realized_qty(pos_qty, fill_qty)
-    realized_pnl_gross = realized_qty != 0.0 ?
+    realized_pnl_gross_quote = realized_qty != 0.0 ?
         (fill_price - pos.avg_entry_price) * realized_qty * inst.multiplier :
         0.0
 
-    cash_delta = if inst.settlement == SettlementStyle.Asset
+    cash_delta_quote = if inst.settlement == SettlementStyle.Asset
         -(fill_price * fill_qty * inst.multiplier) - commission_total
     elseif inst.settlement == SettlementStyle.Cash
-        realized_pnl_gross - commission_total
+        realized_pnl_gross_quote - commission_total
     elseif inst.settlement == SettlementStyle.VariationMargin
         -commission_total
     else
         throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
     end
 
-    realized_pnl_net = realized_pnl_gross - commission_total
+    quote_idx = inst.quote_cash_index
+    settle_idx = inst.settle_cash_index
+    rate_q_to_settle = get_rate(acc, quote_idx, settle_idx)
+    cash_delta = cash_delta_quote * rate_q_to_settle
+    realized_pnl_gross = realized_pnl_gross_quote * rate_q_to_settle
+    commission_settle = commission_total * rate_q_to_settle
+
+    realized_pnl_net = realized_pnl_gross - commission_settle
 
     new_qty = pos_qty + fill_qty
     new_avg_entry_price = if new_qty == 0.0
@@ -85,13 +93,17 @@ Returns a `FillImpact` describing the resulting position metrics and account del
         throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
     end
 
-    new_init_margin = margin_init_local(inst, new_qty, fill_price)
-    new_maint_margin = margin_maint_local(inst, new_qty, fill_price)
+    new_init_margin_quote = margin_init_local(inst, new_qty, fill_price)
+    new_maint_margin_quote = margin_maint_local(inst, new_qty, fill_price)
+    margin_idx = inst.margin_cash_index
+    rate_q_to_margin = get_rate(acc, quote_idx, margin_idx)
+    new_init_margin = new_init_margin_quote * rate_q_to_margin
+    new_maint_margin = new_maint_margin_quote * rate_q_to_margin
 
     return FillImpact(
         fill_qty,
         remaining_qty,
-        commission_total,
+        commission_settle,
         cash_delta,
         realized_pnl_gross,
         realized_pnl_net,

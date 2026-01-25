@@ -4,7 +4,7 @@ using Dates
     accrue_borrow_fees!(acc, dt; year_basis=365.0)
 
 Accrues short borrow fees on asset-settled short positions between the last
-accrual timestamp and `dt`. The fee is charged in the instrument quote currency
+accrual timestamp and `dt`. The fee is charged in the instrument settlement currency
 and applied to both balances and equities.
 """
 function accrue_borrow_fees!(
@@ -31,10 +31,13 @@ function accrue_borrow_fees!(
         inst.short_borrow_rate > 0.0 || continue
         isnan(pos.mark_price) && throw(ArgumentError("Cannot accrue borrow fees: mark price is NaN for $(inst.symbol)"))
 
-        fee = abs(pos.quantity) * pos.mark_price * inst.multiplier * inst.short_borrow_rate * yearfrac
-        idx = inst.quote_cash_index
-        acc.balances[idx] -= fee
-        acc.equities[idx] -= fee
+        fee_quote = abs(pos.quantity) * pos.mark_price * inst.multiplier * inst.short_borrow_rate * yearfrac
+        settle_idx = inst.settle_cash_index
+        quote_idx = inst.quote_cash_index
+        rate_q_to_settle = get_rate(acc, quote_idx, settle_idx)
+        fee = fee_quote * rate_q_to_settle
+        acc.balances[settle_idx] -= fee
+        acc.equities[settle_idx] -= fee
     end
 
     acc.last_borrow_fee_dt = dt

@@ -100,7 +100,9 @@ function Base.show(io::IO, inst::Instrument)
     str = "[Instrument] " *
           "symbol=$(inst.symbol) " *
           "base=$(inst.base_symbol) [$(format_base(inst, inst.base_min)), $(format_base(inst, inst.base_max))]±$(format_base(inst, inst.base_tick)) " *
-          "quote=$(inst.quote_symbol)±$(format_quote(inst, inst.quote_tick))"
+          "quote=$(inst.quote_symbol)±$(format_quote(inst, inst.quote_tick)) " *
+          "settle=$(inst.settle_symbol) " *
+          "margin=$(inst.margin_symbol)"
     print(io, str)
 end
 

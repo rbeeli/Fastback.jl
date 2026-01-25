@@ -13,7 +13,7 @@
     if impact.new_qty < 0
         return OrderRejectReason.ShortNotAllowed
     end
-    @inbounds new_balance = acc.balances[inst.quote_cash_index] + impact.cash_delta
+    @inbounds new_balance = acc.balances[inst.settle_cash_index] + impact.cash_delta
     if new_balance < 0
         return OrderRejectReason.InsufficientCash
     end
@@ -27,9 +27,13 @@ end
 )::OrderRejectReason.T where {TTime<:Dates.AbstractTime}
     inst = pos.inst
     quote_cash_index = inst.quote_cash_index
+    settle_cash_index = inst.settle_cash_index
+    margin_cash_index = inst.margin_cash_index
     inc_qty = calc_exposure_increase_quantity(pos.quantity, impact.fill_qty)
 
-    new_balance = acc.balances[quote_cash_index] + impact.cash_delta
+    new_balance = acc.balances[settle_cash_index] + impact.cash_delta
+    rate_q_to_settle = get_rate(acc, quote_cash_index, settle_cash_index)
+    value_delta_settle = (impact.new_value_local - pos.value_local) * rate_q_to_settle
 
     if acc.mode == AccountMode.Cash
         if impact.new_qty < 0
@@ -56,18 +60,21 @@ end
 
         if inc_qty != 0
             if acc.margining_style == MarginingStyle.PerCurrency
-                new_init_used = acc.init_margin_used[quote_cash_index] - pos.margin_init_local + impact.new_init_margin
-                equity_after = acc.equities[quote_cash_index] + impact.cash_delta + (impact.new_value_local - pos.value_local)
+                new_init_used = acc.init_margin_used[margin_cash_index] - pos.margin_init_local + impact.new_init_margin
+                equity_after = acc.equities[margin_cash_index]
+                if margin_cash_index == settle_cash_index
+                    equity_after += impact.cash_delta + value_delta_settle
+                end
                 if equity_after - new_init_used < 0
                     return OrderRejectReason.InsufficientInitialMargin
                 end
             else
                 eq_before = equity_base_ccy(acc)
                 init_before = init_margin_used_base_ccy(acc)
-                r = get_rate_base_ccy(acc, quote_cash_index)
-                delta_eq_local = impact.cash_delta + (impact.new_value_local - pos.value_local)
-                eq_after = eq_before + delta_eq_local * r
-                init_after = init_before - pos.margin_init_local * r + impact.new_init_margin * r
+                r_settle_base = get_rate_base_ccy(acc, settle_cash_index)
+                eq_after = eq_before + (impact.cash_delta + value_delta_settle) * r_settle_base
+                r_margin_base = get_rate_base_ccy(acc, margin_cash_index)
+                init_after = init_before - pos.margin_init_local * r_margin_base + impact.new_init_margin * r_margin_base
                 if eq_after - init_after < 0
                     return OrderRejectReason.InsufficientInitialMargin
                 end

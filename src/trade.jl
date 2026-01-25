@@ -7,9 +7,9 @@ mutable struct Trade{TTime<:Dates.AbstractTime}
     const fill_price::Price         # price at which the order was filled
     const fill_qty::Quantity        # negative = short selling
     const remaining_qty::Quantity   # remaining (unfilled) quantity after the order was (partially) filled
-    const realized_pnl::Price       # realized P&L from exposure reduction (covering) incl. commissions
+    const realized_pnl::Price       # realized P&L from exposure reduction (covering) incl. commissions, in settlement currency
     const realized_qty::Quantity    # quantity of the existing position that was covered by the order
-    const commission::Price         # paid commission in quote currency
+    const commission::Price         # paid commission in settlement currency
     const pos_qty::Quantity         # quantity of the existing position
     const pos_price::Price          # average entry price of the existing position
     const reason::TradeReason.T
@@ -35,9 +35,9 @@ function Base.show(io::IO, t::Trade)
               "fill_px=$(format_quote(inst, t.fill_price)) $(inst.quote_symbol) " *
               "fill_qty=$(format_base(inst, t.fill_qty)) $(inst.base_symbol) " *
               "remain_qty=$(format_base(inst, t.remaining_qty)) $(inst.base_symbol) " *
-              "real_pnl=$(ccy_formatter(t.realized_pnl)) $(inst.quote_symbol) " *
+              "real_pnl=$(ccy_formatter(t.realized_pnl)) $(inst.settle_symbol) " *
               "real_qty=$(format_base(inst, t.realized_qty)) $(inst.base_symbol) " *
-              "commission=$(ccy_formatter(t.commission)) $(inst.quote_symbol) " *
+              "commission=$(ccy_formatter(t.commission)) $(inst.settle_symbol) " *
               "pos_px=$(format_quote(inst, t.pos_price)) $(inst.quote_symbol) " *
               "pos_qty=$(format_base(inst, t.pos_qty)) $(inst.base_symbol) " *
               "reason=$(t.reason)")

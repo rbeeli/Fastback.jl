@@ -9,27 +9,29 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
     # update position valuation and account equity using delta of old and new value
     inst = pos.inst
     settlement = inst.settlement
+    settle_cash_index = inst.settle_cash_index
     quote_cash_index = inst.quote_cash_index
+    rate_q_to_settle = get_rate(acc, quote_cash_index, settle_cash_index)
     if settlement == SettlementStyle.Asset
         new_pnl = calc_pnl_local(pos, close_price)
         new_value = pos.quantity * close_price * inst.multiplier
-        value_delta = new_value - pos.value_local
-        @inbounds acc.equities[quote_cash_index] += value_delta
+        value_delta = (new_value - pos.value_local) * rate_q_to_settle
+        @inbounds acc.equities[settle_cash_index] += value_delta
         pos.pnl_local = new_pnl
         pos.value_local = new_value
         return
     elseif settlement == SettlementStyle.Cash
         new_pnl = calc_pnl_local(pos, close_price)
         new_value = new_pnl
-        value_delta = new_value - pos.value_local
-        @inbounds acc.equities[quote_cash_index] += value_delta
+        value_delta = (new_value - pos.value_local) * rate_q_to_settle
+        @inbounds acc.equities[settle_cash_index] += value_delta
         pos.pnl_local = new_pnl
         pos.value_local = new_value
         return
     elseif settlement == SettlementStyle.VariationMargin
         # Variation margin settlement: transfer P&L to cash and reset settle basis.
         if pos.value_local != 0.0
-            @inbounds acc.equities[quote_cash_index] -= pos.value_local
+            @inbounds acc.equities[settle_cash_index] -= pos.value_local * rate_q_to_settle
             pos.value_local = 0.0
         end
         if pos.quantity == 0.0
@@ -42,8 +44,8 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
         new_pnl = calc_pnl_local(pos, close_price)
         if new_pnl != 0.0
             @inbounds begin
-                acc.balances[quote_cash_index] += new_pnl
-                acc.equities[quote_cash_index] += new_pnl
+                acc.balances[settle_cash_index] += new_pnl * rate_q_to_settle
+                acc.equities[settle_cash_index] += new_pnl * rate_q_to_settle
             end
         end
         pos.pnl_local = 0.0
@@ -62,14 +64,16 @@ margin values on the position.
 """
 @inline function update_margin!(acc::Account, pos::Position, close_price)
     inst = pos.inst
-    new_init_margin = margin_init_local(inst, pos.quantity, close_price)
-    new_maint_margin = margin_maint_local(inst, pos.quantity, close_price)
+    quote_cash_index = inst.quote_cash_index
+    margin_cash_index = inst.margin_cash_index
+    rate_q_to_margin = get_rate(acc, quote_cash_index, margin_cash_index)
+    new_init_margin = margin_init_local(inst, pos.quantity, close_price) * rate_q_to_margin
+    new_maint_margin = margin_maint_local(inst, pos.quantity, close_price) * rate_q_to_margin
     init_delta = new_init_margin - pos.margin_init_local
     maint_delta = new_maint_margin - pos.margin_maint_local
-    quote_cash_index = inst.quote_cash_index
     @inbounds begin
-        acc.init_margin_used[quote_cash_index] += init_delta
-        acc.maint_margin_used[quote_cash_index] += maint_delta
+        acc.init_margin_used[margin_cash_index] += init_delta
+        acc.maint_margin_used[margin_cash_index] += maint_delta
     end
     pos.margin_init_local = new_init_margin
     pos.margin_maint_local = new_maint_margin
@@ -113,8 +117,8 @@ end
 )::Union{Trade{TTime},OrderRejectReason.T} where {TTime<:Dates.AbstractTime}
     inst = order.inst
     allow_inactive || is_active(inst, dt) || return OrderRejectReason.InstrumentNotAllowed
-    # get quote asset index
-    quote_cash_index = inst.quote_cash_index
+    # get cash indexes
+    settle_cash_index = inst.settle_cash_index
 
     pos = get_position(acc, inst)
     update_marks!(acc, pos, fill_price)
@@ -141,8 +145,8 @@ end
     rejection == OrderRejectReason.None || return rejection
 
     @inbounds begin
-        acc.balances[quote_cash_index] += impact.cash_delta
-        acc.equities[quote_cash_index] += impact.cash_delta
+        acc.balances[settle_cash_index] += impact.cash_delta
+        acc.equities[settle_cash_index] += impact.cash_delta
     end
 
     old_qty = pos.quantity
