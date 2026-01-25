@@ -55,10 +55,22 @@ end
         end
 
         if inc_qty != 0
-            new_init_used = acc.init_margin_used[quote_cash_index] - pos.margin_init_local + impact.new_init_margin
-            equity_after = acc.equities[quote_cash_index] + impact.cash_delta + (impact.new_value_local - pos.value_local)
-            if equity_after - new_init_used < 0
-                return OrderRejectReason.InsufficientInitialMargin
+            if acc.margining_style == MarginingStyle.PerCurrency
+                new_init_used = acc.init_margin_used[quote_cash_index] - pos.margin_init_local + impact.new_init_margin
+                equity_after = acc.equities[quote_cash_index] + impact.cash_delta + (impact.new_value_local - pos.value_local)
+                if equity_after - new_init_used < 0
+                    return OrderRejectReason.InsufficientInitialMargin
+                end
+            else
+                eq_before = equity_base_ccy(acc)
+                init_before = init_margin_used_base_ccy(acc)
+                r = get_rate_base_ccy(acc, quote_cash_index)
+                delta_eq_local = impact.cash_delta + (impact.new_value_local - pos.value_local)
+                eq_after = eq_before + delta_eq_local * r
+                init_after = init_before - pos.margin_init_local * r + impact.new_init_margin * r
+                if eq_after - init_after < 0
+                    return OrderRejectReason.InsufficientInitialMargin
+                end
             end
         end
     end
