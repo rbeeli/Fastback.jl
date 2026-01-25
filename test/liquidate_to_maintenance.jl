@@ -1,0 +1,63 @@
+using TestItemRunner
+
+@testitem "liquidate_to_maintenance! closes largest maint contributor first" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 16_000.0)
+
+    inst_big = register_instrument!(acc, Instrument(Symbol("BIG/USD"), :BIG, :USD;
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.2, margin_init_short=0.2,
+        margin_maint_long=0.1, margin_maint_short=0.1))
+
+    inst_small = register_instrument!(acc, Instrument(Symbol("SML/USD"), :SML, :USD;
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.2, margin_init_short=0.2,
+        margin_maint_long=0.1, margin_maint_short=0.1))
+
+    dt = DateTime(2024, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst_big, dt, 100.0, -50.0), dt, 100.0)
+    fill_order!(acc, Order(oid!(acc), inst_small, dt, 50.0, -10.0), dt, 50.0)
+
+    # Move against the short positions to trigger a maintenance breach
+    dt2 = DateTime(2024, 1, 2)
+    update_pnl!(acc, get_position(acc, inst_big), 400.0)
+    update_pnl!(acc, get_position(acc, inst_small), 50.0)
+
+    @test is_under_maintenance(acc)
+
+    trades = liquidate_to_maintenance!(acc, dt2; commission=0.0)
+
+    @test !is_under_maintenance(acc)
+    @test length(trades) == 1
+    @test trades[1].order.inst === inst_big
+    @test trades[1].reason == TradeReason.Liquidation
+    @test get_position(acc, inst_big).quantity == 0.0
+    @test get_position(acc, inst_small).quantity == -10.0
+end
+
+@testitem "liquidate_to_maintenance! forwards commission_pct" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 1_500.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("RISK/USD"), :RISK, :USD;
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1, margin_init_short=0.1,
+        margin_maint_long=2.0, margin_maint_short=2.0))
+
+    dt = DateTime(2024, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 10.0), dt, 100.0)
+
+    # Account is under maintenance immediately due to high maint requirement
+    @test is_under_maintenance(acc)
+
+    trades = liquidate_to_maintenance!(acc, dt; commission=1.0, commission_pct=0.02)
+
+    @test length(trades) == 1
+    @test trades[1].commission ≈ 21.0 # 1 fixed + 2% of 100*10
+    @test !is_under_maintenance(acc)
+    @test get_position(acc, inst).quantity == 0.0
+end

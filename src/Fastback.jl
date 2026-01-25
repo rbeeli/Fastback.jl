@@ -95,10 +95,8 @@ export cash_asset,
     tid!,
     format_datetime,
     exchange_rates,
-    maint_deficit_base_ccy,
-    init_deficit_base_ccy,
-    is_under_maintenance,
-    liquidate_all!
+    liquidate_all!,
+    liquidate_to_maintenance!
 
 # Position analytics
 export has_exposure,
