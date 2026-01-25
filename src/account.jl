@@ -89,6 +89,10 @@ function register_cash_asset!(
     acc::Account{TTime},
     cash::Cash
 ) where {TTime<:Dates.AbstractTime}
+    # ensure cash symbol is valid
+    cash.index == 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' is already registered (index > 0).")) 
+
+    # ensure cash object is not being reused
     !has_cash_asset(acc, cash.symbol) || throw(ArgumentError("Cash with symbol '$(cash.symbol)' already registered."))
 
     # set index for fast array indexing and hashing
@@ -173,7 +177,10 @@ function register_instrument!(
     acc::Account{TTime},
     inst::Instrument{TTime}
 ) where {TTime<:Dates.AbstractTime}
-    # ensure instrument is not already registered
+    # ensure instrument is not being reused
+    inst.index > 0 && throw(ArgumentError("Instrument $(inst.symbol) is already registered (index > 0)"))
+
+    # ensure instrument symbol is not already registered
     if any(x -> x.inst.symbol == inst.symbol, acc.positions)
         throw(ArgumentError("Instrument $(inst.symbol) already registered"))
     end
