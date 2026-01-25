@@ -81,7 +81,7 @@ end
     @test cf1.inst_index == inst.index
     @test cf1.amount ≈ 10.0 atol=1e-8
     @test acc.balances[usd_idx] - bal_before_up ≈ cf1.amount atol=1e-8
-    @test get_position(acc, inst).pnl_local == 0.0
+    @test get_position(acc, inst).pnl_quote == 0.0
 
     bal_before_down = acc.balances[usd_idx]
     update_marks!(acc, inst; dt=dt0 + Hour(2), bid=95.0, ask=105.0) # mid=100, settle loss
@@ -91,7 +91,7 @@ end
     @test cf2.amount ≈ -10.0 atol=1e-8
     @test acc.balances[usd_idx] - bal_before_down ≈ cf2.amount atol=1e-8
     pos = get_position(acc, inst)
-    @test pos.pnl_local == 0.0
+    @test pos.pnl_quote == 0.0
     @test pos.avg_settle_price ≈ 100.0 atol=1e-8
 end
 

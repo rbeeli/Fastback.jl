@@ -77,8 +77,8 @@ end
     @test pos.avg_settle_price == 100.0
     # update position and account P&L
     update_marks!(acc, pos; dt=dates[2], close_price=prices[2])
-    @test pos.value_local == pos.pnl_local
-    @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity
+    @test pos.value_quote == pos.pnl_quote
+    @test pos.pnl_quote ≈ (prices[2] - prices[1]) * pos.quantity
     @test cash_balance(acc, :USD) ≈ 100_000.0
     @test equity(acc, :USD) ≈ 100_000.0 + (prices[2] - prices[1]) * pos.quantity
     # close position
@@ -86,8 +86,8 @@ end
     fill_order!(acc, order, dates[3], prices[3])
     # update position and account P&L
     update_marks!(acc, pos; dt=dates[3], close_price=prices[3])
-    @test pos.value_local == pos.pnl_local
-    @test pos.pnl_local ≈ 0
+    @test pos.value_quote == pos.pnl_quote
+    @test pos.pnl_quote ≈ 0
     @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty
     @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
     show(acc)
@@ -191,8 +191,8 @@ end
     # update position and account P&L
     update_marks!(acc, pos; dt=dates[2], close_price=prices[2])
 
-    @test pos.value_local == pos.pnl_local
-    @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
+    @test pos.value_quote == pos.pnl_quote
+    @test pos.pnl_quote ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
     @test cash_balance(acc, :USD) ≈ 100_000.0 - commission
     @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - commission
     # close position
@@ -200,8 +200,8 @@ end
     exe2 = fill_order!(acc, order, dates[3], prices[3]; commission=0.5)
     # update position and account P&L
     update_marks!(acc, pos; dt=dates[3], close_price=prices[3])
-    @test pos.value_local == pos.pnl_local
-    @test pos.pnl_local ≈ 0
+    @test pos.value_quote == pos.pnl_quote
+    @test pos.pnl_quote ≈ 0
     @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - commission - 0.5
     @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
     show(acc)
@@ -235,8 +235,8 @@ end
     # update position and account P&L
     update_marks!(acc, pos; dt=dates[2], close_price=prices[2])
 
-    @test pos.value_local == pos.pnl_local
-    @test pos.pnl_local ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
+    @test pos.value_quote == pos.pnl_quote
+    @test pos.pnl_quote ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
     @test cash_balance(acc, :USD) ≈ 100_000.0 - exe1.commission
     @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - exe1.commission
     # close position
@@ -244,8 +244,8 @@ end
     exe2 = fill_order!(acc, order, dates[3], prices[3]; commission_pct=0.0005)
     # update position and account P&L
     update_marks!(acc, pos; dt=dates[3], close_price=prices[3])
-    @test pos.value_local == pos.pnl_local
-    @test pos.pnl_local ≈ 0
+    @test pos.value_quote == pos.pnl_quote
+    @test pos.pnl_quote ≈ 0
     @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.commission - exe2.commission
     @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
     show(acc)
@@ -298,11 +298,11 @@ end
     fill_order!(acc, order, dt, price)
 
     @test cash_balance(acc, :USD) ≈ 5_000.0
-    @test pos.value_local ≈ 5_000.0
+    @test pos.value_quote ≈ 5_000.0
     @test equity(acc, :USD) ≈ 10_000.0
 
     update_marks!(acc, pos; dt=dt, close_price=60.0)
-    @test pos.value_local ≈ 6_000.0
+    @test pos.value_quote ≈ 6_000.0
     @test equity(acc, :USD) ≈ 11_000.0
 end
 
@@ -332,11 +332,11 @@ end
     fill_order!(acc, order, dt, price)
 
     @test cash_balance(acc, :USD) ≈ 15_000.0
-    @test pos.value_local ≈ -5_000.0
+    @test pos.value_quote ≈ -5_000.0
     @test equity(acc, :USD) ≈ 10_000.0
 
     update_marks!(acc, pos; dt=dt, close_price=60.0)
-    @test pos.value_local ≈ -6_000.0
+    @test pos.value_quote ≈ -6_000.0
     @test equity(acc, :USD) ≈ 9_000.0
 end
 
@@ -368,16 +368,16 @@ end
 
     @test cash_balance(acc, :USD) ≈ 10_000.0
     @test equity(acc, :USD) ≈ 10_000.0
-    @test pos.value_local ≈ 0.0
-    @test pos.pnl_local ≈ 0.0
+    @test pos.value_quote ≈ 0.0
+    @test pos.pnl_quote ≈ 0.0
     @test pos.avg_entry_price ≈ price
     @test pos.avg_settle_price ≈ price
 
     update_marks!(acc, pos; dt=dt, close_price=60.0)
     @test cash_balance(acc, :USD) ≈ 11_000.0
     @test equity(acc, :USD) ≈ 11_000.0
-    @test pos.value_local ≈ 0.0
-    @test pos.pnl_local ≈ 0.0
+    @test pos.value_quote ≈ 0.0
+    @test pos.pnl_quote ≈ 0.0
     @test pos.avg_entry_price ≈ price
     @test pos.avg_settle_price ≈ 60.0
 
@@ -607,7 +607,7 @@ end
 
     usd_index = cash_asset(acc, :USD).index
     @test pos.quantity == qty
-    @test pos.margin_init_local > 0.0
+    @test pos.init_margin_settle > 0.0
     @test acc.init_margin_used[usd_index] > 0.0
 
     settle_price = 105.0
@@ -617,8 +617,8 @@ end
     @test acc.trades[end] === trade
     @test trade.fill_qty ≈ -qty
     @test pos.quantity == 0.0
-    @test pos.margin_init_local == 0.0
-    @test pos.margin_maint_local == 0.0
+    @test pos.init_margin_settle == 0.0
+    @test pos.maint_margin_settle == 0.0
     @test acc.init_margin_used[usd_index] == 0.0
     @test acc.maint_margin_used[usd_index] == 0.0
 end
@@ -638,8 +638,8 @@ end
     update_marks!(acc, pos; dt=dt, close_price=101.0)
 
     usd_index = cash_asset(acc, :USD).index
-    @test pos.margin_init_local == 0.0
-    @test pos.margin_maint_local == 0.0
+    @test pos.init_margin_settle == 0.0
+    @test pos.maint_margin_settle == 0.0
     @test acc.init_margin_used[usd_index] == 0.0
     @test acc.maint_margin_used[usd_index] == 0.0
 end
@@ -669,14 +669,14 @@ end
     fill_order!(acc, order, dt, price)
 
     usd_index = cash_asset(acc, :USD).index
-    @test pos.margin_init_local ≈ qty * price * 0.1
-    @test pos.margin_maint_local ≈ qty * price * 0.05
+    @test pos.init_margin_settle ≈ qty * price * 0.1
+    @test pos.maint_margin_settle ≈ qty * price * 0.05
     @test acc.init_margin_used[usd_index] ≈ qty * price * 0.1
     @test acc.maint_margin_used[usd_index] ≈ qty * price * 0.05
 
     update_marks!(acc, pos; dt=dt, close_price=120.0)
-    @test pos.margin_init_local ≈ qty * 120.0 * 0.1
-    @test pos.margin_maint_local ≈ qty * 120.0 * 0.05
+    @test pos.init_margin_settle ≈ qty * 120.0 * 0.1
+    @test pos.maint_margin_settle ≈ qty * 120.0 * 0.05
     @test acc.init_margin_used[usd_index] ≈ qty * 120.0 * 0.1
     @test acc.maint_margin_used[usd_index] ≈ qty * 120.0 * 0.05
 end
@@ -741,22 +741,22 @@ end
     fill_order!(acc, order, dt, price)
 
     usd_index = cash_asset(acc, :USD).index
-    @test pos.margin_init_local ≈ qty * 100.0
-    @test pos.margin_maint_local ≈ qty * 50.0
+    @test pos.init_margin_settle ≈ qty * 100.0
+    @test pos.maint_margin_settle ≈ qty * 50.0
     @test acc.init_margin_used[usd_index] ≈ qty * 100.0
     @test acc.maint_margin_used[usd_index] ≈ qty * 50.0
 
     update_marks!(acc, pos; dt=dt, close_price=25.0)
-    @test pos.margin_init_local ≈ qty * 100.0
-    @test pos.margin_maint_local ≈ qty * 50.0
+    @test pos.init_margin_settle ≈ qty * 100.0
+    @test pos.maint_margin_settle ≈ qty * 50.0
     @test acc.init_margin_used[usd_index] ≈ qty * 100.0
     @test acc.maint_margin_used[usd_index] ≈ qty * 50.0
 
     order2 = Order(oid!(acc), inst, dt, price, -3.0)
     fill_order!(acc, order2, dt, price)
     @test pos.quantity ≈ -1.0
-    @test pos.margin_init_local ≈ 150.0
-    @test pos.margin_maint_local ≈ 75.0
+    @test pos.init_margin_settle ≈ 150.0
+    @test pos.maint_margin_settle ≈ 75.0
     @test acc.init_margin_used[usd_index] ≈ 150.0
     @test acc.maint_margin_used[usd_index] ≈ 75.0
 end
@@ -790,11 +790,11 @@ end
     fill_order!(acc, order, dt, 10.0)
 
     eur_idx = cash_asset(acc, :EUR).index
-    @test pos.margin_init_local ≈ 2 * 100.0           # 200 EUR
-    @test pos.margin_maint_local ≈ 2 * 50.0           # 100 EUR
-    @test acc.init_margin_used[eur_idx] ≈ pos.margin_init_local
-    @test acc.maint_margin_used[eur_idx] ≈ pos.margin_maint_local
-    @test init_margin_used_base_ccy(acc) ≈ pos.margin_init_local * 1.10
+    @test pos.init_margin_settle ≈ 2 * 100.0           # 200 EUR
+    @test pos.maint_margin_settle ≈ 2 * 50.0           # 100 EUR
+    @test acc.init_margin_used[eur_idx] ≈ pos.init_margin_settle
+    @test acc.maint_margin_used[eur_idx] ≈ pos.maint_margin_settle
+    @test init_margin_used_base_ccy(acc) ≈ pos.init_margin_settle * 1.10
 end
 
 
@@ -856,14 +856,14 @@ end
 
 #     update_account!(acc, data, inst)
 
-#     @test pos.pnl_local ≈ -100
+#     @test pos.pnl_quote ≈ -100
 #     @test total_balance(acc) ≈ 100_000.0 - pos.quantity * prices[1].bid
 #     @test total_equity(acc) ≈ 99_900.0
 
 #     update_book!(book, prices[2])
 #     update_account!(acc, data, inst)
 
-#     @test pos.pnl_local ≈ -200
+#     @test pos.pnl_quote ≈ -200
 #     @test total_balance(acc) ≈ 100_000.0 - pos.quantity * prices[1].bid
 #     @test total_equity(acc) ≈ 99_800.0
 
@@ -878,7 +878,7 @@ end
 #     @test realized_pnl(acc.trades[end].execution) ≈ -300.0
 #     # @test calc_realized_return(acc.trades[end].execution) ≈ (100.0 - 103.0) / 100.0
 #     @test acc.trades[end].execution.realized_pnl ≈ -300.0
-#     @test pos.pnl_local ≈ -50
+#     @test pos.pnl_quote ≈ -50
 #     @test total_balance(acc) ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.trades) - pos.quantity * prices[3].ask
 #     @test total_equity(acc) ≈ 99_650.0
 
@@ -892,7 +892,7 @@ end
 
 #     @test acc.positions[inst.index].avg_price == book.bba.bid
 #     @test acc.trades[end].execution.realized_pnl ≈ -300.0
-#     @test pos.pnl_local ≈ -25
+#     @test pos.pnl_quote ≈ -25
 #     @test total_balance(acc) ≈ 100_000.0 + sum(t.execution.realized_pnl for t in acc.trades) - pos.quantity * prices[4].bid
 #     @test total_equity(acc) ≈ 99_375.0
 
@@ -905,7 +905,7 @@ end
 
 #     @test pos.quantity == 0.0
 #     @test pos.avg_price == 0.0
-#     @test pos.pnl_local == 0.0
+#     @test pos.pnl_quote == 0.0
 #     @test length(pos.trades) == 4
 
 #     @test total_equity(acc) == 100_000.0+ sum(t.execution.realized_pnl for t in acc.trades)

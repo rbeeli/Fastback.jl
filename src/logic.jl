@@ -19,30 +19,30 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
     if settlement == SettlementStyle.Asset
         new_pnl = calc_pnl_local(pos, close_price)
         new_value = pos.quantity * close_price * inst.multiplier
-        value_delta = to_settle(acc, inst, new_value - pos.value_local)
+        value_delta = to_settle(acc, inst, new_value - pos.value_quote)
         @inbounds acc.equities[settle_cash_index] += value_delta
-        pos.pnl_local = new_pnl
-        pos.value_local = new_value
+        pos.pnl_quote = new_pnl
+        pos.value_quote = new_value
         return
     elseif settlement == SettlementStyle.Cash
         new_pnl = calc_pnl_local(pos, close_price)
         new_value = new_pnl
-        value_delta = to_settle(acc, inst, new_value - pos.value_local)
+        value_delta = to_settle(acc, inst, new_value - pos.value_quote)
         @inbounds acc.equities[settle_cash_index] += value_delta
-        pos.pnl_local = new_pnl
-        pos.value_local = new_value
+        pos.pnl_quote = new_pnl
+        pos.value_quote = new_value
         return
     elseif settlement == SettlementStyle.VariationMargin
         # Variation margin settlement: transfer P&L to cash and reset settle basis.
-        if pos.value_local != 0.0
-            @inbounds acc.equities[settle_cash_index] -= to_settle(acc, inst, pos.value_local)
-            pos.value_local = 0.0
+        if pos.value_quote != 0.0
+            @inbounds acc.equities[settle_cash_index] -= to_settle(acc, inst, pos.value_quote)
+            pos.value_quote = 0.0
         end
         if pos.quantity == 0.0
             pos.avg_entry_price = zero(Price)
             pos.avg_settle_price = zero(Price)
-            pos.pnl_local = 0.0
-            pos.value_local = 0.0
+            pos.pnl_quote = 0.0
+            pos.value_quote = 0.0
             return
         end
         new_pnl = calc_pnl_local(pos, close_price)
@@ -54,8 +54,8 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
             end
             push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.VariationMargin, settle_cash_index, settled_amount, inst.index))
         end
-        pos.pnl_local = 0.0
-        pos.value_local = 0.0
+        pos.pnl_quote = 0.0
+        pos.value_quote = 0.0
         pos.avg_settle_price = close_price
         return
     end
@@ -79,14 +79,14 @@ margin values on the position.
 
     new_init_margin = margin_init_settle(acc, inst, pos.quantity, close_price)
     new_maint_margin = margin_maint_settle(acc, inst, pos.quantity, close_price)
-    init_delta = new_init_margin - pos.margin_init_local
-    maint_delta = new_maint_margin - pos.margin_maint_local
+    init_delta = new_init_margin - pos.init_margin_settle
+    maint_delta = new_maint_margin - pos.maint_margin_settle
     @inbounds begin
         acc.init_margin_used[margin_cash_index] += init_delta
         acc.maint_margin_used[margin_cash_index] += maint_delta
     end
-    pos.margin_init_local = new_init_margin
-    pos.margin_maint_local = new_maint_margin
+    pos.init_margin_settle = new_init_margin
+    pos.maint_margin_settle = new_maint_margin
     return
 end
 

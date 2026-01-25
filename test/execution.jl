@@ -31,8 +31,8 @@ using TestItemRunner
     @test impact.realized_pnl_net == -impact.commission
     @test impact.new_qty == order.quantity
     @test impact.new_avg_entry_price == price
-    @test impact.new_value_local == 0.0
-    @test impact.new_pnl_local == 0.0
+    @test impact.new_value_quote == 0.0
+    @test impact.new_pnl_quote == 0.0
 
     trade = fill_order!(acc, order, dt, price; commission=commission, commission_pct=commission_pct)
 
@@ -45,10 +45,10 @@ using TestItemRunner
     @test pos.quantity == impact.new_qty
     @test pos.avg_entry_price == impact.new_avg_entry_price
     @test pos.avg_settle_price == pos.avg_entry_price
-    @test pos.value_local == impact.new_value_local
-    @test pos.pnl_local == impact.new_pnl_local
-    @test acc.init_margin_used[inst.quote_cash_index] == impact.new_init_margin
-    @test acc.maint_margin_used[inst.quote_cash_index] == impact.new_maint_margin
+    @test pos.value_quote == impact.new_value_quote
+    @test pos.pnl_quote == impact.new_pnl_quote
+    @test acc.init_margin_used[inst.quote_cash_index] == impact.new_init_margin_settle
+    @test acc.maint_margin_used[inst.quote_cash_index] == impact.new_maint_margin_settle
     @test cash_balance(acc, usd) ≈ cash_before + impact.cash_delta atol=1e-12
 end
 
@@ -141,11 +141,11 @@ end
     @test impact.cash_delta == -commission
     @test impact.new_qty == 1.0
     @test impact.new_avg_entry_price == price_open
-    @test impact.new_value_local == 0.0
-    @test impact.new_pnl_local == 0.0
+    @test impact.new_value_quote == 0.0
+    @test impact.new_pnl_quote == 0.0
     @test impact.realized_pnl_net == impact.realized_pnl_gross - commission
-    @test impact.new_init_margin == abs(impact.new_qty) * price_mark * inst.multiplier * 0.1
-    @test impact.new_maint_margin == abs(impact.new_qty) * price_mark * inst.multiplier * 0.05
+    @test impact.new_init_margin_settle == abs(impact.new_qty) * price_mark * inst.multiplier * 0.1
+    @test impact.new_maint_margin_settle == abs(impact.new_qty) * price_mark * inst.multiplier * 0.05
 
     trade_close = fill_order!(acc, order_close, dt_mark, price_mark; commission=commission)
 
@@ -155,10 +155,10 @@ end
     @test pos.quantity == impact.new_qty
     @test pos.avg_entry_price == impact.new_avg_entry_price
     @test pos.avg_settle_price == price_mark
-    @test pos.value_local == impact.new_value_local
-    @test pos.pnl_local == impact.new_pnl_local
-    @test acc.init_margin_used[inst.quote_cash_index] == impact.new_init_margin
-    @test acc.maint_margin_used[inst.quote_cash_index] == impact.new_maint_margin
+    @test pos.value_quote == impact.new_value_quote
+    @test pos.pnl_quote == impact.new_pnl_quote
+    @test acc.init_margin_used[inst.quote_cash_index] == impact.new_init_margin_settle
+    @test acc.maint_margin_used[inst.quote_cash_index] == impact.new_maint_margin_settle
     @test cash_balance(acc, usd) ≈ cash_before + impact.cash_delta atol=1e-12
     @test acc.init_margin_used[inst.quote_cash_index] < init_before
     @test acc.maint_margin_used[inst.quote_cash_index] < maint_before

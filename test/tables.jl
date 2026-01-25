@@ -71,7 +71,7 @@ end
         :qty,
         :avg_entry_price,
         :avg_settle_price,
-        :pnl_local,
+        :pnl_quote,
         :base_ccy,
         :quote_ccy,
         :last_oid,

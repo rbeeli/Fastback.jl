@@ -8,10 +8,10 @@ struct FillImpact
     realized_qty::Quantity
     new_qty::Quantity
     new_avg_entry_price::Price
-    new_value_local::Price
-    new_pnl_local::Price
-    new_init_margin::Price
-    new_maint_margin::Price
+    new_value_quote::Price
+    new_pnl_quote::Price
+    new_init_margin_settle::Price
+    new_maint_margin_settle::Price
 end
 
 """
@@ -74,24 +74,24 @@ Returns a `FillImpact` describing the resulting position metrics and account del
         pos.avg_entry_price
     end
 
-    new_pnl_local = if inst.settlement == SettlementStyle.VariationMargin
+    new_pnl_quote = if inst.settlement == SettlementStyle.VariationMargin
         0.0
     else
         new_qty * (fill_price - new_avg_entry_price) * inst.multiplier
     end
 
-    new_value_local = if inst.settlement == SettlementStyle.Asset
+    new_value_quote = if inst.settlement == SettlementStyle.Asset
         new_qty * fill_price * inst.multiplier
     elseif inst.settlement == SettlementStyle.Cash
-        new_pnl_local
+        new_pnl_quote
     elseif inst.settlement == SettlementStyle.VariationMargin
         0.0
     else
         throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
     end
 
-    new_init_margin = margin_init_settle(acc, inst, new_qty, fill_price)
-    new_maint_margin = margin_maint_settle(acc, inst, new_qty, fill_price)
+    new_init_margin_settle = margin_init_settle(acc, inst, new_qty, fill_price)
+    new_maint_margin_settle = margin_maint_settle(acc, inst, new_qty, fill_price)
 
     return FillImpact(
         fill_qty,
@@ -103,9 +103,9 @@ Returns a `FillImpact` describing the resulting position metrics and account del
         realized_qty,
         new_qty,
         new_avg_entry_price,
-        new_value_local,
-        new_pnl_local,
-        new_init_margin,
-        new_maint_margin,
+        new_value_quote,
+        new_pnl_quote,
+        new_init_margin_settle,
+        new_maint_margin_settle,
     )
 end

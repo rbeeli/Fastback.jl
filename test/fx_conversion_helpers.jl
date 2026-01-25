@@ -44,8 +44,8 @@ using TestItemRunner
     expected_init_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_init_short * usd_to_chf
     expected_maint_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_maint_short * usd_to_chf
     @test impact.cash_delta ≈ expected_cash_delta atol=1e-10
-    @test impact.new_init_margin ≈ expected_init_margin atol=1e-10
-    @test impact.new_maint_margin ≈ expected_maint_margin atol=1e-10
+    @test impact.new_init_margin_settle ≈ expected_init_margin atol=1e-10
+    @test impact.new_maint_margin_settle ≈ expected_maint_margin atol=1e-10
 
     trade = fill_order!(acc, order, dt, price; commission=commission)
     @test trade isa Trade

@@ -14,7 +14,7 @@ A `Trade` records the actual execution of an order, including fill price, filled
 
 ## Position
 
-A `Position` maintains the net exposure for an instrument using a weighted-average cost basis. It stores the average price, quantity, and unrealized P&L (`pnl_local`), and powers helpers like `calc_pnl_local` and `calc_return_local`. Positions are stored in `Account.positions`.
+A `Position` maintains the net exposure for an instrument using a weighted-average cost basis. It stores the average price, quantity, and unrealized P&L (`pnl_quote`), and powers helpers like `calc_pnl_local` and `calc_return_local`. Positions are stored in `Account.positions`.
 
 ## Instrument
 
@@ -54,7 +54,7 @@ Realized P&L is produced when exposure decreases. `fill_order!` computes realize
 
 ## Unrealized P&L
 
-Unrealized P&L (stored as `pnl_local` on a `Position`) reflects the floating profit or loss based on the current mark price. `update_marks!` keeps it in sync and mirrors the change into account equity without touching balances.
+Unrealized P&L (stored as `pnl_quote` on a `Position`) reflects the floating profit or loss based on the current mark price. `update_marks!` keeps it in sync and mirrors the change into account equity without touching balances.
 
 ## Trade Direction
 

@@ -73,7 +73,7 @@ end
 
     # Equity should remain the original deposit (no free lunch on borrowed proceeds)
     @test cash_balance(acc, usd) ≈ 30_000.0 atol=1e-8
-    @test get_position(acc, inst).value_local ≈ -20_000.0 atol=1e-8
+    @test get_position(acc, inst).value_quote ≈ -20_000.0 atol=1e-8
     @test equity(acc, usd) ≈ 10_000.0 atol=1e-8
     @test init_margin_used(acc, usd) ≈ 10_000.0 atol=1e-8
 
@@ -125,13 +125,13 @@ end
     balance_after_buy = cash_balance(acc, usd)
     @test balance_after_buy ≈ 10_000.0 - notional atol=1e-8
     pos = get_position(acc, inst)
-    @test pos.value_local ≈ notional atol=1e-8
+    @test pos.value_quote ≈ notional atol=1e-8
     @test equity(acc, usd) ≈ balance_after_buy + notional atol=1e-8
     @test acc.init_margin_used[usd_idx] == 0.0
     @test acc.maint_margin_used[usd_idx] == 0.0
 
-    @test pos.margin_init_local == 0.0
-    @test pos.margin_maint_local == 0.0
+    @test pos.init_margin_settle == 0.0
+    @test pos.maint_margin_settle == 0.0
 
     short_order = Order(oid!(acc), inst, dt, price, -250.0)
     rejection = fill_order!(acc, short_order, dt, price)
@@ -141,4 +141,53 @@ end
     @test cash_balance(acc, usd) ≥ 0.0
     @test acc.init_margin_used[usd_idx] == 0.0
     @test acc.maint_margin_used[usd_idx] == 0.0
+end
+
+@testitem "Spot mark move converts quote P&L into settlement equity" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    acc = Account(; mode=AccountMode.Margin, base_currency=:CHF, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+
+    chf = Cash(:CHF)
+    eur = Cash(:EUR)
+    deposit!(acc, chf, 10_000.0)
+    deposit!(acc, eur, 0.0) # register quote currency
+
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :CHF), 1.1)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("SPOTFX/EURCHF"),
+        :SPOTFX,
+        :EUR;
+        settle_symbol=:CHF,
+        settlement=SettlementStyle.Asset,
+        contract_kind=ContractKind.Spot,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.5,
+        margin_maint_long=0.25,
+        margin_init_short=0.5,
+        margin_maint_short=0.25,
+        multiplier=1.0,
+    ))
+
+    dt = DateTime(2026, 1, 1)
+    price_entry = 100.0
+    qty = 10.0
+
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price_entry, qty), dt, price_entry)
+    @test trade isa Trade
+
+    equity_before = equity(acc, chf)
+    price_mark = 110.0
+    update_marks!(acc, inst; dt=dt + Hour(1), bid=price_mark, ask=price_mark)
+
+    pos = get_position(acc, inst)
+    expected_pnl_quote = qty * (price_mark - price_entry) * inst.multiplier
+    @test pos.pnl_quote ≈ expected_pnl_quote atol=1e-8
+
+    rate = get_rate(acc.exchange_rates, cash_asset(acc, :EUR), cash_asset(acc, :CHF))
+    @test rate ≈ 1.1 atol=1e-12
+    equity_after = equity(acc, chf)
+    @test equity_after - equity_before ≈ expected_pnl_quote * rate atol=1e-8
 end

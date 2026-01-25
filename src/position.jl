@@ -4,10 +4,10 @@ mutable struct Position{TTime<:Dates.AbstractTime}
     avg_entry_price::Price
     avg_settle_price::Price
     quantity::Quantity              # negative = short selling
-    pnl_local::Price                # local currency P&L
-    value_local::Price              # position value contribution in local currency
-    margin_init_local::Price        # initial margin used in local currency
-    margin_maint_local::Price       # maintenance margin used in local currency
+    pnl_quote::Price                # quote currency P&L
+    value_quote::Price              # position value contribution in quote currency
+    init_margin_settle::Price       # initial margin used in settlement currency
+    maint_margin_settle::Price      # maintenance margin used in settlement currency
     mark_price::Price               # last valuation price
     last_order::Union{Nothing,Order{TTime}}
     last_trade::Union{Nothing,Trade{TTime}}
@@ -19,10 +19,10 @@ mutable struct Position{TTime<:Dates.AbstractTime}
         avg_entry_price::Price=0.0,
         avg_settle_price::Price=0.0,
         quantity::Quantity=0.0,
-        pnl_local::Price=0.0,
-        value_local::Price=0.0,
-        margin_init_local::Price=0.0,
-        margin_maint_local::Price=0.0,
+        pnl_quote::Price=0.0,
+        value_quote::Price=0.0,
+        init_margin_settle::Price=0.0,
+        maint_margin_settle::Price=0.0,
         mark_price::Price=Price(NaN),
         last_order::Union{Nothing,Order{TTime}}=nothing,
         last_trade::Union{Nothing,Trade{TTime}}=nothing,
@@ -33,10 +33,10 @@ mutable struct Position{TTime<:Dates.AbstractTime}
             avg_entry_price,
             avg_settle_price,
             quantity,
-            pnl_local,
-            value_local,
-            margin_init_local,
-            margin_maint_local,
+            pnl_quote,
+            value_quote,
+            init_margin_settle,
+            maint_margin_settle,
             mark_price,
             last_order,
             last_trade
@@ -216,7 +216,7 @@ function Base.show(io::IO, pos::Position)
     print(io, "[Position] $(pos.inst.symbol) " *
               "entry=$(format_quote(pos.inst, pos.avg_entry_price)) $(pos.inst.quote_symbol) " *
               "qty=$(format_base(pos.inst, pos.quantity)) $(pos.inst.base_symbol) " *
-              "pnl_local=$(format_quote(pos.inst, pos.pnl_local)) $(pos.inst.quote_symbol)")
+              "pnl_quote=$(format_quote(pos.inst, pos.pnl_quote)) $(pos.inst.quote_symbol)")
 end
 
 Base.show(pos::Position) = Base.show(stdout, pos)
