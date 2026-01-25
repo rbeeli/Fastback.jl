@@ -29,7 +29,7 @@ acc = Account(; mode=AccountMode.Margin, base_currency=:USD);
 deposit!(acc, Cash(:USD), 10_000.0);
 
 ## register a dummy instrument
-DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
+DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD; margin_mode=MarginMode.PercentNotional))
 
 ## data collector for account equity and drawdowns (sampling every hour)
 collect_equity, equity_data = periodic_collector(Float64, Hour(1));

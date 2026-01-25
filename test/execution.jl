@@ -8,7 +8,7 @@ using TestItemRunner
     usd = Cash(:USD)
     deposit!(acc, usd, 1_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
+    inst = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD; margin_mode=MarginMode.PercentNotional))
     pos = get_position(acc, inst)
 
     dt = DateTime(2025, 1, 1)

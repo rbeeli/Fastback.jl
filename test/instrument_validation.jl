@@ -15,6 +15,42 @@ using TestItemRunner
     @test_throws ArgumentError register_instrument!(acc, inst)
 end
 
+@testitem "Cash-settled instruments must be margined and cash-settled" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 0.0)
+
+    no_margin = Instrument(Symbol("CASH/NOMRG"), :CASH, :USD;
+        settlement=SettlementStyle.Cash,
+        margin_mode=MarginMode.None,
+    )
+    @test_throws ArgumentError register_instrument!(acc, no_margin)
+
+    bad_delivery = Instrument(Symbol("CASH/PHY"), :CASH, :USD;
+        settlement=SettlementStyle.Cash,
+        margin_mode=MarginMode.PercentNotional,
+        delivery_style=DeliveryStyle.PhysicalDeliver,
+    )
+    @test_throws ArgumentError register_instrument!(acc, bad_delivery)
+end
+
+@testitem "MarginMode.None requires zero margin parameters" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 0.0)
+
+    nonzero_margin = Instrument(Symbol("NOMRG/RATES"), :NOMRG, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.None,
+        margin_init_long=0.1,
+        margin_maint_long=0.05,
+    )
+
+    @test_throws ArgumentError register_instrument!(acc, nonzero_margin)
+end
+
 @testitem "Perpetual validations" begin
     using Test, Fastback, Dates
 
@@ -90,7 +126,8 @@ end
 @testitem "Delivery style defaults" begin
     using Test, Fastback, Dates
 
-    spot = Instrument(Symbol("SPOT/DEF"), :SPOT, :USD; contract_kind=ContractKind.Spot)
+    spot_cash = Instrument(Symbol("SPOT/DEF"), :SPOT, :USD; contract_kind=ContractKind.Spot, margin_mode=MarginMode.PercentNotional)
+    spot_asset = Instrument(Symbol("SPOT/ASSET"), :SPOT, :USD; contract_kind=ContractKind.Spot, settlement=SettlementStyle.Asset)
     perp = Instrument(Symbol("PERP/DEF"), :PERP, :USD; contract_kind=ContractKind.Perpetual, settlement=SettlementStyle.VariationMargin, margin_mode=MarginMode.PercentNotional)
     fut = Instrument(Symbol("FUT/DEF"), :FUT, :USD;
         contract_kind=ContractKind.Future,
@@ -98,9 +135,26 @@ end
         margin_mode=MarginMode.PercentNotional,
         expiry=DateTime(2026,1,1))
 
-    @test spot.delivery_style == DeliveryStyle.PhysicalDeliver
+    @test spot_cash.delivery_style == DeliveryStyle.CashSettle
+    @test spot_asset.delivery_style == DeliveryStyle.PhysicalDeliver
     @test perp.delivery_style == DeliveryStyle.CashSettle
     @test fut.delivery_style == DeliveryStyle.CashSettle
+end
+
+@testitem "Marginable spot instruments validate" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 0.0)
+
+    spot_margin = Instrument(Symbol("SPOT/MGN"), :SPOT, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.05,
+    )
+
+    register_instrument!(acc, spot_margin)
 end
 
 @testitem "Delivery style validations" begin
@@ -136,6 +190,7 @@ end
 
     inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
         settle_symbol=:EUR,
+        margin_mode=MarginMode.PercentNotional,
     )
 
     register_instrument!(acc, inst)
@@ -153,6 +208,7 @@ end
 
     inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
         settle_symbol=:EUR,
+        margin_mode=MarginMode.PercentNotional,
     )
 
     @test_throws ArgumentError register_instrument!(acc, inst)

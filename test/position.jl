@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
     acc = Account(; base_currency=:USD);
     deposit!(acc, Cash(:USD), 100_000.0)
-    TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD))
+    TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD; margin_mode=MarginMode.PercentNotional))
     px1, px2 = 500.0, 505.0
     # long
     pos = Position{DateTime}(1, TEST; avg_entry_price=px1, avg_settle_price=px1, quantity=500.0)
@@ -19,7 +19,7 @@ end
     using Test, Fastback, Dates
     acc = Account(; base_currency=:USD);
     deposit!(acc, Cash(:USD), 100_000.0)
-    TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD))
+    TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD; margin_mode=MarginMode.PercentNotional))
     px1, px2 = 500.0, 505.0
     # short
     pos = Position{DateTime}(2, TEST; avg_entry_price=px1, avg_settle_price=px1, quantity=-500.0)

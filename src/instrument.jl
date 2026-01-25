@@ -47,7 +47,11 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         contract_kind::ContractKind.T=ContractKind.Spot,
         settle_symbol::Symbol=quote_symbol,
         settlement::SettlementStyle.T=SettlementStyle.Cash,
-        delivery_style::DeliveryStyle.T=(contract_kind == ContractKind.Spot ? DeliveryStyle.PhysicalDeliver : DeliveryStyle.CashSettle),
+        delivery_style::DeliveryStyle.T=(
+            contract_kind == ContractKind.Spot ?
+                (settlement == SettlementStyle.Asset ? DeliveryStyle.PhysicalDeliver : DeliveryStyle.CashSettle) :
+                DeliveryStyle.CashSettle
+        ),
         margin_mode::MarginMode.T=MarginMode.None,
         margin_init_long::Price=0.0,
         margin_init_short::Price=0.0,
@@ -126,6 +130,20 @@ function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.Abstra
     kind = inst.contract_kind
     settlement = inst.settlement
     delivery = inst.delivery_style
+    margin_mode = inst.margin_mode
+
+    if settlement == SettlementStyle.Cash
+        margin_mode != MarginMode.None || throw(ArgumentError("Cash-settled instrument $(inst.symbol) must set margin_mode."))
+        delivery == DeliveryStyle.CashSettle || throw(ArgumentError("Cash-settled instrument $(inst.symbol) must use CashSettle delivery_style."))
+    end
+
+    if margin_mode == MarginMode.None
+        (iszero(inst.margin_init_long) &&
+         iszero(inst.margin_init_short) &&
+         iszero(inst.margin_maint_long) &&
+         iszero(inst.margin_maint_short)) ||
+            throw(ArgumentError("Instrument $(inst.symbol) with margin_mode=MarginMode.None must have zero margin parameters."))
+    end
 
     if kind == ContractKind.Spot
         settlement == SettlementStyle.VariationMargin && throw(ArgumentError("Spot instrument $(inst.symbol) cannot use VariationMargin settlement."))
