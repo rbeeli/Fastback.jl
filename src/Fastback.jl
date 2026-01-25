@@ -22,6 +22,7 @@ include("collectors.jl")
 include("tables.jl")
 include("print.jl")
 include("backtest_runner.jl")
+include("liquidation.jl")
 
 # Core types
 export Fastback,
@@ -96,7 +97,8 @@ export cash_asset,
     exchange_rates,
     maint_deficit_base_ccy,
     init_deficit_base_ccy,
-    is_under_maintenance
+    is_under_maintenance,
+    liquidate_all!
 
 # Position analytics
 export has_exposure,
