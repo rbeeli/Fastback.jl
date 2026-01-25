@@ -47,11 +47,7 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         contract_kind::ContractKind.T=ContractKind.Spot,
         settle_symbol::Symbol=quote_symbol,
         settlement::SettlementStyle.T=SettlementStyle.Cash,
-        delivery_style::DeliveryStyle.T=(
-            contract_kind == ContractKind.Spot ?
-                (settlement == SettlementStyle.Asset ? DeliveryStyle.PhysicalDeliver : DeliveryStyle.CashSettle) :
-                DeliveryStyle.CashSettle
-        ),
+        delivery_style::DeliveryStyle.T=DeliveryStyle.CashSettle,
         margin_mode::MarginMode.T=MarginMode.None,
         margin_init_long::Price=0.0,
         margin_init_short::Price=0.0,
@@ -63,6 +59,9 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         start_time::TTime=time_type(0),
         expiry::TTime=time_type(0),
     ) where {TTime<:Dates.AbstractTime}
+        # Infer sensible delivery default for spot asset-settled instruments while
+        # allowing explicit overrides for all other combinations.
+        delivery_style = _infer_delivery_style(contract_kind, settlement, delivery_style)
         new{TTime}(
             0, # index
             symbol,
@@ -97,6 +96,13 @@ end
 
 @inline format_base(inst::Instrument, value) = Printf.format(Printf.Format("%.$(inst.base_digits)f"), value)
 @inline format_quote(inst::Instrument, value) = Printf.format(Printf.Format("%.$(inst.quote_digits)f"), value)
+
+@inline function _infer_delivery_style(contract_kind::ContractKind.T, settlement::SettlementStyle.T, delivery_style::DeliveryStyle.T)
+    if contract_kind == ContractKind.Spot && settlement == SettlementStyle.Asset && delivery_style == DeliveryStyle.CashSettle
+        return DeliveryStyle.PhysicalDeliver
+    end
+    return delivery_style
+end
 
 function Base.show(io::IO, inst::Instrument)
     str = "[Instrument] " *

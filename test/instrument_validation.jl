@@ -155,6 +155,7 @@ end
     )
 
     register_instrument!(acc, spot_margin)
+    @test spot_margin.delivery_style == DeliveryStyle.PhysicalDeliver
 end
 
 @testitem "Delivery style validations" begin
