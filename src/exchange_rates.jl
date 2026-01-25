@@ -28,7 +28,7 @@ Get the exchange rate between two assets.
 
 For `OneExchangeRates`, the exchange rate is always 1.0.
 """
-@inline get_rate(er::OneExchangeRates, from::Cash, to::Cash) = 1.0
+@inline get_rate(er::OneExchangeRates, from::Cash, to::Cash; allow_nan::Bool=false) = 1.0
 
 """
 Register a cash asset with the exchange rate provider.
@@ -90,8 +90,13 @@ end
 """
 Get the exchange rate between two assets according to the current rates.
 """
-@inline get_rate(er::SpotExchangeRates, from::Cash, to::Cash) =
-    @inbounds er.rates[from.index][to.index]
+@inline function get_rate(er::SpotExchangeRates, from::Cash, to::Cash; allow_nan::Bool=false)
+    rate = @inbounds er.rates[from.index][to.index]
+    if isnan(rate) && !allow_nan
+        throw(ArgumentError("No exchange rate available from $(from.symbol) to $(to.symbol)."))
+    end
+    rate
+end
 
 """
 Builds an exchange rate matrix for all assets.
@@ -102,7 +107,7 @@ function get_rates_matrix(er::SpotExchangeRates)
     mat = fill(NaN, length(er.assets), length(er.assets))
     for f in 1:length(er.assets)
         for t in 1:length(er.assets)
-            @inbounds mat[f, t] = get_rate(er, er.assets[f], er.assets[t])
+            @inbounds mat[f, t] = get_rate(er, er.assets[f], er.assets[t], allow_nan=true)
         end
     end
     mat
