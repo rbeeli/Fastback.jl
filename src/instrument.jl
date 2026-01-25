@@ -129,6 +129,19 @@ end
 end
 
 """
+    is_margined_spot(inst)
+
+Returns `true` when the instrument is an asset-settled spot contract with
+an explicit margin mode (percent-notional or fixed-per-contract). This is
+the canonical representation of “spot on margin”.
+"""
+@inline function is_margined_spot(inst::Instrument)::Bool
+    inst.contract_kind == ContractKind.Spot &&
+    inst.settlement == SettlementStyle.Asset &&
+    inst.margin_mode != MarginMode.None
+end
+
+"""
 Validates instrument configuration for common contract kinds.
 Throws an `ArgumentError` when mandatory invariants are violated.
 """

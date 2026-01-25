@@ -20,7 +20,8 @@ This reduces the implementation gap from backtesting to real-world execution sig
 ## Features
 
 - Event-based, modular architecture that mirrors streaming execution
-- Spot, perpetual, and future instruments with lifecycle guards (start/expiry) and optional contract multipliers
+- Spot (cash or asset-settled), perpetual, and future instruments with lifecycle guards (start/expiry) and optional contract multipliers
+- Spot on margin (asset-settled spot + margin modes) for leveraged longs/shorts with borrow-fee accrual on shorts
 - Asset, Cash, and Variation Margin settlement styles plus margin modes for mark-to-market and liquidation
 - Multi-currency accounts
   - Hold multiple cash assets in parallel and trade instruments with different quote currencies

@@ -20,6 +20,10 @@ A `Position` maintains the net exposure for an instrument using a weighted-avera
 
 `Instrument` models a tradable product, binding together the display symbol, base asset settings, and quote asset settings. Instruments must be registered with an account before use using the `register_instrument!` function. Contract type (`contract_kind`) and lifecycle bounds (`start_time`, `expiry`) let you represent spot pairs, perpetual swaps, and dated futures explicitly.
 
+### Spot on Margin
+
+An asset-settled spot instrument with `margin_mode != None` (percent-notional or fixed-per-contract) represents "spot on margin". Use `is_margined_spot` to detect this case; leveraged longs/shorts post margin while balances may go negative, and shorts can accrue borrow fees via `short_borrow_rate`.
+
 ## Base Asset
 
 The base asset represents the tradable quantity of an instrument (e.g. shares, contracts, coins). Instruments define their base symbol, tick size, min/max quantity, and display precision via `base_symbol`, `base_tick`, `base_min`, `base_max`, and `base_digits`.

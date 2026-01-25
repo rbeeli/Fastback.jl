@@ -165,7 +165,8 @@ export format_cash,
     has_expiry,
     is_expired,
     is_active,
-    ensure_active
+    ensure_active,
+    is_margined_spot
 
 # Printing helpers
 export print_cash_balances,
