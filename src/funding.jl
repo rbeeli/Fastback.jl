@@ -25,9 +25,7 @@ function apply_funding!(
 
     payment_quote = -pos.quantity * mark * inst.multiplier * funding_rate
     settle_idx = inst.settle_cash_index
-    quote_idx = inst.quote_cash_index
-    rate_q_to_settle = get_rate(acc, quote_idx, settle_idx)
-    payment = payment_quote * rate_q_to_settle
+    payment = to_settle(acc, inst, payment_quote)
     if payment != 0.0
         @inbounds begin
             acc.balances[settle_idx] += payment

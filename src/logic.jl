@@ -16,12 +16,10 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
     inst = pos.inst
     settlement = inst.settlement
     settle_cash_index = inst.settle_cash_index
-    quote_cash_index = inst.quote_cash_index
-    rate_q_to_settle = get_rate(acc, quote_cash_index, settle_cash_index)
     if settlement == SettlementStyle.Asset
         new_pnl = calc_pnl_local(pos, close_price)
         new_value = pos.quantity * close_price * inst.multiplier
-        value_delta = (new_value - pos.value_local) * rate_q_to_settle
+        value_delta = to_settle(acc, inst, new_value - pos.value_local)
         @inbounds acc.equities[settle_cash_index] += value_delta
         pos.pnl_local = new_pnl
         pos.value_local = new_value
@@ -29,7 +27,7 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
     elseif settlement == SettlementStyle.Cash
         new_pnl = calc_pnl_local(pos, close_price)
         new_value = new_pnl
-        value_delta = (new_value - pos.value_local) * rate_q_to_settle
+        value_delta = to_settle(acc, inst, new_value - pos.value_local)
         @inbounds acc.equities[settle_cash_index] += value_delta
         pos.pnl_local = new_pnl
         pos.value_local = new_value
@@ -37,7 +35,7 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
     elseif settlement == SettlementStyle.VariationMargin
         # Variation margin settlement: transfer P&L to cash and reset settle basis.
         if pos.value_local != 0.0
-            @inbounds acc.equities[settle_cash_index] -= pos.value_local * rate_q_to_settle
+            @inbounds acc.equities[settle_cash_index] -= to_settle(acc, inst, pos.value_local)
             pos.value_local = 0.0
         end
         if pos.quantity == 0.0
@@ -49,7 +47,7 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
         end
         new_pnl = calc_pnl_local(pos, close_price)
         if new_pnl != 0.0
-            settled_amount = new_pnl * rate_q_to_settle
+            settled_amount = to_settle(acc, inst, new_pnl)
             @inbounds begin
                 acc.balances[settle_cash_index] += settled_amount
                 acc.equities[settle_cash_index] += settled_amount
@@ -79,12 +77,8 @@ margin values on the position.
     inst = pos.inst
     margin_cash_index = inst.settle_cash_index
 
-    # Fixed-per-contract margins are already in settlement currency.
-    # Percent-notional margins are in quote currency and need quote→settle FX.
-    rate_to_settle = inst.margin_mode == MarginMode.FixedPerContract ? 1.0 : get_rate(acc, inst.quote_cash_index, margin_cash_index)
-
-    new_init_margin = margin_init_local(inst, pos.quantity, close_price) * rate_to_settle
-    new_maint_margin = margin_maint_local(inst, pos.quantity, close_price) * rate_to_settle
+    new_init_margin = margin_init_settle(acc, inst, pos.quantity, close_price)
+    new_maint_margin = margin_maint_settle(acc, inst, pos.quantity, close_price)
     init_delta = new_init_margin - pos.margin_init_local
     maint_delta = new_maint_margin - pos.margin_maint_local
     @inbounds begin

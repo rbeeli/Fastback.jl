@@ -33,9 +33,7 @@ function accrue_borrow_fees!(
 
         fee_quote = abs(pos.quantity) * pos.mark_price * inst.multiplier * inst.short_borrow_rate * yearfrac
         settle_idx = inst.settle_cash_index
-        quote_idx = inst.quote_cash_index
-        rate_q_to_settle = get_rate(acc, quote_idx, settle_idx)
-        fee = fee_quote * rate_q_to_settle
+        fee = to_settle(acc, inst, fee_quote)
         fee == 0.0 && continue
         acc.balances[settle_idx] -= fee
         acc.equities[settle_idx] -= fee

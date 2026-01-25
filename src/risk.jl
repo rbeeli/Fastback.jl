@@ -57,8 +57,7 @@ end
     inc_qty == 0 && return OrderRejectReason.None
 
     # Compute equity and margin after the fill
-    rate_q_to_settle = get_rate(acc, inst.quote_cash_index, settle_idx)
-    value_delta_settle = (impact.new_value_local - pos.value_local) * rate_q_to_settle
+    value_delta_settle = to_settle(acc, inst, impact.new_value_local - pos.value_local)
     cash_effect = impact.cash_delta + value_delta_settle
 
     if acc.margining_style == MarginingStyle.PerCurrency
@@ -69,9 +68,8 @@ end
         end
         return OrderRejectReason.None
     else
-        r_settle_base = get_rate_base_ccy(acc, settle_idx)
-        equity_after = equity_base_ccy(acc) + cash_effect * r_settle_base
-        init_after = init_margin_used_base_ccy(acc) - pos.margin_init_local * r_settle_base + impact.new_init_margin * r_settle_base
+        equity_after = equity_base_ccy(acc) + to_base(acc, settle_idx, cash_effect)
+        init_after = init_margin_used_base_ccy(acc) - to_base(acc, settle_idx, pos.margin_init_local) + to_base(acc, settle_idx, impact.new_init_margin)
         if equity_after - init_after < 0
             return OrderRejectReason.InsufficientInitialMargin
         end

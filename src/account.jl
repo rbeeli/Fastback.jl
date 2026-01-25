@@ -348,3 +348,36 @@ end
 
 @inline available_funds_base_ccy(acc::Account)::Price = equity_base_ccy(acc) - init_margin_used_base_ccy(acc)
 @inline excess_liquidity_base_ccy(acc::Account)::Price = equity_base_ccy(acc) - maint_margin_used_base_ccy(acc)
+
+# ---------------------------------------------------------
+# FX conversion helpers
+
+@inline function rate_quote_to_settle(acc::Account, inst::Instrument)::Float64
+    get_rate(acc, inst.quote_cash_index, inst.settle_cash_index)
+end
+
+@inline function to_settle(acc::Account, inst::Instrument, amount_quote::Price)::Price
+    amount_quote * rate_quote_to_settle(acc, inst)
+end
+
+@inline function rate_settle_to_base(acc::Account, settle_idx::Int)::Float64
+    get_rate_base_ccy(acc, settle_idx)
+end
+
+@inline rate_settle_to_base(acc::Account, cash::Cash)::Float64 = rate_settle_to_base(acc, cash.index)
+
+@inline function to_base(acc::Account, settle_idx::Int, amount_settle::Price)::Price
+    amount_settle * rate_settle_to_base(acc, settle_idx)
+end
+
+@inline to_base(acc::Account, cash::Cash, amount_settle::Price)::Price = to_base(acc, cash.index, amount_settle)
+
+@inline function margin_init_settle(acc::Account, inst::Instrument, qty, mark)::Price
+    local_req = margin_init_local(inst, qty, mark)
+    inst.margin_mode == MarginMode.FixedPerContract ? local_req : to_settle(acc, inst, local_req)
+end
+
+@inline function margin_maint_settle(acc::Account, inst::Instrument, qty, mark)::Price
+    local_req = margin_maint_local(inst, qty, mark)
+    inst.margin_mode == MarginMode.FixedPerContract ? local_req : to_settle(acc, inst, local_req)
+end
