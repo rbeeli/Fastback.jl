@@ -18,6 +18,7 @@ mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
     order_sequence::Int
     trade_sequence::Int
     cashflow_sequence::Int
+    last_event_dt::TTime
     last_interest_dt::TTime
     last_borrow_fee_dt::TTime
     const date_format::Dates.DateFormat
@@ -53,6 +54,7 @@ mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
             order_sequence,
             trade_sequence,
             0, # cashflow_sequence
+            TTime(0), # last_event_dt
             TTime(0), # last_interest_dt
             TTime(0), # last_borrow_fee_dt
             date_format

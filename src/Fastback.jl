@@ -26,6 +26,7 @@ include("tables.jl")
 include("print.jl")
 include("backtest_runner.jl")
 include("liquidation.jl")
+include("events.jl")
 
 # Core types
 export Fastback,
@@ -150,6 +151,14 @@ export PeriodicValues,
     MaxValue,
     min_value_collector,
     max_value_collector
+
+# Event driver
+export MarkUpdate,
+    FundingUpdate,
+    FXUpdate,
+    advance_time!,
+    process_step!,
+    process_expiries!
 
 # Backtesting
 export batch_backtest

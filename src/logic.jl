@@ -228,13 +228,18 @@ function settle_expiry!(
     ;
     settle_price=get_position(acc, inst).mark_price,
     commission::Price=0.0,
+    commission_pct::Price=0.0,
 )::Union{Trade{TTime},OrderRejectReason.T,Nothing} where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
     (pos.quantity == 0.0 || !is_expired(inst, dt)) && return nothing
 
     qty = -pos.quantity
     order = Order(oid!(acc), inst, dt, settle_price, qty)
-    trade = fill_order!(acc, order, dt, settle_price; commission=commission, allow_inactive=true, trade_reason=TradeReason.Expiry)
+    trade = fill_order!(acc, order, dt, settle_price;
+        commission=commission,
+        commission_pct=commission_pct,
+        allow_inactive=true,
+        trade_reason=TradeReason.Expiry)
 
     trade
 end
