@@ -19,6 +19,7 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
     const margin_symbol::Symbol   # currency used for posting/holding margin
 
     const settlement::SettlementStyle.T
+    const delivery_style::DeliveryStyle.T
     const margin_mode::MarginMode.T
     const margin_init_long::Price
     const margin_init_short::Price
@@ -45,9 +46,11 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         base_digits=2,
         quote_tick::Price=0.01,
         quote_digits=2,
+        contract_kind::ContractKind.T=ContractKind.Spot,
         settle_symbol::Symbol=quote_symbol,
         margin_symbol::Symbol=settle_symbol,
         settlement::SettlementStyle.T=SettlementStyle.Cash,
+        delivery_style::DeliveryStyle.T=(contract_kind == ContractKind.Spot ? DeliveryStyle.PhysicalDeliver : DeliveryStyle.CashSettle),
         margin_mode::MarginMode.T=MarginMode.None,
         margin_init_long::Price=0.0,
         margin_init_short::Price=0.0,
@@ -55,7 +58,6 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         margin_maint_short::Price=0.0,
         short_borrow_rate::Price=0.0,
         multiplier::Float64=1.0,
-        contract_kind::ContractKind.T=ContractKind.Spot,
         time_type::Type{TTime}=DateTime,
         start_time::TTime=time_type(0),
         expiry::TTime=time_type(0),
@@ -74,6 +76,7 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
             settle_symbol,
             margin_symbol,
             settlement,
+            delivery_style,
             margin_mode,
             margin_init_long,
             margin_init_short,
@@ -128,6 +131,7 @@ Throws an `ArgumentError` when mandatory invariants are violated.
 function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.AbstractTime}
     kind = inst.contract_kind
     settlement = inst.settlement
+    delivery = inst.delivery_style
 
     if kind == ContractKind.Spot
         settlement == SettlementStyle.VariationMargin && throw(ArgumentError("Spot instrument $(inst.symbol) cannot use VariationMargin settlement."))
@@ -135,10 +139,12 @@ function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.Abstra
         settlement == SettlementStyle.VariationMargin || throw(ArgumentError("Perpetual instrument $(inst.symbol) must use VariationMargin settlement."))
         inst.expiry == TTime(0) || throw(ArgumentError("Perpetual instrument $(inst.symbol) must not define an expiry."))
         inst.margin_mode != MarginMode.None || throw(ArgumentError("Perpetual instrument $(inst.symbol) must set margin_mode."))
+        delivery == DeliveryStyle.CashSettle || throw(ArgumentError("Perpetual instrument $(inst.symbol) must be cash-settled."))
     elseif kind == ContractKind.Future
         settlement == SettlementStyle.VariationMargin || throw(ArgumentError("Future instrument $(inst.symbol) must use VariationMargin settlement."))
         has_expiry(inst) || throw(ArgumentError("Future instrument $(inst.symbol) must define an expiry."))
         inst.margin_mode != MarginMode.None || throw(ArgumentError("Future instrument $(inst.symbol) must set margin_mode."))
+        delivery in (DeliveryStyle.CashSettle, DeliveryStyle.PhysicalDeliver) || throw(ArgumentError("Future instrument $(inst.symbol) has invalid delivery_style."))
     end
 
     return nothing

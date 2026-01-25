@@ -87,6 +87,46 @@ end
     register_instrument!(acc, good)
 end
 
+@testitem "Delivery style defaults" begin
+    using Test, Fastback, Dates
+
+    spot = Instrument(Symbol("SPOT/DEF"), :SPOT, :USD; contract_kind=ContractKind.Spot)
+    perp = Instrument(Symbol("PERP/DEF"), :PERP, :USD; contract_kind=ContractKind.Perpetual, settlement=SettlementStyle.VariationMargin, margin_mode=MarginMode.PercentNotional)
+    fut = Instrument(Symbol("FUT/DEF"), :FUT, :USD;
+        contract_kind=ContractKind.Future,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        expiry=DateTime(2026,1,1))
+
+    @test spot.delivery_style == DeliveryStyle.PhysicalDeliver
+    @test perp.delivery_style == DeliveryStyle.CashSettle
+    @test fut.delivery_style == DeliveryStyle.CashSettle
+end
+
+@testitem "Delivery style validations" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 0.0)
+
+    bad_perp = Instrument(Symbol("PERP/PHY"), :PERP, :USD;
+        contract_kind=ContractKind.Perpetual,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        delivery_style=DeliveryStyle.PhysicalDeliver,
+    )
+    @test_throws ArgumentError register_instrument!(acc, bad_perp)
+
+    fut_phys = Instrument(Symbol("FUT/PHY"), :FUT, :USD;
+        contract_kind=ContractKind.Future,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        delivery_style=DeliveryStyle.PhysicalDeliver,
+        expiry=DateTime(2026,1,2),
+    )
+    register_instrument!(acc, fut_phys)
+end
+
 @testitem "Instrument can have settle_symbol != quote_symbol when cash assets exist" begin
     using Test, Fastback, Dates
 
