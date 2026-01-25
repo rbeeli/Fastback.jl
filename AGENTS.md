@@ -7,7 +7,7 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
 
 - Event-driven backtesting library for quantitative trading written in Julia.
 - Single netted `Position` per instrument; account state lives in `Account` (balances, equities, margin vectors, trades, positions).
-- Multi-currency aware; instruments carry settlement style, margin mode, lifecycle (start/expiry), and optional contract multiplier.
+- Multi-currency aware; instruments carry settlement style, margin mode, lifecycle (start/expiry), and optional contract multiplier. Margining can be per-currency or base-currency.
 - Public API is centralized in `src/Fastback.jl` (exports and type aliases `Price`/`Quantity` = `Float64`).
 
 ## Repo map
@@ -18,6 +18,8 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
   - `order.jl`, `trade.jl`, `position.jl`: order/trade data and position math; positions are netted, average price must stay consistent.  
   - `logic.jl`: P&L, valuation, margin updates, fill pipeline (`fill_order!`); settlement styles (`Asset`, `Cash`, `VariationMargin`) drive cash/equity handling.  
   - `exchange_rates.jl`: currency conversion helpers and rate storage.  
+  - `margin.jl`: base-currency margin metrics (`*_base_ccy`, maintenance/init deficits).  
+  - `liquidation.jl`: deterministic `liquidate_all!` using mark prices and liquidation trade reason.  
   - `collectors.jl`, `tables.jl`, `print.jl`: data collection, Tables.jl outputs, formatted printing.  
   - `backtest_runner.jl`: threaded batch runner (`Threads.@threads`); avoid global state in callbacks.  
   - `utils.jl`: `params_combinations`, ETA formatting, misc helpers.  
