@@ -41,6 +41,7 @@ using TestItemRunner
     @test trade.realized_pnl == impact.realized_pnl_net
     @test trade.realized_qty == impact.realized_qty
     @test trade.commission == impact.commission
+    @test trade.cash_delta == impact.cash_delta
     @test pos.quantity == impact.new_qty
     @test pos.avg_entry_price == impact.new_avg_entry_price
     @test pos.avg_settle_price == pos.avg_entry_price
@@ -49,6 +50,47 @@ using TestItemRunner
     @test acc.init_margin_used[inst.quote_cash_index] == impact.new_init_margin
     @test acc.maint_margin_used[inst.quote_cash_index] == impact.new_maint_margin
     @test cash_balance(acc, usd) ≈ cash_before + impact.cash_delta atol=1e-12
+end
+
+@testitem "cash_delta captures asset-settled outlay" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 5_000.0)
+
+    inst = register_instrument!(
+        acc,
+        Instrument(
+            Symbol("SPOT/USD"),
+            :SPOT,
+            :USD;
+            settlement=SettlementStyle.Asset,
+            contract_kind=ContractKind.Spot,
+            delivery_style=DeliveryStyle.PhysicalDeliver,
+            multiplier=1.0,
+        ),
+    )
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2025, 2, 1)
+    price = 20.0
+    qty = 3.0
+    commission = 0.75
+
+    update_marks!(acc, pos, price)
+    cash_before = cash_balance(acc, usd)
+
+    order = Order(oid!(acc), inst, dt, price, qty)
+    impact = compute_fill_impact(acc, pos, order, dt, price; commission=commission)
+
+    expected_cash_delta = -(price * qty * inst.multiplier) - commission
+    @test impact.cash_delta ≈ expected_cash_delta atol=1e-12
+
+    trade = fill_order!(acc, order, dt, price; commission=commission)
+
+    @test trade.cash_delta ≈ expected_cash_delta atol=1e-12
+    @test cash_balance(acc, usd) ≈ cash_before + expected_cash_delta atol=1e-12
 end
 
 @testitem "compute_fill_impact mirrors fill_order! (variation margin reduce)" begin
@@ -109,6 +151,7 @@ end
 
     @test trade_close.realized_pnl == impact.realized_pnl_net
     @test trade_close.commission == impact.commission
+    @test trade_close.cash_delta == impact.cash_delta
     @test pos.quantity == impact.new_qty
     @test pos.avg_entry_price == impact.new_avg_entry_price
     @test pos.avg_settle_price == price_mark

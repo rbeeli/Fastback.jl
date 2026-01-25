@@ -47,12 +47,15 @@ end
         :position_qty,
         :position_price,
         :commission,
+        :cash_delta,
         :reason,
     )
     trade_rows = collect(Tables.rows(tbl))
     @test length(trade_rows) == length(acc.trades)
     @test trade_rows[1].oid == order₁.oid
     @test trade_rows[end].realized_pnl ≈ 1.75 atol = 1e-8
+    @test trade_rows[1].cash_delta ≈ -0.5
+    @test trade_rows[end].cash_delta ≈ 1.75
     trade_cols = Tables.columntable(tbl)
     @test trade_cols.symbol == fill(inst.symbol, length(acc.trades))
 

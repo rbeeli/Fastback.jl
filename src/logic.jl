@@ -188,6 +188,7 @@ end
         impact.realized_pnl_net,
         impact.realized_qty,
         impact.commission,
+        impact.cash_delta,
         pos_qty,
         pos_entry_price,
         trade_reason
