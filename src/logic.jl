@@ -112,7 +112,7 @@ Updates valuation and margin for a position using the latest mark price.
     return
 end
 
-@inline function calc_mark_price(pos::Position, bid, ask)
+@inline function _calc_mark_price(pos::Position, bid, ask)
     # Variation margin instruments should mark at a neutral price to avoid spread bleed.
     if pos.inst.settlement == SettlementStyle.VariationMargin
         return (bid + ask) / 2
@@ -129,7 +129,7 @@ end
     ask,
 ) where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
-    close_price = calc_mark_price(pos, bid, ask)
+    close_price = _calc_mark_price(pos, bid, ask)
     update_marks!(acc, pos; dt=dt, close_price=close_price)
 end
 
