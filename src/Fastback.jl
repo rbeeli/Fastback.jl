@@ -13,6 +13,7 @@ include("position.jl")
 include("exchange_rates.jl")
 include("cashflows.jl")
 include("account.jl")
+include("contract_math.jl")
 include("interest.jl")
 include("borrow_fees.jl")
 include("funding.jl")
@@ -111,10 +112,13 @@ export cash_asset,
 
 # Position analytics
 export has_exposure,
-    calc_pnl_local,
-    calc_return_local,
-    margin_init_local,
-    margin_maint_local,
+    value_quote,
+    pnl_quote,
+    cash_delta_quote,
+    calc_pnl_quote,
+    calc_return_quote,
+    margin_init_quote,
+    margin_maint_quote,
     margin_init_settle,
     margin_maint_settle,
     calc_realized_qty,

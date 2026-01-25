@@ -397,15 +397,3 @@ end
 end
 
 @inline to_base(acc::Account, cash::Cash, amount_settle::Price)::Price = to_base(acc, cash.index, amount_settle)
-
-@inline function margin_init_settle(acc::Account, inst::Instrument, qty, mark)::Price
-    acc.mode == AccountMode.Cash && return 0.0
-    local_req = margin_init_local(inst, qty, mark)
-    inst.margin_mode == MarginMode.FixedPerContract ? local_req : to_settle(acc, inst, local_req)
-end
-
-@inline function margin_maint_settle(acc::Account, inst::Instrument, qty, mark)::Price
-    acc.mode == AccountMode.Cash && return 0.0
-    local_req = margin_maint_local(inst, qty, mark)
-    inst.margin_mode == MarginMode.FixedPerContract ? local_req : to_settle(acc, inst, local_req)
-end

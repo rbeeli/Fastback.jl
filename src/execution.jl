@@ -39,27 +39,26 @@ Returns a `FillImpact` describing the resulting position metrics and account del
     remaining_qty = order.quantity - fill_qty
     pos_qty = pos.quantity
 
-    nominal_value = fill_price * abs(fill_qty) * inst.multiplier
-    commission_total = commission + commission_pct * nominal_value
+    nominal_value_quote = fill_price * abs(fill_qty) * inst.multiplier
+    commission_total_quote = commission + commission_pct * nominal_value_quote
 
     realized_qty = calc_realized_qty(pos_qty, fill_qty)
+    realized_basis = pos.avg_entry_price
     realized_pnl_gross_quote = realized_qty != 0.0 ?
-        (fill_price - pos.avg_entry_price) * realized_qty * inst.multiplier :
+        pnl_quote(inst, realized_qty, fill_price, realized_basis) :
         0.0
 
-    cash_delta_quote = if inst.settlement == SettlementStyle.Asset
-        -(fill_price * fill_qty * inst.multiplier) - commission_total
-    elseif inst.settlement == SettlementStyle.Cash
-        realized_pnl_gross_quote - commission_total
-    elseif inst.settlement == SettlementStyle.VariationMargin
-        -commission_total
-    else
-        throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
-    end
+    cash_delta_quote_val = cash_delta_quote(
+        inst,
+        fill_qty,
+        fill_price,
+        commission_total_quote;
+        realized_pnl_quote=realized_pnl_gross_quote,
+    )
 
-    cash_delta = to_settle(acc, inst, cash_delta_quote)
+    cash_delta = to_settle(acc, inst, cash_delta_quote_val)
     realized_pnl_gross = to_settle(acc, inst, realized_pnl_gross_quote)
-    commission_settle = to_settle(acc, inst, commission_total)
+    commission_settle = to_settle(acc, inst, commission_total_quote)
 
     realized_pnl_net = realized_pnl_gross - commission_settle
 
@@ -74,21 +73,14 @@ Returns a `FillImpact` describing the resulting position metrics and account del
         pos.avg_entry_price
     end
 
-    new_pnl_quote = if inst.settlement == SettlementStyle.VariationMargin
-        0.0
+    basis_after = if inst.settlement == SettlementStyle.VariationMargin
+        new_qty == 0.0 ? zero(Price) : fill_price
     else
-        new_qty * (fill_price - new_avg_entry_price) * inst.multiplier
+        new_avg_entry_price
     end
 
-    new_value_quote = if inst.settlement == SettlementStyle.Asset
-        new_qty * fill_price * inst.multiplier
-    elseif inst.settlement == SettlementStyle.Cash
-        new_pnl_quote
-    elseif inst.settlement == SettlementStyle.VariationMargin
-        0.0
-    else
-        throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
-    end
+    new_pnl_quote = pnl_quote(inst, new_qty, fill_price, basis_after)
+    new_value_quote = value_quote(inst, new_qty, fill_price, basis_after)
 
     new_init_margin_settle = margin_init_settle(acc, inst, new_qty, fill_price)
     new_maint_margin_settle = margin_maint_settle(acc, inst, new_qty, fill_price)

@@ -14,7 +14,7 @@ A `Trade` records the actual execution of an order, including fill price, filled
 
 ## Position
 
-A `Position` maintains the net exposure for an instrument using a weighted-average cost basis. It stores the average price, quantity, and unrealized P&L (`pnl_quote`), and powers helpers like `calc_pnl_local` and `calc_return_local`. Positions are stored in `Account.positions`.
+A `Position` maintains the net exposure for an instrument using a weighted-average cost basis. It stores the average price, quantity, and unrealized P&L (`pnl_quote`), and powers helpers like `calc_pnl_quote` and `calc_return_quote`. Positions are stored in `Account.positions`.
 
 ## Instrument
 

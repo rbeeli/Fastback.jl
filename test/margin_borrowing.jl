@@ -87,5 +87,5 @@ end
 
     @test reduce_trade isa Trade
     @test pos.quantity == 15.0
-    @test init_margin_used(acc, :USD) ≈ margin_init_local(inst, pos.quantity, reduce_order.price)
+    @test init_margin_used(acc, :USD) ≈ margin_init_quote(inst, pos.quantity, reduce_order.price)
 end

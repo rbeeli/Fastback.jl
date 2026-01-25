@@ -67,7 +67,7 @@ Fees/commissions are handled elsewhere (execution/account), not here.
 - `position`: Position object.
 - `close_price`: Current closing price.
 """
-@inline function calc_pnl_local(pos::Position, close_price)
+@inline function calc_pnl_quote(pos::Position, close_price)
     # quantity negative for shorts, thus works for both long and short
     pos.quantity * (close_price - pos.avg_settle_price) * pos.inst.multiplier
 end
@@ -88,7 +88,7 @@ Calculates position return on the **entry basis** (strategy-facing).
 - `position`: Position object.
 - `close_price`: Current closing price.
 """
-@inline function calc_return_local(pos::Position{T}, close_price) where {T<:Dates.AbstractTime}
+@inline function calc_return_quote(pos::Position{T}, close_price) where {T<:Dates.AbstractTime}
     if pos.avg_entry_price == 0
         return zero(close_price)
     end
@@ -96,7 +96,7 @@ Calculates position return on the **entry basis** (strategy-facing).
 end
 
 """
-Calculates the initial margin requirement in local currency.
+Calculates the initial margin requirement in quote currency.
 
 The margin is computed based on the instrument's margin mode and parameters.
 For percent notional, the requirement scales with notional value and multiplier.
@@ -108,7 +108,7 @@ per-contract amounts are denominated in the instrument settlement currency.
 - `qty`: Position quantity (positive for long, negative for short).
 - `mark`: Current mark or close price.
 """
-function margin_init_local(inst::Instrument, qty, mark)
+function margin_init_quote(inst::Instrument, qty, mark)
     qty == 0 && return zero(Price)
     mode = inst.margin_mode
     if mode == MarginMode.None
@@ -124,7 +124,7 @@ function margin_init_local(inst::Instrument, qty, mark)
 end
 
 """
-Calculates the maintenance margin requirement in local currency.
+Calculates the maintenance margin requirement in quote currency.
 
 The margin is computed based on the instrument's margin mode and parameters.
 For percent notional, the requirement scales with notional value and multiplier.
@@ -136,7 +136,7 @@ per-contract amounts are denominated in the instrument settlement currency.
 - `qty`: Position quantity (positive for long, negative for short).
 - `mark`: Current mark or close price.
 """
-function margin_maint_local(inst::Instrument, qty, mark)
+function margin_maint_quote(inst::Instrument, qty, mark)
     qty == 0 && return zero(Price)
     mode = inst.margin_mode
     if mode == MarginMode.None

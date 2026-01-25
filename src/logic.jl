@@ -12,40 +12,27 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
     dt::TTime,
     close_price,
 ) where {TTime<:Dates.AbstractTime}
-    # update position valuation and account equity using delta of old and new value
     inst = pos.inst
     settlement = inst.settlement
     settle_cash_index = inst.settle_cash_index
-    if settlement == SettlementStyle.Asset
-        new_pnl = calc_pnl_local(pos, close_price)
-        new_value = pos.quantity * close_price * inst.multiplier
-        value_delta = to_settle(acc, inst, new_value - pos.value_quote)
-        @inbounds acc.equities[settle_cash_index] += value_delta
-        pos.pnl_quote = new_pnl
-        pos.value_quote = new_value
-        return
-    elseif settlement == SettlementStyle.Cash
-        new_pnl = calc_pnl_local(pos, close_price)
-        new_value = new_pnl
-        value_delta = to_settle(acc, inst, new_value - pos.value_quote)
-        @inbounds acc.equities[settle_cash_index] += value_delta
-        pos.pnl_quote = new_pnl
-        pos.value_quote = new_value
-        return
-    elseif settlement == SettlementStyle.VariationMargin
-        # Variation margin settlement: transfer P&L to cash and reset settle basis.
+    qty = pos.quantity
+    basis_price = pos.avg_settle_price
+
+    new_pnl = pnl_quote(inst, qty, close_price, basis_price)
+    new_value = value_quote(inst, qty, close_price, basis_price)
+
+    if settlement == SettlementStyle.VariationMargin
         if pos.value_quote != 0.0
             @inbounds acc.equities[settle_cash_index] -= to_settle(acc, inst, pos.value_quote)
             pos.value_quote = 0.0
         end
-        if pos.quantity == 0.0
+        if qty == 0.0
             pos.avg_entry_price = zero(Price)
             pos.avg_settle_price = zero(Price)
             pos.pnl_quote = 0.0
             pos.value_quote = 0.0
             return
         end
-        new_pnl = calc_pnl_local(pos, close_price)
         if new_pnl != 0.0
             settled_amount = to_settle(acc, inst, new_pnl)
             @inbounds begin
@@ -59,6 +46,11 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
         pos.avg_settle_price = close_price
         return
     end
+
+    value_delta = to_settle(acc, inst, new_value - pos.value_quote)
+    @inbounds acc.equities[settle_cash_index] += value_delta
+    pos.pnl_quote = new_pnl
+    pos.value_quote = new_value
     return
 end
 

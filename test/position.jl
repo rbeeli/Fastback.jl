@@ -11,8 +11,8 @@ using TestItemRunner
     pos = Position{DateTime}(1, TEST; avg_entry_price=px1, avg_settle_price=px1, quantity=500.0)
     @test is_long(pos)
     @test !is_short(pos)
-    @test calc_pnl_local(pos, px2) == pos.quantity * (px2 - pos.avg_settle_price)
-    @test calc_return_local(pos, px2) ≈ (px2 - px1) / px1
+    @test calc_pnl_quote(pos, px2) == pos.quantity * (px2 - pos.avg_settle_price)
+    @test calc_return_quote(pos, px2) ≈ (px2 - px1) / px1
 end
 
 @testitem "Position short pnl/return" begin
@@ -25,8 +25,8 @@ end
     pos = Position{DateTime}(2, TEST; avg_entry_price=px1, avg_settle_price=px1, quantity=-500.0)
     @test !is_long(pos)
     @test is_short(pos)
-    @test calc_pnl_local(pos, px2) == pos.quantity * (px2 - pos.avg_settle_price)
-    @test calc_return_local(pos, px2) ≈ -(px2 - px1) / px1
+    @test calc_pnl_quote(pos, px2) == pos.quantity * (px2 - pos.avg_settle_price)
+    @test calc_return_quote(pos, px2) ≈ -(px2 - px1) / px1
 end
 
 @testitem "calc_realized_qty" begin
