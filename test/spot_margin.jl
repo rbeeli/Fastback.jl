@@ -91,3 +91,54 @@ end
     @test cf.inst_index == inst.index
     @test cf.amount ≈ -expected_fee atol=1e-6
 end
+
+@testitem "Cash account can trade marginable spot long-only" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Cash, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("SPOTC/USD"),
+        :SPOTC,
+        :USD;
+        contract_kind=ContractKind.Spot,
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.5,
+        margin_maint_long=0.25,
+        margin_init_short=0.5,
+        margin_maint_short=0.25,
+    ))
+
+    dt = DateTime(2025, 1, 1)
+    price = 50.0
+    qty = 100.0
+    notional = qty * price
+
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty), dt, price)
+    @test trade isa Trade
+
+    usd = cash_asset(acc, :USD)
+    usd_idx = usd.index
+
+    balance_after_buy = cash_balance(acc, usd)
+    @test balance_after_buy ≈ 10_000.0 - notional atol=1e-8
+    pos = get_position(acc, inst)
+    @test pos.value_local ≈ notional atol=1e-8
+    @test equity(acc, usd) ≈ balance_after_buy + notional atol=1e-8
+    @test acc.init_margin_used[usd_idx] == 0.0
+    @test acc.maint_margin_used[usd_idx] == 0.0
+
+    @test pos.margin_init_local == 0.0
+    @test pos.margin_maint_local == 0.0
+
+    short_order = Order(oid!(acc), inst, dt, price, -250.0)
+    rejection = fill_order!(acc, short_order, dt, price)
+    @test rejection == OrderRejectReason.ShortNotAllowed
+
+    @test cash_balance(acc, usd) ≈ balance_after_buy atol=1e-8
+    @test cash_balance(acc, usd) ≥ 0.0
+    @test acc.init_margin_used[usd_idx] == 0.0
+    @test acc.maint_margin_used[usd_idx] == 0.0
+end

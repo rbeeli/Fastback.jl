@@ -4,9 +4,6 @@
     inst::Instrument{TTime},
     impact::FillImpact
 )::OrderRejectReason.T where {TTime<:Dates.AbstractTime}
-    if inst.margin_mode != MarginMode.None
-        return OrderRejectReason.InstrumentNotAllowed
-    end
     if inst.settlement != SettlementStyle.Asset
         return OrderRejectReason.InstrumentNotAllowed
     end
