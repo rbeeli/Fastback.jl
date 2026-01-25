@@ -21,6 +21,7 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
     const margin_init_short::Price
     const margin_maint_long::Price
     const margin_maint_short::Price
+    const short_borrow_rate::Price
     const contract_kind::ContractKind.T
     const start_time::TTime
     const expiry::TTime
@@ -45,6 +46,7 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         margin_init_short::Price=0.0,
         margin_maint_long::Price=0.0,
         margin_maint_short::Price=0.0,
+        short_borrow_rate::Price=0.0,
         multiplier::Float64=1.0,
         contract_kind::ContractKind.T=ContractKind.Spot,
         time_type::Type{TTime}=DateTime,
@@ -68,6 +70,7 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
             margin_init_short,
             margin_maint_long,
             margin_maint_short,
+            short_borrow_rate,
             contract_kind,
             start_time,
             expiry,
