@@ -16,6 +16,7 @@ include("interest.jl")
 include("funding.jl")
 include("execution.jl")
 include("risk.jl")
+include("margin.jl")
 include("logic.jl")
 include("collectors.jl")
 include("tables.jl")
@@ -77,6 +78,9 @@ export cash_asset,
     available_funds_base_ccy,
     excess_liquidity,
     excess_liquidity_base_ccy,
+    maint_deficit_base_ccy,
+    init_deficit_base_ccy,
+    is_under_maintenance,
     deposit!,
     withdraw!,
     set_interest_rates!,
@@ -88,7 +92,10 @@ export cash_asset,
     oid!,
     tid!,
     format_datetime,
-    exchange_rates
+    exchange_rates,
+    maint_deficit_base_ccy,
+    init_deficit_base_ccy,
+    is_under_maintenance
 
 # Position analytics
 export has_exposure,
