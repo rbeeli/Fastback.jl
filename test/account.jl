@@ -709,6 +709,42 @@ end
     @test acc.maint_margin_used[usd_index] ≈ 75.0
 end
 
+@testitem "Fixed-per-contract margin uses settlement currency FX" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
+
+    # Register settlement (EUR) and margin/base (USD)
+    deposit!(acc, Cash(:USD), 10_000.0)
+    deposit!(acc, Cash(:EUR), 0.0)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.10) # EUR→USD
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("FIXED/EUR"),
+        :FIXED,
+        :EUR;
+        settlement=SettlementStyle.Cash,     # settlement currency = EUR (and margin currency)
+        margin_mode=MarginMode.FixedPerContract,
+        margin_init_long=100.0,              # per-contract in settlement ccy (EUR)
+        margin_init_short=120.0,
+        margin_maint_long=50.0,
+        margin_maint_short=60.0
+    ))
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2025, 1, 1)
+    order = Order(oid!(acc), inst, dt, 10.0, 2.0) # qty=2 contracts
+    fill_order!(acc, order, dt, 10.0)
+
+    eur_idx = cash_asset(acc, :EUR).index
+    @test pos.margin_init_local ≈ 2 * 100.0           # 200 EUR
+    @test pos.margin_maint_local ≈ 2 * 50.0           # 100 EUR
+    @test acc.init_margin_used[eur_idx] ≈ pos.margin_init_local
+    @test acc.maint_margin_used[eur_idx] ≈ pos.margin_maint_local
+    @test init_margin_used_base_ccy(acc) ≈ pos.margin_init_local * 1.10
+end
+
 
 @testitem "Account with Date timestamps" begin
     using Test, Fastback, Dates, Tables

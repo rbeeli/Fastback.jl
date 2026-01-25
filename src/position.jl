@@ -100,7 +100,8 @@ Calculates the initial margin requirement in local currency.
 
 The margin is computed based on the instrument's margin mode and parameters.
 For percent notional, the requirement scales with notional value and multiplier.
-For fixed per contract, the requirement scales with absolute quantity.
+For fixed per contract, the requirement scales with absolute quantity and the
+per-contract amounts are denominated in the instrument settlement currency.
 
 # Arguments
 - `inst`: Instrument definition.
@@ -127,7 +128,8 @@ Calculates the maintenance margin requirement in local currency.
 
 The margin is computed based on the instrument's margin mode and parameters.
 For percent notional, the requirement scales with notional value and multiplier.
-For fixed per contract, the requirement scales with absolute quantity.
+For fixed per contract, the requirement scales with absolute quantity and the
+per-contract amounts are denominated in the instrument settlement currency.
 
 # Arguments
 - `inst`: Instrument definition.

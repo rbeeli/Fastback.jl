@@ -93,12 +93,11 @@ Returns a `FillImpact` describing the resulting position metrics and account del
         throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
     end
 
-    new_init_margin_quote = margin_init_local(inst, new_qty, fill_price)
-    new_maint_margin_quote = margin_maint_local(inst, new_qty, fill_price)
-    margin_idx = inst.margin_cash_index
-    rate_q_to_margin = get_rate(acc, quote_idx, margin_idx)
-    new_init_margin = new_init_margin_quote * rate_q_to_margin
-    new_maint_margin = new_maint_margin_quote * rate_q_to_margin
+    # Fixed-per-contract amounts are already in settlement currency.
+    # Percent-notional margins are in quote currency and need quote→settle FX.
+    rate_to_settle = inst.margin_mode == MarginMode.FixedPerContract ? 1.0 : get_rate(acc, quote_idx, settle_idx)
+    new_init_margin = margin_init_local(inst, new_qty, fill_price) * rate_to_settle
+    new_maint_margin = margin_maint_local(inst, new_qty, fill_price) * rate_to_settle
 
     return FillImpact(
         fill_qty,

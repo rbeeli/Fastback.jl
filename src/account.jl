@@ -188,14 +188,10 @@ function register_instrument!(
     if !has_cash_asset(acc, inst.settle_symbol)
         throw(ArgumentError("Settlement cash asset '$(inst.settle_symbol)' for instrument '$(inst.symbol)' not registered in account"))
     end
-    if !has_cash_asset(acc, inst.margin_symbol)
-        throw(ArgumentError("Margin cash asset '$(inst.margin_symbol)' for instrument '$(inst.symbol)' not registered in account"))
-    end
 
     # set cash indexes for fast array indexing and margin calculations
     inst.quote_cash_index = cash_asset(acc, inst.quote_symbol).index
     inst.settle_cash_index = cash_asset(acc, inst.settle_symbol).index
-    inst.margin_cash_index = cash_asset(acc, inst.margin_symbol).index
 
     # set asset index for fast array indexing and hashing
     inst.index = length(acc.positions) + 1

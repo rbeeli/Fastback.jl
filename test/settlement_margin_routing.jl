@@ -11,7 +11,6 @@ using TestItemRunner
 
     inst = Instrument(Symbol("BTC/EUR_SETL_USD"), :BTC, :EUR;
         settle_symbol=:USD,
-        margin_symbol=:USD,
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
@@ -96,17 +95,16 @@ end
     @test pos.avg_settle_price ≈ 100.0 atol=1e-8
 end
 
-@testitem "Margin requirement recorded in margin currency when different from settlement" begin
+@testitem "Margin requirement recorded in settlement currency" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.PerCurrency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.BaseCurrency)
     register_cash_asset!(acc, Cash(:USD))
     register_cash_asset!(acc, Cash(:EUR))
     deposit!(acc, cash_asset(acc, :USD), 5_000.0)
 
-    inst = Instrument(Symbol("DERIV/EUR-MUSD"), :BTC, :EUR;
+    inst = Instrument(Symbol("DERIV/EUR-MEUR"), :BTC, :EUR;
         settle_symbol=:EUR,
-        margin_symbol=:USD,
         contract_kind=ContractKind.Future,
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
@@ -125,13 +123,14 @@ end
     usd_idx = cash_asset(acc, :USD).index
     eur_idx = cash_asset(acc, :EUR).index
 
-    @test acc.init_margin_used[usd_idx] > 0
-    @test acc.init_margin_used[eur_idx] == 0
-    @test acc.maint_margin_used[usd_idx] > 0
-    @test acc.maint_margin_used[eur_idx] == 0
+    # Margin is recorded in settlement currency (EUR), not USD
+    @test acc.init_margin_used[eur_idx] > 0
+    @test acc.init_margin_used[usd_idx] == 0
+    @test acc.maint_margin_used[eur_idx] > 0
+    @test acc.maint_margin_used[usd_idx] == 0
 end
 
-@testitem "FX conversion applied to settlement and margin currencies" begin
+@testitem "FX conversion applied to settlement currency" begin
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
@@ -145,7 +144,6 @@ end
 
     inst = Instrument(Symbol("BTC/EUR_SETL_USD_MUSD"), :BTC, :EUR;
         settle_symbol=:USD,
-        margin_symbol=:USD,
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,

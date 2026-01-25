@@ -77,11 +77,14 @@ margin values on the position.
     close_price,
 )
     inst = pos.inst
-    quote_cash_index = inst.quote_cash_index
-    margin_cash_index = inst.margin_cash_index
-    rate_q_to_margin = get_rate(acc, quote_cash_index, margin_cash_index)
-    new_init_margin = margin_init_local(inst, pos.quantity, close_price) * rate_q_to_margin
-    new_maint_margin = margin_maint_local(inst, pos.quantity, close_price) * rate_q_to_margin
+    margin_cash_index = inst.settle_cash_index
+
+    # Fixed-per-contract margins are already in settlement currency.
+    # Percent-notional margins are in quote currency and need quote→settle FX.
+    rate_to_settle = inst.margin_mode == MarginMode.FixedPerContract ? 1.0 : get_rate(acc, inst.quote_cash_index, margin_cash_index)
+
+    new_init_margin = margin_init_local(inst, pos.quantity, close_price) * rate_to_settle
+    new_maint_margin = margin_maint_local(inst, pos.quantity, close_price) * rate_to_settle
     init_delta = new_init_margin - pos.margin_init_local
     maint_delta = new_maint_margin - pos.margin_maint_local
     @inbounds begin

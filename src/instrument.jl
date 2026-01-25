@@ -16,7 +16,6 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
     const quote_digits::Int       # number of digits after the decimal point for display
 
     const settle_symbol::Symbol   # currency used for settlement cashflows
-    const margin_symbol::Symbol   # currency used for posting/holding margin
 
     const settlement::SettlementStyle.T
     const delivery_style::DeliveryStyle.T
@@ -31,7 +30,6 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
     const expiry::TTime
     quote_cash_index::Int
     settle_cash_index::Int
-    margin_cash_index::Int
 
     const multiplier::Float64
 
@@ -48,7 +46,6 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         quote_digits=2,
         contract_kind::ContractKind.T=ContractKind.Spot,
         settle_symbol::Symbol=quote_symbol,
-        margin_symbol::Symbol=settle_symbol,
         settlement::SettlementStyle.T=SettlementStyle.Cash,
         delivery_style::DeliveryStyle.T=(contract_kind == ContractKind.Spot ? DeliveryStyle.PhysicalDeliver : DeliveryStyle.CashSettle),
         margin_mode::MarginMode.T=MarginMode.None,
@@ -74,7 +71,6 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
             quote_tick,
             quote_digits,
             settle_symbol,
-            margin_symbol,
             settlement,
             delivery_style,
             margin_mode,
@@ -88,7 +84,6 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
             expiry,
             0, # quote_cash_index
             0, # settle_cash_index
-            0, # margin_cash_index
             multiplier,
         )
     end
@@ -104,8 +99,7 @@ function Base.show(io::IO, inst::Instrument)
           "symbol=$(inst.symbol) " *
           "base=$(inst.base_symbol) [$(format_base(inst, inst.base_min)), $(format_base(inst, inst.base_max))]±$(format_base(inst, inst.base_tick)) " *
           "quote=$(inst.quote_symbol)±$(format_quote(inst, inst.quote_tick)) " *
-          "settle=$(inst.settle_symbol) " *
-          "margin=$(inst.margin_symbol)"
+          "settle=$(inst.settle_symbol)"
     print(io, str)
 end
 

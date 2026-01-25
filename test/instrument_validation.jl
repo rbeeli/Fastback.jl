@@ -136,14 +136,12 @@ end
 
     inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
         settle_symbol=:EUR,
-        margin_symbol=:EUR,
     )
 
     register_instrument!(acc, inst)
 
     @test inst.settle_symbol == :EUR
     @test inst.settle_cash_index == cash_asset(acc, inst.settle_symbol).index
-    @test inst.margin_cash_index == cash_asset(acc, inst.margin_symbol).index
     @test inst.quote_cash_index == cash_asset(acc, inst.quote_symbol).index
 end
 
