@@ -97,9 +97,17 @@ end
     update_marks!(acc, pos, close_price)
 end
 
+@inline function calc_mark_price(pos::Position, bid_price, ask_price)
+    # Variation margin instruments should mark at a neutral price to avoid spread bleed.
+    if pos.inst.settlement == SettlementStyle.VariationMargin
+        return (bid_price + ask_price) / 2
+    end
+    return is_long(pos) ? bid_price : ask_price
+end
+
 @inline function update_pnl!(acc::Account{TTime}, inst::Instrument{TTime}, bid_price, ask_price) where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
-    close_price = is_long(pos) ? bid_price : ask_price
+    close_price = calc_mark_price(pos, bid_price, ask_price)
     update_pnl!(acc, pos, close_price)
 end
 
