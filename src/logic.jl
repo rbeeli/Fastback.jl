@@ -109,6 +109,7 @@ end
     commission::Price=0.0,       # fixed commission in quote (local) currency
     commission_pct::Price=0.0,   # percentage commission of nominal order value, e.g. 0.001 = 0.1%
     allow_inactive::Bool=false,
+    trade_reason::TradeReason.T=TradeReason.Normal,
 )::Union{Trade{TTime},OrderRejectReason.T} where {TTime<:Dates.AbstractTime}
     inst = order.inst
     allow_inactive || is_active(inst, dt) || return OrderRejectReason.InstrumentNotAllowed
@@ -176,7 +177,8 @@ end
         impact.realized_qty,
         impact.commission,
         pos_qty,
-        pos_entry_price
+        pos_entry_price,
+        trade_reason
     )
 
     # track last order and trade that touched the position
@@ -208,7 +210,7 @@ function settle_expiry!(
 
     qty = -pos.quantity
     order = Order(oid!(acc), inst, dt, settle_price, qty)
-    trade = fill_order!(acc, order, dt, settle_price; commission=commission, allow_inactive=true)
+    trade = fill_order!(acc, order, dt, settle_price; commission=commission, allow_inactive=true, trade_reason=TradeReason.Expiry)
 
     return trade
 end

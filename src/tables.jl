@@ -32,6 +32,7 @@ Tables.schema(::TradesTable{TTime}) where {TTime<:Dates.AbstractTime} = Tables.S
         :position_qty,
         :position_price,
         :commission,
+        :reason,
     ),
     (
         Int,
@@ -50,6 +51,7 @@ Tables.schema(::TradesTable{TTime}) where {TTime<:Dates.AbstractTime} = Tables.S
         Quantity,
         Price,
         Price,
+        TradeReason.T,
     )
 )
 
@@ -83,6 +85,7 @@ function Base.iterate(iter::TradeRows{TTime}, idx::Int=1) where {TTime<:Dates.Ab
         position_qty=t.pos_qty,
         position_price=t.pos_price,
         commission=t.commission,
+        reason=t.reason,
     )
     return row, idx + 1
 end

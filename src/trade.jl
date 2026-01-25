@@ -12,6 +12,7 @@ mutable struct Trade{TTime<:Dates.AbstractTime}
     const commission::Price         # paid commission in quote currency
     const pos_qty::Quantity         # quantity of the existing position
     const pos_price::Price          # average entry price of the existing position
+    const reason::TradeReason.T
 end
 
 @inline nominal_value(t::Trade) = t.fill_price * abs(t.fill_qty) * t.order.inst.multiplier
@@ -38,7 +39,8 @@ function Base.show(io::IO, t::Trade)
               "real_qty=$(format_base(inst, t.realized_qty)) $(inst.base_symbol) " *
               "commission=$(ccy_formatter(t.commission)) $(inst.quote_symbol) " *
               "pos_px=$(format_quote(inst, t.pos_price)) $(inst.quote_symbol) " *
-              "pos_qty=$(format_base(inst, t.pos_qty)) $(inst.base_symbol)")
+              "pos_qty=$(format_base(inst, t.pos_qty)) $(inst.base_symbol) " *
+              "reason=$(t.reason)")
 end
 
 Base.show(obj::Trade) = Base.show(stdout, obj)

@@ -47,6 +47,7 @@ end
         :position_qty,
         :position_price,
         :commission,
+        :reason,
     )
     trade_rows = collect(Tables.rows(tbl))
     @test length(trade_rows) == length(acc.trades)
