@@ -1,7 +1,7 @@
 # Fastback.jl - Blazingly fast Julia backtester 🚀
 
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/rbeeli/Fastback.jl/blob/main/LICENSE)
-![Maintenance](https://img.shields.io/maintenance/yes/2025)
+![Maintenance](https://img.shields.io/maintenance/yes/2026)
 [![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://rbeeli.github.io/Fastback.jl/)
 
 Fastback provides a lightweight, flexible and highly efficient event-based backtesting library for quantitative trading strategies.
