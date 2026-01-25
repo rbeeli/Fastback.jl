@@ -19,21 +19,21 @@ This reduces the implementation gap from backtesting to real-world execution sig
 
 ## Features
 
-- Event-based, modular architecture
-- Multi-currency support
-  - Hold multiple cash assets in parallel, e.g. USD, EUR, BTC etc.
-  - Trade instruments with different quote currencies corresponding to the account currencies
-  - Helpers for currency conversion
-- Supports arbitrary price data sources
-- Supports modelling commissions, execution delays, price slippage and partial fills
-- Flexible data collectors to historize account balances, drawdowns, etc.
-- Facilities for parallelized backtesting and hyperparameter optimization
-- Uses position netting approach for bookkeeping
-  - Maintains single position per instrument using weighted average cost method
+- Event-based, modular architecture that mirrors streaming execution
+- Spot, perpetual, and future instruments with lifecycle guards (start/expiry) and optional contract multipliers
+- Asset, Cash, and Variation Margin settlement styles plus margin modes for mark-to-market and liquidation
+- Multi-currency accounts
+  - Hold multiple cash assets in parallel and trade instruments with different quote currencies
+  - FX helpers and base-currency margin metrics
+- Pluggable price data sources
+- Execution modelling: commissions, delays, slippage, partial fills
+- Netted positions per instrument using weighted average cost
+- Data collectors for balances, equity, drawdowns, etc. with Tables.jl outputs
+- Parallelized batch backtesting and hyperparameter sweeps
 - Integrations
-  - [Tables.jl](https://github.com/JuliaData/Tables.jl) integration for `Account` related data like trades, positions, balances, etc.
-  - [NanoDates.jl](https://juliatime.github.io/NanoDates.jl/stable/) integration for nanosecond-resolution timestamps
-  - [Timestamps64.jl](https://rbeeli.github.io/Timestamps64.jl/stable/) integration for more efficient nanosecond-resolution timestamps
+  - [Tables.jl](https://github.com/JuliaData/Tables.jl) for trades, positions, balances, collectors
+  - [NanoDates.jl](https://juliatime.github.io/NanoDates.jl/stable/) for nanosecond timestamps
+  - [Timestamps64.jl](https://rbeeli.github.io/Timestamps64.jl/stable/) for efficient nanosecond timestamps
 
 ## Documentation & Examples
 
