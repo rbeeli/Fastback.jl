@@ -86,3 +86,36 @@ end
     )
     register_instrument!(acc, good)
 end
+
+@testitem "Instrument can have settle_symbol != quote_symbol when cash assets exist" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    register_cash_asset!(acc, Cash(:USD))
+    register_cash_asset!(acc, Cash(:EUR))
+
+    inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
+        settle_symbol=:EUR,
+        margin_symbol=:EUR,
+    )
+
+    register_instrument!(acc, inst)
+
+    @test inst.settle_symbol == :EUR
+    @test inst.settle_cash_index == cash_asset(acc, inst.settle_symbol).index
+    @test inst.margin_cash_index == cash_asset(acc, inst.margin_symbol).index
+    @test inst.quote_cash_index == cash_asset(acc, inst.quote_symbol).index
+end
+
+@testitem "register_instrument! errors when settle_symbol cash not registered" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    register_cash_asset!(acc, Cash(:USD))
+
+    inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
+        settle_symbol=:EUR,
+    )
+
+    @test_throws ArgumentError register_instrument!(acc, inst)
+end

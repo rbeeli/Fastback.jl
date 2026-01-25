@@ -15,6 +15,9 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
     const quote_tick::Price       # minimum price increment of base asset
     const quote_digits::Int       # number of digits after the decimal point for display
 
+    const settle_symbol::Symbol   # currency used for settlement cashflows
+    const margin_symbol::Symbol   # currency used for posting/holding margin
+
     const settlement::SettlementStyle.T
     const margin_mode::MarginMode.T
     const margin_init_long::Price
@@ -26,6 +29,8 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
     const start_time::TTime
     const expiry::TTime
     quote_cash_index::Int
+    settle_cash_index::Int
+    margin_cash_index::Int
 
     const multiplier::Float64
 
@@ -40,6 +45,8 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         base_digits=2,
         quote_tick::Price=0.01,
         quote_digits=2,
+        settle_symbol::Symbol=quote_symbol,
+        margin_symbol::Symbol=settle_symbol,
         settlement::SettlementStyle.T=SettlementStyle.Cash,
         margin_mode::MarginMode.T=MarginMode.None,
         margin_init_long::Price=0.0,
@@ -64,6 +71,8 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
             quote_symbol,
             quote_tick,
             quote_digits,
+            settle_symbol,
+            margin_symbol,
             settlement,
             margin_mode,
             margin_init_long,
@@ -75,6 +84,8 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
             start_time,
             expiry,
             0, # quote_cash_index
+            0, # settle_cash_index
+            0, # margin_cash_index
             multiplier,
         )
     end
