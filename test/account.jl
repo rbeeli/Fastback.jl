@@ -109,6 +109,58 @@ end
     @test isempty(acc.cashflows)
 end
 
+@testitem "Cash account withdrawals cannot overdraw" begin
+    using Test, Fastback
+
+    acc = Account(; mode=AccountMode.Cash, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 100.0)
+
+    @test_throws ArgumentError withdraw!(acc, usd, 150.0)
+    @test cash_balance(acc, usd) == 100.0
+end
+
+@testitem "Margin account withdrawal respects base-currency available funds" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.BaseCurrency)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 600.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("MARG/USD"), :MARG, :USD;
+        settlement=SettlementStyle.Cash,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.5,
+        margin_init_short=0.5,
+        margin_maint_long=0.25,
+        margin_maint_short=0.25,
+        multiplier=1.0,
+    ))
+
+    dt = DateTime(2026, 1, 1)
+    order = Order(oid!(acc), inst, dt, 1_000.0, 1.0)
+    trade = fill_order!(acc, order, dt, order.price)
+    @test trade isa Trade
+
+    @test available_funds_base_ccy(acc) ≈ 100.0 atol=1e-8
+    @test_throws ArgumentError withdraw!(acc, usd, 150.0)
+
+    withdraw!(acc, usd, 50.0)
+    @test cash_balance(acc, usd) ≈ 550.0 atol=1e-8
+end
+
+@testitem "Per-currency margin withdrawal respects available funds in that currency" begin
+    using Test, Fastback
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.PerCurrency)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 200.0)
+
+    @test_throws ArgumentError withdraw!(acc, usd, 250.0)
+    withdraw!(acc, usd, 50.0)
+    @test cash_balance(acc, usd) ≈ 150.0 atol=1e-8
+end
+
 @testitem "Account long order w/ commission ccy" begin
     using Test, Fastback, Dates
     # create trading account

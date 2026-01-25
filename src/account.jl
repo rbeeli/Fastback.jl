@@ -161,10 +161,29 @@ Use `deposit!` to fund an account.
 function withdraw!(
     acc::Account{TTime},
     cash::Cash,
-    amount::Real
+    amount::Price,
 ) where {TTime<:Dates.AbstractTime}
     isless(amount, zero(amount)) && throw(ArgumentError("Withdraw amount must be non-negative."))
-    _adjust_cash!(acc, cash, -amount)
+
+    has_cash_asset(acc, cash.symbol) || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered."))
+    cash.index > 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered."))
+
+    if acc.mode == AccountMode.Cash
+        @inbounds post_balance = acc.balances[cash.index] - amount
+        post_balance < 0 && throw(ArgumentError("Withdrawal would overdraw cash balance for $(cash.symbol)."))
+        return _adjust_cash!(acc, cash, -amount)
+    end
+
+    if acc.margining_style == MarginingStyle.PerCurrency
+        post_available = available_funds(acc, cash) - amount
+        post_available < 0 && throw(ArgumentError("Withdrawal exceeds available funds for $(cash.symbol)."))
+        return _adjust_cash!(acc, cash, -amount)
+    else
+        amount_base = amount * get_rate_base_ccy(acc, cash)
+        post_available_base = available_funds_base_ccy(acc) - amount_base
+        post_available_base < 0 && throw(ArgumentError("Withdrawal exceeds available funds in base currency."))
+        return _adjust_cash!(acc, cash, -amount)
+    end
 end
 
 """
