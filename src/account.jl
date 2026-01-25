@@ -1,5 +1,6 @@
 mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
     const mode::AccountMode.T
+    const margining_style::MarginingStyle.T
     const cash::Vector{Cash}
     const cash_by_symbol::Dict{Symbol,Cash}
     const exchange_rates::TER
@@ -23,6 +24,7 @@ mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
         base_currency::Symbol,
         time_type::Type{TTime}=DateTime,
         mode::AccountMode.T=AccountMode.Cash,
+        margining_style::MarginingStyle.T=MarginingStyle.BaseCurrency,
         date_format=dateformat"yyyy-mm-dd HH:MM:SS",
         order_sequence=0,
         trade_sequence=0,
@@ -30,6 +32,7 @@ mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
     ) where {TTime<:Dates.AbstractTime, TER<:ExchangeRates}
         new{TTime,TER}(
             mode,
+            margining_style,
             Vector{Cash}(), # cash
             Dict{Symbol,Cash}(), # cash_by_symbol
             exchange_rates,
