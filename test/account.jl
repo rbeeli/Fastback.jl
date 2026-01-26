@@ -69,9 +69,9 @@ end
     order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
     exe1 = fill_order!(acc, order, dates[1], prices[1])
     @test exe1 == acc.trades[end]
-    @test exe1.commission == 0.0
+    @test exe1.commission_settle == 0.0
     @test nominal_value(exe1) == qty * prices[1]
-    @test exe1.realized_pnl == 0.0
+    @test exe1.realized_pnl_settle == 0.0
     # @test realized_return(exe1) == 0.0
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
@@ -183,8 +183,8 @@ end
     exe1 = fill_order!(acc, order, dates[1], prices[1]; commission=commission)
     @test exe1 == acc.trades[end]
     @test nominal_value(exe1) == qty * prices[1]
-    @test exe1.commission == commission
-    @test exe1.realized_pnl == -commission
+    @test exe1.commission_settle == commission
+    @test exe1.realized_pnl_settle == -commission
     # @test realized_return(exe1) == 0.0
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
@@ -227,8 +227,8 @@ end
     commission_pct1 = 0.001
     exe1 = fill_order!(acc, order, dates[1], prices[1]; commission_pct=commission_pct1)
     @test nominal_value(exe1) == qty * prices[1]
-    @test exe1.commission == commission_pct1*nominal_value(exe1)
-    @test acc.trades[end].realized_pnl == -commission_pct1*nominal_value(exe1)
+    @test exe1.commission_settle == commission_pct1*nominal_value(exe1)
+    @test acc.trades[end].realized_pnl_settle == -commission_pct1*nominal_value(exe1)
     # @test realized_return(acc.trades[end]) == 0.0
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
@@ -237,8 +237,8 @@ end
 
     @test pos.value_quote == pos.pnl_quote
     @test pos.pnl_quote ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
-    @test cash_balance(acc, :USD) ≈ 100_000.0 - exe1.commission
-    @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - exe1.commission
+    @test cash_balance(acc, :USD) ≈ 100_000.0 - exe1.commission_settle
+    @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - exe1.commission_settle
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
     exe2 = fill_order!(acc, order, dates[3], prices[3]; commission_pct=0.0005)
@@ -246,7 +246,7 @@ end
     update_marks!(acc, pos; dt=dates[3], close_price=prices[3])
     @test pos.value_quote == pos.pnl_quote
     @test pos.pnl_quote ≈ 0
-    @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.commission - exe2.commission
+    @test cash_balance(acc, :USD) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - exe1.commission_settle - exe2.commission_settle
     @test equity(acc, :USD) ≈ cash_balance(acc, :USD)
     show(acc)
 end
@@ -269,7 +269,7 @@ end
     expected_nominal = qty * price * inst.multiplier
     @test nominal_value(order) == expected_nominal
     @test nominal_value(trade) == expected_nominal
-    @test trade.commission == commission_pct * expected_nominal
+    @test trade.commission_settle == commission_pct * expected_nominal
 end
 
 @testitem "Spot long asset-settled valuation" begin
@@ -429,7 +429,7 @@ end
     order_close = Order(oid!(acc), inst, dt_close, close_price, reduce_qty)
     trade = fill_order!(acc, order_close, dt_close, close_price)
 
-    @test trade.realized_pnl ≈ (close_price - open_price) * abs(reduce_qty)
+    @test trade.realized_pnl_settle ≈ (close_price - open_price) * abs(reduce_qty)
     @test pos.quantity ≈ qty + reduce_qty
     @test pos.avg_entry_price ≈ open_price
     @test pos.avg_settle_price ≈ close_price

@@ -1,6 +1,14 @@
 """
 Pure, settlement-aware contract math helpers shared across fill and valuation paths.
 All functions are side-effect free and return `Price`/`Quantity` primitives for easy testing.
+
+Currency and unit semantics used throughout contract math:
+
+- `price`: quote currency per base unit
+- `qty`: base units/contracts (signed)
+- `*_quote`: denominated in instrument quote currency
+- `*_settle`: denominated in instrument settlement currency
+- `*_base`: denominated in account base currency
 """
 
 @inline function pnl_quote(inst::Instrument, qty, price, basis_price)::Price

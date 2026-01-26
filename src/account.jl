@@ -1,4 +1,4 @@
-mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
+mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
     const mode::AccountMode.T
     const margining_style::MarginingStyle.T
     const cash::Vector{Cash}
@@ -33,7 +33,7 @@ mutable struct Account{TTime<:Dates.AbstractTime, TER<:ExchangeRates}
         order_sequence=0,
         trade_sequence=0,
         exchange_rates::TER=OneExchangeRates(),
-    ) where {TTime<:Dates.AbstractTime, TER<:ExchangeRates}
+    ) where {TTime<:Dates.AbstractTime,TER<:ExchangeRates}
         new{TTime,TER}(
             mode,
             margining_style,
@@ -92,7 +92,7 @@ function register_cash_asset!(
     cash::Cash
 ) where {TTime<:Dates.AbstractTime}
     # ensure cash symbol is valid
-    cash.index == 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' is already registered (index > 0).")) 
+    cash.index == 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' is already registered (index > 0)."))
 
     # ensure cash object is not being reused
     !has_cash_asset(acc, cash.symbol) || throw(ArgumentError("Cash with symbol '$(cash.symbol)' already registered."))
@@ -330,6 +330,29 @@ end
     get_rate_base_ccy(acc, idx)
 end
 
+# ---------------------------------------------------------
+# Currency/unit helpers (see currency/unit semantics note in `contract_math.jl`)
+
+"""
+Cached index for the instrument quote currency cash asset.
+"""
+@inline quote_idx(inst::Instrument) = inst.quote_cash_index
+
+"""
+Cached index for the instrument settlement currency cash asset.
+"""
+@inline settle_idx(inst::Instrument) = inst.settle_cash_index
+
+"""
+Retrieve the `Cash` object for the instrument quote currency without allocations.
+"""
+@inline quote_cash(acc::Account, inst::Instrument) = @inbounds acc.cash[quote_idx(inst)]
+
+"""
+Retrieve the `Cash` object for the instrument settlement currency without allocations.
+"""
+@inline settle_cash(acc::Account, inst::Instrument) = @inbounds acc.cash[settle_idx(inst)]
+
 function equity_base_ccy(acc::Account)::Price
     has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
     total = zero(Price)
@@ -380,22 +403,24 @@ end
 # ---------------------------------------------------------
 # FX conversion helpers
 
-@inline function rate_quote_to_settle(acc::Account, inst::Instrument)::Float64
-    get_rate(acc, inst.quote_cash_index, inst.settle_cash_index)
-end
-
+"""
+Convert a quote-currency amount into the instrument settlement currency.
+Naming follows the currency/unit semantics note in `contract_math.jl`.
+"""
 @inline function to_settle(acc::Account, inst::Instrument, amount_quote::Price)::Price
-    amount_quote * rate_quote_to_settle(acc, inst)
+    amount_quote * get_rate(acc, inst.quote_cash_index, inst.settle_cash_index)
 end
 
-@inline function rate_settle_to_base(acc::Account, settle_idx::Int)::Float64
-    get_rate_base_ccy(acc, settle_idx)
+"""
+Convert a settlement-currency amount back into the instrument quote currency.
+Inverse of `to_settle`; useful for round-trip tests and diagnostics.
+"""
+@inline function to_quote(acc::Account, inst::Instrument, amount_settle::Price)::Price
+    amount_settle * get_rate(acc, inst.settle_cash_index, inst.quote_cash_index)
 end
-
-@inline rate_settle_to_base(acc::Account, cash::Cash)::Float64 = rate_settle_to_base(acc, cash.index)
 
 @inline function to_base(acc::Account, settle_idx::Int, amount_settle::Price)::Price
-    amount_settle * rate_settle_to_base(acc, settle_idx)
+    amount_settle * get_rate_base_ccy(acc, settle_idx)
 end
 
 @inline to_base(acc::Account, cash::Cash, amount_settle::Price)::Price = to_base(acc, cash.index, amount_settle)

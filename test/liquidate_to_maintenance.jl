@@ -57,7 +57,7 @@ end
     trades = liquidate_to_maintenance!(acc, dt; commission=1.0, commission_pct=0.02)
 
     @test length(trades) == 1
-    @test trades[1].commission ≈ 21.0 # 1 fixed + 2% of 100*10
+    @test trades[1].commission_settle ≈ 21.0 # 1 fixed + 2% of 100*10
     @test !is_under_maintenance(acc)
     @test get_position(acc, inst).quantity == 0.0
 end

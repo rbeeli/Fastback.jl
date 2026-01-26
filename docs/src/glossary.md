@@ -10,7 +10,7 @@ An `Order` encapsulates an instruction to trade an instrument at a specific time
 
 ## Trade
 
-A `Trade` records the actual execution of an order, including fill price, filled and remaining quantity, realized P&L, realized quantity, commission, and the pre-trade position state. Trades accumulate in `Account.trades`.
+A `Trade` records the actual execution of an order, including fill price, filled and remaining quantity, realized P&L (`realized_pnl_settle`), realized quantity, commission (`commission_settle`), settlement cash movement (`cash_delta_settle`), and the pre-trade position state. Trades accumulate in `Account.trades`.
 
 ## Position
 
@@ -46,11 +46,11 @@ A fill is the execution of an order (whole or partial). `fill_order!` creates a 
 
 ## Commission
 
-Commission captures execution costs in the quote currency. `fill_order!` supports both fixed commissions and percentage-based fees (`commission_pct`), applying them to balances, equities, and realized P&L.
+Commission is specified in the quote currency, converted to the instrument settlement currency, and stored on the trade as `commission_settle`. `fill_order!` supports both fixed commissions and percentage-based fees (`commission_pct`), applying them to balances, equities, and realized P&L in settlement units.
 
 ## Realized P&L
 
-Realized P&L is produced when exposure decreases. `fill_order!` computes realized P&L via `calc_realized_qty`, credits it to the account balance, subtracts commissions, and resets the position's P&L accordingly.
+Realized P&L (stored as `realized_pnl_settle`) is produced when exposure decreases. `fill_order!` computes realized P&L via `calc_realized_qty`, converts it into the settlement currency, credits it to the account balance, subtracts commissions, and resets the position's P&L accordingly.
 
 ## Unrealized P&L
 

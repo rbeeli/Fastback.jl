@@ -24,7 +24,8 @@ Plans the cash, P&L, and margin impact of filling an order without mutating stat
 Assumes the caller already updated marks with `update_marks!(acc, pos; dt, close_price=fill_price)`.
 Returns a `FillPlan` describing the resulting position metrics, account deltas, and
 derived margin/value deltas in settlement currency.
-`cash_delta` and other settlement values are expressed in the instrument settlement currency.
+`cash_delta` and other settlement values are expressed in the instrument settlement currency;
+quote values use the instrument quote currency.
 """
 @inline function plan_fill(
     acc::Account{TTime},

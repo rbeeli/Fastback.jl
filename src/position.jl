@@ -1,3 +1,11 @@
+"""
+Position state tracked per instrument (see currency/unit semantics note in `contract_math.jl`).
+
+- `avg_entry_price` / `avg_settle_price`: `price`
+- `quantity`: `qty`
+- `pnl_quote`, `value_quote`: `*_quote`
+- `init_margin_settle`, `maint_margin_settle`: `*_settle`
+"""
 mutable struct Position{TTime<:Dates.AbstractTime}
     const index::Int                # unique index for each position starting from 1 (used for array indexing and hashing)
     const inst::Instrument{TTime}

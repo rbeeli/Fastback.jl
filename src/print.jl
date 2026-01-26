@@ -25,11 +25,20 @@ function print_trades(
         Dict(:name => "Price", :val => t -> t.fill_price, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
         Dict(:name => "TP", :val => t -> t.order.take_profit, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
         Dict(:name => "SL", :val => t -> t.order.stop_loss, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
-        Dict(:name => "Ccy", :val => t -> t.order.inst.quote_symbol, :fmt => (t, v) -> v),
-        Dict(:name => "P&L", :val => t -> t.realized_pnl, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
-        Dict(:name => "Cash Δ", :val => t -> t.cash_delta, :fmt => (t, v) -> format_quote(t.order.inst, v)),
+        Dict(:name => "Ccy", :val => t -> t.order.inst.settle_symbol, :fmt => (t, v) -> v),
+        Dict(:name => "P&L", :val => t -> t.realized_pnl_settle, :fmt => (t, v) -> begin
+            cash = acc.cash[t.order.inst.settle_cash_index]
+            isnan(v) ? "—" : format_cash(cash, v)
+        end),
+        Dict(:name => "Cash Δ", :val => t -> t.cash_delta_settle, :fmt => (t, v) -> begin
+            cash = acc.cash[t.order.inst.settle_cash_index]
+            format_cash(cash, v)
+        end),
         Dict(:name => "Return", :val => t -> realized_return(t), :fmt => (t, v) -> @sprintf("%.2f%%", 100v)),
-        Dict(:name => "Comm.", :val => t -> t.commission, :fmt => (t, v) -> format_quote(t.order.inst, v)),
+        Dict(:name => "Comm.", :val => t -> t.commission_settle, :fmt => (t, v) -> begin
+            cash = acc.cash[t.order.inst.settle_cash_index]
+            format_cash(cash, v)
+        end),
     ]
 
     column_labels = [c[:name] for c in cols]

@@ -100,7 +100,7 @@ end
     trades = process_expiries!(acc, dt_exp; commission_pct=commission_pct)
     trade = only(trades)
     @test trade.reason == TradeReason.Expiry
-    @test trade.commission ≈ 100.0 * 1.0 * commission_pct atol=1e-8
+    @test trade.commission_settle ≈ 100.0 * 1.0 * commission_pct atol=1e-8
     @test get_position(acc, inst).quantity == 0.0
 end
 
@@ -147,7 +147,7 @@ end
     @test length(trades) == 1
     trade = only(trades)
     @test trade.reason == TradeReason.Expiry
-    @test trade.cash_delta ≈ 0.0 atol=1e-10
+    @test trade.cash_delta_settle ≈ 0.0 atol=1e-10
 
     pos = get_position(acc, inst)
     @test pos.quantity == 0.0

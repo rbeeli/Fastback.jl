@@ -35,7 +35,7 @@ end
     trades = liquidate_all!(acc, dt; commission=2.0, commission_pct=0.01)
 
     @test length(trades) == 1
-    @test trades[1].commission ≈ 12.0  # 2 fixed + 1% of 100*10
+    @test trades[1].commission_settle ≈ 12.0  # 2 fixed + 1% of 100*10
     @test trades[1].reason == TradeReason.Liquidation
     @test get_position(acc, inst).quantity == 0.0
 end

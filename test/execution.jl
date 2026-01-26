@@ -38,10 +38,10 @@ using TestItemRunner
 
     @test trade.fill_qty == plan.fill_qty
     @test trade.remaining_qty == plan.remaining_qty
-    @test trade.realized_pnl == plan.realized_pnl_net
+    @test trade.realized_pnl_settle == plan.realized_pnl_net
     @test trade.realized_qty == plan.realized_qty
-    @test trade.commission == plan.commission
-    @test trade.cash_delta == plan.cash_delta
+    @test trade.commission_settle == plan.commission
+    @test trade.cash_delta_settle == plan.cash_delta
     @test pos.quantity == plan.new_qty
     @test pos.avg_entry_price == plan.new_avg_entry_price
     @test pos.avg_settle_price == pos.avg_entry_price
@@ -89,7 +89,7 @@ end
 
     trade = fill_order!(acc, order, dt, price; commission=commission)
 
-    @test trade.cash_delta ≈ expected_cash_delta atol=1e-12
+    @test trade.cash_delta_settle ≈ expected_cash_delta atol=1e-12
     @test cash_balance(acc, usd) ≈ cash_before + expected_cash_delta atol=1e-12
 end
 
@@ -149,9 +149,9 @@ end
 
     trade_close = fill_order!(acc, order_close, dt_mark, price_mark; commission=commission)
 
-    @test trade_close.realized_pnl == plan.realized_pnl_net
-    @test trade_close.commission == plan.commission
-    @test trade_close.cash_delta == plan.cash_delta
+    @test trade_close.realized_pnl_settle == plan.realized_pnl_net
+    @test trade_close.commission_settle == plan.commission
+    @test trade_close.cash_delta_settle == plan.cash_delta
     @test pos.quantity == plan.new_qty
     @test pos.avg_entry_price == plan.new_avg_entry_price
     @test pos.avg_settle_price == price_mark

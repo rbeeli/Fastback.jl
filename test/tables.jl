@@ -42,24 +42,71 @@ end
         :remaining_qty,
         :take_profit,
         :stop_loss,
-        :realized_pnl,
+        :realized_pnl_settle,
         :realized_qty,
         :position_qty,
         :position_price,
-        :commission,
-        :cash_delta,
+        :commission_settle,
+        :cash_delta_settle,
         :reason,
     )
     trade_rows = collect(Tables.rows(tbl))
     @test length(trade_rows) == length(acc.trades)
     @test trade_rows[1].oid == order₁.oid
-    @test trade_rows[end].realized_pnl ≈ 1.75 atol = 1e-8
-    @test trade_rows[1].cash_delta ≈ -0.5
-    @test trade_rows[end].cash_delta ≈ 1.75
+    @test trade_rows[end].realized_pnl_settle ≈ 1.75 atol = 1e-8
+    @test trade_rows[1].cash_delta_settle ≈ -0.5
+    @test trade_rows[end].cash_delta_settle ≈ 1.75
     trade_cols = Tables.columntable(tbl)
     @test trade_cols.symbol == fill(inst.symbol, length(acc.trades))
 
     println(DataFrame(tbl))
+end
+
+@testitem "trades_table uses settlement currency for quote/settle mismatch" begin
+    using Test, Fastback, Dates, Tables
+
+    er = SpotExchangeRates()
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
+    usd = Cash(:USD; digits=4)
+    eur = Cash(:EUR; digits=2)
+    deposit!(acc, usd, 5_000.0)
+    register_cash_asset!(acc, eur)
+    update_rate!(er, eur, usd, 1.2)
+
+    inst = register_instrument!(
+        acc,
+        Instrument(
+            Symbol("FX/EURUSD"),
+            :FX,
+            :EUR;
+            settle_symbol=:USD,
+            settlement=SettlementStyle.Asset,
+            margin_mode=MarginMode.PercentNotional,
+            margin_init_long=0.0,
+            margin_init_short=0.0,
+            margin_maint_long=0.0,
+            margin_maint_short=0.0,
+        ),
+    )
+
+    dt = DateTime(2025, 1, 1)
+    fill_price = 10.0
+    qty = 1.0
+    commission_quote = 2.0
+    order = Order(oid!(acc), inst, dt, fill_price, qty)
+    trade = fill_order!(acc, order, dt, fill_price; commission=commission_quote)
+
+    tbl = trades_table(acc)
+    row = only(Tables.rows(tbl))
+
+    commission_settle = commission_quote * 1.2
+    expected_cash_delta = to_settle(acc, inst, -(fill_price * qty * inst.multiplier) - commission_quote)
+
+    @test trade === acc.trades[end]
+    @test row.commission_settle ≈ commission_settle atol=1e-12
+    @test row.realized_pnl_settle ≈ -commission_settle atol=1e-12
+    @test row.cash_delta_settle ≈ expected_cash_delta atol=1e-12
+    @test row.symbol == inst.symbol
 end
 
 @testitem "positions_table" setup=[TablesTestSetup] begin
