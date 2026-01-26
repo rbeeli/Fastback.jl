@@ -183,7 +183,11 @@ export format_cash,
     is_expired,
     is_active,
     ensure_active,
-    is_margined_spot
+    is_margined_spot,
+    spot_instrument,
+    margin_spot_instrument,
+    perpetual_instrument,
+    future_instrument
 
 # Printing helpers
 export print_cash_balances,

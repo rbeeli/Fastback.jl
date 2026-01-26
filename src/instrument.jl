@@ -104,6 +104,228 @@ end
     return delivery_style
 end
 
+"""
+    spot_instrument(symbol, base_symbol, quote_symbol; kwargs...)
+
+Convenience constructor for physically delivered spot instruments. Uses
+asset settlement with no margin requirements and validates the resulting
+instrument before returning it.
+"""
+function spot_instrument(
+    symbol::Symbol,
+    base_symbol::Symbol,
+    quote_symbol::Symbol;
+    base_tick::Quantity=0.01,
+    base_min::Quantity=-Inf,
+    base_max::Quantity=Inf,
+    base_digits::Int=2,
+    quote_tick::Price=0.01,
+    quote_digits::Int=2,
+    settle_symbol::Symbol=quote_symbol,
+    short_borrow_rate::Price=0.0,
+    multiplier::Float64=1.0,
+    time_type::Type{TTime}=DateTime,
+    start_time::TTime=time_type(0),
+)::Instrument{TTime} where {TTime<:Dates.AbstractTime}
+    inst = Instrument(
+        symbol, base_symbol, quote_symbol;
+        base_tick=base_tick,
+        base_min=base_min,
+        base_max=base_max,
+        base_digits=base_digits,
+        quote_tick=quote_tick,
+        quote_digits=quote_digits,
+        contract_kind=ContractKind.Spot,
+        settle_symbol=settle_symbol,
+        settlement=SettlementStyle.Asset,
+        delivery_style=DeliveryStyle.PhysicalDeliver,
+        margin_mode=MarginMode.None,
+        short_borrow_rate=short_borrow_rate,
+        multiplier=multiplier,
+        time_type=time_type,
+        start_time=start_time,
+        expiry=time_type(0),
+    )
+    validate_instrument(inst)
+    return inst
+end
+
+"""
+    margin_spot_instrument(symbol, base_symbol, quote_symbol; kwargs...)
+
+Spot instrument on margin. Uses asset settlement with physical delivery
+and requires explicit margin parameters with `margin_mode` set.
+"""
+function margin_spot_instrument(
+    symbol::Symbol,
+    base_symbol::Symbol,
+    quote_symbol::Symbol;
+    margin_mode::MarginMode.T,
+    margin_init_long::Price,
+    margin_init_short::Price,
+    margin_maint_long::Price,
+    margin_maint_short::Price,
+    base_tick::Quantity=0.01,
+    base_min::Quantity=-Inf,
+    base_max::Quantity=Inf,
+    base_digits::Int=2,
+    quote_tick::Price=0.01,
+    quote_digits::Int=2,
+    settle_symbol::Symbol=quote_symbol,
+    short_borrow_rate::Price=0.0,
+    multiplier::Float64=1.0,
+    time_type::Type{TTime}=DateTime,
+    start_time::TTime=time_type(0),
+)::Instrument{TTime} where {TTime<:Dates.AbstractTime}
+    margin_mode == MarginMode.None &&
+        throw(ArgumentError("margin_spot_instrument requires a margin_mode other than MarginMode.None."))
+
+    inst = Instrument(
+        symbol, base_symbol, quote_symbol;
+        base_tick=base_tick,
+        base_min=base_min,
+        base_max=base_max,
+        base_digits=base_digits,
+        quote_tick=quote_tick,
+        quote_digits=quote_digits,
+        contract_kind=ContractKind.Spot,
+        settle_symbol=settle_symbol,
+        settlement=SettlementStyle.Asset,
+        delivery_style=DeliveryStyle.PhysicalDeliver,
+        margin_mode=margin_mode,
+        margin_init_long=margin_init_long,
+        margin_init_short=margin_init_short,
+        margin_maint_long=margin_maint_long,
+        margin_maint_short=margin_maint_short,
+        short_borrow_rate=short_borrow_rate,
+        multiplier=multiplier,
+        time_type=time_type,
+        start_time=start_time,
+        expiry=time_type(0),
+    )
+    validate_instrument(inst)
+    return inst
+end
+
+"""
+    perpetual_instrument(symbol, base_symbol, quote_symbol; kwargs...)
+
+Perpetual swap constructor. Uses variation margin settlement, cash
+delivery, and requires explicit margin parameters. `expiry` is fixed to
+zero by construction.
+"""
+function perpetual_instrument(
+    symbol::Symbol,
+    base_symbol::Symbol,
+    quote_symbol::Symbol;
+    margin_mode::MarginMode.T,
+    margin_init_long::Price,
+    margin_init_short::Price,
+    margin_maint_long::Price,
+    margin_maint_short::Price,
+    base_tick::Quantity=0.01,
+    base_min::Quantity=-Inf,
+    base_max::Quantity=Inf,
+    base_digits::Int=2,
+    quote_tick::Price=0.01,
+    quote_digits::Int=2,
+    settle_symbol::Symbol=quote_symbol,
+    short_borrow_rate::Price=0.0,
+    multiplier::Float64=1.0,
+    time_type::Type{TTime}=DateTime,
+    start_time::TTime=time_type(0),
+)::Instrument{TTime} where {TTime<:Dates.AbstractTime}
+    margin_mode == MarginMode.None &&
+        throw(ArgumentError("perpetual_instrument requires a margin_mode other than MarginMode.None."))
+
+    inst = Instrument(
+        symbol, base_symbol, quote_symbol;
+        base_tick=base_tick,
+        base_min=base_min,
+        base_max=base_max,
+        base_digits=base_digits,
+        quote_tick=quote_tick,
+        quote_digits=quote_digits,
+        contract_kind=ContractKind.Perpetual,
+        settle_symbol=settle_symbol,
+        settlement=SettlementStyle.VariationMargin,
+        delivery_style=DeliveryStyle.CashSettle,
+        margin_mode=margin_mode,
+        margin_init_long=margin_init_long,
+        margin_init_short=margin_init_short,
+        margin_maint_long=margin_maint_long,
+        margin_maint_short=margin_maint_short,
+        short_borrow_rate=short_borrow_rate,
+        multiplier=multiplier,
+        time_type=time_type,
+        start_time=start_time,
+        expiry=time_type(0),
+    )
+    validate_instrument(inst)
+    return inst
+end
+
+"""
+    future_instrument(symbol, base_symbol, quote_symbol; expiry, kwargs...)
+
+Future constructor using variation margin settlement. Requires a
+non-zero `expiry`, a `margin_mode` other than `MarginMode.None`, and
+explicit margin parameters. Delivery style defaults to cash settlement
+but can be overridden to physical delivery.
+"""
+function future_instrument(
+    symbol::Symbol,
+    base_symbol::Symbol,
+    quote_symbol::Symbol;
+    expiry::TTime,
+    margin_mode::MarginMode.T,
+    margin_init_long::Price,
+    margin_init_short::Price,
+    margin_maint_long::Price,
+    margin_maint_short::Price,
+    base_tick::Quantity=0.01,
+    base_min::Quantity=-Inf,
+    base_max::Quantity=Inf,
+    base_digits::Int=2,
+    quote_tick::Price=0.01,
+    quote_digits::Int=2,
+    settle_symbol::Symbol=quote_symbol,
+    delivery_style::DeliveryStyle.T=DeliveryStyle.CashSettle,
+    short_borrow_rate::Price=0.0,
+    multiplier::Float64=1.0,
+    time_type::Type{TTime}=DateTime,
+    start_time::TTime=time_type(0),
+)::Instrument{TTime} where {TTime<:Dates.AbstractTime}
+    margin_mode == MarginMode.None &&
+        throw(ArgumentError("future_instrument requires a margin_mode other than MarginMode.None."))
+
+    inst = Instrument(
+        symbol, base_symbol, quote_symbol;
+        base_tick=base_tick,
+        base_min=base_min,
+        base_max=base_max,
+        base_digits=base_digits,
+        quote_tick=quote_tick,
+        quote_digits=quote_digits,
+        contract_kind=ContractKind.Future,
+        settle_symbol=settle_symbol,
+        settlement=SettlementStyle.VariationMargin,
+        delivery_style=delivery_style,
+        margin_mode=margin_mode,
+        margin_init_long=margin_init_long,
+        margin_init_short=margin_init_short,
+        margin_maint_long=margin_maint_long,
+        margin_maint_short=margin_maint_short,
+        short_borrow_rate=short_borrow_rate,
+        multiplier=multiplier,
+        time_type=time_type,
+        start_time=start_time,
+        expiry=expiry,
+    )
+    validate_instrument(inst)
+    return inst
+end
+
 function Base.show(io::IO, inst::Instrument)
     str = "[Instrument] " *
           "symbol=$(inst.symbol) " *
