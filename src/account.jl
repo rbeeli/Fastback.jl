@@ -66,7 +66,7 @@ end
 @inline oid!(acc::Account) = acc.order_sequence += 1
 @inline tid!(acc::Account) = acc.trade_sequence += 1
 @inline cfid!(acc::Account) = acc.cashflow_sequence += 1
-@inline exchange_rates(acc::Account)::ExchangeRates = acc.exchange_rates
+@inline exchange_rates(acc::Account) = acc.exchange_rates
 
 """
 Returns a `Cash` object with the given symbol.
