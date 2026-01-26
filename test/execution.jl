@@ -1,7 +1,7 @@
 using Dates
 using TestItemRunner
 
-@testitem "compute_fill_impact mirrors fill_order! (cash-settled open)" begin
+@testitem "plan_fill mirrors fill_order! (cash-settled open)" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -21,35 +21,35 @@ using TestItemRunner
 
     commission = 0.5
     commission_pct = 0.001
-    impact = compute_fill_impact(acc, pos, order, dt, price; commission=commission, commission_pct=commission_pct)
+    plan = plan_fill(acc, pos, order, dt, price; commission=commission, commission_pct=commission_pct)
 
     @test pos.quantity == pos_qty_before
-    @test impact.fill_qty == order.quantity
-    @test impact.commission == commission + commission_pct * nominal_value(order)
-    @test impact.cash_delta == -(impact.commission)
-    @test impact.realized_pnl_gross == 0.0
-    @test impact.realized_pnl_net == -impact.commission
-    @test impact.new_qty == order.quantity
-    @test impact.new_avg_entry_price == price
-    @test impact.new_value_quote == 0.0
-    @test impact.new_pnl_quote == 0.0
+    @test plan.fill_qty == order.quantity
+    @test plan.commission == commission + commission_pct * nominal_value(order)
+    @test plan.cash_delta == -(plan.commission)
+    @test plan.realized_pnl_gross == 0.0
+    @test plan.realized_pnl_net == -plan.commission
+    @test plan.new_qty == order.quantity
+    @test plan.new_avg_entry_price == price
+    @test plan.new_value_quote == 0.0
+    @test plan.new_pnl_quote == 0.0
 
     trade = fill_order!(acc, order, dt, price; commission=commission, commission_pct=commission_pct)
 
-    @test trade.fill_qty == impact.fill_qty
-    @test trade.remaining_qty == impact.remaining_qty
-    @test trade.realized_pnl == impact.realized_pnl_net
-    @test trade.realized_qty == impact.realized_qty
-    @test trade.commission == impact.commission
-    @test trade.cash_delta == impact.cash_delta
-    @test pos.quantity == impact.new_qty
-    @test pos.avg_entry_price == impact.new_avg_entry_price
+    @test trade.fill_qty == plan.fill_qty
+    @test trade.remaining_qty == plan.remaining_qty
+    @test trade.realized_pnl == plan.realized_pnl_net
+    @test trade.realized_qty == plan.realized_qty
+    @test trade.commission == plan.commission
+    @test trade.cash_delta == plan.cash_delta
+    @test pos.quantity == plan.new_qty
+    @test pos.avg_entry_price == plan.new_avg_entry_price
     @test pos.avg_settle_price == pos.avg_entry_price
-    @test pos.value_quote == impact.new_value_quote
-    @test pos.pnl_quote == impact.new_pnl_quote
-    @test acc.init_margin_used[inst.quote_cash_index] == impact.new_init_margin_settle
-    @test acc.maint_margin_used[inst.quote_cash_index] == impact.new_maint_margin_settle
-    @test cash_balance(acc, usd) ≈ cash_before + impact.cash_delta atol=1e-12
+    @test pos.value_quote == plan.new_value_quote
+    @test pos.pnl_quote == plan.new_pnl_quote
+    @test acc.init_margin_used[inst.quote_cash_index] == plan.new_init_margin_settle
+    @test acc.maint_margin_used[inst.quote_cash_index] == plan.new_maint_margin_settle
+    @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
 end
 
 @testitem "cash_delta captures asset-settled outlay" begin
@@ -82,10 +82,10 @@ end
     cash_before = cash_balance(acc, usd)
 
     order = Order(oid!(acc), inst, dt, price, qty)
-    impact = compute_fill_impact(acc, pos, order, dt, price; commission=commission)
+    plan = plan_fill(acc, pos, order, dt, price; commission=commission)
 
     expected_cash_delta = -(price * qty * inst.multiplier) - commission
-    @test impact.cash_delta ≈ expected_cash_delta atol=1e-12
+    @test plan.cash_delta ≈ expected_cash_delta atol=1e-12
 
     trade = fill_order!(acc, order, dt, price; commission=commission)
 
@@ -93,7 +93,7 @@ end
     @test cash_balance(acc, usd) ≈ cash_before + expected_cash_delta atol=1e-12
 end
 
-@testitem "compute_fill_impact mirrors fill_order! (variation margin reduce)" begin
+@testitem "plan_fill mirrors fill_order! (variation margin reduce)" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -133,33 +133,33 @@ end
 
     order_close = Order(oid!(acc), inst, dt_mark, price_mark, -1.0)
     commission = 0.25
-    impact = compute_fill_impact(acc, pos, order_close, dt_mark, price_mark; commission=commission)
+    plan = plan_fill(acc, pos, order_close, dt_mark, price_mark; commission=commission)
 
     @test pos.quantity == pos_qty_before
-    @test impact.fill_qty == -1.0
-    @test impact.realized_pnl_gross == 10.0
-    @test impact.cash_delta == -commission
-    @test impact.new_qty == 1.0
-    @test impact.new_avg_entry_price == price_open
-    @test impact.new_value_quote == 0.0
-    @test impact.new_pnl_quote == 0.0
-    @test impact.realized_pnl_net == impact.realized_pnl_gross - commission
-    @test impact.new_init_margin_settle == abs(impact.new_qty) * price_mark * inst.multiplier * 0.1
-    @test impact.new_maint_margin_settle == abs(impact.new_qty) * price_mark * inst.multiplier * 0.05
+    @test plan.fill_qty == -1.0
+    @test plan.realized_pnl_gross == 10.0
+    @test plan.cash_delta == -commission
+    @test plan.new_qty == 1.0
+    @test plan.new_avg_entry_price == price_open
+    @test plan.new_value_quote == 0.0
+    @test plan.new_pnl_quote == 0.0
+    @test plan.realized_pnl_net == plan.realized_pnl_gross - commission
+    @test plan.new_init_margin_settle == abs(plan.new_qty) * price_mark * inst.multiplier * 0.1
+    @test plan.new_maint_margin_settle == abs(plan.new_qty) * price_mark * inst.multiplier * 0.05
 
     trade_close = fill_order!(acc, order_close, dt_mark, price_mark; commission=commission)
 
-    @test trade_close.realized_pnl == impact.realized_pnl_net
-    @test trade_close.commission == impact.commission
-    @test trade_close.cash_delta == impact.cash_delta
-    @test pos.quantity == impact.new_qty
-    @test pos.avg_entry_price == impact.new_avg_entry_price
+    @test trade_close.realized_pnl == plan.realized_pnl_net
+    @test trade_close.commission == plan.commission
+    @test trade_close.cash_delta == plan.cash_delta
+    @test pos.quantity == plan.new_qty
+    @test pos.avg_entry_price == plan.new_avg_entry_price
     @test pos.avg_settle_price == price_mark
-    @test pos.value_quote == impact.new_value_quote
-    @test pos.pnl_quote == impact.new_pnl_quote
-    @test acc.init_margin_used[inst.quote_cash_index] == impact.new_init_margin_settle
-    @test acc.maint_margin_used[inst.quote_cash_index] == impact.new_maint_margin_settle
-    @test cash_balance(acc, usd) ≈ cash_before + impact.cash_delta atol=1e-12
+    @test pos.value_quote == plan.new_value_quote
+    @test pos.pnl_quote == plan.new_pnl_quote
+    @test acc.init_margin_used[inst.quote_cash_index] == plan.new_init_margin_settle
+    @test acc.maint_margin_used[inst.quote_cash_index] == plan.new_maint_margin_settle
+    @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
     @test acc.init_margin_used[inst.quote_cash_index] < init_before
     @test acc.maint_margin_used[inst.quote_cash_index] < maint_before
 end

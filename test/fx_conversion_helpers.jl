@@ -39,13 +39,13 @@ using TestItemRunner
 
     update_marks!(acc, pos_spot; dt=dt, close_price=price)
 
-    impact = compute_fill_impact(acc, pos_spot, order, dt, price; commission=commission)
+    plan = plan_fill(acc, pos_spot, order, dt, price; commission=commission)
     expected_cash_delta = (-(price * qty * spot_inst.multiplier) - commission) * usd_to_chf
     expected_init_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_init_short * usd_to_chf
     expected_maint_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_maint_short * usd_to_chf
-    @test impact.cash_delta ≈ expected_cash_delta atol=1e-10
-    @test impact.new_init_margin_settle ≈ expected_init_margin atol=1e-10
-    @test impact.new_maint_margin_settle ≈ expected_maint_margin atol=1e-10
+    @test plan.cash_delta ≈ expected_cash_delta atol=1e-10
+    @test plan.new_init_margin_settle ≈ expected_init_margin atol=1e-10
+    @test plan.new_maint_margin_settle ≈ expected_maint_margin atol=1e-10
 
     trade = fill_order!(acc, order, dt, price; commission=commission)
     @test trade isa Trade

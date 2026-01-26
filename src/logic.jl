@@ -144,7 +144,7 @@ end
     pos_qty = pos.quantity
     pos_entry_price = pos.avg_entry_price
 
-    impact = compute_fill_impact(
+    plan = plan_fill(
         acc,
         pos,
         order,
@@ -156,34 +156,29 @@ end
     )
 
     if acc.mode == AccountMode.Cash
-        cash_reject = check_cash_account(acc, pos, inst, impact)
+        cash_reject = check_cash_account(acc, pos, inst, plan)
         cash_reject == OrderRejectReason.None || return cash_reject
     end
 
-    rejection = check_fill_constraints(acc, pos, impact)
+    rejection = check_fill_constraints(acc, pos, plan)
     rejection == OrderRejectReason.None || return rejection
 
     @inbounds begin
-        acc.balances[settle_cash_index] += impact.cash_delta
-        acc.equities[settle_cash_index] += impact.cash_delta
+        acc.balances[settle_cash_index] += plan.cash_delta
+        acc.equities[settle_cash_index] += plan.cash_delta + plan.value_delta_settle
+        acc.init_margin_used[settle_cash_index] += plan.init_margin_delta
+        acc.maint_margin_used[settle_cash_index] += plan.maint_margin_delta
     end
 
     old_qty = pos.quantity
-    pos.avg_entry_price = impact.new_avg_entry_price
-    pos.quantity = impact.new_qty
-    if pos.quantity == 0.0
-        pos.avg_entry_price = 0.0
-        pos.avg_settle_price = 0.0
-    elseif old_qty == 0.0
-        pos.avg_settle_price = pos.inst.settlement == SettlementStyle.VariationMargin ? fill_price : pos.avg_entry_price
-    elseif sign(old_qty) != sign(pos.quantity)
-        pos.avg_settle_price = fill_price
-    elseif pos.inst.settlement != SettlementStyle.VariationMargin && abs(pos.quantity) > abs(old_qty)
-        pos.avg_settle_price = pos.avg_entry_price
-    end
-
-    # update P&L of position and account equity
-    update_marks!(acc, pos; dt=dt, close_price=fill_price)
+    pos.avg_entry_price = plan.new_avg_entry_price
+    pos.avg_settle_price = plan.new_avg_settle_price
+    pos.quantity = plan.new_qty
+    pos.pnl_quote = plan.new_pnl_quote
+    pos.value_quote = plan.new_value_quote
+    pos.init_margin_settle = plan.new_init_margin_settle
+    pos.maint_margin_settle = plan.new_maint_margin_settle
+    pos.mark_price = fill_price
 
     # generate trade sequence number
     tid = tid!(acc)
@@ -194,12 +189,12 @@ end
         tid,
         dt,
         fill_price,
-        impact.fill_qty,
-        impact.remaining_qty,
-        impact.realized_pnl_net,
-        impact.realized_qty,
-        impact.commission,
-        impact.cash_delta,
+        plan.fill_qty,
+        plan.remaining_qty,
+        plan.realized_pnl_net,
+        plan.realized_qty,
+        plan.commission,
+        plan.cash_delta,
         pos_qty,
         pos_entry_price,
         trade_reason

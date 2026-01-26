@@ -2,7 +2,7 @@
     acc::Account{TTime},
     pos::Position{TTime},
     inst::Instrument{TTime},
-    impact::FillImpact
+    impact::FillPlan
 )::OrderRejectReason.T where {TTime<:Dates.AbstractTime}
     if inst.settlement != SettlementStyle.Asset
         return OrderRejectReason.InstrumentNotAllowed
@@ -20,7 +20,7 @@ end
 @inline function check_fill_constraints(
     acc::Account{TTime},
     pos::Position{TTime},
-    impact::FillImpact
+    impact::FillPlan
 )::OrderRejectReason.T where {TTime<:Dates.AbstractTime}
     inst = pos.inst
     settle_idx = inst.settle_cash_index
@@ -54,19 +54,19 @@ end
     inc_qty == 0 && return OrderRejectReason.None
 
     # Compute equity and margin after the fill
-    value_delta_settle = to_settle(acc, inst, impact.new_value_quote - pos.value_quote)
+    value_delta_settle = impact.value_delta_settle
     cash_effect = impact.cash_delta + value_delta_settle
 
     if acc.margining_style == MarginingStyle.PerCurrency
         equity_after = acc.equities[settle_idx] + cash_effect
-        init_after = acc.init_margin_used[settle_idx] - pos.init_margin_settle + impact.new_init_margin_settle
+        init_after = acc.init_margin_used[settle_idx] + impact.init_margin_delta
         if equity_after - init_after < 0
             return OrderRejectReason.InsufficientInitialMargin
         end
         return OrderRejectReason.None
     else
         equity_after = equity_base_ccy(acc) + to_base(acc, settle_idx, cash_effect)
-        init_after = init_margin_used_base_ccy(acc) - to_base(acc, settle_idx, pos.init_margin_settle) + to_base(acc, settle_idx, impact.new_init_margin_settle)
+        init_after = init_margin_used_base_ccy(acc) + to_base(acc, settle_idx, impact.init_margin_delta)
         if equity_after - init_after < 0
             return OrderRejectReason.InsufficientInitialMargin
         end
