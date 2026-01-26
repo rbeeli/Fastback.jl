@@ -58,16 +58,20 @@ function advance_time!(
 end
 
 """
-    process_expiries!(acc, dt; commission=0.0, commission_pct=0.0)
+    process_expiries!(acc, dt; commission=0.0, commission_pct=0.0, physical_expiry_policy=PhysicalExpiryPolicy.Close)
 
 Settles expired futures deterministically at `dt` using the latest mark price.
 Throws if a mark is missing (NaN).
+For physical-delivery contracts, set
+`physical_expiry_policy=PhysicalExpiryPolicy.Close` to auto-close or `PhysicalExpiryPolicy.Error` to
+refuse synthetic settlement.
 """
 function process_expiries!(
     acc::Account{TTime},
     dt::TTime;
     commission::Price=0.0,
     commission_pct::Price=0.0,
+    physical_expiry_policy::PhysicalExpiryPolicy.T=PhysicalExpiryPolicy.Close,
 ) where {TTime<:Dates.AbstractTime}
     trades = Trade{TTime}[]
 
@@ -75,6 +79,12 @@ function process_expiries!(
         inst = pos.inst
         inst.contract_kind == ContractKind.Future || continue
         is_expired(inst, dt) || continue
+        
+        if inst.delivery_style == DeliveryStyle.PhysicalDeliver &&
+           physical_expiry_policy == PhysicalExpiryPolicy.Error &&
+           pos.quantity != 0.0
+            throw(ArgumentError("Expiry for $(inst.symbol) requires physical delivery; pass physical_expiry_policy=PhysicalExpiryPolicy.Close to auto-close."))
+        end
 
         isnan(pos.mark_price) && throw(ArgumentError("Cannot settle $(inst.symbol): mark price is NaN at expiry $(dt)."))
 
@@ -85,6 +95,7 @@ function process_expiries!(
             settle_price=pos.mark_price,
             commission=commission,
             commission_pct=commission_pct,
+            physical_expiry_policy=physical_expiry_policy,
         )
         trade_or_reason === nothing && continue
         if trade_or_reason isa Trade
@@ -98,7 +109,7 @@ function process_expiries!(
 end
 
 """
-    process_step!(acc, dt; fx_updates=nothing, marks=nothing, funding=nothing, expiries=true, liquidate=false, ...)
+    process_step!(acc, dt; fx_updates=nothing, marks=nothing, funding=nothing, expiries=true, physical_expiry_policy=PhysicalExpiryPolicy.Close, liquidate=false, ...)
 
 Single-step event driver that advances time, updates FX, marks positions, applies funding,
 handles expiries, and optionally liquidates to maintenance if required.
@@ -118,6 +129,7 @@ function process_step!(
     marks::Union{Nothing,Vector{MarkUpdate}}=nothing,
     funding::Union{Nothing,Vector{FundingUpdate}}=nothing,
     expiries::Bool=true,
+    physical_expiry_policy::PhysicalExpiryPolicy.T=PhysicalExpiryPolicy.Close,
     liquidate::Bool=false,
     commission::Price=0.0,
     commission_pct::Price=0.0,
@@ -156,6 +168,7 @@ function process_step!(
         dt;
         commission=commission,
         commission_pct=commission_pct,
+        physical_expiry_policy=physical_expiry_policy,
     )
 
     if liquidate && is_under_maintenance(acc)

@@ -156,3 +156,41 @@ end
     @test equity(acc, usd) ≈ eq_before atol=1e-10
     @test cash_balance(acc, usd) ≈ cash_before atol=1e-10
 end
+
+@testitem "Physical-delivery futures can be refused via physical_expiry_policy" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 10_000.0)
+
+    dt_open = DateTime(2026, 1, 1)
+    dt_exp = dt_open + Day(2)
+
+    inst = register_instrument!(
+        acc,
+        Instrument(
+            Symbol("FUT/PHYEXPIRE"),
+            :FUT,
+            :USD;
+            contract_kind=ContractKind.Future,
+            settlement=SettlementStyle.VariationMargin,
+            margin_mode=MarginMode.PercentNotional,
+            margin_init_long=0.1,
+            margin_maint_long=0.05,
+            delivery_style=DeliveryStyle.PhysicalDeliver,
+            expiry=dt_exp,
+        ),
+    )
+
+    order = Order(oid!(acc), inst, dt_open, 50.0, 1.0)
+    fill_order!(acc, order, dt_open, 50.0)
+    update_marks!(acc, inst; dt=dt_exp, bid=55.0, ask=55.0)
+
+    @test_throws ArgumentError process_expiries!(acc, dt_exp; physical_expiry_policy=PhysicalExpiryPolicy.Error)
+    @test get_position(acc, inst).quantity == 1.0
+
+    trades = process_expiries!(acc, dt_exp; physical_expiry_policy=PhysicalExpiryPolicy.Close)
+    @test length(trades) == 1
+    @test get_position(acc, inst).quantity == 0.0
+end
