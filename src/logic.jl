@@ -98,15 +98,22 @@ Updates valuation and margin for a position using the latest mark price.
     end
     update_margin!(acc, pos; close_price=close_price)
     pos.mark_price = close_price
+    pos.mark_time = dt
     return
 end
 
-@inline function _calc_mark_price(pos::Position, bid, ask)
+@inline function _calc_mark_price(inst::Instrument, qty, bid, ask)
     # Variation margin instruments should mark at a neutral price to avoid spread bleed.
-    if pos.inst.settlement == SettlementStyle.VariationMargin
+    if inst.settlement == SettlementStyle.VariationMargin
         return (bid + ask) / 2
     end
-    is_long(pos) ? bid : ask
+    if qty > 0
+        return bid
+    elseif qty < 0
+        return ask
+    else
+        return (bid + ask) / 2
+    end
 end
 
 @inline function update_marks!(
@@ -118,29 +125,42 @@ end
     ask,
 ) where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
-    close_price = _calc_mark_price(pos, bid, ask)
+    close_price = _calc_mark_price(inst, pos.quantity, bid, ask)
     update_marks!(acc, pos; dt=dt, close_price=close_price)
 end
 
 @inline function fill_order!(
     acc::Account{TTime},
-    order::Order{TTime},
+    order::Order{TTime};
     dt::TTime,
-    fill_price::Price
-    ;
+    fill_price::Price,
     fill_qty::Quantity=0.0,      # fill quantity, if not provided, order quantity is used (complete fill)
     commission::Price=0.0,       # fixed commission in quote (local) currency
     commission_pct::Price=0.0,   # percentage commission of nominal order value, e.g. 0.001 = 0.1%
     allow_inactive::Bool=false,
     trade_reason::TradeReason.T=TradeReason.Normal,
+    mark_price::Price=Price(NaN),
+    bid::Price=Price(NaN),
+    ask::Price=Price(NaN),
 )::Union{Trade{TTime},OrderRejectReason.T} where {TTime<:Dates.AbstractTime}
     inst = order.inst
     allow_inactive || is_active(inst, dt) || return OrderRejectReason.InstrumentNotAllowed
-    # get cash indexes
-    settle_cash_index = inst.settle_cash_index
 
     pos = get_position(acc, inst)
-    update_marks!(acc, pos; dt=dt, close_price=fill_price)
+    fill_qty = fill_qty != 0 ? fill_qty : order.quantity
+
+    mark_for_valuation = if !isnan(mark_price)
+        mark_price
+    elseif !isnan(bid) && !isnan(ask)
+        _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
+    elseif pos.mark_time == dt && !isnan(pos.mark_price)
+        pos.mark_price
+    else
+        fill_price
+    end
+
+    needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_valuation || pos.mark_time != dt
+    needs_mark_update && update_marks!(acc, pos; dt=dt, close_price=mark_for_valuation)
     pos_qty = pos.quantity
     pos_entry_price = pos.avg_entry_price
 
@@ -148,8 +168,9 @@ end
         acc,
         pos,
         order,
-        dt,
-        fill_price;
+        dt=dt,
+        fill_price=fill_price,
+        mark_price=mark_for_valuation,
         fill_qty=fill_qty,
         commission=commission,
         commission_pct=commission_pct,
@@ -162,7 +183,8 @@ end
 
     rejection = check_fill_constraints(acc, pos, plan)
     rejection == OrderRejectReason.None || return rejection
-
+    
+    settle_cash_index = inst.settle_cash_index
     @inbounds begin
         acc.balances[settle_cash_index] += plan.cash_delta
         acc.equities[settle_cash_index] += plan.cash_delta + plan.value_delta_settle
@@ -170,7 +192,6 @@ end
         acc.maint_margin_used[settle_cash_index] += plan.maint_margin_delta
     end
 
-    old_qty = pos.quantity
     pos.avg_entry_price = plan.new_avg_entry_price
     pos.avg_settle_price = plan.new_avg_settle_price
     pos.quantity = plan.new_qty
@@ -178,7 +199,8 @@ end
     pos.value_quote = plan.new_value_quote
     pos.init_margin_settle = plan.new_init_margin_settle
     pos.maint_margin_settle = plan.new_maint_margin_settle
-    pos.mark_price = fill_price
+    pos.mark_price = mark_for_valuation
+    pos.mark_time = dt
 
     # generate trade sequence number
     tid = tid!(acc)
@@ -235,7 +257,7 @@ function settle_expiry!(
 
     qty = -pos.quantity
     order = Order(oid!(acc), inst, dt, settle_price, qty)
-    trade = fill_order!(acc, order, dt, settle_price;
+    trade = fill_order!(acc, order; dt=dt, fill_price=settle_price,
         commission=commission,
         commission_pct=commission_pct,
         allow_inactive=true,
