@@ -176,11 +176,6 @@ end
         commission_pct=commission_pct,
     )
 
-    if acc.mode == AccountMode.Cash
-        cash_reject = check_cash_account(acc, pos, inst, plan)
-        cash_reject == OrderRejectReason.None || return cash_reject
-    end
-
     rejection = check_fill_constraints(acc, pos, plan)
     rejection == OrderRejectReason.None || return rejection
     

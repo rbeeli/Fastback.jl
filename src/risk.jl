@@ -1,22 +1,3 @@
-@inline function check_cash_account(
-    acc::Account{TTime},
-    pos::Position{TTime},
-    inst::Instrument{TTime},
-    impact::FillPlan
-)::OrderRejectReason.T where {TTime<:Dates.AbstractTime}
-    if inst.settlement != SettlementStyle.Asset
-        return OrderRejectReason.InstrumentNotAllowed
-    end
-    if impact.new_qty < 0
-        return OrderRejectReason.ShortNotAllowed
-    end
-    @inbounds new_balance = acc.balances[inst.settle_cash_index] + impact.cash_delta
-    if new_balance < 0
-        return OrderRejectReason.InsufficientCash
-    end
-    return OrderRejectReason.None
-end
-
 @inline function check_fill_constraints(
     acc::Account{TTime},
     pos::Position{TTime},
@@ -26,8 +7,11 @@ end
     settle_idx = inst.settle_cash_index
     inc_qty = calc_exposure_increase_quantity(pos.quantity, impact.fill_qty)
 
-    # cash account: disallow shorts and overdrafts
+    # cash account: disallow non-asset instruments, shorts, overdrafts
     if acc.mode == AccountMode.Cash
+        if inst.settlement != SettlementStyle.Asset
+            return OrderRejectReason.InstrumentNotAllowed
+        end
         if impact.new_qty < 0
             return OrderRejectReason.ShortNotAllowed
         end
