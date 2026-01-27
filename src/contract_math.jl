@@ -45,7 +45,7 @@ end
     elseif settlement == SettlementStyle.Cash
         return realized_pnl_quote - commission_total_quote
     elseif settlement == SettlementStyle.VariationMargin
-        return -commission_total_quote
+        return realized_pnl_quote - commission_total_quote
     else
         throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
     end
