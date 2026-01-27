@@ -21,7 +21,7 @@ using TestItemRunner
         margin_maint_long=0.25,
     ))
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, DateTime(2024, 1, 1), 100.0, 10.0), DateTime(2024, 1, 1), 100.0)
+    trade = fill_order!(acc, Order(oid!(acc), inst, DateTime(2024, 1, 1), 100.0, 10.0); dt=DateTime(2024, 1, 1), fill_price=100.0)
     @test trade isa Trade
     @test cash_balance(acc, :EUR) ≈ -1_000.0
     @test init_margin_used_base_ccy(acc) ≈ 500.0 * 1.07 atol = 1e-8
@@ -48,6 +48,6 @@ end
         margin_maint_long=0.25,
     ))
 
-    rej = fill_order!(acc, Order(oid!(acc), inst, DateTime(2024, 1, 1), 100.0, 10.0), DateTime(2024, 1, 1), 100.0)
+    rej = fill_order!(acc, Order(oid!(acc), inst, DateTime(2024, 1, 1), 100.0, 10.0); dt=DateTime(2024, 1, 1), fill_price=100.0)
     @test rej == OrderRejectReason.InsufficientInitialMargin
 end

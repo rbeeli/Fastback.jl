@@ -21,7 +21,8 @@ end
 """
 Plans the cash, P&L, and margin impact of filling an order without mutating state.
 
-Assumes the caller already updated marks with `update_marks!(acc, pos; dt, close_price=fill_price)`.
+Assumes the caller already updated marks with the current valuation price
+(`update_marks!(acc, pos; dt, close_price=mark_price)`).
 Returns a `FillPlan` describing the resulting position metrics, account deltas, and
 derived margin/value deltas in settlement currency.
 `cash_delta` and other settlement values are expressed in the instrument settlement currency;
@@ -30,13 +31,13 @@ quote values use the instrument quote currency.
 @inline function plan_fill(
     acc::Account{TTime},
     pos::Position{TTime},
-    order::Order{TTime},
+    order::Order{TTime};
     dt::TTime,
-    fill_price::Price
-    ;
-    fill_qty::Quantity=0.0,
-    commission::Price=0.0,
-    commission_pct::Price=0.0,
+    fill_price::Price,
+    mark_price::Price,
+    fill_qty::Quantity,
+    commission::Price,
+    commission_pct::Price,
 ) where {TTime<:Dates.AbstractTime}
     inst = order.inst
 
@@ -101,12 +102,12 @@ quote values use the instrument quote currency.
         new_avg_entry_price
     end
 
-    new_pnl_quote = pnl_quote(inst, new_qty, fill_price, basis_after)
-    new_value_quote = value_quote(inst, new_qty, fill_price, basis_after)
+    new_pnl_quote = pnl_quote(inst, new_qty, mark_price, basis_after)
+    new_value_quote = value_quote(inst, new_qty, mark_price, basis_after)
     value_delta_settle = to_settle(acc, inst, new_value_quote - pos_value_quote)
 
-    new_init_margin_settle = margin_init_settle(acc, inst, new_qty, fill_price)
-    new_maint_margin_settle = margin_maint_settle(acc, inst, new_qty, fill_price)
+    new_init_margin_settle = margin_init_settle(acc, inst, new_qty, mark_price)
+    new_maint_margin_settle = margin_maint_settle(acc, inst, new_qty, mark_price)
     init_margin_delta = new_init_margin_settle - pos_init_margin
     maint_margin_delta = new_maint_margin_settle - pos_maint_margin
 

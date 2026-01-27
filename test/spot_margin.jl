@@ -24,7 +24,7 @@ using TestItemRunner
     price = 100.0
     qty = 200.0                # notional = 20_000
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty), dt, price)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt=dt, fill_price=price)
     @test trade isa Trade
 
     usd = cash_asset(acc, :USD)
@@ -65,7 +65,7 @@ end
     price = 100.0
     qty = -200.0               # notional = 20_000
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty), dt0, price)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price)
     @test trade isa Trade
 
     usd = cash_asset(acc, :USD)
@@ -116,7 +116,7 @@ end
     qty = 100.0
     notional = qty * price
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty), dt, price)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt=dt, fill_price=price)
     @test trade isa Trade
 
     usd = cash_asset(acc, :USD)
@@ -134,7 +134,7 @@ end
     @test pos.maint_margin_settle == 0.0
 
     short_order = Order(oid!(acc), inst, dt, price, -250.0)
-    rejection = fill_order!(acc, short_order, dt, price)
+    rejection = fill_order!(acc, short_order; dt=dt, fill_price=price)
     @test rejection == OrderRejectReason.ShortNotAllowed
 
     @test cash_balance(acc, usd) ≈ balance_after_buy atol=1e-8
@@ -175,7 +175,7 @@ end
     price_entry = 100.0
     qty = 10.0
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price_entry, qty), dt, price_entry)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price_entry, qty); dt=dt, fill_price=price_entry)
     @test trade isa Trade
 
     equity_before = equity(acc, chf)

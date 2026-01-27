@@ -57,7 +57,7 @@ function open_position!(acc, inst, dt, price)
     ## invest 20% of equity in the position
     qty = 0.2equity(acc, :USD) / price
     order = Order(oid!(acc), inst, dt, price, qty)
-    fill_order!(acc, order, dt, price; commission_pct=0.001)
+    fill_order!(acc, order; dt=dt, fill_price=price, commission_pct=0.001)
 end
 
 function close_position!(acc, inst, dt, price)
@@ -65,7 +65,7 @@ function close_position!(acc, inst, dt, price)
     pos = get_position(acc, inst)
     has_exposure(pos) || return
     order = Order(oid!(acc), inst, dt, price, -pos.quantity)
-    fill_order!(acc, order, dt, price; commission_pct=0.001)
+    fill_order!(acc, order; dt=dt, fill_price=price, commission_pct=0.001)
 end
 
 ## loop over each row of DataFrame

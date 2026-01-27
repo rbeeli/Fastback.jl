@@ -20,11 +20,11 @@ using TestItemRunner
 
     dt₁ = DateTime(2020, 1, 1, 9)
     order₁ = Order(oid!(acc), inst, dt₁, 10.0, 1.0)
-    fill_order!(acc, order₁, dt₁, 10.0; commission=0.5)
+    fill_order!(acc, order₁; dt=dt₁, fill_price=10.0, commission=0.5)
 
     dt₂ = DateTime(2020, 1, 2, 9)
     order₂ = Order(oid!(acc), inst, dt₂, 12.0, -2.0)
-    fill_order!(acc, order₂, dt₂, 12.0; commission=0.25)
+    fill_order!(acc, order₂; dt=dt₂, fill_price=12.0, commission=0.25)
 end
 
 @testitem "trades_table" setup=[TablesTestSetup] begin
@@ -94,7 +94,7 @@ end
     qty = 1.0
     commission_quote = 2.0
     order = Order(oid!(acc), inst, dt, fill_price, qty)
-    trade = fill_order!(acc, order, dt, fill_price; commission=commission_quote)
+    trade = fill_order!(acc, order; dt=dt, fill_price=fill_price, commission=commission_quote)
 
     tbl = trades_table(acc)
     row = only(Tables.rows(tbl))

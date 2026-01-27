@@ -20,7 +20,7 @@ using TestItemRunner
     price = 100.0
     qty = 10.0
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty), dt, price)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt=dt, fill_price=price)
     @test trade isa Trade
 
     # Mark price down to trigger maintenance breach: PnL = (20-100)*10 = -800, equity = 200 < maint 250

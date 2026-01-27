@@ -10,7 +10,7 @@ function liquidate_all!(
         qty == 0.0 && continue
         isnan(pos.mark_price) && throw(ArgumentError("Cannot liquidate position $(pos.inst.symbol): mark price is NaN"))
         order = Order(oid!(acc), pos.inst, dt, pos.mark_price, -qty)
-        trade = fill_order!(acc, order, dt, pos.mark_price; commission=commission, commission_pct=commission_pct, allow_inactive=true, trade_reason=TradeReason.Liquidation)
+        trade = fill_order!(acc, order; dt=dt, fill_price=pos.mark_price, commission=commission, commission_pct=commission_pct, allow_inactive=true, trade_reason=TradeReason.Liquidation)
         trade isa Trade || throw(ArgumentError("Liquidation rejected for $(pos.inst.symbol) with reason $(trade)"))
         push!(trades, trade)
     end
@@ -50,7 +50,7 @@ function liquidate_to_maintenance!(
 
         qty = max_pos.quantity
         order = Order(oid!(acc), max_pos.inst, dt, max_pos.mark_price, -qty)
-        trade = fill_order!(acc, order, dt, max_pos.mark_price; commission=commission, commission_pct=commission_pct, allow_inactive=true, trade_reason=TradeReason.Liquidation)
+        trade = fill_order!(acc, order; dt=dt, fill_price=max_pos.mark_price, commission=commission, commission_pct=commission_pct, allow_inactive=true, trade_reason=TradeReason.Liquidation)
         if trade isa Trade
             push!(trades, trade)
         else

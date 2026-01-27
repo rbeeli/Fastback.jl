@@ -30,7 +30,7 @@ using TestItemRunner
     equity_before = equity(acc, usd)
 
     order = Order(oid!(acc), inst, dt, price, qty)
-    trade = fill_order!(acc, order, dt, price; commission=commission)
+    trade = fill_order!(acc, order; dt=dt, fill_price=price, commission=commission)
     @test trade isa Trade
 
     equity_after = equity(acc, usd)
@@ -69,7 +69,7 @@ end
     order = Order(oid!(acc), inst, dt, price, qty)
 
     equity_before = equity(acc, usd)
-    fill_order!(acc, order, dt, price)
+    fill_order!(acc, order; dt=dt, fill_price=price)
     @test equity(acc, usd) ≈ equity_before atol=1e-12
 
     close_price = 55.0
@@ -111,7 +111,7 @@ end
     price = 100.0
     qty = 1.0
     order = Order(oid!(acc), inst, dt, price, qty)
-    fill_order!(acc, order, dt, price)
+    fill_order!(acc, order; dt=dt, fill_price=price)
 
     cash_before = cash_balance(acc, usd)
     update_marks!(acc, pos; dt=dt + Hour(1), close_price=110.0)

@@ -93,7 +93,7 @@ end
 
     # Fill long; mark should be fill price
     order = Order(oid!(acc), inst, DateTime(2026, 1, 1), 100.0, 1.0)
-    trade = fill_order!(acc, order, order.date, order.price)
+    trade = fill_order!(acc, order; dt=order.date, fill_price=order.price)
     pos = get_position(acc, inst)
     @test pos.mark_price == 100.0
 
@@ -103,7 +103,7 @@ end
 
     # Flip to short; mark on fill should update
     order2 = Order(oid!(acc), inst, DateTime(2026, 1, 2), 103.0, -2.0)
-    fill_order!(acc, order2, order2.date, order2.price)
+    fill_order!(acc, order2; dt=order2.date, fill_price=order2.price)
     @test pos.mark_price == 103.0
 
     # For short, close price comes from ask

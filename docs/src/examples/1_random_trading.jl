@@ -41,7 +41,7 @@ for (dt, price) in zip(dts, prices)
     if rand() < 0.01
         quantity = rand() > 0.4 ? 1.0 : -1.0
         order = Order(oid!(acc), DUMMY, dt, price, quantity)
-        fill_order!(acc, order, dt, price; fill_qty=0.75order.quantity, commission_pct=0.001)
+        fill_order!(acc, order; dt=dt, fill_price=price, fill_qty=0.75order.quantity, commission_pct=0.001)
     end
 
     ## update position and account P&L

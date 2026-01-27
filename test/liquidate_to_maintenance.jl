@@ -17,8 +17,8 @@ using TestItemRunner
         margin_maint_long=0.1, margin_maint_short=0.1))
 
     dt = DateTime(2024, 1, 1)
-    fill_order!(acc, Order(oid!(acc), inst_big, dt, 100.0, -50.0), dt, 100.0)
-    fill_order!(acc, Order(oid!(acc), inst_small, dt, 50.0, -10.0), dt, 50.0)
+    fill_order!(acc, Order(oid!(acc), inst_big, dt, 100.0, -50.0); dt=dt, fill_price=100.0)
+    fill_order!(acc, Order(oid!(acc), inst_small, dt, 50.0, -10.0); dt=dt, fill_price=50.0)
 
     # Move against the short positions to trigger a maintenance breach
     dt2 = DateTime(2024, 1, 2)
@@ -49,7 +49,7 @@ end
         margin_maint_long=2.0, margin_maint_short=2.0))
 
     dt = DateTime(2024, 1, 1)
-    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 10.0), dt, 100.0)
+    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 10.0); dt=dt, fill_price=100.0)
 
     # Account is under maintenance immediately due to high maint requirement
     @test is_under_maintenance(acc)

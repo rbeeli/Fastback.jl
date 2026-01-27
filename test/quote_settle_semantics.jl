@@ -33,7 +33,7 @@ using TestItemRunner
     # Equity changes must reflect converted value deltas, not raw quote deltas
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 50.0, 10.0)
-    trade = fill_order!(acc, order, dt, order.price)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price)
     @test trade isa Trade
 
     eq_before = acc.equities[inst.settle_cash_index]

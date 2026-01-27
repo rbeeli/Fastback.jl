@@ -21,7 +21,17 @@ using TestItemRunner
 
     commission = 0.5
     commission_pct = 0.001
-    plan = plan_fill(acc, pos, order, dt, price; commission=commission, commission_pct=commission_pct)
+    plan = plan_fill(
+        acc,
+        pos,
+        order;
+        dt=dt,
+        fill_price=price,
+        mark_price=price,
+        fill_qty=order.quantity,
+        commission=commission,
+        commission_pct=commission_pct,
+    )
 
     @test pos.quantity == pos_qty_before
     @test plan.fill_qty == order.quantity
@@ -34,7 +44,7 @@ using TestItemRunner
     @test plan.new_value_quote == 0.0
     @test plan.new_pnl_quote == 0.0
 
-    trade = fill_order!(acc, order, dt, price; commission=commission, commission_pct=commission_pct)
+    trade = fill_order!(acc, order; dt=dt, fill_price=price, commission=commission, commission_pct=commission_pct)
 
     @test trade.fill_qty == plan.fill_qty
     @test trade.remaining_qty == plan.remaining_qty
@@ -50,6 +60,28 @@ using TestItemRunner
     @test acc.init_margin_used[inst.quote_cash_index] == plan.new_init_margin_settle
     @test acc.maint_margin_used[inst.quote_cash_index] == plan.new_maint_margin_settle
     @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
+end
+
+@testitem "fills respect mark price when spreaded" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 100.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("SPRD/USD"), :SPRD, :USD))
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2025, 3, 1)
+    order = Order(oid!(acc), inst, dt, 11.0, 1.0)
+
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=9.0, ask=11.0)
+
+    @test trade isa Trade
+    @test pos.mark_price == 9.0
+    @test pos.value_quote ≈ 9.0 atol=1e-12
+    @test cash_balance(acc, usd) ≈ 89.0 atol=1e-12
+    @test equity(acc, usd) ≈ 98.0 atol=1e-12
 end
 
 @testitem "cash_delta captures asset-settled outlay" begin
@@ -82,12 +114,22 @@ end
     cash_before = cash_balance(acc, usd)
 
     order = Order(oid!(acc), inst, dt, price, qty)
-    plan = plan_fill(acc, pos, order, dt, price; commission=commission)
+    plan = plan_fill(
+        acc,
+        pos,
+        order;
+        dt=dt,
+        fill_price=price,
+        mark_price=price,
+        fill_qty=order.quantity,
+        commission=commission,
+        commission_pct=0.0,
+    )
 
     expected_cash_delta = -(price * qty * inst.multiplier) - commission
     @test plan.cash_delta ≈ expected_cash_delta atol=1e-12
 
-    trade = fill_order!(acc, order, dt, price; commission=commission)
+    trade = fill_order!(acc, order; dt=dt, fill_price=price, commission=commission)
 
     @test trade.cash_delta_settle ≈ expected_cash_delta atol=1e-12
     @test cash_balance(acc, usd) ≈ cash_before + expected_cash_delta atol=1e-12
@@ -120,7 +162,7 @@ end
     dt_open = DateTime(2025, 1, 1)
     price_open = 100.0
     order_open = Order(oid!(acc), inst, dt_open, price_open, 2.0)
-    fill_order!(acc, order_open, dt_open, price_open)
+    fill_order!(acc, order_open; dt=dt_open, fill_price=price_open)
 
     dt_mark = DateTime(2025, 1, 2)
     price_mark = 110.0
@@ -133,7 +175,17 @@ end
 
     order_close = Order(oid!(acc), inst, dt_mark, price_mark, -1.0)
     commission = 0.25
-    plan = plan_fill(acc, pos, order_close, dt_mark, price_mark; commission=commission)
+    plan = plan_fill(
+        acc,
+        pos,
+        order_close;
+        dt=dt_mark,
+        fill_price=price_mark,
+        mark_price=price_mark,
+        fill_qty=order_close.quantity,
+        commission=commission,
+        commission_pct=0.0,
+    )
 
     @test pos.quantity == pos_qty_before
     @test plan.fill_qty == -1.0
@@ -147,7 +199,7 @@ end
     @test plan.new_init_margin_settle == abs(plan.new_qty) * price_mark * inst.multiplier * 0.1
     @test plan.new_maint_margin_settle == abs(plan.new_qty) * price_mark * inst.multiplier * 0.05
 
-    trade_close = fill_order!(acc, order_close, dt_mark, price_mark; commission=commission)
+    trade_close = fill_order!(acc, order_close; dt=dt_mark, fill_price=price_mark, commission=commission)
 
     @test trade_close.realized_pnl_settle == plan.realized_pnl_net
     @test trade_close.commission_settle == plan.commission

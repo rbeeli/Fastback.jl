@@ -18,10 +18,10 @@ function run_backtest()
         update_marks!(acc, DUMMY; dt=dt, bid=price, ask=price)
 
         order = Order(oid!(acc), DUMMY, dt, price, 1.0)
-        fill_order!(acc, order, dt, price)
+        fill_order!(acc, order; dt=dt, fill_price=price)
 
         order = Order(oid!(acc), DUMMY, dt, price, -1.0)
-        fill_order!(acc, order, dt, price)
+        fill_order!(acc, order; dt=dt, fill_price=price)
     end
 end
 
@@ -53,8 +53,8 @@ const price = 100.0
 @code_native update_marks!(acc, pos; dt=dt, close_price=price)
 
 const order = Order(oid!(acc), DUMMY, dt, price, 1.0)
-@code_warntype fill_order!(acc, order, dt, price; fill_qty=0.0, commission=0.0, commission_pct=0.0)
-@code_llvm fill_order!(acc, order, dt, price; fill_qty=0.0, commission=0.0, commission_pct=0.0)
-@code_native fill_order!(acc, order, dt, price; fill_qty=0.0, commission=0.0, commission_pct=0.0)
+@code_warntype fill_order!(acc, order; dt=dt, fill_price=price, fill_qty=0.0, commission=0.0, commission_pct=0.0)
+@code_llvm fill_order!(acc, order; dt=dt, fill_price=price, fill_qty=0.0, commission=0.0, commission_pct=0.0)
+@code_native fill_order!(acc, order; dt=dt, fill_price=price, fill_qty=0.0, commission=0.0, commission_pct=0.0)
 
-@benchmark fill_order!(acc, order, dt, price; fill_qty=0.0, commission=0.0, commission_pct=0.0)
+@benchmark fill_order!(acc, order; dt=dt, fill_price=price, fill_qty=0.0, commission=0.0, commission_pct=0.0)

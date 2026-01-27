@@ -26,7 +26,7 @@ using TestItemRunner
 
     dt0 = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt0, 100.0, -5.0)
-    fill_order!(acc, order, dt0, 100.0)
+    fill_order!(acc, order; dt=dt0, fill_price=100.0)
 
     # initialize accrual clocks
     process_step!(acc, dt0)
@@ -93,7 +93,7 @@ end
     )
 
     order = Order(oid!(acc), inst, dt_open, 100.0, 1.0)
-    fill_order!(acc, order, dt_open, 100.0)
+    fill_order!(acc, order; dt=dt_open, fill_price=100.0)
     @test get_position(acc, inst).quantity == 1.0
 
     commission_pct = 0.01
@@ -130,7 +130,7 @@ end
     )
 
     order = Order(oid!(acc), inst, dt_open, 100.0, 2.0)
-    fill_order!(acc, order, dt_open, 100.0)
+    fill_order!(acc, order; dt=dt_open, fill_price=100.0)
     @test get_position(acc, inst).quantity == 2.0
     @test init_margin_used(acc, usd) > 0
 
@@ -184,7 +184,7 @@ end
     )
 
     order = Order(oid!(acc), inst, dt_open, 50.0, 1.0)
-    fill_order!(acc, order, dt_open, 50.0)
+    fill_order!(acc, order; dt=dt_open, fill_price=50.0)
     update_marks!(acc, inst; dt=dt_exp, bid=55.0, ask=55.0)
 
     @test_throws ArgumentError process_expiries!(acc, dt_exp; physical_expiry_policy=PhysicalExpiryPolicy.Error)

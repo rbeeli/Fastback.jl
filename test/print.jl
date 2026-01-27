@@ -33,7 +33,7 @@ end
     quantity = 1.0
     dt = DateTime(2021, 1, 1, 0, 0, 0)
     order = Order(oid!(acc), DUMMY, dt, price, quantity)
-    fill_order!(acc, order, dt, price; commission_pct=0.001)
+    fill_order!(acc, order; dt=dt, fill_price=price, commission_pct=0.001)
     update_marks!(acc, DUMMY; dt=dt, bid=price, ask=price)
     show(acc)
 end
@@ -67,7 +67,7 @@ end
 
     dt = DateTime(2025, 1, 1)
     order = Order(oid!(acc), inst, dt, 10.0, 1.0)
-    fill_order!(acc, order, dt, 10.0; commission=2.0)
+    fill_order!(acc, order; dt=dt, fill_price=10.0, commission=2.0)
 
     buf = IOBuffer()
     io = IOContext(buf, :displaysize => (40, 200))

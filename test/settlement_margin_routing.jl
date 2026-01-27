@@ -23,7 +23,7 @@ using TestItemRunner
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 20_000.0, 1.0)
-    trade = fill_order!(acc, order, dt, order.price)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price)
     @test trade isa Trade
 
     usd_idx = cash_asset(acc, :USD).index
@@ -68,7 +68,7 @@ end
 
     dt0 = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt0, 100.0, 1.0)
-    fill_order!(acc, order, dt0, order.price)
+    fill_order!(acc, order; dt=dt0, fill_price=order.price)
 
     usd_idx = usd.index
     @test isempty(acc.cashflows)
@@ -117,7 +117,7 @@ end
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 20_000.0, 0.1)
-    trade = fill_order!(acc, order, dt, order.price)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price)
     @test trade isa Trade
 
     usd_idx = cash_asset(acc, :USD).index
@@ -156,7 +156,7 @@ end
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 20_000.0, 1.0)
-    trade = fill_order!(acc, order, dt, order.price)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price)
     @test trade isa Trade
 
     usd_idx = cash_asset(acc, :USD).index
