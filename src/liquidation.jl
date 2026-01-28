@@ -32,16 +32,51 @@ function liquidate_to_maintenance!(
         steps > max_steps && throw(ArgumentError("Reached max_steps=$(max_steps) while account remains under maintenance."))
 
         max_pos = nothing
-        max_margin_base = -Inf
 
-        @inbounds for pos in acc.positions
-            qty = pos.quantity
-            qty == 0.0 && continue
+        if acc.margining_style == MarginingStyle.BaseCurrency
+            max_margin_base = -Inf
 
-            m_base = pos.maint_margin_settle * get_rate_base_ccy(acc, pos.inst.settle_cash_index)
-            if m_base > max_margin_base
-                max_margin_base = m_base
-                max_pos = pos
+            @inbounds for pos in acc.positions
+                qty = pos.quantity
+                qty == 0.0 && continue
+
+                m_base = pos.maint_margin_settle * get_rate_base_ccy(acc, pos.inst.settle_cash_index)
+                if m_base > max_margin_base
+                    max_margin_base = m_base
+                    max_pos = pos
+                end
+            end
+        else
+            worst_idx = 0
+            worst_excess = 0.0
+
+            @inbounds for i in eachindex(acc.maint_margin_used)
+                excess = acc.equities[i] - acc.maint_margin_used[i]
+                if excess < worst_excess
+                    worst_excess = excess
+                    worst_idx = i
+                end
+            end
+
+            worst_idx == 0 && throw(ArgumentError("Account under maintenance but no currency deficit detected."))
+
+            max_margin_settle = -Inf
+
+            @inbounds for pos in acc.positions
+                qty = pos.quantity
+                qty == 0.0 && continue
+                pos.inst.settle_cash_index == worst_idx || continue
+
+                m_settle = pos.maint_margin_settle
+                if m_settle > max_margin_settle
+                    max_margin_settle = m_settle
+                    max_pos = pos
+                end
+            end
+
+            if max_pos === nothing
+                cash_sym = @inbounds acc.cash[worst_idx].symbol
+                throw(ArgumentError("Account under maintenance in $(cash_sym) but has no open positions to liquidate."))
             end
         end
 
