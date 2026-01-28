@@ -156,16 +156,16 @@ end
     @test length(acc.cashflows) == 4
     kinds = getfield.(acc.cashflows, :kind)
     @test kinds == [
-        CashflowKind.Interest,
         CashflowKind.VariationMargin,
         CashflowKind.VariationMargin,
         CashflowKind.Funding,
+        CashflowKind.Interest,
     ]
 
-    interest_cf = acc.cashflows[1]
-    vm_perp_cf = acc.cashflows[2]
-    vm_fut_cf = acc.cashflows[3]
-    funding_cf = acc.cashflows[4]
+    vm_perp_cf = acc.cashflows[1]
+    vm_fut_cf = acc.cashflows[2]
+    funding_cf = acc.cashflows[3]
+    interest_cf = acc.cashflows[4]
 
     @test interest_cf.amount ≈ expected_chf_interest atol=1e-8
     @test vm_perp_cf.amount ≈ expected_perp_vm atol=1e-8
@@ -176,6 +176,54 @@ end
     @test !is_under_maintenance(acc)
     @test all(t.reason != TradeReason.Liquidation for t in acc.trades)
     @test count(t -> t.reason == TradeReason.Expiry, acc.trades) == 1
+end
+
+@testitem "process_step! accrues borrow fees using latest mark in step" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 50_000.0)
+
+    inst = register_instrument!(
+        acc,
+        Instrument(
+            Symbol("BORROW/USD"),
+            :BORROW,
+            :USD;
+            settlement=SettlementStyle.Asset,
+            margin_mode=MarginMode.PercentNotional,
+            margin_init_long=0.1,
+            margin_init_short=0.1,
+            margin_maint_long=0.1,
+            margin_maint_short=0.1,
+            short_borrow_rate=0.50,
+        ),
+    )
+
+    dt0 = DateTime(2026, 1, 1)
+    order = Order(oid!(acc), inst, dt0, 100.0, -10.0)
+    fill_order!(acc, order; dt=dt0, fill_price=100.0)
+
+    # initialize accrual clocks
+    process_step!(acc, dt0)
+
+    dt1 = dt0 + Day(1)
+    marks = [MarkUpdate(inst.index, 120.0, 120.0)]
+
+    bal_before = cash_balance(acc, usd)
+    process_step!(acc, dt1; marks=marks)
+    bal_after = cash_balance(acc, usd)
+
+    yearfrac = 1 / 365
+    expected_fee = abs(-10.0) * 120.0 * inst.multiplier * inst.short_borrow_rate * yearfrac
+
+    @test bal_before - bal_after ≈ expected_fee atol=1e-10
+
+    borrow_cfs = filter(cf -> cf.kind == CashflowKind.BorrowFee, acc.cashflows)
+    @test length(borrow_cfs) == 1
+    borrow_cf = only(borrow_cfs)
+    @test borrow_cf.amount ≈ -expected_fee atol=1e-10
 end
 @testitem "process_step! rejects backward time" begin
     using Test, Fastback, Dates

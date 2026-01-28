@@ -115,12 +115,14 @@ Single-step event driver that advances time, updates FX, marks positions, applie
 handles expiries, and optionally liquidates to maintenance if required.
 
 Ordering:
-1. `advance_time!` (includes interest + borrow-fee accrual)
+1. Enforce non-decreasing time
 2. Apply FX updates
 3. Apply mark updates (`update_marks!`)
 4. Apply funding updates (`apply_funding!`)
-5. Process expiries (`process_expiries!`)
-6. Optional maintenance liquidation (runs after expiry/margin release)
+5. Accrue interest then borrow fees (`accrue_interest!`, `accrue_borrow_fees!`)
+6. Process expiries (`process_expiries!`)
+7. Optional maintenance liquidation (runs after expiry/margin release)
+8. Stamp `last_event_dt`
 """
 function process_step!(
     acc::Account{TTime},
@@ -137,7 +139,9 @@ function process_step!(
     accrue_interest::Bool=true,
     accrue_borrow_fees::Bool=true,
 ) where {TTime<:Dates.AbstractTime}
-    advance_time!(acc, dt; accrue_interest=accrue_interest, accrue_borrow_fees=accrue_borrow_fees)
+    last_dt = acc.last_event_dt
+    (last_dt != TTime(0) && dt < last_dt) &&
+        throw(ArgumentError("Event datetime $(dt) precedes last event $(last_dt)."))
 
     if fx_updates !== nothing
         er = acc.exchange_rates
@@ -163,6 +167,9 @@ function process_step!(
         end
     end
 
+    accrue_interest && accrue_interest!(acc, dt)
+    accrue_borrow_fees && accrue_borrow_fees!(acc, dt)
+
     expiries && process_expiries!(
         acc,
         dt;
@@ -174,6 +181,8 @@ function process_step!(
     if liquidate && is_under_maintenance(acc)
         liquidate_to_maintenance!(acc, dt; commission=commission, commission_pct=commission_pct, max_steps=max_liq_steps)
     end
+
+    acc.last_event_dt = dt
 
     acc
 end
