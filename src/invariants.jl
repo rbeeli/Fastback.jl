@@ -72,10 +72,18 @@ function check_invariants(acc::Account; atol::Real=1e-9, rtol::Real=1e-9)
 
         if inst.settlement == SettlementStyle.VariationMargin
             isapprox(pos.value_quote, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.symbol) must have zero value_quote."))
+            isapprox(pos.value_settle, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.symbol) must have zero value_settle."))
             isapprox(pos.pnl_quote, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.symbol) must have zero pnl_quote."))
+            isapprox(pos.pnl_settle, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.symbol) must have zero pnl_settle."))
         else
             isapprox(pos.avg_settle_price, pos.avg_entry_price; atol=atol, rtol=rtol) ||
                 throw(AssertionError("Position $(inst.symbol) avg_settle_price must match avg_entry_price for non-variation settlement."))
+            val_settle_expected = to_settle(acc, inst, pos.value_quote)
+            isapprox(pos.value_settle, val_settle_expected; atol=atol, rtol=rtol) ||
+                throw(AssertionError("Position $(inst.symbol) value_settle cache is stale (expected $(val_settle_expected), found $(pos.value_settle))."))
+            pnl_settle_expected = to_settle(acc, inst, pos.pnl_quote)
+            isapprox(pos.pnl_settle, pnl_settle_expected; atol=atol, rtol=rtol) ||
+                throw(AssertionError("Position $(inst.symbol) pnl_settle cache is stale (expected $(pnl_settle_expected), found $(pos.pnl_settle))."))
         end
     end
 

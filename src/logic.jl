@@ -19,18 +19,17 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
     basis_price = pos.avg_settle_price
 
     new_pnl = pnl_quote(inst, qty, close_price, basis_price)
-    new_value = value_quote(inst, qty, close_price, basis_price)
 
     if settlement == SettlementStyle.VariationMargin
-        if pos.value_quote != 0.0
-            @inbounds acc.equities[settle_cash_index] -= to_settle(acc, inst, pos.value_quote)
-            pos.value_quote = 0.0
+        if pos.value_settle != 0.0
+            @inbounds acc.equities[settle_cash_index] -= pos.value_settle
         end
+        pos.value_settle = 0.0
         if qty == 0.0
             pos.avg_entry_price = zero(Price)
             pos.avg_settle_price = zero(Price)
             pos.pnl_quote = 0.0
-            pos.value_quote = 0.0
+            pos.pnl_settle = 0.0
             return
         end
         if new_pnl != 0.0
@@ -42,15 +41,20 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
             push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.VariationMargin, settle_cash_index, settled_amount, inst.index))
         end
         pos.pnl_quote = 0.0
-        pos.value_quote = 0.0
+        pos.pnl_settle = 0.0
+        pos.value_settle = 0.0
         pos.avg_settle_price = close_price
         return
     end
 
-    value_delta = to_settle(acc, inst, new_value - pos.value_quote)
-    @inbounds acc.equities[settle_cash_index] += value_delta
+    new_value = value_quote(inst, qty, close_price, basis_price)
+    new_value_settle = to_settle(acc, inst, new_value)
+    value_delta_settle = new_value_settle - pos.value_settle
+    @inbounds acc.equities[settle_cash_index] += value_delta_settle
     pos.pnl_quote = new_pnl
+    pos.pnl_settle = to_settle(acc, inst, new_pnl)
     pos.value_quote = new_value
+    pos.value_settle = new_value_settle
     return
 end
 
@@ -191,7 +195,9 @@ end
     pos.avg_settle_price = plan.new_avg_settle_price
     pos.quantity = plan.new_qty
     pos.pnl_quote = plan.new_pnl_quote
+    pos.pnl_settle = plan.new_pnl_settle
     pos.value_quote = plan.new_value_quote
+    pos.value_settle = plan.new_value_settle
     pos.init_margin_settle = plan.new_init_margin_settle
     pos.maint_margin_settle = plan.new_maint_margin_settle
     pos.mark_price = mark_for_valuation

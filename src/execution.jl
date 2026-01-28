@@ -12,7 +12,9 @@ struct FillPlan
     new_avg_entry_price::Price
     new_avg_settle_price::Price
     new_value_quote::Price
+    new_value_settle::Price
     new_pnl_quote::Price
+    new_pnl_settle::Price
     new_init_margin_settle::Price
     new_maint_margin_settle::Price
     value_delta_settle::Price
@@ -48,6 +50,7 @@ quote values use the instrument quote currency.
     remaining_qty = order.quantity - fill_qty
     pos_qty = pos.quantity
     pos_value_quote = pos.value_quote
+    pos_value_settle = pos.value_settle
     pos_init_margin = pos.init_margin_settle
     pos_maint_margin = pos.maint_margin_settle
     pos_avg_entry_price = pos.avg_entry_price
@@ -121,7 +124,10 @@ quote values use the instrument quote currency.
         new_pnl_quote = pnl_quote(inst, new_qty, mark_price, basis_after)
         new_value_quote = value_quote(inst, new_qty, mark_price, basis_after)
     end
-    value_delta_settle = to_settle(acc, inst, new_value_quote - pos_value_quote)
+    new_value_settle = inst.settlement == SettlementStyle.VariationMargin ? 0.0 : to_settle(acc, inst, new_value_quote)
+    value_delta_settle = new_value_settle - pos_value_settle
+
+    new_pnl_settle = inst.settlement == SettlementStyle.VariationMargin ? 0.0 : to_settle(acc, inst, new_pnl_quote)
 
     new_init_margin_settle = margin_init_settle(acc, inst, new_qty, mark_price)
     new_maint_margin_settle = margin_maint_settle(acc, inst, new_qty, mark_price)
@@ -142,7 +148,9 @@ quote values use the instrument quote currency.
         new_avg_entry_price,
         new_avg_settle_price,
         new_value_quote,
+        new_value_settle,
         new_pnl_quote,
+        new_pnl_settle,
         new_init_margin_settle,
         new_maint_margin_settle,
         value_delta_settle,

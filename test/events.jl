@@ -129,6 +129,8 @@ end
 
     bal_chf_before = cash_balance(acc, chf)
     eq_chf_before = equity(acc, chf)
+    spot_pos = get_position(acc, spot_inst)
+    spot_value_before = spot_pos.value_settle
 
     fx_updates = [FXUpdate(usd.index, chf.index, 0.8)]
     marks = [
@@ -142,7 +144,8 @@ end
 
     yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
     expected_chf_interest = bal_chf_before * 0.03 * yearfrac
-    expected_spot_mark = (110.0 - 100.0) * 0.8
+    expected_spot_value = to_settle(acc, spot_inst, value_quote(spot_inst, spot_pos.quantity, 110.0))
+    expected_spot_mark = expected_spot_value - spot_value_before
     expected_funding = -60.0 * 0.01
     expected_perp_vm = 10.0
     expected_fut_vm = 200.0

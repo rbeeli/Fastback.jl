@@ -3,7 +3,7 @@ Position state tracked per instrument (see currency/unit semantics note in `cont
 
 - `avg_entry_price` / `avg_settle_price`: `price`
 - `quantity`: `qty`
-- `pnl_quote`, `value_quote`: `*_quote`
+- `pnl_quote`, `pnl_settle`, `value_quote`, `value_settle`: cached valuation in quote/settlement currencies
 - `init_margin_settle`, `maint_margin_settle`: `*_settle`
 - `mark_price`: last valuation price at `mark_time`
 """
@@ -14,7 +14,9 @@ mutable struct Position{TTime<:Dates.AbstractTime}
     avg_settle_price::Price
     quantity::Quantity              # negative = short selling
     pnl_quote::Price                # quote currency P&L
+    pnl_settle::Price               # settlement currency P&L (cached for reporting)
     value_quote::Price              # position value contribution in quote currency
+    value_settle::Price             # position value contribution in settlement currency (cached)
     init_margin_settle::Price       # initial margin used in settlement currency
     maint_margin_settle::Price      # maintenance margin used in settlement currency
     mark_price::Price               # last valuation price
@@ -30,7 +32,9 @@ mutable struct Position{TTime<:Dates.AbstractTime}
         avg_settle_price::Price=0.0,
         quantity::Quantity=0.0,
         pnl_quote::Price=0.0,
+        pnl_settle::Price=0.0,
         value_quote::Price=0.0,
+        value_settle::Price=0.0,
         init_margin_settle::Price=0.0,
         maint_margin_settle::Price=0.0,
         mark_price::Price=Price(NaN),
@@ -45,7 +49,9 @@ mutable struct Position{TTime<:Dates.AbstractTime}
             avg_settle_price,
             quantity,
             pnl_quote,
+            pnl_settle,
             value_quote,
+            value_settle,
             init_margin_settle,
             maint_margin_settle,
             mark_price,

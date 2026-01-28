@@ -824,6 +824,50 @@ end
     @test rows[end].order_date == d₂
 end
 
+@testitem "FX move updates cached settlement value" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+
+    usd = Cash(:USD)
+    eur = Cash(:EUR)
+    deposit!(acc, usd, 1_000.0)
+    deposit!(acc, eur, 0.0)
+
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("FXEQ/EURUSD"),
+        :FXEQ,
+        :EUR;
+        settlement=SettlementStyle.Asset,
+        settle_symbol=:USD,
+        contract_kind=ContractKind.Spot,
+        delivery_style=DeliveryStyle.PhysicalDeliver,
+        margin_mode=MarginMode.None,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    order = Order(oid!(acc), inst, dt0, 100.0, 1.0)
+    fill_order!(acc, order; dt=dt0, fill_price=order.price)
+
+    pos = get_position(acc, inst)
+    update_marks!(acc, pos; dt=dt0, close_price=order.price)
+
+    equity_usd_before = equity(acc, :USD)
+    value_settle_before = pos.value_settle
+
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
+    dt1 = dt0 + Day(1)
+    update_marks!(acc, pos; dt=dt1, close_price=order.price)
+
+    @test pos.value_quote ≈ 100.0 atol=1e-12
+    @test pos.value_settle ≈ 120.0 atol=1e-12
+    @test equity(acc, :USD) ≈ equity_usd_before + (pos.value_settle - value_settle_before) atol=1e-10
+    @test Fastback.check_invariants(acc)
+end
+
 
 # @testset "Backtesting single ticker net long/short swap" begin
 #     # create instrument
