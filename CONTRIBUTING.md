@@ -8,6 +8,42 @@ Pull requests and issues are welcome.
 
 - Low: Interest accrual uses the same account-level timestamping pattern; balances are assumed constant between accrue_interest! calls. Deposits/withdrawals or cashflows between accrual points will be treated as if they were present for the whole interval, biasing interest earned/paid unless accrual is called immediately before each balance change. If that’s unintended, mirror the fix above or document the required call pattern. (src/interest.jl:35-56)
 
+- FX robustness for research-grade multi-currency margining (optional but high leverage)
+
+    Right now SpotExchangeRates requires a direct rate for every required conversion pair. For research this gets annoying fast.
+
+    Option A (minimal): enforce “rates-to-base must exist”
+
+    Add a helper require_base_fx!(acc) that checks every cash asset with nonzero balance/equity/margin has a direct rate to base.
+
+    Call it inside:
+
+    equity_base_ccy
+
+    *_margin_used_base_ccy
+
+    check_fill_constraints (BaseCurrency path)
+
+    Option B (better UX): triangulate rates via graph
+
+    Implement GraphExchangeRates <: ExchangeRates
+
+    Store directed edges updated by user
+
+    Cache full NxN matrix after each update via BFS/DFS from each node (N is small)
+
+    get_rate uses cached matrix, so conversions stay fast
+
+    Tests
+
+    Build rates EUR→USD and USD→CHF, verify EUR→CHF works without explicit update.
+
+    Verify base conversions and to_settle conversions work when only a connected graph exists.
+
+    Verification
+
+    Users stop fighting FX plumbing.
+
 ## Building documentation
 
 The documentation is built using [Documenter.jl](https://documenter.juliadocs.org/stable/).
