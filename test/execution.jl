@@ -24,13 +24,13 @@ using TestItemRunner
     plan = plan_fill(
         acc,
         pos,
-        order;
-        dt=dt,
-        fill_price=price,
-        mark_price=price,
-        fill_qty=order.quantity,
-        commission=commission,
-        commission_pct=commission_pct,
+        order,
+        dt,
+        price,
+        price,
+        order.quantity,
+        commission,
+        commission_pct,
     )
 
     @test pos.quantity == pos_qty_before
@@ -117,13 +117,13 @@ end
     plan = plan_fill(
         acc,
         pos,
-        order;
-        dt=dt,
-        fill_price=price,
-        mark_price=price,
-        fill_qty=order.quantity,
-        commission=commission,
-        commission_pct=0.0,
+        order,
+        dt,
+        price,
+        price,
+        order.quantity,
+        commission,
+        0.0,
     )
 
     expected_cash_delta = -(price * qty * inst.multiplier) - commission
@@ -178,13 +178,13 @@ end
     plan = plan_fill(
         acc,
         pos,
-        order_close;
-        dt=dt_mark,
-        fill_price=price_mark,
-        mark_price=price_mark,
-        fill_qty=order_close.quantity,
-        commission=commission,
-        commission_pct=0.0,
+        order_close,
+        dt_mark,
+        price_mark,
+        price_mark,
+        order_close.quantity,
+        commission,
+        0.0,
     )
 
     @test pos.quantity == pos_qty_before
@@ -249,13 +249,13 @@ end
     plan = plan_fill(
         acc,
         pos,
-        order;
-        dt=dt,
-        fill_price=order.price,
-        mark_price=mark_price,
-        fill_qty=order.quantity,
-        commission=0.0,
-        commission_pct=0.0,
+        order,
+        dt,
+        order.price,
+        mark_price,
+        order.quantity,
+        0.0,
+        0.0,
     )
 
     cash_before_fill = cash_balance(acc, usd)
@@ -310,13 +310,13 @@ end
     plan = plan_fill(
         acc,
         pos,
-        order;
-        dt=dt,
-        fill_price=fill_price,
-        mark_price=mark_price,
-        fill_qty=qty,
-        commission=0.0,
-        commission_pct=0.0,
+        order,
+        dt,
+        fill_price,
+        mark_price,
+        qty,
+        0.0,
+        0.0,
     )
     rejection = fill_order!(acc, order; dt=dt, fill_price=fill_price, mark_price=mark_price)
 
@@ -360,13 +360,13 @@ end
     plan = plan_fill(
         acc,
         pos,
-        reduce_order;
-        dt=dt_reduce,
-        fill_price=reduce_order.price,
-        mark_price=100.0,
-        fill_qty=reduce_order.quantity,
-        commission=commission,
-        commission_pct=0.0,
+        reduce_order,
+        dt_reduce,
+        reduce_order.price,
+        100.0,
+        reduce_order.quantity,
+        commission,
+        0.0,
     )
 
     cash_before = cash_balance(acc, usd)

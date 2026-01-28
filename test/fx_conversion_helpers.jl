@@ -42,13 +42,13 @@ using TestItemRunner
     plan = plan_fill(
         acc,
         pos_spot,
-        order;
-        dt=dt,
-        fill_price=price,
-        mark_price=price,
-        fill_qty=order.quantity,
-        commission=commission,
-        commission_pct=0.0,
+        order,
+        dt,
+        price,
+        price,
+        order.quantity,
+        commission,
+        0.0,
     )
     expected_cash_delta = (-(price * qty * spot_inst.multiplier) - commission) * usd_to_chf
     expected_init_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_init_short * usd_to_chf

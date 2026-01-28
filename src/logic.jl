@@ -1,16 +1,12 @@
-"""
-Updates position valuation and account equity using the latest mark price.
+# Positional signatures are the allocation-free hot paths; keyword wrappers are
+# kept for user ergonomics and forward directly.
 
-For asset-settled instruments, value is mark-to-market notional.
-For cash-settled instruments, value equals local P&L.
-For variation-margin instruments, unrealized P&L is settled into cash at each update.
-"""
-@inline function update_valuation!(
+
+@inline function _update_valuation!(
     acc::Account,
     pos::Position{TTime},
-    ;
     dt::TTime,
-    close_price,
+    close_price::Price,
 ) where {TTime<:Dates.AbstractTime}
     inst = pos.inst
     settlement = inst.settlement
@@ -59,16 +55,19 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
 end
 
 """
-Updates margin usage for a position and corresponding account totals.
+Updates position valuation and account equity using the latest mark price.
 
-The function applies deltas to account margin vectors and stores the new
-margin values on the position.
+For asset-settled instruments, value is mark-to-market notional.
+For cash-settled instruments, value equals local P&L.
+For variation-margin instruments, unrealized P&L is settled into cash at each update.
 """
-@inline function update_margin!(
+@inline update_valuation!(acc::Account, pos::Position{TTime}; dt::TTime, close_price::Price) where {TTime<:Dates.AbstractTime} =
+    _update_valuation!(acc, pos, dt, close_price)
+
+@inline function _update_margin!(
     acc::Account,
-    pos::Position
-    ;
-    close_price,
+    pos::Position,
+    close_price::Price,
 )
     inst = pos.inst
     margin_cash_index = inst.settle_cash_index
@@ -87,24 +86,40 @@ margin values on the position.
 end
 
 """
-Updates valuation and margin for a position using the latest mark price.
+Updates margin usage for a position and corresponding account totals.
+
+The function applies deltas to account margin vectors and stores the new
+margin values on the position.
 """
-@inline function update_marks!(
+@inline update_margin!(acc::Account, pos::Position; close_price::Price) = _update_margin!(acc, pos, close_price)
+
+@inline function _update_marks!(
     acc::Account,
-    pos::Position{TTime}
-    ;
+    pos::Position{TTime},
     dt::TTime,
-    close_price,
+    close_price::Price,
 ) where {TTime<:Dates.AbstractTime}
-    update_valuation!(acc, pos; dt=dt, close_price=close_price)
+    _update_valuation!(acc, pos, dt, close_price)
     if pos.inst.settlement != SettlementStyle.VariationMargin
         pos.avg_settle_price = pos.avg_entry_price
     end
-    update_margin!(acc, pos; close_price=close_price)
+    _update_margin!(acc, pos, close_price)
     pos.mark_price = close_price
     pos.mark_time = dt
     return
 end
+
+@inline update_marks!(acc::Account{TTime}, pos::Position{TTime}, dt::TTime, close_price::Price) where {TTime<:Dates.AbstractTime} =
+    _update_marks!(acc, pos, dt, close_price)
+
+"""
+Updates valuation and margin for a position using the latest mark price.
+
+Calls `update_valuation!`, then refreshes avg_settle_price for non-VM instruments,
+recomputes margin, and stamps the mark.
+"""
+@inline update_marks!(acc::Account, pos::Position{TTime}; dt::TTime, close_price::Price) where {TTime<:Dates.AbstractTime} =
+    _update_marks!(acc, pos, dt, close_price)
 
 @inline function _calc_mark_price(inst::Instrument, qty, bid, ask)
     # Variation margin instruments should mark at a neutral price to avoid spread bleed.
@@ -120,19 +135,32 @@ end
     end
 end
 
-@inline function update_marks!(
+@inline function _update_marks!(
     acc::Account{TTime},
-    inst::Instrument{TTime}
-    ;
+    inst::Instrument{TTime},
     dt::TTime,
-    bid,
-    ask,
+    bid::Price,
+    ask::Price,
 ) where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
     close_price = _calc_mark_price(inst, pos.quantity, bid, ask)
-    update_marks!(acc, pos; dt=dt, close_price=close_price)
+    _update_marks!(acc, pos, dt, close_price)
 end
 
+"""
+Marks an instrument by bid/ask, updating its position valuation, margin, and mark stamp.
+
+Uses mid for variation-margin instruments and side-aware bid/ask for others, then applies
+the result via the positional hot path.
+"""
+@inline update_marks!(acc::Account{TTime}, inst::Instrument{TTime}; dt::TTime, bid::Price, ask::Price) where {TTime<:Dates.AbstractTime} =
+    _update_marks!(acc, inst, dt, bid, ask)
+
+"""
+Fills an order, applying cash/equity/margin deltas and returning the resulting
+`Trade` (or an `OrderRejectReason` on rejection). Optional `mark_price`, `bid`,
+`ask` let callers control the valuation price used during the fill.
+"""
 @inline function fill_order!(
     acc::Account{TTime},
     order::Order{TTime};
@@ -143,9 +171,9 @@ end
     commission_pct::Price=0.0,   # percentage commission of nominal order value, e.g. 0.001 = 0.1%
     allow_inactive::Bool=false,
     trade_reason::TradeReason.T=TradeReason.Normal,
-    mark_price::Price=Price(NaN),
-    bid::Price=Price(NaN),
-    ask::Price=Price(NaN),
+    mark_price::Price=NaN,
+    bid::Price=NaN,
+    ask::Price=NaN,
 )::Union{Trade{TTime},OrderRejectReason.T} where {TTime<:Dates.AbstractTime}
     inst = order.inst
     allow_inactive || is_active(inst, dt) || return OrderRejectReason.InstrumentNotAllowed
@@ -164,7 +192,7 @@ end
     end
 
     needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_valuation || pos.mark_time != dt
-    needs_mark_update && update_marks!(acc, pos; dt=dt, close_price=mark_for_valuation)
+    needs_mark_update && _update_marks!(acc, pos, dt, mark_for_valuation)
     pos_qty = pos.quantity
     pos_entry_price = pos.avg_entry_price
 
@@ -172,17 +200,17 @@ end
         acc,
         pos,
         order,
-        dt=dt,
-        fill_price=fill_price,
-        mark_price=mark_for_valuation,
-        fill_qty=fill_qty,
-        commission=commission,
-        commission_pct=commission_pct,
+        dt,
+        fill_price,
+        mark_for_valuation,
+        fill_qty,
+        commission,
+        commission_pct,
     )
 
     rejection = check_fill_constraints(acc, pos, plan)
     rejection == OrderRejectReason.None || return rejection
-    
+
     settle_cash_index = inst.settle_cash_index
     @inbounds begin
         acc.balances[settle_cash_index] += plan.cash_delta
@@ -252,6 +280,7 @@ function settle_expiry!(
 )::Union{Trade{TTime},OrderRejectReason.T,Nothing} where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
     (pos.quantity == 0.0 || !is_expired(inst, dt)) && return nothing
+    
     if inst.delivery_style == DeliveryStyle.PhysicalDeliver && physical_expiry_policy == PhysicalExpiryPolicy.Error
         throw(ArgumentError("Expiry for $(inst.symbol) requires physical delivery; pass physical_expiry_policy=PhysicalExpiryPolicy.Close to auto-close."))
     end
