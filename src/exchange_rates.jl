@@ -117,6 +117,7 @@ end
 Update the exchange rate between two assets.
 """
 function update_rate!(er::SpotExchangeRates, from::Cash, to::Cash, rate::Real)
+    isfinite(rate) && rate > 0 || throw(ArgumentError("Exchange rate must be a positive finite number."))
     r = Float64(rate)
     @inbounds er.rates[from.index][to.index] = r
     @inbounds er.rates[to.index][from.index] = 1.0 / r
