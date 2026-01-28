@@ -105,3 +105,74 @@ using TestItemRunner
     @test cf_funding.cash_index == chf_idx
     @test cf_funding.amount ≈ expected_payment_settle atol=1e-8
 end
+
+@testitem "FX financing lands in settlement cash with borrow fee + interest" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+
+    usd = Cash(:USD)
+    chf = Cash(:CHF)
+    deposit!(acc, usd, 50_000.0)
+    deposit!(acc, chf, 0.0) # register CHF
+
+    usd_to_chf = 0.8
+    update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), usd_to_chf)
+    set_interest_rates!(acc, :CHF; borrow=0.05, lend=0.02)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("SPOTFXI/USDCHF"),
+        :SPOTFXI,
+        :USD;
+        settle_symbol=:CHF,
+        settlement=SettlementStyle.Asset,
+        contract_kind=ContractKind.Spot,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.5,
+        margin_maint_long=0.25,
+        margin_init_short=0.5,
+        margin_maint_short=0.25,
+        short_borrow_rate=0.10,
+        multiplier=1.0,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    price = 100.0
+    qty = -10.0
+
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price)
+    @test trade isa Trade
+
+    chf_idx = inst.settle_cash_index
+    bal_before = acc.balances[chf_idx]
+    eq_before = acc.equities[chf_idx]
+
+    @test bal_before ≈  - (price * qty) * usd_to_chf atol=1e-10  # proceeds converted to CHF
+
+    accrue_interest!(acc, dt0)
+    accrue_borrow_fees!(acc, dt0)
+    @test isempty(acc.cashflows)
+
+    dt1 = dt0 + Day(1)
+    advance_time!(acc, dt1; accrue_interest=true, accrue_borrow_fees=true)
+
+    yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
+    expected_interest = bal_before * 0.02 * yearfrac
+    expected_fee_settle = abs(qty) * price * inst.multiplier * inst.short_borrow_rate * yearfrac * usd_to_chf
+    expected_net = expected_interest - expected_fee_settle
+
+    @test acc.balances[chf_idx] ≈ bal_before + expected_net atol=1e-8
+    @test acc.equities[chf_idx] ≈ eq_before + expected_net atol=1e-8
+
+    @test length(acc.cashflows) == 2
+    interest_cf, fee_cf = acc.cashflows
+    @test interest_cf.kind == CashflowKind.Interest
+    @test interest_cf.cash_index == chf_idx
+    @test interest_cf.amount ≈ expected_interest atol=1e-8
+
+    @test fee_cf.kind == CashflowKind.BorrowFee
+    @test fee_cf.cash_index == chf_idx
+    @test fee_cf.inst_index == inst.index
+    @test fee_cf.amount ≈ -expected_fee_settle atol=1e-8
+end

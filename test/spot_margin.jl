@@ -41,6 +41,59 @@ using TestItemRunner
     @test acc.equities[usd_idx] > 0
 end
 
+@testitem "Margin spot long accrues financing interest" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 10_000.0)
+    set_interest_rates!(acc, :USD; borrow=0.10, lend=0.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("SPOTML/USD"),
+        :SPOTML,
+        :USD;
+        contract_kind=ContractKind.Spot,
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.5,
+        margin_maint_long=0.25,
+        margin_init_short=0.5,
+        margin_maint_short=0.25,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    price = 100.0
+    qty = 200.0                # notional = 20_000
+
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price)
+    @test trade isa Trade
+
+    usd = cash_asset(acc, :USD)
+    bal_before = cash_balance(acc, usd)
+    eq_before = equity(acc, usd)
+
+    @test bal_before ≈ -10_000.0 atol=1e-8
+    @test eq_before ≈ 10_000.0 atol=1e-8
+
+    accrue_interest!(acc, dt0) # initialize clock
+    @test isempty(acc.cashflows)
+
+    dt1 = dt0 + Day(1)
+    accrue_interest!(acc, dt1)
+
+    yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
+    expected_interest = bal_before * 0.10 * yearfrac
+
+    @test cash_balance(acc, usd) ≈ bal_before + expected_interest atol=1e-8
+    @test equity(acc, usd) ≈ eq_before + expected_interest atol=1e-8
+
+    cf = only(acc.cashflows)
+    @test cf.kind == CashflowKind.Interest
+    @test cf.cash_index == usd.index
+    @test cf.amount ≈ expected_interest atol=1e-8
+    @test cf.inst_index == 0
+end
+
 @testitem "Spot on margin short keeps equity, accrues borrow fees" begin
     using Test, Fastback, Dates
 
@@ -90,6 +143,70 @@ end
     @test cf.cash_index == usd_idx
     @test cf.inst_index == inst.index
     @test cf.amount ≈ -expected_fee atol=1e-6
+end
+
+@testitem "Margin spot short accrues borrow fee and earns interest on proceeds" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 10_000.0)
+    set_interest_rates!(acc, :USD; borrow=0.05, lend=0.02)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("SPOTMSI/USD"),
+        :SPOTMSI,
+        :USD;
+        contract_kind=ContractKind.Spot,
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.5,
+        margin_maint_long=0.25,
+        margin_init_short=0.5,
+        margin_maint_short=0.25,
+        short_borrow_rate=0.10,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    price = 100.0
+    qty = -200.0               # notional = 20_000
+
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price)
+    @test trade isa Trade
+
+    usd = cash_asset(acc, :USD)
+    bal_before = cash_balance(acc, usd)
+    eq_before = equity(acc, usd)
+
+    @test bal_before ≈ 30_000.0 atol=1e-8
+    @test eq_before ≈ 10_000.0 atol=1e-8
+
+    accrue_interest!(acc, dt0) # prime clocks
+    accrue_borrow_fees!(acc, dt0)
+    @test isempty(acc.cashflows)
+
+    dt1 = dt0 + Day(1)
+    advance_time!(acc, dt1; accrue_interest=true, accrue_borrow_fees=true)
+
+    yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
+    expected_interest = bal_before * 0.02 * yearfrac
+    expected_fee = abs(qty) * price * inst.multiplier * inst.short_borrow_rate * yearfrac
+    expected_delta = expected_interest - expected_fee
+
+    @test cash_balance(acc, usd) ≈ bal_before + expected_delta atol=1e-6
+    @test equity(acc, usd) ≈ eq_before + expected_delta atol=1e-6
+
+    @test length(acc.cashflows) == 2
+    interest_cf = acc.cashflows[1]
+    fee_cf = acc.cashflows[2]
+
+    @test interest_cf.kind == CashflowKind.Interest
+    @test interest_cf.cash_index == usd.index
+    @test interest_cf.amount ≈ expected_interest atol=1e-8
+
+    @test fee_cf.kind == CashflowKind.BorrowFee
+    @test fee_cf.cash_index == usd.index
+    @test fee_cf.inst_index == inst.index
+    @test fee_cf.amount ≈ -expected_fee atol=1e-8
 end
 
 @testitem "Cash account can trade marginable spot long-only" begin
