@@ -7,6 +7,10 @@ The following code is from my Julia backtesting engine package called Fastback.j
 Implement the following task for my Julia backtesting engine Fastback.jl.
 Pay attention to clean APIs, simplicity, performance/type stability, and importantly correctness of all calculations incl. FX awareness where needed. Write idiomatic, clean Julia code.
 
-## Codebase review
+## Efficiency review task
 
-Review the code of this julia package for correctness and algorithmic efficiency. This package is used for conducting backtests of algorithmic trading strategies.
+The following code is from my Julia backtesting engine package called Fastback.jl (code pasted below). The backtesting engine should allow the user to backtest basic margin/futures trading as seen Interactive Brokers. The goal is backtesting research ideas and algorithmic trading strategies, not a perfect replication of Broker mechanics, only what is really PnL relevant for strategies. Review the code of this Julia package for algorithmic efficiency. It should not unnecessarily allocate, use inefficient algorithms or data structures, or have type instabilities. This package is used for conducting backtests of algorithmic trading strategies.
+
+## Correctness review task
+
+The following code is from my Julia backtesting engine package called Fastback.jl (code pasted below). The backtesting engine should allow the user to backtest basic margin/futures trading as seen Interactive Brokers. The goal is backtesting research ideas and algorithmic trading strategies, not a perfect replication of Broker mechanics, only what is really PnL relevant for strategies. Do a review for correctness of all calculations.
