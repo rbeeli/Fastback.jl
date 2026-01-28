@@ -52,6 +52,7 @@ quote values use the instrument quote currency.
     pos_maint_margin = pos.maint_margin_settle
     pos_avg_entry_price = pos.avg_entry_price
     pos_avg_settle_price = pos.avg_settle_price
+    inc_qty = calc_exposure_increase_quantity(pos_qty, fill_qty)
 
     nominal_value_quote = fill_price * abs(fill_qty) * inst.multiplier
     commission_total_quote = commission + commission_pct * nominal_value_quote
@@ -69,17 +70,19 @@ quote values use the instrument quote currency.
     realized_pnl_gross = to_settle(acc, inst, realized_pnl_entry_quote)
     realized_pnl_net = realized_pnl_gross - commission_settle
 
-    cash_pnl_quote = inst.settlement == SettlementStyle.VariationMargin ?
-        realized_pnl_settle_quote :
-        realized_pnl_entry_quote
-
-    cash_delta_quote_val = cash_delta_quote(
-        inst,
-        fill_qty,
-        fill_price,
-        commission_total_quote;
-        realized_pnl_quote=cash_pnl_quote,
-    )
+    cash_delta_quote_val = if inst.settlement == SettlementStyle.VariationMargin
+        open_settle_quote = pnl_quote(inst, inc_qty, mark_price, fill_price)
+        open_settle_quote + realized_pnl_settle_quote - commission_total_quote
+    else
+        cash_pnl_quote = realized_pnl_entry_quote
+        cash_delta_quote(
+            inst,
+            fill_qty,
+            fill_price,
+            commission_total_quote;
+            realized_pnl_quote=cash_pnl_quote,
+        )
+    end
 
     cash_delta = to_settle(acc, inst, cash_delta_quote_val)
 
@@ -97,15 +100,7 @@ quote values use the instrument quote currency.
     new_avg_settle_price = if new_qty == 0.0
         zero(Price)
     elseif inst.settlement == SettlementStyle.VariationMargin
-        if pos_qty == 0.0
-            fill_price
-        elseif sign(new_qty) != sign(pos_qty)
-            fill_price
-        elseif abs(new_qty) > abs(pos_qty)
-            (pos_avg_settle_price * pos_qty + fill_price * fill_qty) / new_qty
-        else
-            pos_avg_settle_price
-        end
+        mark_price
     else
         if pos_qty == 0.0
             new_avg_entry_price
@@ -118,12 +113,14 @@ quote values use the instrument quote currency.
         end
     end
 
-    basis_after = inst.settlement == SettlementStyle.VariationMargin ?
-        new_avg_settle_price :
-        new_avg_entry_price
-
-    new_pnl_quote = pnl_quote(inst, new_qty, mark_price, basis_after)
-    new_value_quote = value_quote(inst, new_qty, mark_price, basis_after)
+    if inst.settlement == SettlementStyle.VariationMargin
+        new_pnl_quote = 0.0
+        new_value_quote = 0.0
+    else
+        basis_after = new_avg_entry_price
+        new_pnl_quote = pnl_quote(inst, new_qty, mark_price, basis_after)
+        new_value_quote = value_quote(inst, new_qty, mark_price, basis_after)
+    end
     value_delta_settle = to_settle(acc, inst, new_value_quote - pos_value_quote)
 
     new_init_margin_settle = margin_init_settle(acc, inst, new_qty, mark_price)

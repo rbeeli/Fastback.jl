@@ -216,7 +216,7 @@ end
     @test acc.maint_margin_used[inst.quote_cash_index] < maint_before
 end
 
-@testitem "variation margin add updates settle basis and settles slippage on next mark" begin
+@testitem "variation margin entry spread settles immediately" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -241,37 +241,88 @@ end
     pos = get_position(acc, inst)
 
     dt = DateTime(2026, 1, 1)
-    update_marks!(acc, pos; dt=dt, close_price=100.0)
+    mark_price = 100.0
+    bid = 99.0
+    ask = 101.0
 
-    order = Order(oid!(acc), inst, dt, 101.0, 10.0)
+    order = Order(oid!(acc), inst, dt, ask, 1.0)
     plan = plan_fill(
         acc,
         pos,
         order;
         dt=dt,
         fill_price=order.price,
-        mark_price=100.0,
+        mark_price=mark_price,
         fill_qty=order.quantity,
         commission=0.0,
         commission_pct=0.0,
     )
 
     cash_before_fill = cash_balance(acc, usd)
-    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, mark_price=100.0)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, mark_price=mark_price, bid=bid, ask=ask)
 
-    @test plan.new_qty == 10.0
+    expected_settle = (mark_price - ask) * inst.multiplier
+
+    @test plan.new_qty == 1.0
     @test trade isa Trade
-    @test pos.quantity == 10.0
-    @test pos.avg_settle_price == 101.0
-    @test pos.avg_entry_price == 101.0
-    @test pos.pnl_quote ≈ 10.0 * (100.0 - 101.0) atol=1e-12
-    @test cash_balance(acc, usd) ≈ cash_before_fill atol=1e-12
-
-    update_marks!(acc, pos; dt=dt, close_price=100.0)
-
-    @test cash_balance(acc, usd) ≈ cash_before_fill - 10.0 atol=1e-12
-    @test pos.avg_settle_price == 100.0
+    @test trade.cash_delta_settle ≈ expected_settle atol=1e-12
+    @test plan.cash_delta ≈ expected_settle atol=1e-12
+    @test cash_balance(acc, usd) ≈ cash_before_fill + expected_settle atol=1e-12
+    @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-12
+    @test pos.quantity == 1.0
+    @test pos.avg_settle_price == mark_price
+    @test pos.mark_price == mark_price
+    @test pos.value_quote == 0.0
     @test pos.pnl_quote == 0.0
+    @test Fastback.check_invariants(acc)
+end
+
+@testitem "variation margin entry spread counted in init margin check" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 10.5)
+
+    inst = register_instrument!(
+        acc,
+        Instrument(
+            Symbol("VMRISK/USD"),
+            :VMRISK,
+            :USD;
+            contract_kind=ContractKind.Perpetual,
+            settlement=SettlementStyle.VariationMargin,
+            margin_mode=MarginMode.PercentNotional,
+            margin_init_long=0.1,
+            margin_init_short=0.1,
+            margin_maint_long=0.05,
+            margin_maint_short=0.05,
+        ),
+    )
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2026, 1, 1)
+    mark_price = 100.0
+    fill_price = 101.0
+    qty = 1.0
+    order = Order(oid!(acc), inst, dt, fill_price, qty)
+
+    plan = plan_fill(
+        acc,
+        pos,
+        order;
+        dt=dt,
+        fill_price=fill_price,
+        mark_price=mark_price,
+        fill_qty=qty,
+        commission=0.0,
+        commission_pct=0.0,
+    )
+    rejection = fill_order!(acc, order; dt=dt, fill_price=fill_price, mark_price=mark_price)
+
+    @test plan.cash_delta < 0
+    @test rejection == OrderRejectReason.InsufficientInitialMargin
+    @test pos.quantity == 0.0
 end
 
 @testitem "variation margin partial close realizes cash on settle basis" begin
