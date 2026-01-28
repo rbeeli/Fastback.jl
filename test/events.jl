@@ -52,6 +52,128 @@ using TestItemRunner
     @test length(acc.cashflows) == cf_count
 end
 
+@testitem "process_step! executes steps in documented order" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+
+    usd = Cash(:USD)
+    chf = Cash(:CHF)
+    deposit!(acc, usd, 1_000.0)
+    deposit!(acc, chf, 0.0)
+
+    set_interest_rates!(acc, :USD; borrow=0.10, lend=0.0)
+    set_interest_rates!(acc, :CHF; borrow=0.03, lend=0.0)
+    update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), 1.0)
+
+    dt0 = DateTime(2026, 1, 1)
+    dt1 = dt0 + Day(1)
+
+    spot_inst = register_instrument!(acc, Instrument(
+        Symbol("SPOTORD/USDCHF"),
+        :SPOTORD,
+        :USD;
+        settle_symbol=:CHF,
+        settlement=SettlementStyle.Asset,
+        contract_kind=ContractKind.Spot,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_short=0.1,
+        multiplier=1.0,
+    ))
+
+    perp_inst = register_instrument!(acc, Instrument(
+        Symbol("PERPORD/USD"),
+        :PERPORD,
+        :USD;
+        contract_kind=ContractKind.Perpetual,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_short=0.1,
+        multiplier=1.0,
+    ))
+
+    fut_inst = register_instrument!(acc, Instrument(
+        Symbol("FUTORD/USD"),
+        :FUTORD,
+        :USD;
+        contract_kind=ContractKind.Future,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.5,
+        margin_maint_long=2.0,
+        margin_init_short=0.5,
+        margin_maint_short=2.0,
+        expiry=dt1,
+        multiplier=1.0,
+    ))
+
+    spot_trade = fill_order!(acc, Order(oid!(acc), spot_inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0)
+    perp_trade = fill_order!(acc, Order(oid!(acc), perp_inst, dt0, 50.0, 1.0); dt=dt0, fill_price=50.0)
+    fut_trade = fill_order!(acc, Order(oid!(acc), fut_inst, dt0, 100.0, 10.0); dt=dt0, fill_price=100.0)
+    @test spot_trade isa Trade
+    @test perp_trade isa Trade
+    @test fut_trade isa Trade
+
+    # Prime accrual clocks; do not change state otherwise.
+    process_step!(acc, dt0)
+
+    pre_deficit = maint_margin_used_base_ccy(acc) - equity_base_ccy(acc)
+    @test pre_deficit > 0
+
+    bal_chf_before = cash_balance(acc, chf)
+    eq_chf_before = equity(acc, chf)
+
+    fx_updates = [FXUpdate(usd.index, chf.index, 0.8)]
+    marks = [
+        MarkUpdate(spot_inst.index, 110.0, 110.0),
+        MarkUpdate(perp_inst.index, 60.0, 60.0),
+        MarkUpdate(fut_inst.index, 120.0, 120.0),
+    ]
+    funding = [FundingUpdate(perp_inst.index, 0.01)]
+
+    process_step!(acc, dt1; fx_updates=fx_updates, marks=marks, funding=funding, liquidate=true)
+
+    yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
+    expected_chf_interest = bal_chf_before * 0.03 * yearfrac
+    expected_spot_mark = (110.0 - 100.0) * 0.8
+    expected_funding = -60.0 * 0.01
+    expected_perp_vm = 10.0
+    expected_fut_vm = 200.0
+
+    @test cash_balance(acc, chf) ≈ bal_chf_before + expected_chf_interest atol=1e-8
+    @test equity(acc, chf) ≈ eq_chf_before + expected_chf_interest + expected_spot_mark atol=1e-8
+
+    @test length(acc.cashflows) == 4
+    kinds = getfield.(acc.cashflows, :kind)
+    @test kinds == [
+        CashflowKind.Interest,
+        CashflowKind.VariationMargin,
+        CashflowKind.VariationMargin,
+        CashflowKind.Funding,
+    ]
+
+    interest_cf = acc.cashflows[1]
+    vm_perp_cf = acc.cashflows[2]
+    vm_fut_cf = acc.cashflows[3]
+    funding_cf = acc.cashflows[4]
+
+    @test interest_cf.amount ≈ expected_chf_interest atol=1e-8
+    @test vm_perp_cf.amount ≈ expected_perp_vm atol=1e-8
+    @test vm_fut_cf.amount ≈ expected_fut_vm atol=1e-8
+    @test funding_cf.amount ≈ expected_funding atol=1e-8
+
+    @test get_position(acc, fut_inst).quantity == 0.0
+    @test !is_under_maintenance(acc)
+    @test all(t.reason != TradeReason.Liquidation for t in acc.trades)
+    @test count(t -> t.reason == TradeReason.Expiry, acc.trades) == 1
+end
 @testitem "process_step! rejects backward time" begin
     using Test, Fastback, Dates
 

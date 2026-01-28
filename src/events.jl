@@ -115,12 +115,12 @@ Single-step event driver that advances time, updates FX, marks positions, applie
 handles expiries, and optionally liquidates to maintenance if required.
 
 Ordering:
-1. `advance_time!`
+1. `advance_time!` (includes interest + borrow-fee accrual)
 2. Apply FX updates
 3. Apply mark updates (`update_marks!`)
 4. Apply funding updates (`apply_funding!`)
 5. Process expiries (`process_expiries!`)
-6. Optional maintenance liquidation
+6. Optional maintenance liquidation (runs after expiry/margin release)
 """
 function process_step!(
     acc::Account{TTime},
