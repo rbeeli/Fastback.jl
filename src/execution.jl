@@ -5,8 +5,7 @@ struct FillPlan
     cash_delta::Price
     realized_pnl_entry_quote::Price
     realized_pnl_settle_quote::Price  # settle-basis PnL, still in quote ccy (used for VM cash)
-    realized_pnl_gross::Price
-    realized_pnl_net::Price
+    realized_pnl::Price               # realized P&L in settlement currency (gross, excludes commissions)
     realized_qty::Quantity
     new_qty::Quantity
     new_avg_entry_price::Price
@@ -60,8 +59,7 @@ end
 
     commission_settle = to_settle(acc, inst, commission_total_quote)
 
-    realized_pnl_gross = to_settle(acc, inst, realized_pnl_entry_quote)
-    realized_pnl_net = realized_pnl_gross - commission_settle
+    realized_pnl = to_settle(acc, inst, realized_pnl_entry_quote)
 
     cash_delta_quote_val = if inst.settlement == SettlementStyle.VariationMargin
         open_settle_quote = pnl_quote(inst, inc_qty, mark_price, fill_price)
@@ -131,8 +129,7 @@ end
         cash_delta,
         realized_pnl_entry_quote,
         realized_pnl_settle_quote,
-        realized_pnl_gross,
-        realized_pnl_net,
+        realized_pnl,
         realized_qty,
         new_qty,
         new_avg_entry_price,

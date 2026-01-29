@@ -76,7 +76,8 @@ end
     output = replace(output, r"\e\[[0-9;]*m" => "") # strip ANSI color codes
 
     @test occursin("USD", output)           # settlement label
-    @test occursin("-2.4000", output)       # P&L formatted with settle digits
+    @test occursin("Realized P&L", output)  # updated column header
+    @test occursin("0.0000", output)        # P&L formatted with settle digits (gross, no commissions)
     @test occursin("-14.4000", output)      # cash delta formatted with settle digits
     @test occursin("2.4000", output)        # commission formatted with settle digits
 end

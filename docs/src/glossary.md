@@ -50,7 +50,7 @@ Commission is specified in the quote currency, converted to the instrument settl
 
 ## Realized P&L
 
-Realized P&L (stored as `realized_pnl_settle`) is produced when exposure decreases. `fill_order!` computes realized P&L via `calc_realized_qty`, converts it into the settlement currency, credits it to the account balance, subtracts commissions, and resets the position's P&L accordingly.
+Realized P&L (stored as `realized_pnl_settle`) is produced when exposure decreases and is recorded gross of commissions. `fill_order!` computes realized P&L via `calc_realized_qty`, converts it into the settlement currency, credits it to the account balance, charges commissions separately via `commission_settle`/`cash_delta_settle`, and resets the position's P&L accordingly.
 
 ## Unrealized P&L
 

@@ -242,7 +242,7 @@ Fills an order, applying cash/equity/margin deltas and returning the resulting
         fill_price,
         plan.fill_qty,
         plan.remaining_qty,
-        plan.realized_pnl_net,
+        plan.realized_pnl,
         plan.realized_qty,
         plan.commission,
         plan.cash_delta,

@@ -53,7 +53,7 @@ end
     trade_rows = collect(Tables.rows(tbl))
     @test length(trade_rows) == length(acc.trades)
     @test trade_rows[1].oid == order₁.oid
-    @test trade_rows[end].realized_pnl_settle ≈ 1.75 atol = 1e-8
+    @test trade_rows[end].realized_pnl_settle ≈ 2.0 atol = 1e-8
     @test trade_rows[1].cash_delta_settle ≈ -0.5
     @test trade_rows[end].cash_delta_settle ≈ 1.75
     trade_cols = Tables.columntable(tbl)
@@ -104,7 +104,7 @@ end
 
     @test trade === acc.trades[end]
     @test row.commission_settle ≈ commission_settle atol=1e-12
-    @test row.realized_pnl_settle ≈ -commission_settle atol=1e-12
+    @test row.realized_pnl_settle ≈ 0.0 atol=1e-12
     @test row.cash_delta_settle ≈ expected_cash_delta atol=1e-12
     @test row.symbol == inst.symbol
 end
