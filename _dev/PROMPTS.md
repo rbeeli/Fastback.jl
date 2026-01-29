@@ -14,3 +14,5 @@ The following code is from my Julia backtesting engine package called Fastback.j
 ## Correctness review task
 
 The following code is from my Julia backtesting engine package called Fastback.jl (code pasted below). The backtesting engine should allow the user to backtest basic margin/futures trading as seen Interactive Brokers. The goal is backtesting research ideas and algorithmic trading strategies, not a perfect replication of Broker mechanics, only what is really PnL relevant for strategies. Do a review for correctness of all calculations.
+
+Codex: Review the code for correctness of all calculations, especially PnL calculations, margin calculations, FX conversions, and handling of futures contracts. Identify any potential bugs or inaccuracies in the logic or formulas used.
