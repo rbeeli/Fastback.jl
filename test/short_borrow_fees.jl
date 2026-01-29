@@ -14,7 +14,7 @@ using TestItemRunner
         short_borrow_rate=0.1))
 
     dt0 = DateTime(2025, 1, 1)
-    fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, -10.0); dt=dt0, fill_price=100.0)
+    fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, -10.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
     accrue_borrow_fees!(acc, dt0) # initialize clock
     @test isempty(acc.cashflows)

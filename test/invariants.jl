@@ -50,19 +50,19 @@ using TestItemRunner
     @test Fastback.check_invariants(acc)
 
     order_asset = Order(oid!(acc), inst_asset, dt0, 100.0, 2.0)
-    trade_asset = fill_order!(acc, order_asset; dt=dt0, fill_price=order_asset.price)
+    trade_asset = fill_order!(acc, order_asset; dt=dt0, fill_price=order_asset.price, bid=order_asset.price, ask=order_asset.price, last=order_asset.price)
     @test trade_asset isa Trade
     @test Fastback.check_invariants(acc)
 
-    update_marks!(acc, inst_asset; dt=dt0 + Day(1), bid=120.0, ask=120.0)
+    update_marks!(acc, inst_asset, dt0 + Day(1), 120.0, 120.0, 120.0)
     @test Fastback.check_invariants(acc)
 
     order_perp = Order(oid!(acc), inst_perp, dt0 + Day(1), 50.0, 1.0)
-    trade_perp = fill_order!(acc, order_perp; dt=dt0 + Day(1), fill_price=order_perp.price)
+    trade_perp = fill_order!(acc, order_perp; dt=dt0 + Day(1), fill_price=order_perp.price, bid=order_perp.price, ask=order_perp.price, last=order_perp.price)
     @test trade_perp isa Trade
     @test Fastback.check_invariants(acc)
 
-    update_marks!(acc, inst_perp; dt=dt0 + Day(2), bid=55.0, ask=55.0)
+    update_marks!(acc, inst_perp, dt0 + Day(2), 55.0, 55.0, 55.0)
     @test Fastback.check_invariants(acc)
 
     accrue_interest!(acc, dt0 + Day(3))

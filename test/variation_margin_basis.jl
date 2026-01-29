@@ -29,20 +29,20 @@ using TestItemRunner
     qty = 1.0
     open_price = 100.0
     open_order = Order(oid!(acc), inst, dt_open, open_price, qty)
-    fill_order!(acc, open_order; dt=dt_open, fill_price=open_price)
+    fill_order!(acc, open_order; dt=dt_open, fill_price=open_price, bid=open_price, ask=open_price, last=open_price)
 
     @test pos.avg_entry_price ≈ open_price
     @test pos.avg_settle_price ≈ open_price
     @test cash_balance(acc, usd) ≈ 1_000.0
 
     mark_one = 110.0
-    update_marks!(acc, pos; dt=dt_open, close_price=mark_one)
+    update_marks!(acc, pos, dt_open, mark_one, mark_one, mark_one)
     @test cash_balance(acc, usd) ≈ 1_000.0 + qty * (mark_one - open_price)
     @test pos.avg_entry_price ≈ open_price
     @test pos.avg_settle_price ≈ mark_one
 
     mark_two = 105.0
-    update_marks!(acc, pos; dt=dt_open + Hour(1), close_price=mark_two)
+    update_marks!(acc, pos, dt_open + Hour(1), mark_two, mark_two, mark_two)
     @test cash_balance(acc, usd) ≈ 1_000.0 + qty * (mark_two - open_price)
     @test pos.avg_entry_price ≈ open_price
     @test pos.avg_settle_price ≈ mark_two
@@ -52,7 +52,7 @@ using TestItemRunner
     add_qty = 1.0
     cash_before_add = cash_balance(acc, usd)
     add_order = Order(oid!(acc), inst, dt_add, add_price, add_qty)
-    fill_order!(acc, add_order; dt=dt_add, fill_price=add_price)
+    fill_order!(acc, add_order; dt=dt_add, fill_price=add_price, bid=add_price, ask=add_price, last=add_price)
 
     expected_entry = (open_price * qty + add_price * add_qty) / (qty + add_qty)
     @test pos.quantity ≈ qty + add_qty
@@ -89,12 +89,12 @@ end
     dt = DateTime(2026, 1, 1)
     open_price = 100.0
     open_order = Order(oid!(acc), inst, dt, open_price, 1.0)
-    fill_order!(acc, open_order; dt=dt, fill_price=open_price)
+    fill_order!(acc, open_order; dt=dt, fill_price=open_price, bid=open_price, ask=open_price, last=open_price)
 
     cash_before = cash_balance(acc, usd)
     bid = 99.0
     ask = 101.0
-    update_marks!(acc, inst; dt=dt, bid=bid, ask=ask)
+    update_marks!(acc, inst, dt, bid, ask, (bid + ask) / 2)
 
     @test cash_balance(acc, usd) ≈ cash_before
     @test pos.avg_settle_price ≈ open_price
@@ -123,10 +123,10 @@ end
     pos2 = get_position(acc2, inst2)
 
     short_order = Order(oid!(acc2), inst2, dt, open_price, -1.0)
-    fill_order!(acc2, short_order; dt=dt, fill_price=open_price)
+    fill_order!(acc2, short_order; dt=dt, fill_price=open_price, bid=open_price, ask=open_price, last=open_price)
 
     cash_before_short = cash_balance(acc2, usd2)
-    update_marks!(acc2, inst2; dt=dt, bid=bid, ask=ask)
+    update_marks!(acc2, inst2, dt, bid, ask, (bid + ask) / 2)
 
     @test cash_balance(acc2, usd2) ≈ cash_before_short
     @test pos2.avg_settle_price ≈ open_price

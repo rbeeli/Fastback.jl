@@ -99,28 +99,36 @@ margin values on the position.
     pos::Position{TTime},
     dt::TTime,
     close_price::Price,
+    last_price::Price,
 ) where {TTime<:Dates.AbstractTime}
     _update_valuation!(acc, pos, dt, close_price)
     if pos.inst.settlement != SettlementStyle.VariationMargin
         pos.avg_settle_price = pos.avg_entry_price
     end
-    _update_margin!(acc, pos, close_price)
+    _update_margin!(acc, pos, last_price)
     pos.mark_price = close_price
+    pos.last_price = last_price
     pos.mark_time = dt
     return
 end
 
-@inline update_marks!(acc::Account{TTime}, pos::Position{TTime}, dt::TTime, close_price::Price) where {TTime<:Dates.AbstractTime} =
-    _update_marks!(acc, pos, dt, close_price)
-
 """
-Updates valuation and margin for a position using the latest mark price.
+Updates valuation and margin for a position using the latest bid/ask/last.
 
-Calls `update_valuation!`, then refreshes avg_settle_price for non-VM instruments,
-recomputes margin, and stamps the mark.
+Valuation uses a liquidation-aware mark (bid/ask, mid when flat; mid for VM).
+Margin uses `last` to avoid side-dependent bias.
 """
-@inline update_marks!(acc::Account, pos::Position{TTime}; dt::TTime, close_price::Price) where {TTime<:Dates.AbstractTime} =
-    _update_marks!(acc, pos, dt, close_price)
+@inline function update_marks!(
+    acc::Account,
+    pos::Position{TTime},
+    dt::TTime,
+    bid::Price,
+    ask::Price,
+    last::Price,
+) where {TTime<:Dates.AbstractTime}
+    close_price = _calc_mark_price(pos.inst, pos.quantity, bid, ask)
+    _update_marks!(acc, pos, dt, close_price, last)
+end
 
 @inline function _calc_mark_price(inst::Instrument, qty, bid, ask)
     # Variation margin instruments should mark at a neutral price to avoid spread bleed.
@@ -136,31 +144,29 @@ recomputes margin, and stamps the mark.
     end
 end
 
-@inline function _update_marks!(
+"""
+Marks an instrument by bid/ask/last, updating its position valuation, margin, and mark stamp.
+
+Uses mid for variation-margin instruments and side-aware bid/ask for others,
+then applies margin with `last`.
+"""
+@inline function update_marks!(
     acc::Account{TTime},
     inst::Instrument{TTime},
     dt::TTime,
     bid::Price,
     ask::Price,
+    last::Price,
 ) where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
     close_price = _calc_mark_price(inst, pos.quantity, bid, ask)
-    _update_marks!(acc, pos, dt, close_price)
+    _update_marks!(acc, pos, dt, close_price, last)
 end
 
 """
-Marks an instrument by bid/ask, updating its position valuation, margin, and mark stamp.
-
-Uses mid for variation-margin instruments and side-aware bid/ask for others, then applies
-the result via the positional hot path.
-"""
-@inline update_marks!(acc::Account{TTime}, inst::Instrument{TTime}; dt::TTime, bid::Price, ask::Price) where {TTime<:Dates.AbstractTime} =
-    _update_marks!(acc, inst, dt, bid, ask)
-
-"""
 Fills an order, applying cash/equity/margin deltas and returning the resulting
-`Trade` (or an `OrderRejectReason` on rejection). Optional `mark_price`, `bid`,
-`ask` let callers control the valuation price used during the fill.
+`Trade` (or an `OrderRejectReason` on rejection). Requires bid/ask/last to
+deterministically value positions and compute margin during fills.
 """
 @inline function fill_order!(
     acc::Account{TTime},
@@ -172,9 +178,9 @@ Fills an order, applying cash/equity/margin deltas and returning the resulting
     commission_pct::Price=0.0,   # percentage commission of nominal order value, e.g. 0.001 = 0.1%
     allow_inactive::Bool=false,
     trade_reason::TradeReason.T=TradeReason.Normal,
-    mark_price::Price=NaN,
-    bid::Price=NaN,
-    ask::Price=NaN,
+    bid::Price,
+    ask::Price,
+    last::Price,
 )::Union{Trade{TTime},OrderRejectReason.T} where {TTime<:Dates.AbstractTime}
     inst = order.inst
     allow_inactive || is_active(inst, dt) || return OrderRejectReason.InstrumentNotAllowed
@@ -182,18 +188,9 @@ Fills an order, applying cash/equity/margin deltas and returning the resulting
     pos = get_position(acc, inst)
     fill_qty = fill_qty != 0 ? fill_qty : order.quantity
 
-    mark_for_valuation = if !isnan(mark_price)
-        mark_price
-    elseif !isnan(bid) && !isnan(ask)
-        _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
-    elseif pos.mark_time == dt && !isnan(pos.mark_price)
-        pos.mark_price
-    else
-        fill_price
-    end
-
-    needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_valuation || pos.mark_time != dt
-    needs_mark_update && _update_marks!(acc, pos, dt, mark_for_valuation)
+    mark_for_valuation = _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
+    needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_valuation || pos.last_price != last || pos.mark_time != dt
+    needs_mark_update && _update_marks!(acc, pos, dt, mark_for_valuation, last)
     pos_qty = pos.quantity
     pos_entry_price = pos.avg_entry_price
 
@@ -204,6 +201,7 @@ Fills an order, applying cash/equity/margin deltas and returning the resulting
         dt,
         fill_price,
         mark_for_valuation,
+        last,
         fill_qty,
         commission,
         commission_pct,
@@ -230,6 +228,7 @@ Fills an order, applying cash/equity/margin deltas and returning the resulting
     pos.init_margin_settle = plan.new_init_margin_settle
     pos.maint_margin_settle = plan.new_maint_margin_settle
     pos.mark_price = mark_for_valuation
+    pos.last_price = last
     pos.mark_time = dt
 
     # generate trade sequence number
@@ -290,6 +289,9 @@ function settle_expiry!(
     qty = -pos.quantity
     order = Order(oid!(acc), inst, dt, settle_price, qty)
     trade = fill_order!(acc, order; dt=dt, fill_price=settle_price,
+        bid=settle_price,
+        ask=settle_price,
+        last=settle_price,
         commission=commission,
         commission_pct=commission_pct,
         allow_inactive=true,

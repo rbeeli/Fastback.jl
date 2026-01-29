@@ -45,20 +45,20 @@ for (i, (dt, price)) in enumerate(zip(dts, prices))
         if momentum > 0.02  # buy signal
             quantity = 10.0
             order = Order(oid!(acc), AAPL, dt, price, quantity)
-            fill_order!(acc, order; dt=dt, fill_price=price, commission_pct=0.001)
+            fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission_pct=0.001)
 
         elseif momentum < -0.02  # sell signal
             quantity = -8.0
             order = Order(oid!(acc), MSFT, dt, price, quantity)
-            fill_order!(acc, order; dt=dt, fill_price=price, commission_pct=0.001)
+            fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission_pct=0.001)
         end
 
         prev_price = price
     end
 
     ## update positions P&L
-    update_marks!(acc, AAPL; dt=dt, bid=price, ask=price)
-    update_marks!(acc, MSFT; dt=dt, bid=price, ask=price)
+    update_marks!(acc, AAPL, dt, price, price, price)
+    update_marks!(acc, MSFT, dt, price, price, price)
 
     ## collect equity data
     if should_collect(equity_data, dt)

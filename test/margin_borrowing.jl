@@ -19,7 +19,7 @@ using TestItemRunner
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 100.0, 100.0)
-    trade = fill_order!(acc, order; dt=dt, fill_price=order.price)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
 
     @test trade isa Trade
     pos = get_position(acc, inst)
@@ -45,7 +45,7 @@ end
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 100.0, 100.0)
-    result = fill_order!(acc, order; dt=dt, fill_price=order.price)
+    result = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
 
     @test result == OrderRejectReason.InsufficientCash
     @test isempty(acc.trades)
@@ -72,18 +72,18 @@ end
 
     dt_open = DateTime(2026, 1, 1)
     open_order = Order(oid!(acc), inst, dt_open, 100.0, 20.0)
-    open_trade = fill_order!(acc, open_order; dt=dt_open, fill_price=open_order.price)
+    open_trade = fill_order!(acc, open_order; dt=dt_open, fill_price=open_order.price, bid=open_order.price, ask=open_order.price, last=open_order.price)
     @test open_trade isa Trade
 
     pos = get_position(acc, inst)
     # Mark the position down sharply to become under-margined
-    update_marks!(acc, pos; dt=dt_open, close_price=30.0)
+    update_marks!(acc, pos, dt_open, 30.0, 30.0, 30.0)
 
     @test equity(acc, :USD) < init_margin_used(acc, :USD)
 
     dt_reduce = dt_open + Day(1)
     reduce_order = Order(oid!(acc), inst, dt_reduce, 30.0, -5.0)
-    reduce_trade = fill_order!(acc, reduce_order; dt=dt_reduce, fill_price=reduce_order.price)
+    reduce_trade = fill_order!(acc, reduce_order; dt=dt_reduce, fill_price=reduce_order.price, bid=reduce_order.price, ask=reduce_order.price, last=reduce_order.price)
 
     @test reduce_trade isa Trade
     @test pos.quantity == 15.0

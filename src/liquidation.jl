@@ -8,9 +8,20 @@ function liquidate_all!(
     for pos in acc.positions
         qty = pos.quantity
         qty == 0.0 && continue
-        isnan(pos.mark_price) && throw(ArgumentError("Cannot liquidate position $(pos.inst.symbol): mark price is NaN"))
         order = Order(oid!(acc), pos.inst, dt, pos.mark_price, -qty)
-        trade = fill_order!(acc, order; dt=dt, fill_price=pos.mark_price, commission=commission, commission_pct=commission_pct, allow_inactive=true, trade_reason=TradeReason.Liquidation)
+        trade = fill_order!(
+            acc,
+            order;
+            dt=dt,
+            fill_price=pos.mark_price,
+            bid=pos.mark_price,
+            ask=pos.mark_price,
+            last=pos.last_price,
+            commission=commission,
+            commission_pct=commission_pct,
+            allow_inactive=true,
+            trade_reason=TradeReason.Liquidation,
+        )
         trade isa Trade || throw(ArgumentError("Liquidation rejected for $(pos.inst.symbol) with reason $(trade)"))
         push!(trades, trade)
     end
@@ -81,11 +92,21 @@ function liquidate_to_maintenance!(
         end
 
         max_pos === nothing && throw(ArgumentError("Account under maintenance but has no open positions to liquidate."))
-        isnan(max_pos.mark_price) && throw(ArgumentError("Cannot liquidate position $(max_pos.inst.symbol): mark price is NaN"))
-
         qty = max_pos.quantity
         order = Order(oid!(acc), max_pos.inst, dt, max_pos.mark_price, -qty)
-        trade = fill_order!(acc, order; dt=dt, fill_price=max_pos.mark_price, commission=commission, commission_pct=commission_pct, allow_inactive=true, trade_reason=TradeReason.Liquidation)
+        trade = fill_order!(
+            acc,
+            order;
+            dt=dt,
+            fill_price=max_pos.mark_price,
+            bid=max_pos.mark_price,
+            ask=max_pos.mark_price,
+            last=max_pos.last_price,
+            commission=commission,
+            commission_pct=commission_pct,
+            allow_inactive=true,
+            trade_reason=TradeReason.Liquidation,
+        )
         if trade isa Trade
             push!(trades, trade)
         else

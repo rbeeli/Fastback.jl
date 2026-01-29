@@ -4,11 +4,13 @@ using Dates
 Typed mark update for `process_step!`.
 
 `inst_index` refers to the instrument index within the account (set during `register_instrument!`).
+`bid`/`ask` drive liquidation-aware valuation; `last` is used for margin.
 """
 struct MarkUpdate
     inst_index::Int
     bid::Price
     ask::Price
+    last::Price
 end
 
 """
@@ -86,8 +88,6 @@ function process_expiries!(
             throw(ArgumentError("Expiry for $(inst.symbol) requires physical delivery; pass physical_expiry_policy=PhysicalExpiryPolicy.Close to auto-close."))
         end
 
-        isnan(pos.mark_price) && throw(ArgumentError("Cannot settle $(inst.symbol): mark price is NaN at expiry $(dt)."))
-
         trade_or_reason = settle_expiry!(
             acc,
             inst,
@@ -112,7 +112,7 @@ end
 Revalue cached settlement amounts after FX updates without touching marks or balances.
 
 Adjusts position `value_settle`/`pnl_settle` for non-VM instruments and updates
-margin usage for percent-notional instruments using the latest stored marks.
+margin usage for percent-notional instruments using the latest stored last prices.
 """
 @inline function _revalue_fx_caches!(acc::Account)
     @inbounds for pos in acc.positions
@@ -133,21 +133,19 @@ margin usage for percent-notional instruments using the latest stored marks.
         end
 
         if inst.margin_mode == MarginMode.PercentNotional && pos.quantity != 0.0
-            mark_price = pos.mark_price
-            if !isnan(mark_price)
-                new_init_margin = margin_init_settle(acc, inst, pos.quantity, mark_price)
-                new_maint_margin = margin_maint_settle(acc, inst, pos.quantity, mark_price)
-                init_delta = new_init_margin - pos.init_margin_settle
-                maint_delta = new_maint_margin - pos.maint_margin_settle
-                if init_delta != 0.0
-                    acc.init_margin_used[inst.settle_cash_index] += init_delta
-                end
-                if maint_delta != 0.0
-                    acc.maint_margin_used[inst.settle_cash_index] += maint_delta
-                end
-                pos.init_margin_settle = new_init_margin
-                pos.maint_margin_settle = new_maint_margin
+            last_price = pos.last_price
+            new_init_margin = margin_init_settle(acc, inst, pos.quantity, last_price)
+            new_maint_margin = margin_maint_settle(acc, inst, pos.quantity, last_price)
+            init_delta = new_init_margin - pos.init_margin_settle
+            maint_delta = new_maint_margin - pos.maint_margin_settle
+            if init_delta != 0.0
+                acc.init_margin_used[inst.settle_cash_index] += init_delta
             end
+            if maint_delta != 0.0
+                acc.maint_margin_used[inst.settle_cash_index] += maint_delta
+            end
+            pos.init_margin_settle = new_init_margin
+            pos.maint_margin_settle = new_maint_margin
         end
     end
     acc
@@ -202,7 +200,7 @@ function process_step!(
     if marks !== nothing
         @inbounds for m in marks
             inst = acc.positions[m.inst_index].inst
-            update_marks!(acc, inst; dt=dt, bid=m.bid, ask=m.ask)
+            update_marks!(acc, inst, dt, m.bid, m.ask, m.last)
         end
     end
 

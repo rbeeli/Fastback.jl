@@ -8,7 +8,7 @@ using TestItemRunner
     inst = register_instrument!(acc, Instrument(Symbol("ABC/USD"), :ABC, :USD; margin_mode=MarginMode.PercentNotional))
 
     dt = DateTime(2024, 1, 1)
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt, 10.0, 1.0); dt=dt, fill_price=10.0)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt, 10.0, 1.0); dt=dt, fill_price=10.0, bid=10.0, ask=10.0, last=10.0)
     @test trade isa Trade
     @test trade.reason == TradeReason.Normal
 end
@@ -27,7 +27,7 @@ end
     ))
 
     dt_open = DateTime(2024, 1, 1)
-    fill_order!(acc, Order(oid!(acc), inst, dt_open, 10.0, 1.0); dt=dt_open, fill_price=10.0)
+    fill_order!(acc, Order(oid!(acc), inst, dt_open, 10.0, 1.0); dt=dt_open, fill_price=10.0, bid=10.0, ask=10.0, last=10.0)
 
     dt_settle = DateTime(2024, 1, 3)
     trade = settle_expiry!(acc, inst, dt_settle; settle_price=9.0)

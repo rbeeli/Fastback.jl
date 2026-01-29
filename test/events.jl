@@ -26,7 +26,7 @@ using TestItemRunner
 
     dt0 = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt0, 100.0, -5.0)
-    fill_order!(acc, order; dt=dt0, fill_price=100.0)
+    fill_order!(acc, order; dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
     # initialize accrual clocks
     process_step!(acc, dt0)
@@ -114,9 +114,9 @@ end
         multiplier=1.0,
     ))
 
-    spot_trade = fill_order!(acc, Order(oid!(acc), spot_inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0)
-    perp_trade = fill_order!(acc, Order(oid!(acc), perp_inst, dt0, 50.0, 1.0); dt=dt0, fill_price=50.0)
-    fut_trade = fill_order!(acc, Order(oid!(acc), fut_inst, dt0, 100.0, 10.0); dt=dt0, fill_price=100.0)
+    spot_trade = fill_order!(acc, Order(oid!(acc), spot_inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    perp_trade = fill_order!(acc, Order(oid!(acc), perp_inst, dt0, 50.0, 1.0); dt=dt0, fill_price=50.0, bid=50.0, ask=50.0, last=50.0)
+    fut_trade = fill_order!(acc, Order(oid!(acc), fut_inst, dt0, 100.0, 10.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     @test spot_trade isa Trade
     @test perp_trade isa Trade
     @test fut_trade isa Trade
@@ -134,9 +134,9 @@ end
 
     fx_updates = [FXUpdate(usd.index, chf.index, 0.8)]
     marks = [
-        MarkUpdate(spot_inst.index, 110.0, 110.0),
-        MarkUpdate(perp_inst.index, 60.0, 60.0),
-        MarkUpdate(fut_inst.index, 120.0, 120.0),
+        MarkUpdate(spot_inst.index, 110.0, 110.0, 110.0),
+        MarkUpdate(perp_inst.index, 60.0, 60.0, 60.0),
+        MarkUpdate(fut_inst.index, 120.0, 120.0, 120.0),
     ]
     funding = [FundingUpdate(perp_inst.index, 0.01)]
 
@@ -213,7 +213,7 @@ end
     dt1 = dt0 + Day(1)
 
     order = Order(oid!(acc), inst, dt0, 100.0, 1.0)
-    fill_order!(acc, order; dt=dt0, fill_price=100.0)
+    fill_order!(acc, order; dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     process_step!(acc, dt0) # initialize accrual clocks
 
     pos = get_position(acc, inst)
@@ -227,7 +227,7 @@ end
     pos_after = get_position(acc, inst)
     expected_value = to_settle(acc, inst, pos_after.value_quote)
     expected_eq = eq_before + (expected_value - value_before)
-    expected_init = margin_init_settle(acc, inst, pos_after.quantity, pos_after.mark_price)
+    expected_init = margin_init_settle(acc, inst, pos_after.quantity, pos_after.last_price)
 
     @test pos_after.value_settle ≈ expected_value atol=1e-12
     @test equity(acc, chf) ≈ expected_eq atol=1e-12
@@ -260,13 +260,13 @@ end
 
     dt0 = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt0, 100.0, -10.0)
-    fill_order!(acc, order; dt=dt0, fill_price=100.0)
+    fill_order!(acc, order; dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
     # initialize accrual clocks
     process_step!(acc, dt0)
 
     dt1 = dt0 + Day(1)
-    marks = [MarkUpdate(inst.index, 120.0, 120.0)]
+    marks = [MarkUpdate(inst.index, 120.0, 120.0, 120.0)]
 
     bal_before = cash_balance(acc, usd)
     process_step!(acc, dt1; marks=marks)
@@ -323,7 +323,7 @@ end
     )
 
     order = Order(oid!(acc), inst, dt_open, 100.0, 1.0)
-    fill_order!(acc, order; dt=dt_open, fill_price=100.0)
+    fill_order!(acc, order; dt=dt_open, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     @test get_position(acc, inst).quantity == 1.0
 
     commission_pct = 0.01
@@ -360,12 +360,12 @@ end
     )
 
     order = Order(oid!(acc), inst, dt_open, 100.0, 2.0)
-    fill_order!(acc, order; dt=dt_open, fill_price=100.0)
+    fill_order!(acc, order; dt=dt_open, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     @test get_position(acc, inst).quantity == 2.0
     @test init_margin_used(acc, usd) > 0
 
     # Final mark at expiry
-    update_marks!(acc, inst; dt=dt_exp, bid=110.0, ask=110.0)
+    update_marks!(acc, inst, dt_exp, 110.0, 110.0, 110.0)
     eq_before = equity(acc, usd)
     cash_before = cash_balance(acc, usd)
     init_before = init_margin_used(acc, usd)
@@ -414,8 +414,8 @@ end
     )
 
     order = Order(oid!(acc), inst, dt_open, 50.0, 1.0)
-    fill_order!(acc, order; dt=dt_open, fill_price=50.0)
-    update_marks!(acc, inst; dt=dt_exp, bid=55.0, ask=55.0)
+    fill_order!(acc, order; dt=dt_open, fill_price=50.0, bid=50.0, ask=50.0, last=50.0)
+    update_marks!(acc, inst, dt_exp, 55.0, 55.0, 55.0)
 
     @test_throws ArgumentError process_expiries!(acc, dt_exp; physical_expiry_policy=PhysicalExpiryPolicy.Error)
     @test get_position(acc, inst).quantity == 1.0

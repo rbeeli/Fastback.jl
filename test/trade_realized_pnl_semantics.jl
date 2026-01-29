@@ -22,7 +22,7 @@ using TestItemRunner
     dt = DateTime(2026, 1, 1)
     commission = 2.5
     order = Order(oid!(acc), inst, dt, 50.0, 10.0)
-    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, commission=commission)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price, commission=commission)
 
     @test trade.realized_qty == 0.0
     @test trade.realized_pnl_entry == 0.0
@@ -56,7 +56,7 @@ end
     price_open = 100.0
     commission_open = 1.0
     open_order = Order(oid!(acc), inst, dt_open, price_open, qty)
-    fill_order!(acc, open_order; dt=dt_open, fill_price=price_open, commission=commission_open)
+    fill_order!(acc, open_order; dt=dt_open, fill_price=price_open, bid=price_open, ask=price_open, last=price_open, commission=commission_open)
 
     cash_after_open = cash_balance(acc, usd)
 
@@ -64,7 +64,7 @@ end
     price_close = 110.0
     commission_close = 0.75
     close_order = Order(oid!(acc), inst, dt_close, price_close, -qty)
-    close_trade = fill_order!(acc, close_order; dt=dt_close, fill_price=price_close, commission=commission_close)
+    close_trade = fill_order!(acc, close_order; dt=dt_close, fill_price=price_close, bid=price_close, ask=price_close, last=price_close, commission=commission_close)
 
     expected_gross = (price_close - price_open) * qty
 
@@ -96,12 +96,12 @@ end
 
     dt1 = DateTime(2026, 1, 1)
     order1 = Order(oid!(acc), inst, dt1, 10.0, 1.0)
-    fill_order!(acc, order1; dt=dt1, fill_price=order1.price)
+    fill_order!(acc, order1; dt=dt1, fill_price=order1.price, bid=order1.price, ask=order1.price, last=order1.price)
 
     dt2 = dt1 + Day(1)
     order2 = Order(oid!(acc), inst, dt2, 12.0, 2.0)
     commission = 0.5
-    trade2 = fill_order!(acc, order2; dt=dt2, fill_price=order2.price, commission=commission)
+    trade2 = fill_order!(acc, order2; dt=dt2, fill_price=order2.price, bid=order2.price, ask=order2.price, last=order2.price, commission=commission)
 
     @test trade2.realized_qty == 0.0
     @test trade2.realized_pnl_entry == 0.0

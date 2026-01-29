@@ -70,6 +70,12 @@ function check_invariants(acc::Account; atol::Real=1e-9, rtol::Real=1e-9)
         inst.settle_cash_index > 0 || throw(AssertionError("Instrument $(inst.symbol) has unset settle_cash_index."))
         pos.index == inst.index || throw(AssertionError("Position index $(pos.index) must equal instrument index $(inst.index) for $(inst.symbol)."))
 
+        if pos.quantity != 0.0
+            isfinite(pos.mark_price) || throw(AssertionError("Position $(inst.symbol) must have a finite mark_price when exposure is non-zero."))
+            isfinite(pos.last_price) || throw(AssertionError("Position $(inst.symbol) must have a finite last_price when exposure is non-zero."))
+            pos.mark_time != typeof(pos.mark_time)(0) || throw(AssertionError("Position $(inst.symbol) must have a mark_time when exposure is non-zero."))
+        end
+
         if inst.settlement == SettlementStyle.VariationMargin
             isapprox(pos.value_quote, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.symbol) must have zero value_quote."))
             isapprox(pos.value_settle, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.symbol) must have zero value_settle."))

@@ -37,13 +37,14 @@ using TestItemRunner
     commission = 1.0
     order = Order(oid!(acc), spot_inst, dt, price, qty)
 
-    update_marks!(acc, pos_spot; dt=dt, close_price=price)
+    update_marks!(acc, pos_spot, dt, price, price, price)
 
     plan = plan_fill(
         acc,
         pos_spot,
         order,
         dt,
+        price,
         price,
         price,
         order.quantity,
@@ -57,7 +58,7 @@ using TestItemRunner
     @test plan.new_init_margin_settle ≈ expected_init_margin atol=1e-10
     @test plan.new_maint_margin_settle ≈ expected_maint_margin atol=1e-10
 
-    trade = fill_order!(acc, order; dt=dt, fill_price=price, commission=commission)
+    trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission=commission)
     @test trade isa Trade
     @test acc.balances[chf_idx] ≈ expected_cash_delta atol=1e-10
     @test acc.init_margin_used[chf_idx] ≈ expected_init_margin atol=1e-10
@@ -91,7 +92,7 @@ using TestItemRunner
     ))
     dt_perp = dt + Day(2)
     order_perp = Order(oid!(acc), perp_inst, dt_perp, 120.0, 1.0)
-    trade_perp = fill_order!(acc, order_perp; dt=dt_perp, fill_price=order_perp.price)
+    trade_perp = fill_order!(acc, order_perp; dt=dt_perp, fill_price=order_perp.price, bid=order_perp.price, ask=order_perp.price, last=order_perp.price)
     @test trade_perp isa Trade
 
     bal_before_funding = acc.balances[chf_idx]
@@ -141,7 +142,7 @@ end
     price = 100.0
     qty = -10.0
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
     chf_idx = inst.settle_cash_index

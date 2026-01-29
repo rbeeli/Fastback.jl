@@ -15,7 +15,7 @@ using TestItemRunner
     price = 10.0
     order = Order(oid!(acc), inst, dt, price, 5.0)
 
-    update_marks!(acc, pos; dt=dt, close_price=price)
+    update_marks!(acc, pos, dt, price, price, price)
     cash_before = cash_balance(acc, usd)
     pos_qty_before = pos.quantity
 
@@ -26,6 +26,7 @@ using TestItemRunner
         pos,
         order,
         dt,
+        price,
         price,
         price,
         order.quantity,
@@ -44,7 +45,7 @@ using TestItemRunner
     @test plan.new_value_quote == 0.0
     @test plan.new_pnl_quote == 0.0
 
-    trade = fill_order!(acc, order; dt=dt, fill_price=price, commission=commission, commission_pct=commission_pct)
+    trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission=commission, commission_pct=commission_pct)
 
     @test trade.fill_qty == plan.fill_qty
     @test trade.remaining_qty == plan.remaining_qty
@@ -76,7 +77,7 @@ end
     dt = DateTime(2025, 3, 1)
     order = Order(oid!(acc), inst, dt, 11.0, 1.0)
 
-    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=9.0, ask=11.0)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=9.0, ask=11.0, last=10.0)
 
     @test trade isa Trade
     @test pos.mark_price == 9.0
@@ -111,7 +112,7 @@ end
     qty = 3.0
     commission = 0.75
 
-    update_marks!(acc, pos; dt=dt, close_price=price)
+    update_marks!(acc, pos, dt, price, price, price)
     cash_before = cash_balance(acc, usd)
 
     order = Order(oid!(acc), inst, dt, price, qty)
@@ -122,6 +123,7 @@ end
         dt,
         price,
         price,
+        price,
         order.quantity,
         commission,
         0.0,
@@ -130,7 +132,7 @@ end
     expected_cash_delta = -(price * qty * inst.multiplier) - commission
     @test plan.cash_delta ≈ expected_cash_delta atol=1e-12
 
-    trade = fill_order!(acc, order; dt=dt, fill_price=price, commission=commission)
+    trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission=commission)
 
     @test trade.cash_delta_settle ≈ expected_cash_delta atol=1e-12
     @test cash_balance(acc, usd) ≈ cash_before + expected_cash_delta atol=1e-12
@@ -163,11 +165,11 @@ end
     dt_open = DateTime(2025, 1, 1)
     price_open = 100.0
     order_open = Order(oid!(acc), inst, dt_open, price_open, 2.0)
-    fill_order!(acc, order_open; dt=dt_open, fill_price=price_open)
+    fill_order!(acc, order_open; dt=dt_open, fill_price=price_open, bid=price_open, ask=price_open, last=price_open)
 
     dt_mark = DateTime(2025, 1, 2)
     price_mark = 110.0
-    update_marks!(acc, pos; dt=dt_mark, close_price=price_mark)
+    update_marks!(acc, pos, dt_mark, price_mark, price_mark, price_mark)
 
     cash_before = cash_balance(acc, usd)
     init_before = acc.init_margin_used[inst.quote_cash_index]
@@ -181,6 +183,7 @@ end
         pos,
         order_close,
         dt_mark,
+        price_mark,
         price_mark,
         price_mark,
         order_close.quantity,
@@ -200,7 +203,7 @@ end
     @test plan.new_init_margin_settle == abs(plan.new_qty) * price_mark * inst.multiplier * 0.1
     @test plan.new_maint_margin_settle == abs(plan.new_qty) * price_mark * inst.multiplier * 0.05
 
-    trade_close = fill_order!(acc, order_close; dt=dt_mark, fill_price=price_mark, commission=commission)
+    trade_close = fill_order!(acc, order_close; dt=dt_mark, fill_price=price_mark, bid=price_mark, ask=price_mark, last=price_mark, commission=commission)
 
     @test trade_close.realized_pnl_entry == plan.realized_pnl_entry
     @test trade_close.realized_pnl_settle == plan.realized_pnl_settle
@@ -255,13 +258,14 @@ end
         dt,
         order.price,
         mark_price,
+        mark_price,
         order.quantity,
         0.0,
         0.0,
     )
 
     cash_before_fill = cash_balance(acc, usd)
-    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, mark_price=mark_price, bid=bid, ask=ask)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=bid, ask=ask, last=mark_price)
 
     expected_settle = (mark_price - ask) * inst.multiplier
 
@@ -316,11 +320,12 @@ end
         dt,
         fill_price,
         mark_price,
+        mark_price,
         qty,
         0.0,
         0.0,
     )
-    rejection = fill_order!(acc, order; dt=dt, fill_price=fill_price, mark_price=mark_price)
+    rejection = fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=mark_price, ask=mark_price, last=mark_price)
 
     @test plan.cash_delta < 0
     @test rejection == OrderRejectReason.InsufficientInitialMargin
@@ -353,7 +358,7 @@ end
 
     dt_open = DateTime(2026, 1, 1)
     open_order = Order(oid!(acc), inst, dt_open, 100.0, 10.0)
-    fill_order!(acc, open_order; dt=dt_open, fill_price=open_order.price, mark_price=100.0)
+    fill_order!(acc, open_order; dt=dt_open, fill_price=open_order.price, bid=100.0, ask=100.0, last=100.0)
 
     dt_reduce = dt_open + Day(1)
     reduce_order = Order(oid!(acc), inst, dt_reduce, 99.0, -4.0)
@@ -366,13 +371,14 @@ end
         dt_reduce,
         reduce_order.price,
         100.0,
+        100.0,
         reduce_order.quantity,
         commission,
         0.0,
     )
 
     cash_before = cash_balance(acc, usd)
-    trade = fill_order!(acc, reduce_order; dt=dt_reduce, fill_price=reduce_order.price, mark_price=100.0, commission=commission)
+    trade = fill_order!(acc, reduce_order; dt=dt_reduce, fill_price=reduce_order.price, bid=100.0, ask=100.0, last=100.0, commission=commission)
 
     @test trade isa Trade
     @test plan.realized_pnl_settle_quote ≈ -4.0 atol=1e-12

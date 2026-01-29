@@ -10,8 +10,8 @@ using TestItemRunner
     inst2 = register_instrument!(acc, Instrument(Symbol("B/USD"), :B, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_maint_long=0.05))
 
     dt = DateTime(2024, 1, 1)
-    fill_order!(acc, Order(oid!(acc), inst1, dt, 100.0, 10.0); dt=dt, fill_price=100.0)
-    fill_order!(acc, Order(oid!(acc), inst2, dt, 50.0, 20.0); dt=dt, fill_price=50.0)
+    fill_order!(acc, Order(oid!(acc), inst1, dt, 100.0, 10.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    fill_order!(acc, Order(oid!(acc), inst2, dt, 50.0, 20.0); dt=dt, fill_price=50.0, bid=50.0, ask=50.0, last=50.0)
 
     trades = liquidate_all!(acc, dt; commission=0.0)
 
@@ -30,7 +30,7 @@ end
     inst = register_instrument!(acc, Instrument(Symbol("C/USD"), :C, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_maint_long=0.05))
 
     dt = DateTime(2024, 1, 1)
-    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 10.0); dt=dt, fill_price=100.0)
+    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 10.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
     trades = liquidate_all!(acc, dt; commission=2.0, commission_pct=0.01)
 

@@ -1,5 +1,5 @@
 """
-    apply_funding!(acc, inst, dt; funding_rate, mark_price=pos.mark_price)
+    apply_funding!(acc, inst, dt; funding_rate, mark_price=pos.last_price)
 
 Applies a perpetual swap funding cashflow to account balances/equities.
 Funding is paid/received in the instrument settlement currency.
@@ -20,9 +20,7 @@ function apply_funding!(
     pos = get_position(acc, inst)
     pos.quantity == 0.0 && return acc
 
-    mark = something(mark_price, pos.mark_price)
-    (isnan(mark)) && throw(ArgumentError("mark_price must be provided or already set on position."))
-
+    mark = something(mark_price, pos.last_price)
     payment_quote = -pos.quantity * mark * inst.multiplier * funding_rate
     settle_idx = inst.settle_cash_index
     payment = to_settle(acc, inst, payment_quote)

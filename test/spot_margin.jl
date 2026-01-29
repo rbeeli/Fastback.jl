@@ -24,7 +24,7 @@ using TestItemRunner
     price = 100.0
     qty = 200.0                # notional = 20_000
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt=dt, fill_price=price)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt=dt, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
     usd = cash_asset(acc, :USD)
@@ -65,7 +65,7 @@ end
     price = 100.0
     qty = 200.0                # notional = 20_000
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
     usd = cash_asset(acc, :USD)
@@ -118,7 +118,7 @@ end
     price = 100.0
     qty = -200.0               # notional = 20_000
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
     usd = cash_asset(acc, :USD)
@@ -170,7 +170,7 @@ end
     price = 100.0
     qty = -200.0               # notional = 20_000
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
     usd = cash_asset(acc, :USD)
@@ -233,7 +233,7 @@ end
     qty = 100.0
     notional = qty * price
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt=dt, fill_price=price)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt=dt, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
     usd = cash_asset(acc, :USD)
@@ -251,7 +251,7 @@ end
     @test pos.maint_margin_settle == 0.0
 
     short_order = Order(oid!(acc), inst, dt, price, -250.0)
-    rejection = fill_order!(acc, short_order; dt=dt, fill_price=price)
+    rejection = fill_order!(acc, short_order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
     @test rejection == OrderRejectReason.ShortNotAllowed
 
     @test cash_balance(acc, usd) ≈ balance_after_buy atol=1e-8
@@ -292,12 +292,12 @@ end
     price_entry = 100.0
     qty = 10.0
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price_entry, qty); dt=dt, fill_price=price_entry)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price_entry, qty); dt=dt, fill_price=price_entry, bid=price_entry, ask=price_entry, last=price_entry)
     @test trade isa Trade
 
     equity_before = equity(acc, chf)
     price_mark = 110.0
-    update_marks!(acc, inst; dt=dt + Hour(1), bid=price_mark, ask=price_mark)
+    update_marks!(acc, inst, dt + Hour(1), price_mark, price_mark, price_mark)
 
     pos = get_position(acc, inst)
     expected_pnl_quote = qty * (price_mark - price_entry) * inst.multiplier

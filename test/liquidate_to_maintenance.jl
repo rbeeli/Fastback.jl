@@ -17,13 +17,13 @@ using TestItemRunner
         margin_maint_long=0.1, margin_maint_short=0.1))
 
     dt = DateTime(2024, 1, 1)
-    fill_order!(acc, Order(oid!(acc), inst_big, dt, 100.0, -50.0); dt=dt, fill_price=100.0)
-    fill_order!(acc, Order(oid!(acc), inst_small, dt, 50.0, -10.0); dt=dt, fill_price=50.0)
+    fill_order!(acc, Order(oid!(acc), inst_big, dt, 100.0, -50.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    fill_order!(acc, Order(oid!(acc), inst_small, dt, 50.0, -10.0); dt=dt, fill_price=50.0, bid=50.0, ask=50.0, last=50.0)
 
     # Move against the short positions to trigger a maintenance breach
     dt2 = DateTime(2024, 1, 2)
-    update_marks!(acc, get_position(acc, inst_big); dt=dt2, close_price=400.0)
-    update_marks!(acc, get_position(acc, inst_small); dt=dt2, close_price=50.0)
+    update_marks!(acc, get_position(acc, inst_big), dt2, 400.0, 400.0, 400.0)
+    update_marks!(acc, get_position(acc, inst_small), dt2, 50.0, 50.0, 50.0)
 
     @test is_under_maintenance(acc)
 
@@ -49,7 +49,7 @@ end
         margin_maint_long=2.0, margin_maint_short=2.0))
 
     dt = DateTime(2024, 1, 1)
-    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 10.0); dt=dt, fill_price=100.0)
+    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 10.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
     # Account is under maintenance immediately due to high maint requirement
     @test is_under_maintenance(acc)
@@ -89,8 +89,8 @@ end
         margin_maint_long=0.2, margin_maint_short=0.2))
 
     dt = DateTime(2026, 1, 1)
-    fill_order!(acc, Order(oid!(acc), inst_eur, dt, 100.0, 5.0); dt=dt, fill_price=100.0)
-    fill_order!(acc, Order(oid!(acc), inst_usd, dt, 100.0, 100.0); dt=dt, fill_price=100.0)
+    fill_order!(acc, Order(oid!(acc), inst_eur, dt, 100.0, 5.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    fill_order!(acc, Order(oid!(acc), inst_usd, dt, 100.0, 100.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
     @test excess_liquidity(acc, :EUR) < 0 # only EUR leg is stressed
     @test is_under_maintenance(acc)

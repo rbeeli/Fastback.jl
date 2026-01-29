@@ -20,11 +20,11 @@ using TestItemRunner
     price = 100.0
     qty = 10.0
 
-    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt=dt, fill_price=price)
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt=dt, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
     # Mark price down to trigger maintenance breach: PnL = (20-100)*10 = -800, equity = 200 < maint 250
-    update_marks!(acc, inst; dt=dt, bid=20.0, ask=20.0)
+    update_marks!(acc, inst, dt, 20.0, 20.0, 20.0)
 
     @test is_under_maintenance(acc) == true
     @test maint_deficit_base_ccy(acc) > 0
@@ -57,7 +57,7 @@ end
     ))
 
     dt = DateTime(2026, 1, 1)
-    trade = fill_order!(acc, Order(oid!(acc), inst_eur, dt, 100.0, 5.0); dt=dt, fill_price=100.0)
+    trade = fill_order!(acc, Order(oid!(acc), inst_eur, dt, 100.0, 5.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     @test trade isa Trade
 
     @test excess_liquidity(acc, :USD) > 0

@@ -29,8 +29,6 @@ function accrue_borrow_fees!(
         inst = pos.inst
         inst.settlement == SettlementStyle.Asset || continue
         inst.short_borrow_rate > 0.0 || continue
-        isnan(pos.mark_price) && throw(ArgumentError("Cannot accrue borrow fees: mark price is NaN for $(inst.symbol)"))
-
         fee_quote = abs(pos.quantity) * pos.mark_price * inst.multiplier * inst.short_borrow_rate * yearfrac
         settle_idx = inst.settle_cash_index
         fee = to_settle(acc, inst, fee_quote)

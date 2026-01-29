@@ -67,13 +67,13 @@ for i in 1:N
         price = df[i, inst.symbol]
         quantity = rand() > 0.5 ? 10.0 : -10.0
         order = Order(oid!(acc), inst, dt, price, quantity)
-        fill_order!(acc, order; dt=dt, fill_price=price, commission_pct=0.001)
+        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission_pct=0.001)
     end
 
     ## update position and account P&L
     for inst in instruments
         price = df[i, inst.symbol]
-        update_marks!(acc, inst; dt=dt, bid=price, ask=price)
+        update_marks!(acc, inst, dt, price, price, price)
     end
 
     ## collect data for plotting
