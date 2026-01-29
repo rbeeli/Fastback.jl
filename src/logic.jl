@@ -21,6 +21,7 @@
             @inbounds acc.equities[settle_cash_index] -= pos.value_settle
         end
         pos.value_settle = 0.0
+        pos.value_quote = 0.0
         if qty == 0.0
             pos.avg_entry_price = zero(Price)
             pos.avg_settle_price = zero(Price)

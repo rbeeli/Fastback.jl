@@ -138,7 +138,7 @@ function margin_init_quote(inst::Instrument, qty, mark)
         per_contract = qty > 0 ? inst.margin_init_long : inst.margin_init_short
         return abs(qty) * per_contract
     end
-    return zero(Price)
+    throw(ArgumentError("Unsupported margin_mode $(mode) for instrument $(inst.symbol)."))
 end
 
 """
@@ -166,7 +166,7 @@ function margin_maint_quote(inst::Instrument, qty, mark)
         per_contract = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
         return abs(qty) * per_contract
     end
-    return zero(Price)
+    throw(ArgumentError("Unsupported margin_mode $(mode) for instrument $(inst.symbol)."))
 end
 
 

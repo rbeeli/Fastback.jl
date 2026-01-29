@@ -117,6 +117,7 @@ end
     update_marks!(acc, pos; dt=dt + Hour(1), close_price=110.0)
     @test cash_balance(acc, usd) ≈ cash_before + 10.0 atol=1e-12
     @test last(acc.cashflows).amount ≈ 10.0 atol=1e-12
+    @test pos.value_quote == 0.0
     @test pos.pnl_quote == 0.0
     @test pos.avg_settle_price ≈ 110.0 atol=1e-12
 
@@ -124,6 +125,7 @@ end
     update_marks!(acc, pos; dt=dt + Hour(2), close_price=105.0)
     @test cash_balance(acc, usd) ≈ cash_mid - 5.0 atol=1e-12
     @test last(acc.cashflows).amount ≈ -5.0 atol=1e-12
+    @test pos.value_quote == 0.0
     @test pos.pnl_quote == 0.0
     @test pos.avg_settle_price ≈ 105.0 atol=1e-12
 end
