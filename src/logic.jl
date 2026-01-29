@@ -266,8 +266,10 @@ Force-settles an expired instrument by synthetically closing any open position.
 
 If the instrument is expired at `dt` and the position quantity is non-zero,
 this generates a closing order with the provided settlement price and routes
-it through `fill_order!` to record a trade and release margin. Physical-delivery
-instruments can be rejected by setting `physical_expiry_policy=PhysicalExpiryPolicy.Error`.
+it through `fill_order!` to record a trade and release margin.
+The caller must provide a finite settlement price (typically the stored mark).
+Physical-delivery instruments can be rejected by setting
+`physical_expiry_policy=PhysicalExpiryPolicy.Error`.
 """
 function settle_expiry!(
     acc::Account{TTime},

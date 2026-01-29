@@ -62,8 +62,8 @@ end
 """
     process_expiries!(acc, dt; commission=0.0, commission_pct=0.0, physical_expiry_policy=PhysicalExpiryPolicy.Close)
 
-Settles expired futures deterministically at `dt` using the latest mark price.
-Throws if a mark is missing (NaN).
+Settles expired futures deterministically at `dt` using the stored position mark.
+Requires positions to have finite marks.
 For physical-delivery contracts, set
 `physical_expiry_policy=PhysicalExpiryPolicy.Close` to auto-close or `PhysicalExpiryPolicy.Error` to
 refuse synthetic settlement.
