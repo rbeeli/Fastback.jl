@@ -15,10 +15,6 @@ Currency and unit semantics used throughout contract math:
     qty * (price - basis_price) * inst.multiplier
 end
 
-@inline function value_quote(inst::Instrument, qty, price)::Price
-    value_quote(inst, qty, price, zero(Price))
-end
-
 @inline function value_quote(inst::Instrument, qty, price, basis_price)::Price
     settlement = inst.settlement
     if settlement == SettlementStyle.Asset
