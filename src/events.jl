@@ -109,6 +109,51 @@ function process_expiries!(
 end
 
 """
+Revalue cached settlement amounts after FX updates without touching marks or balances.
+
+Adjusts position `value_settle`/`pnl_settle` for non-VM instruments and updates
+margin usage for percent-notional instruments using the latest stored marks.
+"""
+@inline function _revalue_fx_caches!(acc::Account)
+    @inbounds for pos in acc.positions
+        inst = pos.inst
+        inst.quote_cash_index == inst.settle_cash_index && continue
+
+        if inst.settlement != SettlementStyle.VariationMargin
+            val_quote = pos.value_quote
+            new_value_settle = val_quote == 0.0 ? 0.0 : to_settle(acc, inst, val_quote)
+            value_delta = new_value_settle - pos.value_settle
+            if value_delta != 0.0
+                acc.equities[inst.settle_cash_index] += value_delta
+            end
+            pos.value_settle = new_value_settle
+
+            pnl_quote_val = pos.pnl_quote
+            pos.pnl_settle = pnl_quote_val == 0.0 ? 0.0 : to_settle(acc, inst, pnl_quote_val)
+        end
+
+        if inst.margin_mode == MarginMode.PercentNotional && pos.quantity != 0.0
+            mark_price = pos.mark_price
+            if !isnan(mark_price)
+                new_init_margin = margin_init_settle(acc, inst, pos.quantity, mark_price)
+                new_maint_margin = margin_maint_settle(acc, inst, pos.quantity, mark_price)
+                init_delta = new_init_margin - pos.init_margin_settle
+                maint_delta = new_maint_margin - pos.maint_margin_settle
+                if init_delta != 0.0
+                    acc.init_margin_used[inst.settle_cash_index] += init_delta
+                end
+                if maint_delta != 0.0
+                    acc.maint_margin_used[inst.settle_cash_index] += maint_delta
+                end
+                pos.init_margin_settle = new_init_margin
+                pos.maint_margin_settle = new_maint_margin
+            end
+        end
+    end
+    acc
+end
+
+"""
     process_step!(acc, dt; fx_updates=nothing, marks=nothing, funding=nothing, expiries=true, physical_expiry_policy=PhysicalExpiryPolicy.Close, liquidate=false, ...)
 
 Single-step event driver that advances time, updates FX, marks positions, applies funding,
@@ -151,6 +196,7 @@ function process_step!(
             to_cash = acc.cash[fx.to_cash_index]
             update_rate!(er, from_cash, to_cash, fx.rate)
         end
+        isempty(fx_updates) || _revalue_fx_caches!(acc)
     end
 
     if marks !== nothing

@@ -182,6 +182,59 @@ end
     @test count(t -> t.reason == TradeReason.Expiry, acc.trades) == 1
 end
 
+@testitem "process_step! revalues cross-currency positions on FX updates" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
+
+    usd = Cash(:USD)
+    chf = Cash(:CHF)
+    deposit!(acc, usd, 0.0)
+    deposit!(acc, chf, 1_000.0)
+    update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), 1.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("FXREVAL/USDCHF"),
+        :FXREVAL,
+        :USD;
+        settle_symbol=:CHF,
+        settlement=SettlementStyle.Asset,
+        contract_kind=ContractKind.Spot,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.05,
+        margin_init_short=0.1,
+        margin_maint_short=0.05,
+        multiplier=1.0,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    dt1 = dt0 + Day(1)
+
+    order = Order(oid!(acc), inst, dt0, 100.0, 1.0)
+    fill_order!(acc, order; dt=dt0, fill_price=100.0)
+    process_step!(acc, dt0) # initialize accrual clocks
+
+    pos = get_position(acc, inst)
+    eq_before = equity(acc, chf)
+    init_before = init_margin_used(acc, chf)
+    value_before = pos.value_settle
+
+    fx_updates = [FXUpdate(usd.index, chf.index, 0.8)]
+    process_step!(acc, dt1; fx_updates=fx_updates)
+
+    pos_after = get_position(acc, inst)
+    expected_value = to_settle(acc, inst, pos_after.value_quote)
+    expected_eq = eq_before + (expected_value - value_before)
+    expected_init = margin_init_settle(acc, inst, pos_after.quantity, pos_after.mark_price)
+
+    @test pos_after.value_settle ≈ expected_value atol=1e-12
+    @test equity(acc, chf) ≈ expected_eq atol=1e-12
+    @test init_margin_used(acc, chf) ≈ expected_init atol=1e-12
+    @test init_margin_used(acc, chf) < init_before
+end
+
 @testitem "process_step! accrues borrow fees using latest mark in step" begin
     using Test, Fastback, Dates
 
