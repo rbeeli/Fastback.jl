@@ -25,6 +25,7 @@ using TestItemRunner
     trade = fill_order!(acc, order; dt=dt, fill_price=order.price, commission=commission)
 
     @test trade.realized_qty == 0.0
+    @test trade.realized_pnl_entry == 0.0
     @test trade.realized_pnl_settle == 0.0
     @test trade.commission_settle ≈ commission atol=1e-12
     @test trade.cash_delta_settle ≈ -commission atol=1e-12
@@ -68,6 +69,7 @@ end
     expected_gross = (price_close - price_open) * qty
 
     @test close_trade.realized_qty == qty
+    @test close_trade.realized_pnl_entry ≈ expected_gross atol=1e-12
     @test close_trade.realized_pnl_settle ≈ expected_gross atol=1e-12
     @test close_trade.commission_settle ≈ commission_close atol=1e-12
     @test close_trade.cash_delta_settle ≈ expected_gross - commission_close atol=1e-12
@@ -102,6 +104,7 @@ end
     trade2 = fill_order!(acc, order2; dt=dt2, fill_price=order2.price, commission=commission)
 
     @test trade2.realized_qty == 0.0
+    @test trade2.realized_pnl_entry == 0.0
     @test trade2.realized_pnl_settle == 0.0
     @test realized_return(trade2) == 0.0
 end

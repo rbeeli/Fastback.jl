@@ -37,7 +37,8 @@ using TestItemRunner
     @test plan.fill_qty == order.quantity
     @test plan.commission == commission + commission_pct * nominal_value(order)
     @test plan.cash_delta == -(plan.commission)
-    @test plan.realized_pnl == 0.0
+    @test plan.realized_pnl_entry == 0.0
+    @test plan.realized_pnl_settle == 0.0
     @test plan.new_qty == order.quantity
     @test plan.new_avg_entry_price == price
     @test plan.new_value_quote == 0.0
@@ -47,7 +48,8 @@ using TestItemRunner
 
     @test trade.fill_qty == plan.fill_qty
     @test trade.remaining_qty == plan.remaining_qty
-    @test trade.realized_pnl_settle == plan.realized_pnl
+    @test trade.realized_pnl_entry == plan.realized_pnl_entry
+    @test trade.realized_pnl_settle == plan.realized_pnl_settle
     @test trade.realized_qty == plan.realized_qty
     @test trade.commission_settle == plan.commission
     @test trade.cash_delta_settle == plan.cash_delta
@@ -188,7 +190,8 @@ end
 
     @test pos.quantity == pos_qty_before
     @test plan.fill_qty == -1.0
-    @test plan.realized_pnl == 10.0
+    @test plan.realized_pnl_entry == 10.0
+    @test plan.realized_pnl_settle == 0.0
     @test plan.cash_delta == -commission
     @test plan.new_qty == 1.0
     @test plan.new_avg_entry_price == price_open
@@ -199,7 +202,8 @@ end
 
     trade_close = fill_order!(acc, order_close; dt=dt_mark, fill_price=price_mark, commission=commission)
 
-    @test trade_close.realized_pnl_settle == plan.realized_pnl
+    @test trade_close.realized_pnl_entry == plan.realized_pnl_entry
+    @test trade_close.realized_pnl_settle == plan.realized_pnl_settle
     @test trade_close.commission_settle == plan.commission
     @test trade_close.cash_delta_settle == plan.cash_delta
     @test pos.quantity == plan.new_qty
@@ -372,10 +376,11 @@ end
 
     @test trade isa Trade
     @test plan.realized_pnl_settle_quote ≈ -4.0 atol=1e-12
-    @test plan.realized_pnl ≈ -4.0 atol=1e-12
+    @test plan.realized_pnl_settle ≈ -4.0 atol=1e-12
     @test plan.cash_delta ≈ -4.0 - commission atol=1e-12
     @test trade.cash_delta_settle ≈ plan.cash_delta atol=1e-12
-    @test trade.realized_pnl_settle ≈ -4.0 atol=1e-12
+    @test trade.realized_pnl_settle ≈ plan.realized_pnl_settle atol=1e-12
+    @test trade.realized_pnl_entry ≈ plan.realized_pnl_entry atol=1e-12
     @test pos.quantity == 6.0
     @test pos.avg_settle_price == 100.0
     @test pos.avg_entry_price == 100.0

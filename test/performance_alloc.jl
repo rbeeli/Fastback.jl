@@ -38,8 +38,8 @@ end
 
     trade_alloc = let
         o = Order(0, inst_kw, dt0_kw, 0.0, 0.0)
-        Trade(o, 0, dt0_kw, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, TradeReason.Normal)
-        @allocated Trade(o, 1, dt0_kw, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, TradeReason.Normal)
+        Trade(o, 0, dt0_kw, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, TradeReason.Normal)
+        @allocated Trade(o, 1, dt0_kw, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, TradeReason.Normal)
     end
 
     order_kw = Order(oid!(acc_kw), inst_kw, dt0_kw + Day(2), 101.0, -0.25)
@@ -47,10 +47,10 @@ end
     kw_alloc = @allocated fill_order!(acc_kw, order_kw; dt=dt0_kw + Day(2), fill_price=101.0)
 
     # Julia 1.12 breakdowns (deterministic after warmup):
-    # - trade_alloc (112 bytes): Trade heap object incl. GC header
+    # - trade_alloc (128 bytes): Trade heap object incl. GC header
     # - kw path: trade_alloc + 80 bytes (kw wrapper + push! bookkeeping)
-    @test trade_alloc == 112
-    @test kw_alloc == 192
+    @test trade_alloc == 128
+    @test kw_alloc == 208
 end
 
 @testitem "process_step! reuses buffers (no allocations) after warmup" begin

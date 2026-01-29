@@ -429,7 +429,8 @@ end
     order_close = Order(oid!(acc), inst, dt_close, close_price, reduce_qty)
     trade = fill_order!(acc, order_close; dt=dt_close, fill_price=close_price)
 
-    @test trade.realized_pnl_settle ≈ (close_price - open_price) * abs(reduce_qty)
+    @test trade.realized_pnl_entry ≈ (close_price - open_price) * abs(reduce_qty)
+    @test trade.realized_pnl_settle ≈ 0.0
     @test pos.quantity ≈ qty + reduce_qty
     @test pos.avg_entry_price ≈ open_price
     @test pos.avg_settle_price ≈ close_price

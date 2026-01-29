@@ -10,7 +10,7 @@ An `Order` encapsulates an instruction to trade an instrument at a specific time
 
 ## Trade
 
-A `Trade` records the actual execution of an order, including fill price, filled and remaining quantity, realized P&L (`realized_pnl_settle`), realized quantity, commission (`commission_settle`), settlement cash movement (`cash_delta_settle`), and the pre-trade position state. Trades accumulate in `Account.trades`.
+A `Trade` records the actual execution of an order, including fill price, filled and remaining quantity, realized P&L on both entry and settlement bases (`realized_pnl_entry`, `realized_pnl_settle`), realized quantity, commission (`commission_settle`), settlement cash movement (`cash_delta_settle`), and the pre-trade position state. Trades accumulate in `Account.trades`.
 
 ## Position
 
@@ -50,7 +50,7 @@ Commission is specified in the quote currency, converted to the instrument settl
 
 ## Realized P&L
 
-Realized P&L (stored as `realized_pnl_settle`) is produced when exposure decreases and is recorded gross of commissions. `fill_order!` computes realized P&L via `calc_realized_qty`, converts it into the settlement currency, credits it to the account balance, charges commissions separately via `commission_settle`/`cash_delta_settle`, and resets the position's P&L accordingly.
+Realized P&L is produced when exposure decreases and is recorded gross of commissions. `fill_order!` computes realized P&L via `calc_realized_qty` on two bases: `realized_pnl_entry` uses the entry basis (`avg_entry_price`), while `realized_pnl_settle` uses the settlement basis (`avg_settle_price`). Both are stored in settlement currency. For variation-margin instruments, the settlement-basis value aligns with the cash movement on the fill (gross of commissions); commissions are applied separately via `commission_settle`/`cash_delta_settle`.
 
 ## Unrealized P&L
 
