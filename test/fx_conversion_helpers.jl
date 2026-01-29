@@ -97,7 +97,7 @@ using TestItemRunner
 
     bal_before_funding = acc.balances[chf_idx]
     funding_rate = 0.02
-    apply_funding!(acc, perp_inst, dt_perp + Hour(8); funding_rate=funding_rate, mark_price=order_perp.price)
+    apply_funding!(acc, perp_inst, dt_perp + Hour(8); funding_rate=funding_rate)
     payment_quote = -order_perp.quantity * order_perp.price * perp_inst.multiplier * funding_rate
     expected_payment_settle = payment_quote * usd_to_chf
     @test acc.balances[chf_idx] ≈ bal_before_funding + expected_payment_settle atol=1e-8

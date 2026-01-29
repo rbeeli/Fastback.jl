@@ -39,7 +39,7 @@ using TestItemRunner
     @test acc.balances[eur_idx] == 0.0
 
     # Funding also routes to settlement currency
-    apply_funding!(acc, inst, dt + Day(1); funding_rate=0.01, mark_price=21_000.0)
+    apply_funding!(acc, inst, dt + Day(1); funding_rate=0.01)
     @test acc.balances[usd_idx] ≈ 11_000.0 - 210.0 atol=1e-8
     @test acc.balances[eur_idx] == 0.0
 end

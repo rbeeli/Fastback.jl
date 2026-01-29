@@ -1,10 +1,10 @@
 """
-    apply_funding!(acc, inst, dt; funding_rate, mark_price=pos.last_price)
+    apply_funding!(acc, inst, dt; funding_rate)
 
 Applies a perpetual swap funding cashflow to account balances/equities.
 Funding is paid/received in the instrument settlement currency.
 
-`payment = -pos.quantity * mark_price * inst.multiplier * funding_rate`
+`payment = -pos.quantity * last_price * inst.multiplier * funding_rate`
 
 Positive `funding_rate` means longs pay shorts; negative reverses the flow.
 """
@@ -13,15 +13,14 @@ function apply_funding!(
     inst::Instrument{TTime},
     dt::TTime;
     funding_rate::Price,
-    mark_price::Union{Nothing,Price}=nothing,
 ) where {TTime<:Dates.AbstractTime}
     inst.contract_kind == ContractKind.Perpetual || throw(ArgumentError("Funding applies only to perpetual instruments."))
 
     pos = get_position(acc, inst)
     pos.quantity == 0.0 && return acc
 
-    mark = something(mark_price, pos.last_price)
-    payment_quote = -pos.quantity * mark * inst.multiplier * funding_rate
+    last_price = pos.last_price
+    payment_quote = -pos.quantity * last_price * inst.multiplier * funding_rate
     settle_idx = inst.settle_cash_index
     payment = to_settle(acc, inst, payment_quote)
     if payment != 0.0
