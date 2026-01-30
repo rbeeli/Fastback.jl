@@ -188,9 +188,10 @@ deterministically value positions and compute margin during fills.
     pos = get_position(acc, inst)
     fill_qty = fill_qty != 0 ? fill_qty : order.quantity
 
+    mark_for_position = _calc_mark_price(inst, pos.quantity, bid, ask)
     mark_for_valuation = _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
-    needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_valuation || pos.last_price != last || pos.mark_time != dt
-    needs_mark_update && _update_marks!(acc, pos, dt, mark_for_valuation, last)
+    needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_position || pos.last_price != last || pos.mark_time != dt
+    needs_mark_update && _update_marks!(acc, pos, dt, mark_for_position, last)
     pos_qty = pos.quantity
     pos_entry_price = pos.avg_entry_price
 
