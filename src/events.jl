@@ -152,17 +152,32 @@ margin usage for percent-notional instruments using the latest stored last price
 end
 
 """
-    process_step!(acc, dt; fx_updates=nothing, marks=nothing, funding=nothing, expiries=true, physical_expiry_policy=PhysicalExpiryPolicy.Close, liquidate=false, ...)
+    process_step!(
+        acc,
+        dt
+        ;
+        fx_updates=nothing,
+        marks=nothing,
+        funding=nothing,
+        expiries=true,
+        physical_expiry_policy=PhysicalExpiryPolicy.Close,
+        liquidate=false,
+        commission::Price=0.0,
+        commission_pct::Price=0.0,
+        max_liq_steps::Int=10_000,
+        accrue_interest::Bool=true,
+        accrue_borrow_fees::Bool=true,
+    )
 
 Single-step event driver that advances time, updates FX, marks positions, applies funding,
 handles expiries, and optionally liquidates to maintenance if required.
 
 Ordering:
 1. Enforce non-decreasing time
-2. Apply FX updates
-3. Apply mark updates (`update_marks!`)
-4. Apply funding updates (`apply_funding!`)
-5. Accrue interest then borrow fees (`accrue_interest!`, `accrue_borrow_fees!`)
+2. Accrue interest then borrow fees (`accrue_interest!`, `accrue_borrow_fees!`)
+3. Apply FX updates
+4. Apply mark updates (`update_marks!`)
+5. Apply funding updates (`apply_funding!`)
 6. Process expiries (`process_expiries!`)
 7. Optional maintenance liquidation (runs after expiry/margin release)
 8. Stamp `last_event_dt`
@@ -185,6 +200,9 @@ function process_step!(
     last_dt = acc.last_event_dt
     (last_dt != TTime(0) && dt < last_dt) &&
         throw(ArgumentError("Event datetime $(dt) precedes last event $(last_dt)."))
+
+    accrue_interest && accrue_interest!(acc, dt)
+    accrue_borrow_fees && accrue_borrow_fees!(acc, dt)
 
     if fx_updates !== nothing
         er = acc.exchange_rates
@@ -210,9 +228,6 @@ function process_step!(
             apply_funding!(acc, inst, dt; funding_rate=f.rate)
         end
     end
-
-    accrue_interest && accrue_interest!(acc, dt)
-    accrue_borrow_fees && accrue_borrow_fees!(acc, dt)
 
     expiries && process_expiries!(
         acc,

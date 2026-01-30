@@ -6,12 +6,12 @@ mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
     const exchange_rates::TER
     base_currency::Symbol
     base_ccy_index::Int
-    const balances::Vector{Price}           # balance per cash currency
-    const equities::Vector{Price}           # equity per cash currency
-    const interest_borrow_rate::Vector{Price} # borrow interest per cash currency
-    const interest_lend_rate::Vector{Price} # lend interest per cash currency
-    const init_margin_used::Vector{Price}   # initial margin used per cash currency
-    const maint_margin_used::Vector{Price}  # maintenance margin used per cash currency
+    const balances::Vector{Price}              # balance per cash currency
+    const equities::Vector{Price}              # equity per cash currency
+    const interest_borrow_rate::Vector{Price}  # borrow interest per cash currency
+    const interest_lend_rate::Vector{Price}    # lend interest per cash currency
+    const init_margin_used::Vector{Price}      # initial margin used per cash currency
+    const maint_margin_used::Vector{Price}     # maintenance margin used per cash currency
     const positions::Vector{Position{TTime}}
     const trades::Vector{Trade{TTime}}
     const cashflows::Vector{Cashflow{TTime}}

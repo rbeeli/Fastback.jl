@@ -160,16 +160,16 @@ end
     @test length(acc.cashflows) == 4
     kinds = getfield.(acc.cashflows, :kind)
     @test kinds == [
+        CashflowKind.Interest,
         CashflowKind.VariationMargin,
         CashflowKind.VariationMargin,
         CashflowKind.Funding,
-        CashflowKind.Interest,
     ]
 
-    vm_perp_cf = acc.cashflows[1]
-    vm_fut_cf = acc.cashflows[2]
-    funding_cf = acc.cashflows[3]
-    interest_cf = acc.cashflows[4]
+    interest_cf = acc.cashflows[1]
+    vm_perp_cf = acc.cashflows[2]
+    vm_fut_cf = acc.cashflows[3]
+    funding_cf = acc.cashflows[4]
 
     @test interest_cf.amount ≈ expected_chf_interest atol=1e-8
     @test vm_perp_cf.amount ≈ expected_perp_vm atol=1e-8
@@ -180,6 +180,57 @@ end
     @test !is_under_maintenance(acc)
     @test all(t.reason != TradeReason.Liquidation for t in acc.trades)
     @test count(t -> t.reason == TradeReason.Expiry, acc.trades) == 1
+end
+
+@testitem "process_step! interest excludes end-of-step cashflows" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 10_000.0)
+    set_interest_rates!(acc, :USD; borrow=0.0, lend=0.10)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("VMINT/USD"),
+        :VMINT,
+        :USD;
+        contract_kind=ContractKind.Perpetual,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_short=0.1,
+        multiplier=1.0,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, 100.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+
+    # Prime accrual clock without changing balances.
+    process_step!(acc, dt0)
+    bal_before = cash_balance(acc, usd)
+
+    dt1 = dt0 + Day(1)
+    marks = [MarkUpdate(inst.index, 110.0, 110.0, 110.0)]
+    funding = [FundingUpdate(inst.index, 0.01)]
+    process_step!(acc, dt1; marks=marks, funding=funding)
+
+    yearfrac = 1 / 365
+    expected_interest = bal_before * 0.10 * yearfrac
+    expected_vm = 100.0 * (110.0 - 100.0) * inst.multiplier
+    expected_funding = -100.0 * 110.0 * inst.multiplier * 0.01
+
+    interest_cfs = filter(cf -> cf.kind == CashflowKind.Interest, acc.cashflows)
+    @test length(interest_cfs) == 1
+    interest_cf = only(interest_cfs)
+    @test interest_cf.amount ≈ expected_interest atol=1e-8
+
+    expected_balance = bal_before + expected_interest + expected_vm + expected_funding
+    @test cash_balance(acc, usd) ≈ expected_balance atol=1e-8
+
+    wrong_interest = (bal_before + expected_vm + expected_funding) * 0.10 * yearfrac
+    @test !isapprox(interest_cf.amount, wrong_interest; atol=1e-12, rtol=1e-12)
 end
 
 @testitem "process_step! revalues cross-currency positions on FX updates" begin
@@ -235,7 +286,7 @@ end
     @test init_margin_used(acc, chf) < init_before
 end
 
-@testitem "process_step! accrues borrow fees using latest mark in step" begin
+@testitem "process_step! accrues borrow fees using prior mark before step" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -273,7 +324,7 @@ end
     bal_after = cash_balance(acc, usd)
 
     yearfrac = 1 / 365
-    expected_fee = abs(-10.0) * 120.0 * inst.multiplier * inst.short_borrow_rate * yearfrac
+    expected_fee = abs(-10.0) * 100.0 * inst.multiplier * inst.short_borrow_rate * yearfrac
 
     @test bal_before - bal_after ≈ expected_fee atol=1e-10
 
