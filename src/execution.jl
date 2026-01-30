@@ -120,8 +120,8 @@ end
 
     new_pnl_settle = inst.settlement == SettlementStyle.VariationMargin ? 0.0 : to_settle(acc, inst, new_pnl_quote)
 
-    new_init_margin_settle = margin_init_settle(acc, inst, new_qty, margin_price)
-    new_maint_margin_settle = margin_maint_settle(acc, inst, new_qty, margin_price)
+    new_init_margin_settle = margin_init_margin_ccy(acc, inst, new_qty, margin_price)
+    new_maint_margin_settle = margin_maint_margin_ccy(acc, inst, new_qty, margin_price)
     init_margin_delta = new_init_margin_settle - pos_init_margin
     maint_margin_delta = new_maint_margin_settle - pos_maint_margin
 

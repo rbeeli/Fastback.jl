@@ -75,14 +75,18 @@ end
     @test calc_exposure_increase_quantity(0, 0) == 0
 end
 
-@testitem "margin quote rejects invalid margin mode" begin
+@testitem "margin ccy rejects invalid margin mode" begin
     using Test, Fastback
 
     bad_mode = Core.Intrinsics.bitcast(MarginMode.T, Int8(7))
     inst = Instrument(Symbol("BAD/USD"), :BAD, :USD; margin_mode=bad_mode)
 
-    @test_throws ArgumentError margin_init_quote(inst, 1.0, 10.0)
-    @test_throws ArgumentError margin_maint_quote(inst, 1.0, 10.0)
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    register_cash_asset!(acc, Cash(:USD))
+    register_instrument!(acc, inst)
+
+    @test_throws ArgumentError margin_init_margin_ccy(acc, inst, 1.0, 10.0)
+    @test_throws ArgumentError margin_maint_margin_ccy(acc, inst, 1.0, 10.0)
 end
 
 @testitem "mark_price set on fills and marks" begin

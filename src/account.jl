@@ -66,7 +66,6 @@ end
 @inline oid!(acc::Account) = acc.order_sequence += 1
 @inline tid!(acc::Account) = acc.trade_sequence += 1
 @inline cfid!(acc::Account) = acc.cashflow_sequence += 1
-@inline exchange_rates(acc::Account) = acc.exchange_rates
 
 """
 Returns a `Cash` object with the given symbol.
@@ -216,10 +215,14 @@ function register_instrument!(
     if !has_cash_asset(acc, inst.settle_symbol)
         throw(ArgumentError("Settlement cash asset '$(inst.settle_symbol)' for instrument '$(inst.symbol)' not registered in account"))
     end
+    if !has_cash_asset(acc, inst.margin_symbol)
+        throw(ArgumentError("Margin cash asset '$(inst.margin_symbol)' for instrument '$(inst.symbol)' not registered in account"))
+    end
 
     # set cash indexes for fast array indexing and margin calculations
     inst.quote_cash_index = cash_asset(acc, inst.quote_symbol).index
     inst.settle_cash_index = cash_asset(acc, inst.settle_symbol).index
+    inst.margin_cash_index = cash_asset(acc, inst.margin_symbol).index
 
     # set asset index for fast array indexing and hashing
     inst.index = length(acc.positions) + 1
@@ -334,24 +337,19 @@ end
 # Currency/unit helpers (see currency/unit semantics note in `contract_math.jl`)
 
 """
-Cached index for the instrument quote currency cash asset.
-"""
-@inline quote_idx(inst::Instrument) = inst.quote_cash_index
-
-"""
-Cached index for the instrument settlement currency cash asset.
-"""
-@inline settle_idx(inst::Instrument) = inst.settle_cash_index
-
-"""
 Retrieve the `Cash` object for the instrument quote currency without allocations.
 """
-@inline quote_cash(acc::Account, inst::Instrument) = @inbounds acc.cash[quote_idx(inst)]
+@inline quote_cash(acc::Account, inst::Instrument) = @inbounds acc.cash[inst.quote_cash_index]
 
 """
 Retrieve the `Cash` object for the instrument settlement currency without allocations.
 """
-@inline settle_cash(acc::Account, inst::Instrument) = @inbounds acc.cash[settle_idx(inst)]
+@inline settle_cash(acc::Account, inst::Instrument) = @inbounds acc.cash[inst.settle_cash_index]
+
+"""
+Retrieve the `Cash` object for the instrument margin currency without allocations.
+"""
+@inline margin_cash(acc::Account, inst::Instrument) = @inbounds acc.cash[inst.margin_cash_index]
 
 function equity_base_ccy(acc::Account)::Price
     has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
@@ -417,6 +415,21 @@ Inverse of `to_settle`; useful for round-trip tests and diagnostics.
 """
 @inline function to_quote(acc::Account, inst::Instrument, amount_settle::Price)::Price
     amount_settle * get_rate(acc, inst.settle_cash_index, inst.quote_cash_index)
+end
+
+"""
+Convert a quote-currency amount into the instrument margin currency.
+"""
+@inline function to_margin(acc::Account, inst::Instrument, amount_quote::Price)::Price
+    amount_quote * get_rate(acc, inst.quote_cash_index, inst.margin_cash_index)
+end
+
+"""
+Convert a margin-currency amount back into the instrument quote currency.
+Inverse of `to_margin`; useful for diagnostics.
+"""
+@inline function to_quote_from_margin(acc::Account, inst::Instrument, amount_margin::Price)::Price
+    amount_margin * get_rate(acc, inst.margin_cash_index, inst.quote_cash_index)
 end
 
 @inline function to_base(acc::Account, settle_idx::Int, amount_settle::Price)::Price

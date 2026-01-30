@@ -762,13 +762,13 @@ end
     @test acc.maint_margin_used[usd_index] ≈ 75.0
 end
 
-@testitem "Fixed-per-contract margin uses settlement currency FX" begin
+@testitem "Fixed-per-contract margin uses margin currency FX" begin
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
 
-    # Register settlement (EUR) and margin/base (USD)
+    # Register margin (EUR) and base (USD)
     deposit!(acc, Cash(:USD), 10_000.0)
     deposit!(acc, Cash(:EUR), 0.0)
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.10) # EUR→USD
@@ -779,7 +779,7 @@ end
         :EUR;
         settlement=SettlementStyle.Cash,     # settlement currency = EUR (and margin currency)
         margin_mode=MarginMode.FixedPerContract,
-        margin_init_long=100.0,              # per-contract in settlement ccy (EUR)
+        margin_init_long=100.0,              # per-contract in margin ccy (EUR)
         margin_init_short=120.0,
         margin_maint_long=50.0,
         margin_maint_short=60.0

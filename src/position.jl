@@ -4,7 +4,7 @@ Position state tracked per instrument (see currency/unit semantics note in `cont
 - `avg_entry_price` / `avg_settle_price`: `price`
 - `quantity`: `qty`
 - `pnl_quote`, `pnl_settle`, `value_quote`, `value_settle`: cached valuation in quote/settlement currencies
-- `init_margin_settle`, `maint_margin_settle`: `*_settle`
+- `init_margin_settle`, `maint_margin_settle`: margin currency (defaults to settlement)
 - `mark_price`: last valuation (liquidation) price at `mark_time`
 - `last_price`: last traded price used for margin calculations
 """
@@ -18,8 +18,8 @@ mutable struct Position{TTime<:Dates.AbstractTime}
     pnl_settle::Price               # settlement currency P&L (cached for reporting)
     value_quote::Price              # position value contribution in quote currency
     value_settle::Price             # position value contribution in settlement currency (cached)
-    init_margin_settle::Price       # initial margin used in settlement currency
-    maint_margin_settle::Price      # maintenance margin used in settlement currency
+    init_margin_settle::Price       # initial margin used in margin currency (defaults to settlement)
+    maint_margin_settle::Price      # maintenance margin used in margin currency (defaults to settlement)
     mark_price::Price               # last valuation price
     last_price::Price               # last traded price
     mark_time::TTime                # timestamp of last valuation price
@@ -116,63 +116,6 @@ Calculates position return on the **entry basis** (strategy-facing).
     end
     sign(pos.quantity) * (close_price / pos.avg_entry_price - one(close_price))
 end
-
-"""
-Calculates the initial margin requirement in quote currency.
-
-The margin is computed based on the instrument's margin mode and parameters.
-For percent notional, the requirement scales with notional value and multiplier.
-For fixed per contract, the requirement scales with absolute quantity and the
-per-contract amounts are denominated in the instrument settlement currency.
-
-# Arguments
-- `inst`: Instrument definition.
-- `qty`: Position quantity (positive for long, negative for short).
-- `mark`: Current mark or close price.
-"""
-function margin_init_quote(inst::Instrument, qty, mark)
-    qty == 0 && return zero(Price)
-    mode = inst.margin_mode
-    if mode == MarginMode.None
-        return zero(Price)
-    elseif mode == MarginMode.PercentNotional
-        rate = qty > 0 ? inst.margin_init_long : inst.margin_init_short
-        return abs(qty) * mark * inst.multiplier * rate
-    elseif mode == MarginMode.FixedPerContract
-        per_contract = qty > 0 ? inst.margin_init_long : inst.margin_init_short
-        return abs(qty) * per_contract
-    end
-    throw(ArgumentError("Unsupported margin_mode $(mode) for instrument $(inst.symbol)."))
-end
-
-"""
-Calculates the maintenance margin requirement in quote currency.
-
-The margin is computed based on the instrument's margin mode and parameters.
-For percent notional, the requirement scales with notional value and multiplier.
-For fixed per contract, the requirement scales with absolute quantity and the
-per-contract amounts are denominated in the instrument settlement currency.
-
-# Arguments
-- `inst`: Instrument definition.
-- `qty`: Position quantity (positive for long, negative for short).
-- `mark`: Current mark or close price.
-"""
-function margin_maint_quote(inst::Instrument, qty, mark)
-    qty == 0 && return zero(Price)
-    mode = inst.margin_mode
-    if mode == MarginMode.None
-        return zero(Price)
-    elseif mode == MarginMode.PercentNotional
-        rate = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
-        return abs(qty) * mark * inst.multiplier * rate
-    elseif mode == MarginMode.FixedPerContract
-        per_contract = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
-        return abs(qty) * per_contract
-    end
-    throw(ArgumentError("Unsupported margin_mode $(mode) for instrument $(inst.symbol)."))
-end
-
 
 """
 Calculates the quantity that is covered (realized) by a order of an existing position.

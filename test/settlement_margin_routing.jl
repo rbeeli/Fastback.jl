@@ -95,7 +95,7 @@ end
     @test pos.avg_settle_price ≈ 100.0 atol=1e-8
 end
 
-@testitem "Margin requirement recorded in settlement currency" begin
+@testitem "Margin requirement recorded in margin currency" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.BaseCurrency)
@@ -123,11 +123,50 @@ end
     usd_idx = cash_asset(acc, :USD).index
     eur_idx = cash_asset(acc, :EUR).index
 
-    # Margin is recorded in settlement currency (EUR), not USD
+    # Margin is recorded in margin currency (EUR), not USD
     @test acc.init_margin_used[eur_idx] > 0
     @test acc.init_margin_used[usd_idx] == 0
     @test acc.maint_margin_used[eur_idx] > 0
     @test acc.maint_margin_used[usd_idx] == 0
+end
+
+@testitem "Margin requirement routed to explicit margin currency" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    register_cash_asset!(acc, Cash(:USD))
+    register_cash_asset!(acc, Cash(:EUR))
+    deposit!(acc, cash_asset(acc, :USD), 10_000.0)
+
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1) # EUR -> USD
+
+    inst = Instrument(Symbol("MARGIN/EUR"), :MARG, :USD;
+        settle_symbol=:USD,
+        margin_symbol=:EUR,
+        contract_kind=ContractKind.Perpetual,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.05,
+        multiplier=1.0,
+    )
+
+    register_instrument!(acc, inst)
+
+    dt = DateTime(2026, 1, 1)
+    order = Order(oid!(acc), inst, dt, 100.0, 1.0)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
+    @test trade isa Trade
+
+    eur_idx = cash_asset(acc, :EUR).index
+    usd_idx = cash_asset(acc, :USD).index
+
+    expected_margin_eur = 100.0 * 0.1 * (1.0 / 1.1)
+    @test inst.margin_cash_index == eur_idx
+    @test acc.init_margin_used[eur_idx] ≈ expected_margin_eur atol=1e-8
+    @test acc.init_margin_used[usd_idx] == 0.0
+    @test init_margin_used_base_ccy(acc) ≈ expected_margin_eur * 1.1 atol=1e-8
 end
 
 @testitem "FX conversion applied to settlement currency" begin
@@ -162,7 +201,7 @@ end
     usd_idx = cash_asset(acc, :USD).index
     eur_idx = cash_asset(acc, :EUR).index
 
-    # Initial VM cash impact zero; margin should be in USD with FX applied
+    # Initial VM cash impact zero; margin should be in USD (margin currency) with FX applied
     @test acc.balances[usd_idx] == 10_000.0
     @test acc.init_margin_used[usd_idx] ≈ 20_000.0 * 0.1 * 1.1 atol=1e-8
 

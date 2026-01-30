@@ -8,6 +8,7 @@ Currency and unit semantics used throughout contract math:
 - `qty`: base units/contracts (signed)
 - `*_quote`: denominated in instrument quote currency
 - `*_settle`: denominated in instrument settlement currency
+- `*_margin_ccy`: denominated in instrument margin currency (defaults to settlement)
 - `*_base`: denominated in account base currency
 """
 
@@ -47,14 +48,56 @@ end
     end
 end
 
-@inline function margin_init_settle(acc::Account, inst::Instrument, qty, mark)::Price
+"""
+Calculates the initial margin requirement in the instrument margin currency.
+"""
+@inline function margin_init_margin_ccy(acc::Account, inst::Instrument, qty, mark)::Price
     acc.mode == AccountMode.Cash && return zero(Price)
-    quote_req = margin_init_quote(inst, qty, mark)
-    inst.margin_mode == MarginMode.FixedPerContract ? quote_req : to_settle(acc, inst, quote_req)
+    qty == 0 && return zero(Price)
+    mode = inst.margin_mode
+    if mode == MarginMode.None
+        return zero(Price)
+    elseif mode == MarginMode.PercentNotional
+        rate = qty > 0 ? inst.margin_init_long : inst.margin_init_short
+        quote_req = abs(qty) * mark * inst.multiplier * rate
+        return to_margin(acc, inst, quote_req)
+    elseif mode == MarginMode.FixedPerContract
+        per_contract = qty > 0 ? inst.margin_init_long : inst.margin_init_short
+        return abs(qty) * per_contract
+    end
+    throw(ArgumentError("Unsupported margin_mode $(mode) for instrument $(inst.symbol)."))
 end
 
-@inline function margin_maint_settle(acc::Account, inst::Instrument, qty, mark)::Price
+"""
+Calculates the maintenance margin requirement in the instrument margin currency.
+"""
+@inline function margin_maint_margin_ccy(acc::Account, inst::Instrument, qty, mark)::Price
     acc.mode == AccountMode.Cash && return zero(Price)
-    quote_req = margin_maint_quote(inst, qty, mark)
-    inst.margin_mode == MarginMode.FixedPerContract ? quote_req : to_settle(acc, inst, quote_req)
+    qty == 0 && return zero(Price)
+    mode = inst.margin_mode
+    if mode == MarginMode.None
+        return zero(Price)
+    elseif mode == MarginMode.PercentNotional
+        rate = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
+        quote_req = abs(qty) * mark * inst.multiplier * rate
+        return to_margin(acc, inst, quote_req)
+    elseif mode == MarginMode.FixedPerContract
+        per_contract = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
+        return abs(qty) * per_contract
+    end
+    throw(ArgumentError("Unsupported margin_mode $(mode) for instrument $(inst.symbol)."))
 end
+
+"""
+Legacy alias for `margin_init_margin_ccy`. Margin is recorded in margin currency,
+which defaults to settlement currency.
+"""
+@inline margin_init_settle(acc::Account, inst::Instrument, qty, mark)::Price =
+    margin_init_margin_ccy(acc, inst, qty, mark)
+
+"""
+Legacy alias for `margin_maint_margin_ccy`. Margin is recorded in margin currency,
+which defaults to settlement currency.
+"""
+@inline margin_maint_settle(acc::Account, inst::Instrument, qty, mark)::Price =
+    margin_maint_margin_ccy(acc, inst, qty, mark)

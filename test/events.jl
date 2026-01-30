@@ -278,7 +278,7 @@ end
     pos_after = get_position(acc, inst)
     expected_value = to_settle(acc, inst, pos_after.value_quote)
     expected_eq = eq_before + (expected_value - value_before)
-    expected_init = margin_init_settle(acc, inst, pos_after.quantity, pos_after.last_price)
+    expected_init = margin_init_margin_ccy(acc, inst, pos_after.quantity, pos_after.last_price)
 
     @test pos_after.value_settle ≈ expected_value atol=1e-12
     @test equity(acc, chf) ≈ expected_eq atol=1e-12

@@ -71,10 +71,10 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
     close_price::Price,
 )
     inst = pos.inst
-    margin_cash_index = inst.settle_cash_index
+    margin_cash_index = inst.margin_cash_index
 
-    new_init_margin = margin_init_settle(acc, inst, pos.quantity, close_price)
-    new_maint_margin = margin_maint_settle(acc, inst, pos.quantity, close_price)
+    new_init_margin = margin_init_margin_ccy(acc, inst, pos.quantity, close_price)
+    new_maint_margin = margin_maint_margin_ccy(acc, inst, pos.quantity, close_price)
     init_delta = new_init_margin - pos.init_margin_settle
     maint_delta = new_maint_margin - pos.maint_margin_settle
     @inbounds begin
@@ -212,11 +212,12 @@ deterministically value positions and compute margin during fills.
     rejection == OrderRejectReason.None || return rejection
 
     settle_cash_index = inst.settle_cash_index
+    margin_cash_index = inst.margin_cash_index
     @inbounds begin
         acc.balances[settle_cash_index] += plan.cash_delta
         acc.equities[settle_cash_index] += plan.cash_delta + plan.value_delta_settle
-        acc.init_margin_used[settle_cash_index] += plan.init_margin_delta
-        acc.maint_margin_used[settle_cash_index] += plan.maint_margin_delta
+        acc.init_margin_used[margin_cash_index] += plan.init_margin_delta
+        acc.maint_margin_used[margin_cash_index] += plan.maint_margin_delta
     end
 
     pos.avg_entry_price = plan.new_avg_entry_price

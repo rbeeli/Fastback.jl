@@ -30,6 +30,7 @@ using TestItemRunner
     ))
     pos_spot = get_position(acc, spot_inst)
     chf_idx = spot_inst.settle_cash_index
+    margin_idx = spot_inst.margin_cash_index
 
     dt = DateTime(2026, 1, 1)
     price = 50.0
@@ -61,7 +62,7 @@ using TestItemRunner
     trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission=commission)
     @test trade isa Trade
     @test acc.balances[chf_idx] ≈ expected_cash_delta atol=1e-10
-    @test acc.init_margin_used[chf_idx] ≈ expected_init_margin atol=1e-10
+    @test acc.init_margin_used[margin_idx] ≈ expected_init_margin atol=1e-10
 
     accrue_borrow_fees!(acc, dt) # initialize clock
     bal_before_fee = acc.balances[chf_idx]

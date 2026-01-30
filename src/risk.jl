@@ -5,6 +5,7 @@
 )::OrderRejectReason.T where {TTime<:Dates.AbstractTime}
     inst = pos.inst
     settle_idx = inst.settle_cash_index
+    margin_idx = inst.margin_cash_index
     inc_qty = calc_exposure_increase_quantity(pos.quantity, impact.fill_qty)
 
     # cash account: disallow non-asset instruments, shorts, overdrafts
@@ -42,15 +43,15 @@
     cash_effect = impact.cash_delta + value_delta_settle
 
     if acc.margining_style == MarginingStyle.PerCurrency
-        equity_after = acc.equities[settle_idx] + cash_effect
-        init_after = acc.init_margin_used[settle_idx] + impact.init_margin_delta
+        equity_after = acc.equities[margin_idx] + (margin_idx == settle_idx ? cash_effect : 0.0)
+        init_after = acc.init_margin_used[margin_idx] + impact.init_margin_delta
         if equity_after - init_after < 0
             return OrderRejectReason.InsufficientInitialMargin
         end
         return OrderRejectReason.None
     else
         equity_after = equity_base_ccy(acc) + to_base(acc, settle_idx, cash_effect)
-        init_after = init_margin_used_base_ccy(acc) + to_base(acc, settle_idx, impact.init_margin_delta)
+        init_after = init_margin_used_base_ccy(acc) + to_base(acc, margin_idx, impact.init_margin_delta)
         if equity_after - init_after < 0
             return OrderRejectReason.InsufficientInitialMargin
         end

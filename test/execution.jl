@@ -59,8 +59,8 @@ using TestItemRunner
     @test pos.avg_settle_price == pos.avg_entry_price
     @test pos.value_quote == plan.new_value_quote
     @test pos.pnl_quote == plan.new_pnl_quote
-    @test acc.init_margin_used[inst.quote_cash_index] == plan.new_init_margin_settle
-    @test acc.maint_margin_used[inst.quote_cash_index] == plan.new_maint_margin_settle
+    @test acc.init_margin_used[inst.margin_cash_index] == plan.new_init_margin_settle
+    @test acc.maint_margin_used[inst.margin_cash_index] == plan.new_maint_margin_settle
     @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
 end
 
@@ -172,8 +172,8 @@ end
     update_marks!(acc, pos, dt_mark, price_mark, price_mark, price_mark)
 
     cash_before = cash_balance(acc, usd)
-    init_before = acc.init_margin_used[inst.quote_cash_index]
-    maint_before = acc.maint_margin_used[inst.quote_cash_index]
+    init_before = acc.init_margin_used[inst.margin_cash_index]
+    maint_before = acc.maint_margin_used[inst.margin_cash_index]
     pos_qty_before = pos.quantity
 
     order_close = Order(oid!(acc), inst, dt_mark, price_mark, -1.0)
@@ -214,11 +214,11 @@ end
     @test pos.avg_settle_price == price_mark
     @test pos.value_quote == plan.new_value_quote
     @test pos.pnl_quote == plan.new_pnl_quote
-    @test acc.init_margin_used[inst.quote_cash_index] == plan.new_init_margin_settle
-    @test acc.maint_margin_used[inst.quote_cash_index] == plan.new_maint_margin_settle
+    @test acc.init_margin_used[inst.margin_cash_index] == plan.new_init_margin_settle
+    @test acc.maint_margin_used[inst.margin_cash_index] == plan.new_maint_margin_settle
     @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
-    @test acc.init_margin_used[inst.quote_cash_index] < init_before
-    @test acc.maint_margin_used[inst.quote_cash_index] < maint_before
+    @test acc.init_margin_used[inst.margin_cash_index] < init_before
+    @test acc.maint_margin_used[inst.margin_cash_index] < maint_before
 end
 
 @testitem "variation margin entry spread settles immediately" begin

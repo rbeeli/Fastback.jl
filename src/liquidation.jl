@@ -51,7 +51,7 @@ function liquidate_to_maintenance!(
                 qty = pos.quantity
                 qty == 0.0 && continue
 
-                m_base = pos.maint_margin_settle * get_rate_base_ccy(acc, pos.inst.settle_cash_index)
+                m_base = pos.maint_margin_settle * get_rate_base_ccy(acc, pos.inst.margin_cash_index)
                 if m_base > max_margin_base
                     max_margin_base = m_base
                     max_pos = pos
@@ -76,7 +76,7 @@ function liquidate_to_maintenance!(
             @inbounds for pos in acc.positions
                 qty = pos.quantity
                 qty == 0.0 && continue
-                pos.inst.settle_cash_index == worst_idx || continue
+                pos.inst.margin_cash_index == worst_idx || continue
 
                 m_settle = pos.maint_margin_settle
                 if m_settle > max_margin_settle

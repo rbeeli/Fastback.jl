@@ -34,18 +34,18 @@ end
     recompute_margins(acc) -> init, maint
 
 Rebuild the initial and maintenance margin usage vectors by summing the
-per-position stored margins into their settlement cash indices.
+per-position stored margins into their margin cash indices.
 """
 function recompute_margins(acc::Account)
     init = zero.(acc.init_margin_used)
     maint = zero.(acc.maint_margin_used)
 
     @inbounds for pos in acc.positions
-        settle_idx = pos.inst.settle_cash_index
-        settle_idx > 0 || throw(AssertionError("Instrument $(pos.inst.symbol) has unset settle_cash_index."))
+        margin_idx = pos.inst.margin_cash_index
+        margin_idx > 0 || throw(AssertionError("Instrument $(pos.inst.symbol) has unset margin_cash_index."))
 
-        init[settle_idx] += pos.init_margin_settle
-        maint[settle_idx] += pos.maint_margin_settle
+        init[margin_idx] += pos.init_margin_settle
+        maint[margin_idx] += pos.maint_margin_settle
     end
 
     return init, maint
@@ -68,6 +68,7 @@ function check_invariants(acc::Account; atol::Real=1e-9, rtol::Real=1e-9)
 
         inst.quote_cash_index > 0 || throw(AssertionError("Instrument $(inst.symbol) has unset quote_cash_index."))
         inst.settle_cash_index > 0 || throw(AssertionError("Instrument $(inst.symbol) has unset settle_cash_index."))
+        inst.margin_cash_index > 0 || throw(AssertionError("Instrument $(inst.symbol) has unset margin_cash_index."))
         pos.index == inst.index || throw(AssertionError("Position index $(pos.index) must equal instrument index $(inst.index) for $(inst.symbol)."))
 
         if pos.quantity != 0.0
