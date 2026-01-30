@@ -4,7 +4,7 @@
 Applies a perpetual swap funding cashflow to account balances/equities.
 Funding is paid/received in the instrument settlement currency.
 
-`payment = -pos.quantity * last_price * inst.multiplier * funding_rate`
+`payment = -pos.quantity * mark_price * inst.multiplier * funding_rate`
 
 Positive `funding_rate` means longs pay shorts; negative reverses the flow.
 """
@@ -19,8 +19,8 @@ function apply_funding!(
     pos = get_position(acc, inst)
     pos.quantity == 0.0 && return acc
 
-    last_price = pos.last_price
-    payment_quote = -pos.quantity * last_price * inst.multiplier * funding_rate
+    funding_price = isnan(pos.mark_price) ? pos.last_price : pos.mark_price
+    payment_quote = -pos.quantity * funding_price * inst.multiplier * funding_rate
     settle_idx = inst.settle_cash_index
     payment = to_settle(acc, inst, payment_quote)
     if payment != 0.0

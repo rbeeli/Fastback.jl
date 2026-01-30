@@ -54,3 +54,39 @@ using TestItemRunner
     @test cf2.amount ≈ expected_payment2 atol=1e-8
     @test cf2.kind == CashflowKind.Funding
 end
+
+@testitem "Perpetual funding uses mark price" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 1_000.0)
+
+    inst = register_instrument!(
+        acc,
+        Instrument(
+            Symbol("PERPMARK/USD"),
+            :PERPMARK,
+            :USD;
+            contract_kind=ContractKind.Perpetual,
+            settlement=SettlementStyle.VariationMargin,
+            margin_mode=MarginMode.PercentNotional,
+            margin_init_long=0.1,
+            margin_maint_long=0.05,
+            multiplier=1.0,
+        ),
+    )
+
+    dt0 = DateTime(2026, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+
+    dt1 = dt0 + Hour(1)
+    update_marks!(acc, inst, dt1, 99.0, 101.0, 105.0) # mark(mid)=100, last=105
+
+    funding_rate = 0.01
+    apply_funding!(acc, inst, dt1 + Hour(8); funding_rate=funding_rate)
+
+    expected_payment = -1.0 * 100.0 * inst.multiplier * funding_rate
+    @test cash_balance(acc, usd) ≈ 1_000.0 + expected_payment atol=1e-8
+    @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-8
+end
