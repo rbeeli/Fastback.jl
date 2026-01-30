@@ -30,7 +30,7 @@ end
         update_marks!(acc, get_position(acc, inst), dt0, 100.0, 100.0, 100.0)
         fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
         fill_order!(acc, Order(oid!(acc), inst, dt0 + Day(1), 101.0, 0.5); dt=dt0 + Day(1), fill_price=101.0, bid=101.0, ask=101.0, last=101.0)
-        sizehint!(acc.trades, length(acc.trades) + 2)
+        sizehint!(acc.trades, length(acc.trades) + 4)
         return acc, inst, dt0
     end
 
@@ -42,13 +42,17 @@ end
         @allocated Trade(o, 1, dt0_kw, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, TradeReason.Normal)
     end
 
-    order_kw = Order(oid!(acc_kw), inst_kw, dt0_kw + Day(2), 101.0, -0.25)
+    order_kw1 = Order(oid!(acc_kw), inst_kw, dt0_kw + Day(2), 101.0, -0.25)
+    fill_order!(acc_kw, order_kw1; dt=dt0_kw + Day(2), fill_price=101.0, bid=101.0, ask=101.0, last=101.0)
+    order_kw2 = Order(oid!(acc_kw), inst_kw, dt0_kw + Day(3), 101.0, -0.25)
+    fill_order!(acc_kw, order_kw2; dt=dt0_kw + Day(3), fill_price=101.0, bid=101.0, ask=101.0, last=101.0)
+    order_kw3 = Order(oid!(acc_kw), inst_kw, dt0_kw + Day(4), 101.0, -0.25)
 
-    kw_alloc = @allocated fill_order!(acc_kw, order_kw; dt=dt0_kw + Day(2), fill_price=101.0, bid=101.0, ask=101.0, last=101.0)
+    kw_alloc = @allocated fill_order!(acc_kw, order_kw3; dt=dt0_kw + Day(4), fill_price=101.0, bid=101.0, ask=101.0, last=101.0)
 
-    # Bound the kw path after warmup; exact bytes vary with keyword arity.
+    # Bound the kw path after warmup; allow small overhead above Trade allocation.
     @test trade_alloc == 128
-    @test kw_alloc <= 300_000
+    @test kw_alloc <= trade_alloc + 128
 end
 
 @testitem "process_step! reuses buffers (no allocations) after warmup" begin
