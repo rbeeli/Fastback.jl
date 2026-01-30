@@ -4,8 +4,9 @@ using Dates
     accrue_borrow_fees!(acc, dt; year_basis=365.0)
 
 Accrues short borrow fees on asset-settled short positions between the last
-accrual timestamp and `dt`. The fee is charged in the instrument settlement currency
-and applied to both balances and equities.
+accrual timestamp and `dt`. The fee notional is based on the neutral last price
+(falling back to the liquidation mark if unavailable), charged in the instrument
+settlement currency, and applied to both balances and equities.
 """
 function accrue_borrow_fees!(
     acc::Account{TTime},
@@ -29,7 +30,8 @@ function accrue_borrow_fees!(
         inst = pos.inst
         inst.settlement == SettlementStyle.Asset || continue
         inst.short_borrow_rate > 0.0 || continue
-        fee_quote = abs(pos.quantity) * pos.mark_price * inst.multiplier * inst.short_borrow_rate * yearfrac
+        fee_price = isnan(pos.last_price) ? pos.mark_price : pos.last_price
+        fee_quote = abs(pos.quantity) * fee_price * inst.multiplier * inst.short_borrow_rate * yearfrac
         settle_idx = inst.settle_cash_index
         fee = to_settle(acc, inst, fee_quote)
         fee == 0.0 && continue
