@@ -58,6 +58,7 @@ gen_markdown("3_multi_currency.jl");
 gen_markdown("4_Tables_integration.jl");
 gen_markdown("5_NanoDates_integration.jl");
 gen_markdown("6_Timestamps64_integration.jl");
+gen_markdown("7_USDm_perp_trading.jl");
 
 # generate notebook files
 gen_notebook("1_random_trading.jl");
@@ -66,6 +67,7 @@ gen_notebook("3_multi_currency.jl");
 gen_notebook("4_Tables_integration.jl");
 gen_notebook("5_NanoDates_integration.jl");
 gen_notebook("6_Timestamps64_integration.jl");
+gen_notebook("7_USDm_perp_trading.jl");
 
 makedocs(
     sitename="Fastback.jl",
@@ -85,6 +87,7 @@ makedocs(
             "4\\. Tables.jl integration" => "examples/gen/4_Tables_integration.md",
             "5\\. NanoDates.jl integration" => "examples/gen/5_NanoDates_integration.md",
             "6\\. Timestamps64.jl integration" => "examples/gen/6_Timestamps64_integration.md",
+            "7\\. USD-M perpetual trading" => "examples/gen/7_USDm_perp_trading.md",
         ],
         "Integrations" => "integrations.md",
         "Glossary" => "glossary.md",
