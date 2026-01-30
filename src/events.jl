@@ -199,8 +199,8 @@ function process_step!(
 
     if marks !== nothing
         @inbounds for m in marks
-            inst = acc.positions[m.inst_index].inst
-            update_marks!(acc, inst, dt, m.bid, m.ask, m.last)
+            pos = acc.positions[m.inst_index]
+            update_marks!(acc, pos, dt, m.bid, m.ask, m.last)
         end
     end
 
