@@ -2,39 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.5.0] - 2026-01-22
+## [0.5.0] - 2026-01-31
 
-### Added
+### Breaking changes ⚠️
 
-- Support for optional Instrument `multiplier` value
-- `Position.value_local` and `update_valuation! = update_pnl!` functions
-- `SettlementStyle` enum for specifying settlement types of instruments (Asset, Cash, Variation Margin)
-- `MarginMode` enum + `update_margin!` + `update_marks!` functions for margin calculations and extended `Position` struct and `Account` struct to support margin trading
-- `ContractKind` enum to distinguish spot, perpetual, and future instruments
-- New `Instrument` lifecycle fields (`contract_kind`, `start_time`, `expiry`) with helpers `has_expiry`, `is_expired`, and `is_active`
-- `Position.mark_price` stores the latest valuation price, updated on fills and mark-to-market to support liquidation, expiry settlement, and borrow logic.
-
-### Removed
-
-- Metadata type parameters (`OData`, `IData`, `CData`) and associated metadata fields were removed from core types, Tables outputs, and printing to simplify the API.
-
-### Changed
-
-- `fill_order!` now marks positions to the fill price before realizing P&L, ensuring correct variation-margin settlement and margin usage
-- Quote cash lookup performance improvement by caching index in `Instrument` struct
-
-## [0.4.2] - 2025-09-29
-
-### Changed
-
-- Improve printing in `show(acc)` of trades and positions by showing first and last few entries when there are many, not only the first few
-
-## [0.4.1] - 2025-09-28
-
-### Added
-
-- New field `Position.last_order` for tracking the last order that modified the position
-- New field `Position.last_trade` for tracking the last trade that modified the position
+- Complete rework of the API with lots of renamings and restructuring
 
 ## [0.4.0] - 2025-09-26
 
