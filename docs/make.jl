@@ -1,7 +1,10 @@
 const DOCS_ROOT = @__DIR__
 const PROJECT_ROOT = normpath(joinpath(DOCS_ROOT, ".."))
 
-push!(LOAD_PATH, joinpath(PROJECT_ROOT, "src"))
+using Pkg
+Pkg.activate(DOCS_ROOT)
+Pkg.develop(path=PROJECT_ROOT)
+Pkg.instantiate()
 
 using Documenter
 using Literate

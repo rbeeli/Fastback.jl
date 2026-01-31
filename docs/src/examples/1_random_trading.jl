@@ -66,26 +66,17 @@ using Plots, Printf
 theme(:juno; titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false)
 
 ## plot equity curve
-p = plot(dates(equity_data), values(equity_data);
-    title="Account",
-    label="Equity",
-    linetype=:steppost,
-    yformatter=:plain,
+p = Fastback.plot_equity(
+    equity_data,
     size=(800, 400),
-    color="#BBBB00");
+)
 p
-
 #---------------------------------------------------------
 
-# ### Plot account equity drawdown curve
+# ### Plot account equity drawdown using Fastback Plots extension
 
-## plot drawdown curve
-p = plot(dates(drawdown_data), 100values(drawdown_data);
-    title="Equity drawdowns [%]",
-    legend=false,
-    linetype=:steppost,
-    color="#BB0000",
-    yformatter=y -> @sprintf("%.1f%%", y),
+p = Fastback.plot_drawdown(
+    drawdown_data,
     size=(800, 200),
-    fill=(0, "#BB000033"));
+)
 p

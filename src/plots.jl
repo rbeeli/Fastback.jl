@@ -1,0 +1,17 @@
+# Plot extension hooks (methods provided by FastbackPlotsExt when Plots.jl is loaded).
+function plot_title end
+function plot_balance end
+function plot_equity end
+function plot_equity_seq end
+function plot_open_orders end
+function plot_open_orders_seq end
+function plot_drawdown end
+function plot_drawdown_seq end
+function violin_nominal_returns_by_day end
+function violin_nominal_returns_by_hour end
+function plot_nominal_cum_returns_by_hour end
+function plot_nominal_cum_returns_by_hour_seq_net end
+function plot_nominal_cum_returns_by_hour_seq_gross end
+function plot_nominal_cum_returns_by_hour_seq end
+function plot_nominal_cum_returns_by_weekday end
+function plot_nominal_cum_returns_by_weekday_seq end
