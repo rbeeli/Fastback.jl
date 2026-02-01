@@ -131,3 +131,9 @@ Fastback.plot_equity(equity_data; size=(800, 400))
 # ### Plot account equity drawdown curve
 
 Fastback.plot_drawdown(drawdown_data; size=(800, 200))
+
+# ---------------------------------------------------------
+
+# ### Plot cashflows by type
+
+Fastback.plot_cashflows(acc)

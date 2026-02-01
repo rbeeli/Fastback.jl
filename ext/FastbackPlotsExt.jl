@@ -286,10 +286,51 @@ function Fastback.plot_drawdown_seq(pv::DrawdownValues; kwargs...)
     end
 end
 
+# -----------------------------------------------------------------------------
+
+"""
+Plot account cashflows by type (one panel per `CashflowKind`).
+"""
+function Fastback.plot_cashflows(acc::Account{TTime}; kwargs...) where {TTime<:Dates.AbstractTime}
+    isempty(acc.cashflows) && return _empty_plot("No cashflow data"; kwargs...)
+
+    cf_by_kind = Dict{CashflowKind.T, Tuple{Vector{TTime}, Vector{Price}}}()
+    for cf in acc.cashflows
+        dates, amounts = get!(cf_by_kind, cf.kind, (TTime[], Price[]))
+        push!(dates, cf.dt)
+        push!(amounts, cf.amount)
+    end
+
+    kinds = sort!(collect(keys(cf_by_kind)); by=Int)
+    y_label = string(acc.base_currency)
+    plot_kwargs = _merge_kwargs((;
+            layout=(length(kinds), 1),
+            size=(800, 180 * length(kinds)),
+            legend=false,
+        ), kwargs)
+
+    _with_theme() do
+        p = Plots.plot(; plot_kwargs...)
+        for (i, k) in pairs(kinds)
+            dates, amounts = cf_by_kind[k]
+            Plots.plot!(p[i], dates, amounts;
+                seriestype=:sticks,
+                marker=:circle,
+                markersize=2,
+                title=string(k),
+                xlabel="Date",
+                ylabel=y_label,
+            )
+            Plots.hline!(p[i], [0.0]; color=:black, alpha=0.2)
+        end
+        p
+    end
+end
+
 """
 Violin plot of realized returns grouped by day of week (realizing trades only).
 """
-function Fastback.violin_realized_returns_by_day(trades::AbstractVector{<:Trade}; kwargs...)
+function Fastback.plot_violin_realized_returns_by_day(trades::AbstractVector{<:Trade}; kwargs...)
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
     if !_ensure_statsplots()
@@ -318,7 +359,7 @@ function Fastback.violin_realized_returns_by_day(trades::AbstractVector{<:Trade}
     end
 end
 
-function Fastback.violin_realized_returns_by_day(events::AbstractVector{<:PlotEvent}; kwargs...)
+function Fastback.plot_violin_realized_returns_by_day(events::AbstractVector{<:PlotEvent}; kwargs...)
     isempty(events) && return _empty_plot("No positions"; kwargs...)
     if !_ensure_statsplots()
         return _empty_plot("Install StatsPlots for violin plots"; kwargs...)
@@ -349,7 +390,7 @@ end
 """
 Violin plot of realized returns grouped by hour (realizing trades only).
 """
-function Fastback.violin_realized_returns_by_hour(trades::AbstractVector{<:Trade}; kwargs...)
+function Fastback.plot_violin_realized_returns_by_hour(trades::AbstractVector{<:Trade}; kwargs...)
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
     if !_ensure_statsplots()
@@ -378,7 +419,7 @@ function Fastback.violin_realized_returns_by_hour(trades::AbstractVector{<:Trade
     end
 end
 
-function Fastback.violin_realized_returns_by_hour(events::AbstractVector{<:PlotEvent}; kwargs...)
+function Fastback.plot_violin_realized_returns_by_hour(events::AbstractVector{<:PlotEvent}; kwargs...)
     isempty(events) && return _empty_plot("No positions"; kwargs...)
     if !_ensure_statsplots()
         return _empty_plot("Install StatsPlots for violin plots"; kwargs...)

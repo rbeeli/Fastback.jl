@@ -16,6 +16,44 @@ For example, Fastback has no notion of "strategy" or "indicator"; such construct
 The event-based architecture aims to mimic how real-world trading systems ingest streaming data.
 You drive the engine with explicit mark, FX, and funding updates, plus optional expiry and liquidation steps, which reduces the implementation gap to live execution compared to vectorized backtesting frameworks.
 
+## Hello world backtest
+
+```julia
+using Fastback
+using Dates
+
+acc = Account(; mode=AccountMode.Cash, base_currency=:USD)
+deposit!(acc, Cash(:USD), 10_000.0)
+inst = register_instrument!(acc, spot_instrument(:ABC, :ABC, :USD))
+
+dts = [DateTime(2024, 1, 1) + Hour(i) for i in 0:3]
+prices = [100.0, 101.0, 102.0, 101.5]
+
+collect_equity, equity_data = periodic_collector(Float64, Hour(1))
+
+for (dt, price) in zip(dts, prices)
+    update_marks!(acc, inst, dt, price, price, price)
+    if dt == dts[1]
+        order = Order(oid!(acc), inst, dt, price, 10.0)
+        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+    elseif dt == dts[end]
+        pos = get_position(acc, inst)
+        order = Order(oid!(acc), inst, dt, price, -pos.quantity)
+        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+    end
+
+    if should_collect(equity_data, dt)
+        collect_equity(dt, equity(acc, :USD))
+    end
+end
+
+equity(acc, :USD)
+
+# Plots (requires Plots.jl)
+using Plots
+Fastback.plot_equity(equity_data)
+```
+
 ## Features
 
 - Event-driven accounting engine with explicit event processing (`process_step!`) for marks, FX, funding, expiries, and optional liquidation

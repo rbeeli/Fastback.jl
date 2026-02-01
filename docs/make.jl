@@ -87,10 +87,12 @@ makedocs(
     ),
     pages=[
         "Home" => "index.md",
+        "Getting started" => "getting_started.md",
         "Basic setup" => "basic_setup.md",
-        "Core concepts" => "concepts.md",
+        "Accounting model and event loop" => "concepts.md",
         "Execution and errors" => "execution_errors.md",
         "Pitfalls and gotchas" => "pitfalls.md",
+        "How-to" => "how_to.md",
         "Examples" => [
             "Walkthroughs" => [
                 "Random trading" => "examples/gen/1_random_trading.md",

@@ -4,9 +4,9 @@ A backtest using Fastback usually consists of the following parts:
 
 ### 1. Data
 
-Acquire data like price, volume and other featuers you want to backtest on.
+Acquire data like price, volume and other features you want to backtest on.
 This can be from a `DataFrame`, a CSV file, or a database.
-Ideally, it can be looped over, or streamed efficiently.
+Ideally, it can be looped over or streamed efficiently.
 
 ### 2. Account
 
@@ -32,7 +32,10 @@ In a live-setting, the data would be streamed to the trading logic instead of be
 
 ### 6. Analysis
 
-Analyze the backtest results by inspecing the account and the collected data.
+Analyze the backtest results by inspecting the account and the collected data.
 Print account balances, equity, drawdowns, etc., or create plots.
-Alternatively, store the results in a `Vector` or `DataFrame` for further analysis.For example, when running an optimization, we compute the metric of interest and store it in a `Vector` or similar.
+Alternatively, store the results in a `Vector` or `DataFrame` for further analysis.
+For example, when running an optimization, we compute the metric of interest and store it in a `Vector` or similar.
 At the end of the optimization, we can then inspect the results and find the best parameters.
+
+For a runnable minimal example, see the [Getting started](getting_started.md) page.

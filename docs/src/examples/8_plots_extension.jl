@@ -1,35 +1,82 @@
 # # Plots extension showcase
 #
 # This example demonstrates all plotting helpers provided by the Fastback
-# Plots extension. It generates synthetic data for collectors and trades,
-# then renders each plot type for illustration.
+# Plots extension. It runs a small backtest to populate collectors, trades,
+# and cashflows, then renders each plot type for illustration.
 
 using Fastback
 using Dates
-using Random
 using Plots
-
-Random.seed!(42);
+using Statistics
 
 # ---------------------------------------------------------
-# Collector data (balance/equity/open orders/drawdown)
+# Simple backtest to generate plot data
 
-collect_balance, balance_data = periodic_collector(Float64, Day(1));
-collect_equity, equity_data = periodic_collector(Float64, Day(1));
-collect_open, open_orders_data = periodic_collector(Int, Day(1));
-collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Day(1));
+acc = Account(; mode=AccountMode.Margin, base_currency=:USDT);
+USDT = Cash(:USDT; digits=2);
+deposit!(acc, USDT, 10_000.0);
+perp = register_instrument!(acc, perpetual_instrument(
+    Symbol("BTCUSDT-PERP"), :BTC, :USDT;
+    margin_mode=MarginMode.PercentNotional,
+    margin_init_long=0.10,
+    margin_init_short=0.10,
+    margin_maint_long=0.05,
+    margin_maint_short=0.05,
+))
+
+collect_balance, balance_data = periodic_collector(Float64, Hour(1));
+collect_equity, equity_data = periodic_collector(Float64, Hour(1));
+collect_open, open_orders_data = periodic_collector(Int, Hour(1));
+collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Hour(1));
 
 dt0 = DateTime(2020, 1, 1);
-for i in 0:9
-    dt = dt0 + Day(i)
-    balance = 10_000.0 + 150.0 * i
-    equity = balance + (-1)^i * 120.0
-    open_orders = i % 4
+n_steps = 120;
+prices = [100.0 + 0.05 * (i - 1) + 5.0 * sin(2pi * (i - 1) / 24) for i in 1:n_steps];
 
-    collect_balance(dt, balance)
-    collect_equity(dt, equity)
-    collect_open(dt, open_orders)
-    collect_drawdown(dt, equity)
+window = 24;
+deadband = 0.002;
+leverage_target = 2.0;
+
+for i in 1:n_steps
+    dt = dt0 + Hour(i - 1)
+    last = prices[i]
+    bid = last - 0.05
+    ask = last + 0.05
+
+    funding_rate = i % 8 == 0 ? (isodd(div(i, 8)) ? 0.0005 : -0.0005) : 0.0
+    marks = [MarkUpdate(perp.index, bid, ask, last)]
+    funding = funding_rate == 0.0 ? nothing : [FundingUpdate(perp.index, funding_rate)]
+    process_step!(acc, dt; marks=marks, funding=funding, liquidate=true)
+
+    if i >= window
+        ma = mean(@view prices[i-window+1:i])
+        signal = last > (1 + deadband) * ma ? 1.0 : (last < (1 - deadband) * ma ? -1.0 : 0.0)
+
+        pos = get_position(acc, perp)
+        target_qty = signal == 0.0 ? 0.0 : signal * leverage_target * equity(acc, :USDT) / last
+        delta_qty = target_qty - pos.quantity
+
+        if abs(delta_qty) > 1e-8
+            order = Order(oid!(acc), perp, dt, last, delta_qty)
+            fill_order!(acc, order; dt=dt, fill_price=last, bid=bid, ask=ask, last=last, commission_pct=0.0004)
+        end
+    end
+
+    if should_collect(balance_data, dt)
+        collect_balance(dt, cash_balance(acc, :USDT))
+        eq = equity(acc, :USDT)
+        collect_equity(dt, eq)
+        collect_drawdown(dt, eq)
+        collect_open(dt, get_position(acc, perp).quantity == 0.0 ? 0 : 1)
+    end
+end
+
+pos = get_position(acc, perp)
+if pos.quantity != 0.0
+    dt = dt0 + Hour(n_steps - 1)
+    last = prices[end]
+    order = Order(oid!(acc), perp, dt, last, -pos.quantity)
+    fill_order!(acc, order; dt=dt, fill_price=last, bid=last - 0.05, ask=last + 0.05, last=last, commission_pct=0.0004)
 end
 
 # ---------------------------------------------------------
@@ -65,37 +112,18 @@ Fastback.plot_equity!(p, equity_data);
 p
 
 # ---------------------------------------------------------
-# Synthetic trades for return-based plots
+# Cashflow plots
 
-acc = Account(; mode=AccountMode.Margin, base_currency=:USD);
-USD = Cash(:USD; digits=2);
-deposit!(acc, USD, 10_000.0);
-inst = register_instrument!(acc, Instrument(:XYZ, :XYZ, :USD; margin_mode=MarginMode.PercentNotional))
-
-trade_specs = [
-    (DateTime(2020, 1, 1, 9), DateTime(2020, 1, 1, 16), 100.0, 102.0),
-    (DateTime(2020, 1, 2, 10), DateTime(2020, 1, 2, 15), 101.0, 99.0),
-    (DateTime(2020, 1, 3, 11), DateTime(2020, 1, 3, 17), 100.5, 101.0),
-    (DateTime(2020, 1, 6, 9), DateTime(2020, 1, 6, 14), 102.0, 98.5),
-    (DateTime(2020, 1, 7, 13), DateTime(2020, 1, 7, 18), 99.5, 103.0),
-];
-
-for (open_dt, close_dt, open_px, close_px) in trade_specs
-    open_order = Order(oid!(acc), inst, open_dt, open_px, 1.0)
-    fill_order!(acc, open_order; dt=open_dt, fill_price=open_px, bid=open_px, ask=open_px, last=open_px)
-
-    close_order = Order(oid!(acc), inst, close_dt, close_px, -1.0)
-    fill_order!(acc, close_order; dt=close_dt, fill_price=close_px, bid=close_px, ask=close_px, last=close_px)
-end
+Fastback.plot_cashflows(acc)
 
 # ---------------------------------------------------------
 # Return-based plots
 
 # Returns by day (violin)
-Fastback.violin_realized_returns_by_day(acc.trades)
+Fastback.plot_violin_realized_returns_by_day(acc.trades)
 
 # Returns by hour (violin)
-Fastback.violin_realized_returns_by_hour(acc.trades)
+Fastback.plot_violin_realized_returns_by_hour(acc.trades)
 
 # Cumulative returns by hour
 Fastback.plot_realized_cum_returns_by_hour(acc.trades)

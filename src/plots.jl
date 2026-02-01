@@ -11,8 +11,9 @@ function plot_open_orders_seq end
 function plot_drawdown end
 function plot_drawdown! end
 function plot_drawdown_seq end
-function violin_realized_returns_by_day end
-function violin_realized_returns_by_hour end
+function plot_cashflows end
+function plot_violin_realized_returns_by_day end
+function plot_violin_realized_returns_by_hour end
 function plot_realized_cum_returns_by_hour end
 function plot_realized_cum_returns_by_hour_seq_net end
 function plot_realized_cum_returns_by_hour_seq_gross end
