@@ -88,17 +88,27 @@ makedocs(
     pages=[
         "Home" => "index.md",
         "Basic setup" => "basic_setup.md",
+        "Core concepts" => "concepts.md",
+        "Execution and errors" => "execution_errors.md",
+        "Pitfalls and gotchas" => "pitfalls.md",
         "Examples" => [
-            "1\\. Random trading" => "examples/gen/1_random_trading.md",
-            "2\\. Portfolio trading" => "examples/gen/2_portfolio_trading.md",
-            "3\\. Multi-Currency trading" => "examples/gen/3_multi_currency.md",
-            "4\\. Tables.jl integration" => "examples/gen/4_Tables_integration.md",
-            "5\\. NanoDates.jl integration" => "examples/gen/5_NanoDates_integration.md",
-            "6\\. Timestamps64.jl integration" => "examples/gen/6_Timestamps64_integration.md",
-            "7\\. USD-M perpetual trading" => "examples/gen/7_USDm_perp_trading.md",
-            "8\\. Plots extension" => "examples/gen/8_plots_extension.md",
+            "Walkthroughs" => [
+                "Random trading" => "examples/gen/1_random_trading.md",
+                "Portfolio trading" => "examples/gen/2_portfolio_trading.md",
+                "Multi-Currency trading" => "examples/gen/3_multi_currency.md",
+                "USD-M perpetual trading" => "examples/gen/7_USDm_perp_trading.md",
+            ],
+            "Integrations" => [
+                "Tables.jl" => "examples/gen/4_Tables_integration.md",
+                "NanoDates.jl" => "examples/gen/5_NanoDates_integration.md",
+                "Timestamps64.jl" => "examples/gen/6_Timestamps64_integration.md",
+            ],
+            "Plotting" => [
+                "Plots extensions" => "examples/gen/8_plots_extension.md",
+            ],
         ],
         "Integrations" => "integrations.md",
+        "API index" => "api_index.md",
         "Glossary" => "glossary.md",
     ]
 )
