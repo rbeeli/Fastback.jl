@@ -60,7 +60,7 @@ display(p)
 # ---------------------------------------------------------
 # Synthetic trades for return-based plots
 
-acc = Account(; base_currency=:USD);
+acc = Account(; mode=AccountMode.Margin, base_currency=:USD);
 USD = Cash(:USD; digits=2);
 deposit!(acc, USD, 10_000.0);
 inst = register_instrument!(acc, Instrument(:XYZ, :XYZ, :USD; margin_mode=MarginMode.PercentNotional))
