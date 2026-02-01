@@ -166,10 +166,9 @@ p4 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
     linecolor=nothing,
     bar_width=0.5)
 
-p = plot(p1, p2, p3, p4;
+plot(p1, p2, p3, p4;
     layout=@layout[a{0.4h}; b{0.15h}; c{0.3h}; d{0.15h}],
     size=(800, 800), margin=0mm, left_margin=5mm);
-p
 
 #---------------------------------------------------------
 

@@ -100,13 +100,11 @@ using Plots
 theme(:juno)
 
 ## plot equity curve
-p = Fastback.plot_equity(equity_data; size=(800, 400))
-p
+Fastback.plot_equity(equity_data; size=(800, 400))
 
 #---------------------------------------------------------
 
 # ### Plot account equity drawdown curve
 
 ## plot drawdown curve
-p = Fastback.plot_drawdown(drawdown_data; size=(800, 200))
-p
+Fastback.plot_drawdown(drawdown_data; size=(800, 200))
