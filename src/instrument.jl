@@ -99,14 +99,21 @@ end
 
 @inline Base.hash(inst::Instrument{T}) where {T} = inst.index  # custom hash for better performance
 
+"""
+Format a base-asset quantity using the instrument's display precision.
+"""
 @inline format_base(inst::Instrument, value) = Printf.format(Printf.Format("%.$(inst.base_digits)f"), value)
+
+"""
+Format a quote-currency value using the instrument's display precision.
+"""
 @inline format_quote(inst::Instrument, value) = Printf.format(Printf.Format("%.$(inst.quote_digits)f"), value)
 
 @inline function _infer_delivery_style(contract_kind::ContractKind.T, settlement::SettlementStyle.T, delivery_style::DeliveryStyle.T)
     if contract_kind == ContractKind.Spot && settlement == SettlementStyle.Asset && delivery_style == DeliveryStyle.CashSettle
         return DeliveryStyle.PhysicalDeliver
     end
-    return delivery_style
+    delivery_style
 end
 
 """
@@ -154,7 +161,7 @@ function spot_instrument(
         expiry=time_type(0),
     )
     validate_instrument(inst)
-    return inst
+    inst
 end
 
 """
@@ -213,7 +220,7 @@ function margin_spot_instrument(
         expiry=time_type(0),
     )
     validate_instrument(inst)
-    return inst
+    inst
 end
 
 """
@@ -273,7 +280,7 @@ function perpetual_instrument(
         expiry=time_type(0),
     )
     validate_instrument(inst)
-    return inst
+    inst
 end
 
 """
@@ -336,7 +343,7 @@ function future_instrument(
         expiry=expiry,
     )
     validate_instrument(inst)
-    return inst
+    inst
 end
 
 function Base.show(io::IO, inst::Instrument)
@@ -349,10 +356,24 @@ function Base.show(io::IO, inst::Instrument)
     print(io, str)
 end
 
+"""
+Return `true` if the instrument defines a non-zero expiry, i.e. the contract expires.
+"""
 @inline has_expiry(inst::Instrument{TTime}) where {TTime<:Dates.AbstractTime} = inst.expiry != TTime(0)
+
+"""
+Return `true` if the instrument is expired at `dt` (inclusive).
+"""
 @inline is_expired(inst::Instrument{TTime}, dt::TTime) where {TTime<:Dates.AbstractTime} = has_expiry(inst) && dt >= inst.expiry
+
+"""
+Return `true` if the instrument is active at `dt` (after start, before expiry).
+"""
 @inline is_active(inst::Instrument{TTime}, dt::TTime) where {TTime<:Dates.AbstractTime} = (inst.start_time == TTime(0) || dt >= inst.start_time) && !is_expired(inst, dt)
 
+"""
+Throw an `ArgumentError` if the instrument is not active at `dt`.
+"""
 @inline function ensure_active(inst::Instrument{TTime}, dt::TTime) where {TTime<:Dates.AbstractTime}
     if inst.start_time != TTime(0) && dt < inst.start_time
         throw(ArgumentError("Instrument $(inst.symbol) is not active before $(inst.start_time)"))
@@ -361,7 +382,7 @@ end
     elseif !is_active(inst, dt)
         throw(ArgumentError("Instrument $(inst.symbol) is not active at $dt"))
     end
-    return inst
+    inst
 end
 
 """
@@ -414,5 +435,5 @@ function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.Abstra
         delivery in (DeliveryStyle.CashSettle, DeliveryStyle.PhysicalDeliver) || throw(ArgumentError("Future instrument $(inst.symbol) has invalid delivery_style."))
     end
 
-    return nothing
+    nothing
 end

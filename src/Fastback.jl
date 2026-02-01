@@ -127,8 +127,6 @@ export has_exposure,
     calc_return_quote,
     margin_init_margin_ccy,
     margin_maint_margin_ccy,
-    margin_init_settle,
-    margin_maint_settle,
     calc_realized_qty,
     calc_exposure_increase_quantity
 

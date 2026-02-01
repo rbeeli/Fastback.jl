@@ -2,6 +2,9 @@ using Base.Threads
 using Dates
 using Printf
 
+"""
+Run a batch of backtests over a parameter list, optionally in parallel.
+"""
 function batch_backtest(
     backtest_return_type::Type{TReturn},
     params_list,

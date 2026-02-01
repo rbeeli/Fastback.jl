@@ -12,10 +12,16 @@ Currency and unit semantics used throughout contract math:
 - `*_base`: denominated in account base currency
 """
 
+"""
+Quote-currency P&L for a position at `price` relative to `basis_price`.
+"""
 @inline function pnl_quote(inst::Instrument, qty, price, basis_price)::Price
     qty * (price - basis_price) * inst.multiplier
 end
 
+"""
+Quote-currency position value contribution under the instrument settlement style.
+"""
 @inline function value_quote(inst::Instrument, qty, price, basis_price)::Price
     settlement = inst.settlement
     if settlement == SettlementStyle.Asset
@@ -29,6 +35,9 @@ end
     end
 end
 
+"""
+Quote-currency cash delta for a fill, honoring settlement style.
+"""
 @inline function cash_delta_quote(
     inst::Instrument,
     fill_qty,
@@ -87,17 +96,3 @@ Calculates the maintenance margin requirement in the instrument margin currency.
     end
     throw(ArgumentError("Unsupported margin_mode $(mode) for instrument $(inst.symbol)."))
 end
-
-"""
-Legacy alias for `margin_init_margin_ccy`. Margin is recorded in margin currency,
-which defaults to settlement currency.
-"""
-@inline margin_init_settle(acc::Account, inst::Instrument, qty, mark)::Price =
-    margin_init_margin_ccy(acc, inst, qty, mark)
-
-"""
-Legacy alias for `margin_maint_margin_ccy`. Margin is recorded in margin currency,
-which defaults to settlement currency.
-"""
-@inline margin_maint_settle(acc::Account, inst::Instrument, qty, mark)::Price =
-    margin_maint_margin_ccy(acc, inst, qty, mark)

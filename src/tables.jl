@@ -93,6 +93,9 @@ function Base.iterate(iter::TradeRows{TTime}, idx::Int=1) where {TTime<:Dates.Ab
     return row, idx + 1
 end
 
+"""
+Return a Tables.jl view over account trades.
+"""
 trades_table(acc::Account{TTime}) where {TTime<:Dates.AbstractTime} = TradesTable{TTime}(acc.trades)
 
 # -----------------------------------------------------------------------------
@@ -152,6 +155,9 @@ function Base.iterate(iter::CashflowRows{TTime}, idx::Int=1) where {TTime<:Dates
     return row, idx + 1
 end
 
+"""
+Return a Tables.jl view over account cashflows.
+"""
 cashflows_table(acc::Account{TTime}) where {TTime<:Dates.AbstractTime} = CashflowsTable{TTime}(acc.cashflows, acc.cash)
 
 # -----------------------------------------------------------------------------
@@ -221,6 +227,9 @@ function Base.iterate(iter::PositionRows{TTime}, idx::Int=1) where {TTime<:Dates
     return row, idx + 1
 end
 
+"""
+Return a Tables.jl view over account positions.
+"""
 positions_table(acc::Account{TTime}) where {TTime<:Dates.AbstractTime} = PositionsTable{TTime}(acc.positions)
 
 # -----------------------------------------------------------------------------
@@ -264,6 +273,9 @@ function Base.iterate(iter::CashBalanceRows, idx::Int=1)
     return row, idx + 1
 end
 
+"""
+Return a Tables.jl view over account cash balances.
+"""
 balances_table(acc::Account) = CashBalancesTable(acc.cash, acc.balances)
 
 # -----------------------------------------------------------------------------
@@ -307,6 +319,9 @@ function Base.iterate(iter::EquityBalanceRows, idx::Int=1)
     return row, idx + 1
 end
 
+"""
+Return a Tables.jl view over account equities.
+"""
 equities_table(acc::Account) = EquityBalancesTable(acc.cash, acc.equities)
 
 # -------------------------- Collectors -----------------------------------

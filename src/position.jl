@@ -70,7 +70,17 @@ end
 
 @inline is_long(pos::Position) = pos.quantity > zero(Quantity)
 @inline is_short(pos::Position) = pos.quantity < zero(Quantity)
+
+"""
+Return the trade direction of the position based on its quantity.
+A negative quantity indicates a short position, while a positive quantity indicates a long position.
+A zero quantity indicates no position (i.e., flat) -> TradeDir.Null.
+"""
 @inline trade_dir(pos::Position) = trade_dir(pos.quantity)
+
+"""
+Return `true` if the position has non-zero exposure.
+"""
 @inline has_exposure(pos::Position) = pos.quantity != zero(Quantity)
 
 """

@@ -18,9 +18,10 @@ end
 
 @inline Base.hash(cash::Cash) = cash.index  # custom hash for better performance
 
-@inline function format_cash(cash::Cash, value)
-    Printf.format(Printf.Format("%.$(cash.digits)f"), value)
-end
+"""
+Format a cash value using the cash asset's display precision.
+"""
+@inline format_cash(cash::Cash, value) = Printf.format(Printf.Format("%.$(cash.digits)f"), value)
 
 function Base.show(io::IO, cash::Cash)
     print(io, "[Cash] " *

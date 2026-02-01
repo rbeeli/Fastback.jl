@@ -53,8 +53,21 @@ function Order(
     )
 end
 
+"""
+Return the instrument symbol of the given order.
+"""
 @inline symbol(order::Order) = symbol(order.inst)
+
+"""
+Return the trade direction of the order based on its quantity.
+A negative quantity indicates a short position, while a positive quantity indicates a long position.
+A zero quantity indicates no position (i.e., flat) -> TradeDir.Null.
+"""
 @inline trade_dir(order::Order) = trade_dir(order.quantity)
+
+"""
+Nominal order value in quote currency (abs(qty) * price * multiplier).
+"""
 @inline nominal_value(order::Order) = abs(order.quantity) * order.price * order.inst.multiplier
 
 function Base.show(io::IO, o::Order{TTime}) where {TTime}

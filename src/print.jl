@@ -5,6 +5,9 @@ import Printf
 
 # --------------- Trades ---------------
 
+"""
+Pretty-print trades for an account.
+"""
 function print_trades(
     io::IO,
     acc::Account{TTime}
@@ -73,6 +76,9 @@ end
 
 # --------------- Cashflows ---------------
 
+"""
+Pretty-print cashflows for an account.
+"""
 function print_cashflows(
     acc::Account{TTime}
     ;
@@ -129,6 +135,9 @@ end
 
 # --------------- Positions ---------------
 
+"""
+Pretty-print open positions for an account.
+"""
 function print_positions(
     acc::Account{TTime}
     ;
@@ -191,6 +200,9 @@ end
 
 # ---------------- Cash balances ----------------
 
+"""
+Pretty-print cash balances for an account.
+"""
 function print_cash_balances(
     io::IO,
     acc::Account{TTime}
@@ -236,6 +248,9 @@ end
 
 # ---------------- Equity balances ----------------
 
+"""
+Pretty-print equity balances for an account.
+"""
 function print_equity_balances(
     io::IO,
     acc::Account{TTime}

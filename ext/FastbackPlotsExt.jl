@@ -99,8 +99,11 @@ end
     PlotEvent{TTime}(open_dt, last_dt, Float64(ret))
 
 @inline PlotEvent(t::Trade{T}) where {T<:Dates.AbstractTime} =
-    PlotEvent{T}(t.date, t.date, realized_return(t; zero_value=0.0))
+    PlotEvent{T}(t.date, t.date, realized_return(t))
 
+"""
+Render a title-only plot panel.
+"""
 function Fastback.plot_title(title_text; kwargs...)
     plot_kwargs = _merge_kwargs((;
             marker=0,
@@ -116,6 +119,9 @@ function Fastback.plot_title(title_text; kwargs...)
     end
 end
 
+"""
+Plot cash balance over time from `PeriodicValues`.
+"""
 function Fastback.plot_balance(pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No balance data"; kwargs...)
@@ -125,6 +131,9 @@ function Fastback.plot_balance(pv::PeriodicValues; kwargs...)
     plt
 end
 
+"""
+Add cash balance series to an existing plot.
+"""
 function Fastback.plot_balance!(plt, pv::PeriodicValues; kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
@@ -135,6 +144,9 @@ function Fastback.plot_balance!(plt, pv::PeriodicValues; kwargs...)
     plt
 end
 
+"""
+Plot equity over time from `PeriodicValues`.
+"""
 function Fastback.plot_equity(pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No equity data"; kwargs...)
@@ -143,6 +155,9 @@ function Fastback.plot_equity(pv::PeriodicValues; kwargs...)
     plt
 end
 
+"""
+Add equity series to an existing plot.
+"""
 function Fastback.plot_equity!(plt, pv::PeriodicValues; kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
@@ -153,6 +168,9 @@ function Fastback.plot_equity!(plt, pv::PeriodicValues; kwargs...)
     plt
 end
 
+"""
+Plot equity by sequence index (no datetime axis).
+"""
 function Fastback.plot_equity_seq(pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No equity data"; kwargs...)
@@ -170,6 +188,9 @@ function Fastback.plot_equity_seq(pv::PeriodicValues; kwargs...)
     end
 end
 
+"""
+Plot open orders over time from `PeriodicValues`.
+"""
 function Fastback.plot_open_orders(pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No open orders data"; kwargs...)
@@ -178,6 +199,9 @@ function Fastback.plot_open_orders(pv::PeriodicValues; kwargs...)
     plt
 end
 
+"""
+Add open orders series to an existing plot.
+"""
 function Fastback.plot_open_orders!(plt, pv::PeriodicValues; kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
@@ -190,6 +214,9 @@ function Fastback.plot_open_orders!(plt, pv::PeriodicValues; kwargs...)
     plt
 end
 
+"""
+Plot open orders by sequence index (no datetime axis).
+"""
 function Fastback.plot_open_orders_seq(pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No open orders data"; kwargs...)
@@ -213,6 +240,9 @@ function Fastback.plot_open_orders_seq(pv::PeriodicValues; kwargs...)
     end
 end
 
+"""
+Plot drawdown series from `DrawdownValues`.
+"""
 function Fastback.plot_drawdown(pv::DrawdownValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No drawdown data"; kwargs...)
@@ -222,6 +252,9 @@ function Fastback.plot_drawdown(pv::DrawdownValues; kwargs...)
     plt
 end
 
+"""
+Add drawdown series to an existing plot.
+"""
 function Fastback.plot_drawdown!(plt, pv::DrawdownValues; kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
@@ -232,6 +265,9 @@ function Fastback.plot_drawdown!(plt, pv::DrawdownValues; kwargs...)
     plt
 end
 
+"""
+Plot drawdown by sequence index (no datetime axis).
+"""
 function Fastback.plot_drawdown_seq(pv::DrawdownValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No drawdown data"; kwargs...)
@@ -250,8 +286,12 @@ function Fastback.plot_drawdown_seq(pv::DrawdownValues; kwargs...)
     end
 end
 
-function Fastback.violin_nominal_returns_by_day(trades::AbstractVector{<:Trade}; kwargs...)
-    isempty(trades) && return _empty_plot("No positions"; kwargs...)
+"""
+Violin plot of realized returns grouped by day of week (realizing trades only).
+"""
+function Fastback.violin_realized_returns_by_day(trades::AbstractVector{<:Trade}; kwargs...)
+    trades = filter(is_realizing, trades)
+    isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
     if !_ensure_statsplots()
         return _empty_plot("Install StatsPlots for violin plots"; kwargs...)
     end
@@ -261,16 +301,16 @@ function Fastback.violin_nominal_returns_by_day(trades::AbstractVector{<:Trade};
              @orderby(key(_)) |>
              @map(key(_) => collect(_)) |>
              collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
+    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
 
-    y = [map(t -> realized_return(t; zero_value=0.0), group) for (_, group) in groups]
+    y = [map(t -> realized_return(t), group) for (_, group) in groups]
     x_lbls = [Dates.dayname(day) for (day, _) in groups]
 
     plot_kwargs = _merge_kwargs((;
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
-            title="Nominal returns by day (trade date)",
+            title="Realized returns by day (trade date)",
             legend=false,
         ), kwargs)
     _with_theme() do
@@ -278,7 +318,7 @@ function Fastback.violin_nominal_returns_by_day(trades::AbstractVector{<:Trade};
     end
 end
 
-function Fastback.violin_nominal_returns_by_day(events::AbstractVector{<:PlotEvent}; kwargs...)
+function Fastback.violin_realized_returns_by_day(events::AbstractVector{<:PlotEvent}; kwargs...)
     isempty(events) && return _empty_plot("No positions"; kwargs...)
     if !_ensure_statsplots()
         return _empty_plot("Install StatsPlots for violin plots"; kwargs...)
@@ -298,7 +338,7 @@ function Fastback.violin_nominal_returns_by_day(events::AbstractVector{<:PlotEve
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
-            title="Nominal returns by day (event date)",
+            title="Realized returns by day (event date)",
             legend=false,
         ), kwargs)
     _with_theme() do
@@ -306,8 +346,12 @@ function Fastback.violin_nominal_returns_by_day(events::AbstractVector{<:PlotEve
     end
 end
 
-function Fastback.violin_nominal_returns_by_hour(trades::AbstractVector{<:Trade}; kwargs...)
-    isempty(trades) && return _empty_plot("No positions"; kwargs...)
+"""
+Violin plot of realized returns grouped by hour (realizing trades only).
+"""
+function Fastback.violin_realized_returns_by_hour(trades::AbstractVector{<:Trade}; kwargs...)
+    trades = filter(is_realizing, trades)
+    isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
     if !_ensure_statsplots()
         return _empty_plot("Install StatsPlots for violin plots"; kwargs...)
     end
@@ -317,16 +361,16 @@ function Fastback.violin_nominal_returns_by_hour(trades::AbstractVector{<:Trade}
              @orderby(key(_)) |>
              @map(key(_) => collect(_)) |>
              collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
+    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
 
-    y = [map(t -> realized_return(t; zero_value=0.0), group) for (_, group) in groups]
+    y = [map(t -> realized_return(t), group) for (_, group) in groups]
     x_lbls = [string(hour) for (hour, _) in groups]
 
     plot_kwargs = _merge_kwargs((;
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
-            title="Nominal returns by hour (trade time)",
+            title="Realized returns by hour (trade time)",
             legend=false,
         ), kwargs)
     _with_theme() do
@@ -334,7 +378,7 @@ function Fastback.violin_nominal_returns_by_hour(trades::AbstractVector{<:Trade}
     end
 end
 
-function Fastback.violin_nominal_returns_by_hour(events::AbstractVector{<:PlotEvent}; kwargs...)
+function Fastback.violin_realized_returns_by_hour(events::AbstractVector{<:PlotEvent}; kwargs...)
     isempty(events) && return _empty_plot("No positions"; kwargs...)
     if !_ensure_statsplots()
         return _empty_plot("Install StatsPlots for violin plots"; kwargs...)
@@ -354,7 +398,7 @@ function Fastback.violin_nominal_returns_by_hour(events::AbstractVector{<:PlotEv
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
-            title="Nominal returns by hour (event time)",
+            title="Realized returns by hour (event time)",
             legend=false,
         ), kwargs)
     _with_theme() do
@@ -362,19 +406,23 @@ function Fastback.violin_nominal_returns_by_hour(events::AbstractVector{<:PlotEv
     end
 end
 
-function Fastback.plot_nominal_cum_returns_by_hour(
+"""
+Plot cumulative realized returns grouped by hour (realizing trades only).
+"""
+function Fastback.plot_realized_cum_returns_by_hour(
     trades::AbstractVector{<:Trade},
-    ret_func::Function=t -> realized_return(t; zero_value=0.0);
+    ret_func::Function=t -> realized_return(t);
     kwargs...
 )
-    isempty(trades) && return _empty_plot("No positions"; kwargs...)
+    trades = filter(is_realizing, trades)
+    isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
     groups = trades |>
              @groupby(Dates.hour(_.date)) |>
              @orderby(key(_)) |>
              @map(key(_) => collect(_)) |>
              collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
+    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
 
     _with_theme() do
         plt = nothing
@@ -388,7 +436,7 @@ function Fastback.plot_nominal_cum_returns_by_hour(
                 plot_kwargs = _merge_kwargs((;
                         legend=:topleft,
                         label=lbl,
-                        title="Nominal returns by hour",
+                        title="Realized returns by hour",
                     ), kwargs)
                 plt = Plots.plot(dts, cum_rets; plot_kwargs...)
             else
@@ -404,7 +452,7 @@ function Fastback.plot_nominal_cum_returns_by_hour(
     end
 end
 
-function Fastback.plot_nominal_cum_returns_by_hour(
+function Fastback.plot_realized_cum_returns_by_hour(
     events::AbstractVector{<:PlotEvent},
     ret_func::Function=e -> e.ret;
     kwargs...
@@ -430,7 +478,7 @@ function Fastback.plot_nominal_cum_returns_by_hour(
                 plot_kwargs = _merge_kwargs((;
                         legend=:topleft,
                         label=lbl,
-                        title="Nominal returns by hour",
+                        title="Realized returns by hour",
                     ), kwargs)
                 plt = Plots.plot(dts, cum_rets; plot_kwargs...)
             else
@@ -446,52 +494,62 @@ function Fastback.plot_nominal_cum_returns_by_hour(
     end
 end
 
-function Fastback.plot_nominal_cum_returns_by_hour_seq_net(trades::AbstractVector{<:Trade}; kwargs...)
-    Fastback.plot_nominal_cum_returns_by_hour_seq(
+"""
+Plot cumulative realized returns by hour using sequence index (net, realizing trades only).
+"""
+function Fastback.plot_realized_cum_returns_by_hour_seq_net(trades::AbstractVector{<:Trade}; kwargs...)
+    Fastback.plot_realized_cum_returns_by_hour_seq(
         trades,
-        t -> realized_return(t; zero_value=0.0),
-        "Net cumulative returns by hour";
+        t -> realized_return(t),
+        "Net realized cumulative returns by hour";
         kwargs...)
 end
 
-function Fastback.plot_nominal_cum_returns_by_hour_seq_net(events::AbstractVector{<:PlotEvent}; kwargs...)
-    Fastback.plot_nominal_cum_returns_by_hour_seq(
+function Fastback.plot_realized_cum_returns_by_hour_seq_net(events::AbstractVector{<:PlotEvent}; kwargs...)
+    Fastback.plot_realized_cum_returns_by_hour_seq(
         events,
         e -> e.ret,
-        "Net cumulative returns by hour";
+        "Net realized cumulative returns by hour";
         kwargs...)
 end
 
-function Fastback.plot_nominal_cum_returns_by_hour_seq_gross(trades::AbstractVector{<:Trade}; kwargs...)
-    Fastback.plot_nominal_cum_returns_by_hour_seq(
+"""
+Plot cumulative realized returns by hour using sequence index (gross, realizing trades only).
+"""
+function Fastback.plot_realized_cum_returns_by_hour_seq_gross(trades::AbstractVector{<:Trade}; kwargs...)
+    Fastback.plot_realized_cum_returns_by_hour_seq(
         trades,
-        t -> realized_return(t; zero_value=0.0),
-        "Gross cumulative returns by hour";
+        t -> realized_return(t),
+        "Gross realized cumulative returns by hour";
         kwargs...)
 end
 
-function Fastback.plot_nominal_cum_returns_by_hour_seq_gross(events::AbstractVector{<:PlotEvent}; kwargs...)
-    Fastback.plot_nominal_cum_returns_by_hour_seq(
+function Fastback.plot_realized_cum_returns_by_hour_seq_gross(events::AbstractVector{<:PlotEvent}; kwargs...)
+    Fastback.plot_realized_cum_returns_by_hour_seq(
         events,
         e -> e.ret,
-        "Gross cumulative returns by hour";
+        "Gross realized cumulative returns by hour";
         kwargs...)
 end
 
-function Fastback.plot_nominal_cum_returns_by_hour_seq(
+"""
+Plot cumulative realized returns by hour using sequence index (realizing trades only).
+"""
+function Fastback.plot_realized_cum_returns_by_hour_seq(
     trades::AbstractVector{<:Trade},
     ret_func::Function,
     title_str::String;
     kwargs...
 )
-    isempty(trades) && return _empty_plot("No positions"; kwargs...)
+    trades = filter(is_realizing, trades)
+    isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
     groups = trades |>
              @groupby(Dates.hour(_.date)) |>
              @orderby(key(_)) |>
              @map(key(_) => collect(_)) |>
              collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
+    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
 
     max_n = maximum(map(x -> length(x[2]), groups))
     min_date_str = Dates.format(minimum(map(t -> t.date, trades)), "yyyy/mm/dd")
@@ -536,7 +594,7 @@ function Fastback.plot_nominal_cum_returns_by_hour_seq(
     end
 end
 
-function Fastback.plot_nominal_cum_returns_by_hour_seq(
+function Fastback.plot_realized_cum_returns_by_hour_seq(
     events::AbstractVector{<:PlotEvent},
     ret_func::Function,
     title_str::String;
@@ -594,19 +652,23 @@ function Fastback.plot_nominal_cum_returns_by_hour_seq(
     end
 end
 
-function Fastback.plot_nominal_cum_returns_by_weekday(
+"""
+Plot cumulative realized returns grouped by weekday (realizing trades only).
+"""
+function Fastback.plot_realized_cum_returns_by_weekday(
     trades::AbstractVector{<:Trade},
     ret_func::Function;
     kwargs...
 )
-    isempty(trades) && return _empty_plot("No positions"; kwargs...)
+    trades = filter(is_realizing, trades)
+    isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
     groups = trades |>
              @groupby(Dates.dayofweek(_.date)) |>
              @orderby(key(_)) |>
              @map(key(_) => collect(_)) |>
              collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
+    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
 
     max_date = maximum(map(t -> t.date, trades))
     _with_theme() do
@@ -621,7 +683,7 @@ function Fastback.plot_nominal_cum_returns_by_weekday(
                 plot_kwargs = _merge_kwargs((;
                         legend=:topleft,
                         label=lbl,
-                        title="Nominal returns by weekday",
+                        title="Realized returns by weekday",
                     ), kwargs)
                 plt = Plots.plot(dts, cum_rets; plot_kwargs...)
             else
@@ -637,7 +699,7 @@ function Fastback.plot_nominal_cum_returns_by_weekday(
     end
 end
 
-function Fastback.plot_nominal_cum_returns_by_weekday(
+function Fastback.plot_realized_cum_returns_by_weekday(
     events::AbstractVector{<:PlotEvent},
     ret_func::Function;
     kwargs...
@@ -664,7 +726,7 @@ function Fastback.plot_nominal_cum_returns_by_weekday(
                 plot_kwargs = _merge_kwargs((;
                         legend=:topleft,
                         label=lbl,
-                        title="Nominal returns by weekday",
+                        title="Realized returns by weekday",
                     ), kwargs)
                 plt = Plots.plot(dts, cum_rets; plot_kwargs...)
             else
@@ -680,19 +742,23 @@ function Fastback.plot_nominal_cum_returns_by_weekday(
     end
 end
 
-function Fastback.plot_nominal_cum_returns_by_weekday_seq(
+"""
+Plot cumulative realized returns by weekday using sequence index (realizing trades only).
+"""
+function Fastback.plot_realized_cum_returns_by_weekday_seq(
     trades::AbstractVector{<:Trade},
     ret_func::Function;
     kwargs...
 )
-    isempty(trades) && return _empty_plot("No positions"; kwargs...)
+    trades = filter(is_realizing, trades)
+    isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
     groups = trades |>
              @groupby(Dates.dayofweek(_.date)) |>
              @orderby(key(_)) |>
              @map(key(_) => collect(_)) |>
              collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
+    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
 
     _with_theme() do
         plt = nothing
@@ -707,7 +773,7 @@ function Fastback.plot_nominal_cum_returns_by_weekday_seq(
                 plot_kwargs = _merge_kwargs((;
                         legend=:bottomleft,
                         label=lbl,
-                        title="Nominal returns by weekday",
+                        title="Realized returns by weekday",
                     ), kwargs)
                 plt = Plots.plot(x, cum_rets; plot_kwargs...)
             else
@@ -723,7 +789,7 @@ function Fastback.plot_nominal_cum_returns_by_weekday_seq(
     end
 end
 
-function Fastback.plot_nominal_cum_returns_by_weekday_seq(
+function Fastback.plot_realized_cum_returns_by_weekday_seq(
     events::AbstractVector{<:PlotEvent},
     ret_func::Function;
     kwargs...
@@ -750,7 +816,7 @@ function Fastback.plot_nominal_cum_returns_by_weekday_seq(
                 plot_kwargs = _merge_kwargs((;
                         legend=:bottomleft,
                         label=lbl,
-                        title="Nominal returns by weekday",
+                        title="Realized returns by weekday",
                     ), kwargs)
                 plt = Plots.plot(x, cum_rets; plot_kwargs...)
             else
@@ -765,5 +831,6 @@ function Fastback.plot_nominal_cum_returns_by_weekday_seq(
         plt
     end
 end
+
 
 end

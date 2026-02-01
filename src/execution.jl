@@ -22,6 +22,9 @@ struct FillPlan
     maint_margin_delta::Price
 end
 
+"""
+Compute the fill impact on cash, equity, P&L, and margins without mutating state.
+"""
 @inline function plan_fill(
     acc::Account{TTime},
     pos::Position{TTime},
@@ -125,7 +128,7 @@ end
     init_margin_delta = new_init_margin_settle - pos_init_margin
     maint_margin_delta = new_maint_margin_settle - pos_maint_margin
 
-    return FillPlan(
+    FillPlan(
         fill_qty,
         remaining_qty,
         commission_settle,

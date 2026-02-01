@@ -85,7 +85,7 @@ Exhaustive public API list (core + Plots extension).
 - `plot_equity`, `plot_equity!`, `plot_equity_seq`
 - `plot_open_orders`, `plot_open_orders!`, `plot_open_orders_seq`
 - `plot_drawdown`, `plot_drawdown!`, `plot_drawdown_seq`
-- `violin_nominal_returns_by_day`, `violin_nominal_returns_by_hour`
-- `plot_nominal_cum_returns_by_hour`
-- `plot_nominal_cum_returns_by_hour_seq_net`, `plot_nominal_cum_returns_by_hour_seq_gross`, `plot_nominal_cum_returns_by_hour_seq`
-- `plot_nominal_cum_returns_by_weekday`, `plot_nominal_cum_returns_by_weekday_seq`
+- `violin_realized_returns_by_day`, `violin_realized_returns_by_hour`
+- `plot_realized_cum_returns_by_hour`
+- `plot_realized_cum_returns_by_hour_seq_net`, `plot_realized_cum_returns_by_hour_seq_gross`, `plot_realized_cum_returns_by_hour_seq`
+- `plot_realized_cum_returns_by_weekday`, `plot_realized_cum_returns_by_weekday_seq`

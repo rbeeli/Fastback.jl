@@ -88,25 +88,23 @@ for (open_dt, close_dt, open_px, close_px) in trade_specs
     fill_order!(acc, close_order; dt=close_dt, fill_price=close_px, bid=close_px, ask=close_px, last=close_px)
 end
 
-trades = filter(is_realizing, acc.trades);
-
 # ---------------------------------------------------------
 # Return-based plots
 
 # Returns by day (violin)
-Fastback.violin_nominal_returns_by_day(trades)
+Fastback.violin_realized_returns_by_day(acc.trades)
 
 # Returns by hour (violin)
-Fastback.violin_nominal_returns_by_hour(trades)
+Fastback.violin_realized_returns_by_hour(acc.trades)
 
 # Cumulative returns by hour
-Fastback.plot_nominal_cum_returns_by_hour(trades)
+Fastback.plot_realized_cum_returns_by_hour(acc.trades)
 
 # Cumulative returns by hour (sequence index)
-Fastback.plot_nominal_cum_returns_by_hour_seq_net(trades)
+Fastback.plot_realized_cum_returns_by_hour_seq_net(acc.trades)
 
 # Cumulative returns by weekday
-Fastback.plot_nominal_cum_returns_by_weekday(trades, t -> realized_return(t; zero_value=0.0))
+Fastback.plot_realized_cum_returns_by_weekday(acc.trades, t -> realized_return(t))
 
 # Cumulative returns by weekday (sequence index)
-Fastback.plot_nominal_cum_returns_by_weekday_seq(trades, t -> realized_return(t; zero_value=0.0))
+Fastback.plot_realized_cum_returns_by_weekday_seq(acc.trades, t -> realized_return(t))

@@ -12,9 +12,20 @@ mutable struct PeriodicValues{TTime<:Dates.AbstractTime,T,TPeriod<:Period}
     last_dt::TTime
 end
 
+"""
+Return the collected timestamps/dates.
+"""
 @inline dates(pv::PeriodicValues) = pv.dates
+
+"""
+Return the collected values.
+"""
 @inline Base.values(pv::PeriodicValues) = pv.values
 
+"""
+Create a periodic collector and its storage container.
+Returns a tuple of (collector_function, PeriodicValues).
+"""
 function periodic_collector(
     ::Type{T},
     period::TPeriod
@@ -42,6 +53,9 @@ function periodic_collector(
     collector, pv
 end
 
+"""
+Return `true` when a periodic collector should emit a new sample.
+"""
 @inline function should_collect(
     collector::PeriodicValues{TTime,T,TPeriod},
     dt::TTime
@@ -64,6 +78,10 @@ end
 @inline dates(pv::PredicateValues) = pv.dates
 @inline Base.values(pv::PredicateValues) = pv.values
 
+"""
+Create a predicate-based collector and its storage container.
+Returns a tuple of (collector_function, PredicateValues).
+"""
 function predicate_collector(
     ::Type{T},
     predicate::TPredicate,
@@ -92,6 +110,9 @@ function predicate_collector(
     collector, pv
 end
 
+"""
+Return `true` when a predicate collector should emit a new sample.
+"""
 @inline function should_collect(
     collector::PredicateValues{TTime,T,TPredicate},
     dt::TTime
@@ -106,6 +127,10 @@ mutable struct MinValue{TTime<:Dates.AbstractTime,T}
     min_value::T
 end
 
+"""
+Create a collector that tracks the minimum observed value.
+Returns a tuple of (collector_function, MinValue).
+"""
 function min_value_collector(
     ::Type{T}
     ;
@@ -122,6 +147,9 @@ function min_value_collector(
     collector, mv
 end
 
+"""
+Return `true` when the current value is a new minimum.
+"""
 @inline function should_collect(
     collector::MinValue{TTime,T},
     value::T
@@ -136,6 +164,10 @@ mutable struct MaxValue{TTime<:Dates.AbstractTime,T}
     max_value::T
 end
 
+"""
+Create a collector that tracks the maximum observed value.
+Returns a tuple of (collector_function, MaxValue).
+"""
 function max_value_collector(
     ::Type{T}
     ;
@@ -152,6 +184,9 @@ function max_value_collector(
     collector, mv
 end
 
+"""
+Return `true` when the current value is a new maximum.
+"""
 @inline function should_collect(
     collector::MaxValue{TTime,T},
     value::T
@@ -175,6 +210,9 @@ end
 @inline dates(pv::DrawdownValues) = pv.dates
 @inline Base.values(pv::DrawdownValues) = pv.values
 
+"""
+Return `true` for drawdown collectors (they always process updates).
+"""
 @inline function should_collect(
     ::DrawdownValues{TTime,TPeriod},
     ::TTime
@@ -184,6 +222,10 @@ end
     true
 end
 
+"""
+Create a drawdown collector (percentage or P&L mode).
+Returns a tuple of (collector_function, DrawdownValues).
+"""
 function drawdown_collector(
     mode::DrawdownMode.T,
     period::TPeriod

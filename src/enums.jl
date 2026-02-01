@@ -13,13 +13,27 @@ using EnumX
 @enumx TradeReason::Int8 Normal = 0 Liquidation = 1 Expiry = 2
 
 @inline sign(x::TradeDir.T) = Quantity(Int8(x))
+
+"""
+Return `true` if the trade direction is long (buy).
+"""
 @inline is_long(dir::TradeDir.T) = dir == TradeDir.Buy
+
+"""
+Return `true` if the trade direction is short (sell).
+"""
 @inline is_short(dir::TradeDir.T) = dir == TradeDir.Sell
 
+"""
+Return the opposite trade direction (buy ↔ sell).
+"""
 @inline function opposite_dir(dir::TradeDir.T)
     dir == TradeDir.Buy ? TradeDir.Sell : (dir == TradeDir.Sell ? TradeDir.Buy : TradeDir.Null)
 end
 
+"""
+Infer trade direction from a signed quantity.
+"""
 @inline function trade_dir(volume::T) where {T<:Number}
     volume > 0 ? TradeDir.Buy : (volume < 0 ? TradeDir.Sell : TradeDir.Null)
 end

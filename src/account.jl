@@ -62,9 +62,24 @@ mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
     end
 end
 
+"""
+Format a timestamp using the account's configured date format.
+"""
 @inline format_datetime(acc::Account, x) = Dates.format(x, acc.date_format)
+
+"""
+Generates the next order ID sequence value for the account.
+"""
 @inline oid!(acc::Account) = acc.order_sequence += 1
+
+"""
+Generates the next trade ID sequence value for the account.
+"""
 @inline tid!(acc::Account) = acc.trade_sequence += 1
+
+"""
+Generates the next cashflow ID sequence value for the account.
+"""
 @inline cfid!(acc::Account) = acc.cashflow_sequence += 1
 
 """
@@ -286,27 +301,49 @@ of your open positions in the same currency, not including closing commission.
 """
 @inline equity(acc::Account, cash_symbol::Symbol) = equity(acc, cash_asset(acc, cash_symbol))
 
+"""
+Initial margin currently used in the given currency.
+"""
 @inline init_margin_used(acc::Account, cash::Cash)::Price = @inbounds acc.init_margin_used[cash.index]
 @inline init_margin_used(acc::Account, cash_symbol::Symbol)::Price = init_margin_used(acc, cash_asset(acc, cash_symbol))
 
+"""
+Maintenance margin currently used in the given currency.
+"""
 @inline maint_margin_used(acc::Account, cash::Cash)::Price = @inbounds acc.maint_margin_used[cash.index]
 @inline maint_margin_used(acc::Account, cash_symbol::Symbol)::Price = maint_margin_used(acc, cash_asset(acc, cash_symbol))
 
+"""
+Available funds in a currency (equity minus initial margin used).
+"""
 @inline available_funds(acc::Account, cash::Cash) = equity(acc, cash) - init_margin_used(acc, cash)
 @inline available_funds(acc::Account, cash_symbol::Symbol) = available_funds(acc, cash_asset(acc, cash_symbol))
 
+"""
+Excess liquidity in a currency (equity minus maintenance margin used).
+"""
 @inline excess_liquidity(acc::Account, cash::Cash) = equity(acc, cash) - maint_margin_used(acc, cash)
 @inline excess_liquidity(acc::Account, cash_symbol::Symbol) = excess_liquidity(acc, cash_asset(acc, cash_symbol))
 
 # ---------------------------------------------------------
 # Base currency helpers
 
+"""
+Return `true` if the account has a base currency configured.
+"""
 @inline has_base_ccy(acc::Account)::Bool = acc.base_ccy_index > 0
+
+"""
+Return the base-currency `Cash` asset for the account.
+"""
 @inline function cash_base_ccy(acc::Account)::Cash
     acc.base_ccy_index > 0 || throw(ArgumentError("Base currency cash asset is not registered in the account."))
     @inbounds acc.cash[acc.base_ccy_index]
 end
 
+"""
+FX rate from the given cash index into the account base currency.
+"""
 @inline function get_rate_base_ccy(acc::Account, i::Int)::Float64
     acc.base_ccy_index > 0 || throw(ArgumentError("Base currency cash asset is not registered in the account."))
     i == acc.base_ccy_index && return 1.0
@@ -327,6 +364,9 @@ end
     r
 end
 
+"""
+FX rate from the given cash asset into the account base currency.
+"""
 @inline function get_rate_base_ccy(acc::Account, cash::Cash)::Float64
     idx = cash.index
     idx > 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered in account."))
@@ -351,6 +391,9 @@ Retrieve the `Cash` object for the instrument margin currency without allocation
 """
 @inline margin_cash(acc::Account, inst::Instrument) = @inbounds acc.cash[inst.margin_cash_index]
 
+"""
+Total account equity converted into base currency using stored FX rates.
+"""
 function equity_base_ccy(acc::Account)::Price
     has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
     total = zero(Price)
@@ -362,6 +405,9 @@ function equity_base_ccy(acc::Account)::Price
     total
 end
 
+"""
+Total account cash balance converted into base currency using stored FX rates.
+"""
 function balance_base_ccy(acc::Account)::Price
     has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
     total = zero(Price)
@@ -373,6 +419,9 @@ function balance_base_ccy(acc::Account)::Price
     total
 end
 
+"""
+Initial margin used, converted into base currency.
+"""
 function init_margin_used_base_ccy(acc::Account)::Price
     has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
     total = zero(Price)
@@ -384,6 +433,9 @@ function init_margin_used_base_ccy(acc::Account)::Price
     total
 end
 
+"""
+Maintenance margin used, converted into base currency.
+"""
 function maint_margin_used_base_ccy(acc::Account)::Price
     has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
     total = zero(Price)
@@ -395,7 +447,14 @@ function maint_margin_used_base_ccy(acc::Account)::Price
     total
 end
 
+"""
+Available funds in base currency (equity minus initial margin used).
+"""
 @inline available_funds_base_ccy(acc::Account)::Price = equity_base_ccy(acc) - init_margin_used_base_ccy(acc)
+
+"""
+Excess liquidity in base currency (equity minus maintenance margin used).
+"""
 @inline excess_liquidity_base_ccy(acc::Account)::Price = equity_base_ccy(acc) - maint_margin_used_base_ccy(acc)
 
 # ---------------------------------------------------------
@@ -432,6 +491,9 @@ Inverse of `to_margin`; useful for diagnostics.
     amount_margin * get_rate(acc, inst.margin_cash_index, inst.quote_cash_index)
 end
 
+"""
+Convert a settlement-currency amount into the account base currency.
+"""
 @inline function to_base(acc::Account, settle_idx::Int, amount_settle::Price)::Price
     amount_settle * get_rate_base_ccy(acc, settle_idx)
 end
