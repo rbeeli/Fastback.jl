@@ -62,10 +62,10 @@ show(acc)
 
 # ### Plot account equity curve
 
-using Plots, Printf
-theme(:juno; titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false)
+using Plots
 
-## plot equity curve
+theme(:juno);
+
 p = Fastback.plot_equity(
     equity_data,
     size=(800, 400),
@@ -73,7 +73,7 @@ p = Fastback.plot_equity(
 p
 #---------------------------------------------------------
 
-# ### Plot account equity drawdown using Fastback Plots extension
+# ### Plot account equity drawdowns
 
 p = Fastback.plot_drawdown(
     drawdown_data,

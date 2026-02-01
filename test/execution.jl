@@ -325,10 +325,16 @@ end
         0.0,
         0.0,
     )
-    rejection = fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=mark_price, ask=mark_price, last=mark_price)
+    err = try
+        fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=mark_price, ask=mark_price, last=mark_price)
+        nothing
+    catch e
+        e
+    end
 
     @test plan.cash_delta < 0
-    @test rejection == OrderRejectReason.InsufficientInitialMargin
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.InsufficientInitialMargin
     @test pos.quantity == 0.0
 end
 

@@ -251,8 +251,14 @@ end
     @test pos.maint_margin_settle == 0.0
 
     short_order = Order(oid!(acc), inst, dt, price, -250.0)
-    rejection = fill_order!(acc, short_order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
-    @test rejection == OrderRejectReason.ShortNotAllowed
+    err = try
+        fill_order!(acc, short_order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+        nothing
+    catch e
+        e
+    end
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.ShortNotAllowed
 
     @test cash_balance(acc, usd) ≈ balance_after_buy atol=1e-8
     @test cash_balance(acc, usd) ≥ 0.0

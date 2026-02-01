@@ -125,31 +125,15 @@ show(acc)
 
 using Plots, Query, Printf, Measures
 
-theme(:juno; titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false)
+theme(:juno)
 
 ## equity / cash balance
-p1 = plot(
-    dates(balance_data), values(balance_data);
-    title="Account",
-    label="Cash balance",
-    linetype=:steppost,
-    yformatter=:plain,
-    color="#0088DD");
-plot!(p1,
-    dates(equity_data), values(equity_data);
-    label="Equity",
-    linetype=:steppost,
-    color="#BBBB00");
+p1 = plot()
+Fastback.plot_balance!(p1, balance_data; title="Account")
+Fastback.plot_equity!(p1, equity_data)
 
 ## drawdowns
-p2 = plot(
-    dates(drawdown_data), 100values(drawdown_data);
-    title="Equity drawdowns [%]",
-    legend=false,
-    color="#BB0000",
-    yformatter=y -> @sprintf("%.1f%%", y),
-    linetype=:steppost,
-    fill=(0, "#BB000033"));
+p2 = Fastback.plot_drawdown(drawdown_data)
 
 ## stocks performance
 p3 = plot(

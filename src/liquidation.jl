@@ -1,3 +1,9 @@
+"""
+    liquidate_all!(acc, dt; commission=0.0, commission_pct=0.0)
+
+Liquidates all open positions at their current marks, returning the generated trades.
+Throws `OrderRejectError` if a liquidation fill is rejected by risk checks.
+"""
 function liquidate_all!(
     acc::Account{TTime},
     dt::TTime;
@@ -28,6 +34,12 @@ function liquidate_all!(
     trades
 end
 
+"""
+    liquidate_to_maintenance!(acc, dt; commission=0.0, commission_pct=0.0, max_steps=10_000)
+
+Liquidates positions until the account is above maintenance requirements.
+Throws `OrderRejectError` if a liquidation fill is rejected by risk checks.
+"""
 function liquidate_to_maintenance!(
     acc::Account{TTime},
     dt::TTime;

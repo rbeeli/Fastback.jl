@@ -45,9 +45,15 @@ end
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 100.0, 100.0)
-    result = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
+    err = try
+        fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
+        nothing
+    catch e
+        e
+    end
 
-    @test result == OrderRejectReason.InsufficientCash
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.InsufficientCash
     @test isempty(acc.trades)
     pos = get_position(acc, inst)
     @test pos.quantity == 0.0

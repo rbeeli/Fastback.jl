@@ -1,6 +1,9 @@
 const DOCS_ROOT = @__DIR__
 const PROJECT_ROOT = normpath(joinpath(DOCS_ROOT, ".."))
 
+# GR render offscreen (avoid window popups during docs build)
+ENV["GKS_WSTYPE"] = "100"
+
 using Pkg
 Pkg.activate(DOCS_ROOT)
 Pkg.develop(path=PROJECT_ROOT)
@@ -62,6 +65,7 @@ gen_markdown("4_Tables_integration.jl");
 gen_markdown("5_NanoDates_integration.jl");
 gen_markdown("6_Timestamps64_integration.jl");
 gen_markdown("7_USDm_perp_trading.jl");
+gen_markdown("8_plots_extension.jl");
 
 # generate notebook files
 gen_notebook("1_random_trading.jl");
@@ -71,6 +75,7 @@ gen_notebook("4_Tables_integration.jl");
 gen_notebook("5_NanoDates_integration.jl");
 gen_notebook("6_Timestamps64_integration.jl");
 gen_notebook("7_USDm_perp_trading.jl");
+gen_notebook("8_plots_extension.jl");
 
 makedocs(
     sitename="Fastback.jl",
@@ -91,6 +96,7 @@ makedocs(
             "5\\. NanoDates.jl integration" => "examples/gen/5_NanoDates_integration.md",
             "6\\. Timestamps64.jl integration" => "examples/gen/6_Timestamps64_integration.md",
             "7\\. USD-M perpetual trading" => "examples/gen/7_USDm_perp_trading.md",
+            "8\\. Plots extension" => "examples/gen/8_plots_extension.md",
         ],
         "Integrations" => "integrations.md",
         "Glossary" => "glossary.md",

@@ -26,10 +26,67 @@ const _FILL_DRAWDOWN = "#BB000033"
     end
 end
 
-@inline _merge_kwargs(defaults::NamedTuple, kwargs) = merge(defaults, (; kwargs...))
+@inline function _merge_kwargs(defaults::NamedTuple, kwargs)
+    merge(defaults, (; kwargs...))
+end
+@inline function _with_theme(f::Function)
+    Plots.with(; _THEME_KW...) do
+        f()
+    end
+end
+
 @inline function _empty_plot(title_text; kwargs...)
-    plot_kwargs = _merge_kwargs((; _THEME_KW..., title=title_text), kwargs)
-    Plots.plot(; plot_kwargs...)
+    _with_theme() do
+        plot_kwargs = _merge_kwargs((; title=title_text), kwargs)
+        Plots.plot(; plot_kwargs...)
+    end
+end
+
+@inline function _balance_kwargs()
+    (;
+        label="Cash balance",
+        linecolor=_COLOR_BALANCE,
+        linetype=:steppost,
+        yformatter=y -> @sprintf("%.0f", y),
+        w=1,
+    )
+end
+
+@inline function _equity_kwargs()
+    (;
+        label="Equity",
+        linecolor=_COLOR_EQUITY,
+        linetype=:steppost,
+        yformatter=y -> @sprintf("%.0f", y),
+        w=1,
+    )
+end
+
+@inline function _open_orders_kwargs(vals)
+    max_open = maximum(vals)
+    max_tick = max(0, floor(Int, max_open))
+    y_ticks = 0:max_tick
+    y_ticks_str = map(x -> @sprintf("%.0f", x), y_ticks)
+    base = (;
+        label="# open orders",
+        color="black",
+        linetype=:steppost,
+        yticks=(y_ticks, y_ticks_str),
+        legend=false,
+    )
+    base, max_open
+end
+
+@inline function _drawdown_kwargs(pv::DrawdownValues)
+    (;
+        label="Drawdown",
+        fill=(0, _FILL_DRAWDOWN),
+        linecolor=_COLOR_DRAWDOWN,
+        linetype=:steppost,
+        yformatter=(pv.mode == DrawdownMode.Percentage ? (y -> @sprintf("%.1f%%", 100y)) : (y -> @sprintf("%.0f", y))),
+        w=1,
+        legend=false,
+    )
 end
 
 struct PlotEvent{TTime<:Dates.AbstractTime}
@@ -54,39 +111,46 @@ function Fastback.plot_title(title_text; kwargs...)
             grid=false,
             leg=false,
         ), kwargs)
-    Plots.scatter(1:2; plot_kwargs...)
+    _with_theme() do
+        Plots.scatter(1:2; plot_kwargs...)
+    end
 end
 
 function Fastback.plot_balance(pv::PeriodicValues; kwargs...)
-    dts, vals = dates(pv), values(pv)
+    vals = values(pv)
     isempty(vals) && return _empty_plot("No balance data"; kwargs...)
-    plot_kwargs = _merge_kwargs((;
-            _THEME_KW...,
-            title="Balance",
-            linecolor=_COLOR_BALANCE,
-            linetype=:steppost,
-            yformatter=y -> @sprintf("%.0f", y),
-            w=1,
-            legend=false,
-        ), kwargs)
-    plt = Plots.plot(dts, vals; plot_kwargs...)
+    plt = Plots.plot()
+    Fastback.plot_balance!(plt, pv; title="Balance", legend=false, kwargs...)
     Plots.ylims!(plt, (0, maximum(vals)))
     plt
 end
 
-function Fastback.plot_equity(pv::PeriodicValues; kwargs...)
+function Fastback.plot_balance!(plt, pv::PeriodicValues; kwargs...)
     dts, vals = dates(pv), values(pv)
+    isempty(vals) && return plt
+    plot_kwargs = _merge_kwargs(_balance_kwargs(), kwargs)
+    _with_theme() do
+        Plots.plot!(plt, dts, vals; plot_kwargs...)
+    end
+    plt
+end
+
+function Fastback.plot_equity(pv::PeriodicValues; kwargs...)
+    vals = values(pv)
     isempty(vals) && return _empty_plot("No equity data"; kwargs...)
-    plot_kwargs = _merge_kwargs((;
-            _THEME_KW...,
-            title="Equity",
-            linecolor=_COLOR_EQUITY,
-            linetype=:steppost,
-            yformatter=y -> @sprintf("%.0f", y),
-            w=1,
-            legend=false,
-        ), kwargs)
-    Plots.plot(dts, vals; plot_kwargs...)
+    plt = Plots.plot()
+    Fastback.plot_equity!(plt, pv; title="Equity", legend=false, kwargs...)
+    plt
+end
+
+function Fastback.plot_equity!(plt, pv::PeriodicValues; kwargs...)
+    dts, vals = dates(pv), values(pv)
+    isempty(vals) && return plt
+    plot_kwargs = _merge_kwargs(_equity_kwargs(), kwargs)
+    _with_theme() do
+        Plots.plot!(plt, dts, vals; plot_kwargs...)
+    end
+    plt
 end
 
 function Fastback.plot_equity_seq(pv::PeriodicValues; kwargs...)
@@ -94,7 +158,6 @@ function Fastback.plot_equity_seq(pv::PeriodicValues; kwargs...)
     isempty(vals) && return _empty_plot("No equity data"; kwargs...)
     x = collect(1:length(vals))
     plot_kwargs = _merge_kwargs((;
-            _THEME_KW...,
             title="Equity",
             linecolor=_COLOR_EQUITY,
             linetype=:steppost,
@@ -102,27 +165,28 @@ function Fastback.plot_equity_seq(pv::PeriodicValues; kwargs...)
             w=1,
             legend=false,
         ), kwargs)
-    Plots.plot(x, vals; plot_kwargs...)
+    _with_theme() do
+        Plots.plot(x, vals; plot_kwargs...)
+    end
 end
 
 function Fastback.plot_open_orders(pv::PeriodicValues; kwargs...)
-    dts, vals = dates(pv), values(pv)
+    vals = values(pv)
     isempty(vals) && return _empty_plot("No open orders data"; kwargs...)
-    max_open = maximum(vals)
-    max_tick = max(0, floor(Int, max_open))
-    y_ticks = 0:max_tick
-    y_ticks_str = map(x -> @sprintf("%.0f", x), y_ticks)
+    plt = Plots.plot()
+    Fastback.plot_open_orders!(plt, pv; title="# open orders", legend=false, kwargs...)
+    plt
+end
 
-    plot_kwargs = _merge_kwargs((;
-            _THEME_KW...,
-            title="# open orders",
-            color="black",
-            linetype=:steppost,
-            yticks=(y_ticks, y_ticks_str),
-            legend=false,
-        ), kwargs)
-    plt = Plots.plot(dts, vals; plot_kwargs...)
-    Plots.ylims!(plt, (0, max(0, max_open)))
+function Fastback.plot_open_orders!(plt, pv::PeriodicValues; kwargs...)
+    dts, vals = dates(pv), values(pv)
+    isempty(vals) && return plt
+    plot_kwargs, max_open = _open_orders_kwargs(vals)
+    plot_kwargs = _merge_kwargs(plot_kwargs, kwargs)
+    _with_theme() do
+        Plots.plot!(plt, dts, vals; plot_kwargs...)
+        Plots.ylims!(plt, (0, max(0, max_open)))
+    end
     plt
 end
 
@@ -136,32 +200,36 @@ function Fastback.plot_open_orders_seq(pv::PeriodicValues; kwargs...)
     y_ticks_str = map(x -> @sprintf("%.0f", x), y_ticks)
 
     plot_kwargs = _merge_kwargs((;
-            _THEME_KW...,
             title="# open orders",
             color="black",
             linetype=:steppost,
             yticks=(y_ticks, y_ticks_str),
             legend=false,
         ), kwargs)
-    plt = Plots.plot(x, vals; plot_kwargs...)
-    Plots.ylims!(plt, (0, max(0, max_open)))
-    plt
+    _with_theme() do
+        plt = Plots.plot(x, vals; plot_kwargs...)
+        Plots.ylims!(plt, (0, max(0, max_open)))
+        plt
+    end
 end
 
 function Fastback.plot_drawdown(pv::DrawdownValues; kwargs...)
-    dts, vals = dates(pv), values(pv)
+    vals = values(pv)
     isempty(vals) && return _empty_plot("No drawdown data"; kwargs...)
-    plot_kwargs = _merge_kwargs((;
-            _THEME_KW...,
-            title=(pv.mode == DrawdownMode.Percentage ? "Equity drawdowns [%]" : "Equity drawdowns"),
-            fill=(0, _FILL_DRAWDOWN),
-            linecolor=_COLOR_DRAWDOWN,
-            linetype=:steppost,
-            yformatter=(pv.mode == DrawdownMode.Percentage ? (y -> @sprintf("%.1f%%", 100y)) : (y -> @sprintf("%.0f", y))),
-            w=1,
-            legend=false,
-        ), kwargs)
-    Plots.plot(dts, vals; plot_kwargs...)
+    title = (pv.mode == DrawdownMode.Percentage ? "Equity drawdowns [%]" : "Equity drawdowns")
+    plt = Plots.plot()
+    Fastback.plot_drawdown!(plt, pv; title=title, legend=false, kwargs...)
+    plt
+end
+
+function Fastback.plot_drawdown!(plt, pv::DrawdownValues; kwargs...)
+    dts, vals = dates(pv), values(pv)
+    isempty(vals) && return plt
+    plot_kwargs = _merge_kwargs(_drawdown_kwargs(pv), kwargs)
+    _with_theme() do
+        Plots.plot!(plt, dts, vals; plot_kwargs...)
+    end
+    plt
 end
 
 function Fastback.plot_drawdown_seq(pv::DrawdownValues; kwargs...)
@@ -169,7 +237,6 @@ function Fastback.plot_drawdown_seq(pv::DrawdownValues; kwargs...)
     isempty(vals) && return _empty_plot("No drawdown data"; kwargs...)
     x = collect(1:length(vals))
     plot_kwargs = _merge_kwargs((;
-            _THEME_KW...,
             title=(pv.mode == DrawdownMode.Percentage ? "Equity drawdowns [%]" : "Equity drawdowns"),
             fill=(0, _FILL_DRAWDOWN),
             linecolor=_COLOR_DRAWDOWN,
@@ -178,7 +245,9 @@ function Fastback.plot_drawdown_seq(pv::DrawdownValues; kwargs...)
             w=1,
             legend=false,
         ), kwargs)
-    Plots.plot(x, vals; plot_kwargs...)
+    _with_theme() do
+        Plots.plot(x, vals; plot_kwargs...)
+    end
 end
 
 function Fastback.violin_nominal_returns_by_day(trades::AbstractVector{<:Trade}; kwargs...)
@@ -198,14 +267,15 @@ function Fastback.violin_nominal_returns_by_day(trades::AbstractVector{<:Trade};
     x_lbls = [Dates.dayname(day) for (day, _) in groups]
 
     plot_kwargs = _merge_kwargs((;
-            _THEME_KW...,
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
             title="Nominal returns by day (trade date)",
             legend=false,
         ), kwargs)
-    StatsPlots.violin(y; plot_kwargs...)
+    _with_theme() do
+        StatsPlots.violin(y; plot_kwargs...)
+    end
 end
 
 function Fastback.violin_nominal_returns_by_day(events::AbstractVector{<:PlotEvent}; kwargs...)
@@ -225,14 +295,15 @@ function Fastback.violin_nominal_returns_by_day(events::AbstractVector{<:PlotEve
     x_lbls = [Dates.dayname(day) for (day, _) in groups]
 
     plot_kwargs = _merge_kwargs((;
-            _THEME_KW...,
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
             title="Nominal returns by day (event date)",
             legend=false,
         ), kwargs)
-    StatsPlots.violin(y; plot_kwargs...)
+    _with_theme() do
+        StatsPlots.violin(y; plot_kwargs...)
+    end
 end
 
 function Fastback.violin_nominal_returns_by_hour(trades::AbstractVector{<:Trade}; kwargs...)
@@ -252,14 +323,15 @@ function Fastback.violin_nominal_returns_by_hour(trades::AbstractVector{<:Trade}
     x_lbls = [string(hour) for (hour, _) in groups]
 
     plot_kwargs = _merge_kwargs((;
-            _THEME_KW...,
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
             title="Nominal returns by hour (trade time)",
             legend=false,
         ), kwargs)
-    StatsPlots.violin(y; plot_kwargs...)
+    _with_theme() do
+        StatsPlots.violin(y; plot_kwargs...)
+    end
 end
 
 function Fastback.violin_nominal_returns_by_hour(events::AbstractVector{<:PlotEvent}; kwargs...)
@@ -279,14 +351,15 @@ function Fastback.violin_nominal_returns_by_hour(events::AbstractVector{<:PlotEv
     x_lbls = [string(hour) for (hour, _) in groups]
 
     plot_kwargs = _merge_kwargs((;
-            _THEME_KW...,
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
             title="Nominal returns by hour (event time)",
             legend=false,
         ), kwargs)
-    StatsPlots.violin(y; plot_kwargs...)
+    _with_theme() do
+        StatsPlots.violin(y; plot_kwargs...)
+    end
 end
 
 function Fastback.plot_nominal_cum_returns_by_hour(
@@ -303,31 +376,32 @@ function Fastback.plot_nominal_cum_returns_by_hour(
              collect
     isempty(groups) && return _empty_plot("No positions"; kwargs...)
 
-    plt = nothing
-    for (i, (hour, group)) in enumerate(groups)
-        sort!(group, by=t -> t.date)
-        dts = map(t -> t.date, group)
-        rets = map(ret_func, group)
-        cum_rets = cumsum(rets)
-        lbl = "$(hour):00+"
-        if i == 1
-            plot_kwargs = _merge_kwargs((;
-                    _THEME_KW...,
-                    legend=:topleft,
-                    label=lbl,
-                    title="Nominal returns by hour",
-                ), kwargs)
-            plt = Plots.plot(dts, cum_rets; plot_kwargs...)
-        else
-            series_kwargs = _merge_kwargs((; label=lbl), kwargs)
-            Plots.plot!(plt, dts, cum_rets; series_kwargs...)
+    _with_theme() do
+        plt = nothing
+        for (i, (hour, group)) in enumerate(groups)
+            sort!(group, by=t -> t.date)
+            dts = map(t -> t.date, group)
+            rets = map(ret_func, group)
+            cum_rets = cumsum(rets)
+            lbl = "$(hour):00+"
+            if i == 1
+                plot_kwargs = _merge_kwargs((;
+                        legend=:topleft,
+                        label=lbl,
+                        title="Nominal returns by hour",
+                    ), kwargs)
+                plt = Plots.plot(dts, cum_rets; plot_kwargs...)
+            else
+                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                Plots.plot!(plt, dts, cum_rets; series_kwargs...)
+            end
+            if !isempty(dts)
+                Plots.annotate!(plt, dts[end], cum_rets[end],
+                    Plots.text(lbl, :left, 9))
+            end
         end
-        if !isempty(dts)
-            Plots.annotate!(plt, dts[end], cum_rets[end],
-                Plots.text(lbl, :left, 9))
-        end
+        plt
     end
-    plt
 end
 
 function Fastback.plot_nominal_cum_returns_by_hour(
@@ -344,31 +418,32 @@ function Fastback.plot_nominal_cum_returns_by_hour(
              collect
     isempty(groups) && return _empty_plot("No positions"; kwargs...)
 
-    plt = nothing
-    for (i, (hour, group)) in enumerate(groups)
-        sort!(group, by=e -> e.open_dt)
-        dts = map(e -> e.open_dt, group)
-        rets = map(ret_func, group)
-        cum_rets = cumsum(rets)
-        lbl = "$(hour):00+"
-        if i == 1
-            plot_kwargs = _merge_kwargs((;
-                    _THEME_KW...,
-                    legend=:topleft,
-                    label=lbl,
-                    title="Nominal returns by hour",
-                ), kwargs)
-            plt = Plots.plot(dts, cum_rets; plot_kwargs...)
-        else
-            series_kwargs = _merge_kwargs((; label=lbl), kwargs)
-            Plots.plot!(plt, dts, cum_rets; series_kwargs...)
+    _with_theme() do
+        plt = nothing
+        for (i, (hour, group)) in enumerate(groups)
+            sort!(group, by=e -> e.open_dt)
+            dts = map(e -> e.open_dt, group)
+            rets = map(ret_func, group)
+            cum_rets = cumsum(rets)
+            lbl = "$(hour):00+"
+            if i == 1
+                plot_kwargs = _merge_kwargs((;
+                        legend=:topleft,
+                        label=lbl,
+                        title="Nominal returns by hour",
+                    ), kwargs)
+                plt = Plots.plot(dts, cum_rets; plot_kwargs...)
+            else
+                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                Plots.plot!(plt, dts, cum_rets; series_kwargs...)
+            end
+            if !isempty(dts)
+                Plots.annotate!(plt, dts[end], cum_rets[end],
+                    Plots.text(lbl, :left, 9))
+            end
         end
-        if !isempty(dts)
-            Plots.annotate!(plt, dts[end], cum_rets[end],
-                Plots.text(lbl, :left, 9))
-        end
+        plt
     end
-    plt
 end
 
 function Fastback.plot_nominal_cum_returns_by_hour_seq_net(trades::AbstractVector{<:Trade}; kwargs...)
@@ -422,42 +497,43 @@ function Fastback.plot_nominal_cum_returns_by_hour_seq(
     min_date_str = Dates.format(minimum(map(t -> t.date, trades)), "yyyy/mm/dd")
     max_date_str = Dates.format(maximum(map(t -> t.date, trades)), "yyyy/mm/dd")
 
-    plt = nothing
-    for (i, (hour, group)) in enumerate(groups)
-        sort!(group, by=t -> t.date)
-        rets = map(ret_func, group)
-        n_pos = length(rets)
-        x = collect(1:n_pos)
-        cum_rets = 1.0 .+ cumsum(rets)
-        lbl = "$(hour):00"
-        if i == 1
-            plot_kwargs = _merge_kwargs((;
-                    _THEME_KW...,
-                    xticks=((1, max_n), (min_date_str, max_date_str)),
-                    legendfontsize=9,
-                    yformatter=y -> @sprintf("%.1f", y),
-                    fontsize=9,
-                    w=0.5,
-                    foreground_color_legend=nothing,
-                    background_color_legend=nothing,
-                    tickfontsize=9,
-                    legend=:outertopright,
-                    label=lbl,
-                    title=title_str,
-                ), kwargs)
-            plt = Plots.plot(x, cum_rets; plot_kwargs...)
-            Plots.xlims!(plt, (1, floor(Int, 1.1 * max_n)))
-        else
-            series_kwargs = _merge_kwargs((; label=lbl, w=0.5), kwargs)
-            Plots.plot!(plt, x, cum_rets; series_kwargs...)
+    _with_theme() do
+        plt = nothing
+        for (i, (hour, group)) in enumerate(groups)
+            sort!(group, by=t -> t.date)
+            rets = map(ret_func, group)
+            n_pos = length(rets)
+            x = collect(1:n_pos)
+            cum_rets = 1.0 .+ cumsum(rets)
+            lbl = "$(hour):00"
+            if i == 1
+                plot_kwargs = _merge_kwargs((;
+                        xticks=((1, max_n), (min_date_str, max_date_str)),
+                        legendfontsize=9,
+                        yformatter=y -> @sprintf("%.1f", y),
+                        fontsize=9,
+                        w=0.5,
+                        foreground_color_legend=nothing,
+                        background_color_legend=nothing,
+                        tickfontsize=9,
+                        legend=:outertopright,
+                        label=lbl,
+                        title=title_str,
+                    ), kwargs)
+                plt = Plots.plot(x, cum_rets; plot_kwargs...)
+                Plots.xlims!(plt, (1, floor(Int, 1.1 * max_n)))
+            else
+                series_kwargs = _merge_kwargs((; label=lbl, w=0.5), kwargs)
+                Plots.plot!(plt, x, cum_rets; series_kwargs...)
+            end
+            if n_pos > 0
+                Plots.annotate!(plt, n_pos + floor(Int, 0.03 * n_pos),
+                    cum_rets[end],
+                    Plots.text(lbl, :left, 8))
+            end
         end
-        if n_pos > 0
-            Plots.annotate!(plt, n_pos + floor(Int, 0.03 * n_pos),
-                cum_rets[end],
-                Plots.text(lbl, :left, 8))
-        end
+        plt
     end
-    plt
 end
 
 function Fastback.plot_nominal_cum_returns_by_hour_seq(
@@ -479,42 +555,43 @@ function Fastback.plot_nominal_cum_returns_by_hour_seq(
     min_date_str = Dates.format(minimum(map(e -> e.open_dt, events)), "yyyy/mm/dd")
     max_date_str = Dates.format(maximum(map(e -> e.open_dt, events)), "yyyy/mm/dd")
 
-    plt = nothing
-    for (i, (hour, group)) in enumerate(groups)
-        sort!(group, by=e -> e.open_dt)
-        rets = map(ret_func, group)
-        n_pos = length(rets)
-        x = collect(1:n_pos)
-        cum_rets = 1.0 .+ cumsum(rets)
-        lbl = "$(hour):00"
-        if i == 1
-            plot_kwargs = _merge_kwargs((;
-                    _THEME_KW...,
-                    xticks=((1, max_n), (min_date_str, max_date_str)),
-                    legendfontsize=9,
-                    yformatter=y -> @sprintf("%.1f", y),
-                    fontsize=9,
-                    w=0.5,
-                    foreground_color_legend=nothing,
-                    background_color_legend=nothing,
-                    tickfontsize=9,
-                    legend=:outertopright,
-                    label=lbl,
-                    title=title_str,
-                ), kwargs)
-            plt = Plots.plot(x, cum_rets; plot_kwargs...)
-            Plots.xlims!(plt, (1, floor(Int, 1.1 * max_n)))
-        else
-            series_kwargs = _merge_kwargs((; label=lbl, w=0.5), kwargs)
-            Plots.plot!(plt, x, cum_rets; series_kwargs...)
+    _with_theme() do
+        plt = nothing
+        for (i, (hour, group)) in enumerate(groups)
+            sort!(group, by=e -> e.open_dt)
+            rets = map(ret_func, group)
+            n_pos = length(rets)
+            x = collect(1:n_pos)
+            cum_rets = 1.0 .+ cumsum(rets)
+            lbl = "$(hour):00"
+            if i == 1
+                plot_kwargs = _merge_kwargs((;
+                        xticks=((1, max_n), (min_date_str, max_date_str)),
+                        legendfontsize=9,
+                        yformatter=y -> @sprintf("%.1f", y),
+                        fontsize=9,
+                        w=0.5,
+                        foreground_color_legend=nothing,
+                        background_color_legend=nothing,
+                        tickfontsize=9,
+                        legend=:outertopright,
+                        label=lbl,
+                        title=title_str,
+                    ), kwargs)
+                plt = Plots.plot(x, cum_rets; plot_kwargs...)
+                Plots.xlims!(plt, (1, floor(Int, 1.1 * max_n)))
+            else
+                series_kwargs = _merge_kwargs((; label=lbl, w=0.5), kwargs)
+                Plots.plot!(plt, x, cum_rets; series_kwargs...)
+            end
+            if n_pos > 0
+                Plots.annotate!(plt, n_pos + floor(Int, 0.03 * n_pos),
+                    cum_rets[end],
+                    Plots.text(lbl, :left, 8))
+            end
         end
-        if n_pos > 0
-            Plots.annotate!(plt, n_pos + floor(Int, 0.03 * n_pos),
-                cum_rets[end],
-                Plots.text(lbl, :left, 8))
-        end
+        plt
     end
-    plt
 end
 
 function Fastback.plot_nominal_cum_returns_by_weekday(
@@ -532,31 +609,32 @@ function Fastback.plot_nominal_cum_returns_by_weekday(
     isempty(groups) && return _empty_plot("No positions"; kwargs...)
 
     max_date = maximum(map(t -> t.date, trades))
-    plt = nothing
-    for (i, (weekday, group)) in enumerate(groups)
-        sort!(group, by=t -> t.date)
-        dts = map(t -> t.date, group)
-        rets = map(ret_func, group)
-        cum_rets = cumsum(rets)
-        lbl = Dates.dayname(weekday)[1:3]
-        if i == 1
-            plot_kwargs = _merge_kwargs((;
-                    _THEME_KW...,
-                    legend=:topleft,
-                    label=lbl,
-                    title="Nominal returns by weekday",
-                ), kwargs)
-            plt = Plots.plot(dts, cum_rets; plot_kwargs...)
-        else
-            series_kwargs = _merge_kwargs((; label=lbl), kwargs)
-            Plots.plot!(plt, dts, cum_rets; series_kwargs...)
+    _with_theme() do
+        plt = nothing
+        for (i, (weekday, group)) in enumerate(groups)
+            sort!(group, by=t -> t.date)
+            dts = map(t -> t.date, group)
+            rets = map(ret_func, group)
+            cum_rets = cumsum(rets)
+            lbl = Dates.dayname(weekday)[1:3]
+            if i == 1
+                plot_kwargs = _merge_kwargs((;
+                        legend=:topleft,
+                        label=lbl,
+                        title="Nominal returns by weekday",
+                    ), kwargs)
+                plt = Plots.plot(dts, cum_rets; plot_kwargs...)
+            else
+                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                Plots.plot!(plt, dts, cum_rets; series_kwargs...)
+            end
+            if !isempty(dts)
+                Plots.annotate!(plt, max_date, cum_rets[end],
+                    Plots.text(lbl, :left, 8))
+            end
         end
-        if !isempty(dts)
-            Plots.annotate!(plt, max_date, cum_rets[end],
-                Plots.text(lbl, :left, 8))
-        end
+        plt
     end
-    plt
 end
 
 function Fastback.plot_nominal_cum_returns_by_weekday(
@@ -574,31 +652,32 @@ function Fastback.plot_nominal_cum_returns_by_weekday(
     isempty(groups) && return _empty_plot("No positions"; kwargs...)
 
     max_date = maximum(map(e -> e.last_dt, events))
-    plt = nothing
-    for (i, (weekday, group)) in enumerate(groups)
-        sort!(group, by=e -> e.open_dt)
-        dts = map(e -> e.open_dt, group)
-        rets = map(ret_func, group)
-        cum_rets = cumsum(rets)
-        lbl = Dates.dayname(weekday)[1:3]
-        if i == 1
-            plot_kwargs = _merge_kwargs((;
-                    _THEME_KW...,
-                    legend=:topleft,
-                    label=lbl,
-                    title="Nominal returns by weekday",
-                ), kwargs)
-            plt = Plots.plot(dts, cum_rets; plot_kwargs...)
-        else
-            series_kwargs = _merge_kwargs((; label=lbl), kwargs)
-            Plots.plot!(plt, dts, cum_rets; series_kwargs...)
+    _with_theme() do
+        plt = nothing
+        for (i, (weekday, group)) in enumerate(groups)
+            sort!(group, by=e -> e.open_dt)
+            dts = map(e -> e.open_dt, group)
+            rets = map(ret_func, group)
+            cum_rets = cumsum(rets)
+            lbl = Dates.dayname(weekday)[1:3]
+            if i == 1
+                plot_kwargs = _merge_kwargs((;
+                        legend=:topleft,
+                        label=lbl,
+                        title="Nominal returns by weekday",
+                    ), kwargs)
+                plt = Plots.plot(dts, cum_rets; plot_kwargs...)
+            else
+                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                Plots.plot!(plt, dts, cum_rets; series_kwargs...)
+            end
+            if !isempty(dts)
+                Plots.annotate!(plt, max_date, cum_rets[end],
+                    Plots.text(lbl, :left, 8))
+            end
         end
-        if !isempty(dts)
-            Plots.annotate!(plt, max_date, cum_rets[end],
-                Plots.text(lbl, :left, 8))
-        end
+        plt
     end
-    plt
 end
 
 function Fastback.plot_nominal_cum_returns_by_weekday_seq(
@@ -615,32 +694,33 @@ function Fastback.plot_nominal_cum_returns_by_weekday_seq(
              collect
     isempty(groups) && return _empty_plot("No positions"; kwargs...)
 
-    plt = nothing
-    for (i, (weekday, group)) in enumerate(groups)
-        sort!(group, by=t -> t.date)
-        rets = map(ret_func, group)
-        n_pos = length(rets)
-        x = collect(1:n_pos)
-        cum_rets = cumsum(rets)
-        lbl = Dates.dayname(weekday)[1:3]
-        if i == 1
-            plot_kwargs = _merge_kwargs((;
-                    _THEME_KW...,
-                    legend=:bottomleft,
-                    label=lbl,
-                    title="Nominal returns by weekday",
-                ), kwargs)
-            plt = Plots.plot(x, cum_rets; plot_kwargs...)
-        else
-            series_kwargs = _merge_kwargs((; label=lbl), kwargs)
-            Plots.plot!(plt, x, cum_rets; series_kwargs...)
+    _with_theme() do
+        plt = nothing
+        for (i, (weekday, group)) in enumerate(groups)
+            sort!(group, by=t -> t.date)
+            rets = map(ret_func, group)
+            n_pos = length(rets)
+            x = collect(1:n_pos)
+            cum_rets = cumsum(rets)
+            lbl = Dates.dayname(weekday)[1:3]
+            if i == 1
+                plot_kwargs = _merge_kwargs((;
+                        legend=:bottomleft,
+                        label=lbl,
+                        title="Nominal returns by weekday",
+                    ), kwargs)
+                plt = Plots.plot(x, cum_rets; plot_kwargs...)
+            else
+                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                Plots.plot!(plt, x, cum_rets; series_kwargs...)
+            end
+            if n_pos > 0
+                Plots.annotate!(plt, n_pos + 1, cum_rets[end],
+                    Plots.text(lbl, :left, 8))
+            end
         end
-        if n_pos > 0
-            Plots.annotate!(plt, n_pos + 1, cum_rets[end],
-                Plots.text(lbl, :left, 8))
-        end
+        plt
     end
-    plt
 end
 
 function Fastback.plot_nominal_cum_returns_by_weekday_seq(
@@ -657,32 +737,33 @@ function Fastback.plot_nominal_cum_returns_by_weekday_seq(
              collect
     isempty(groups) && return _empty_plot("No positions"; kwargs...)
 
-    plt = nothing
-    for (i, (weekday, group)) in enumerate(groups)
-        sort!(group, by=e -> e.open_dt)
-        rets = map(ret_func, group)
-        n_pos = length(rets)
-        x = collect(1:n_pos)
-        cum_rets = cumsum(rets)
-        lbl = Dates.dayname(weekday)[1:3]
-        if i == 1
-            plot_kwargs = _merge_kwargs((;
-                    _THEME_KW...,
-                    legend=:bottomleft,
-                    label=lbl,
-                    title="Nominal returns by weekday",
-                ), kwargs)
-            plt = Plots.plot(x, cum_rets; plot_kwargs...)
-        else
-            series_kwargs = _merge_kwargs((; label=lbl), kwargs)
-            Plots.plot!(plt, x, cum_rets; series_kwargs...)
+    _with_theme() do
+        plt = nothing
+        for (i, (weekday, group)) in enumerate(groups)
+            sort!(group, by=e -> e.open_dt)
+            rets = map(ret_func, group)
+            n_pos = length(rets)
+            x = collect(1:n_pos)
+            cum_rets = cumsum(rets)
+            lbl = Dates.dayname(weekday)[1:3]
+            if i == 1
+                plot_kwargs = _merge_kwargs((;
+                        legend=:bottomleft,
+                        label=lbl,
+                        title="Nominal returns by weekday",
+                    ), kwargs)
+                plt = Plots.plot(x, cum_rets; plot_kwargs...)
+            else
+                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                Plots.plot!(plt, x, cum_rets; series_kwargs...)
+            end
+            if n_pos > 0
+                Plots.annotate!(plt, n_pos + 1, cum_rets[end],
+                    Plots.text(lbl, :left, 8))
+            end
         end
-        if n_pos > 0
-            Plots.annotate!(plt, n_pos + 1, cum_rets[end],
-                Plots.text(lbl, :left, 8))
-        end
+        plt
     end
-    plt
 end
 
 end

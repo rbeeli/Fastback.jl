@@ -164,9 +164,9 @@ then applies margin with `last`.
 end
 
 """
-Fills an order, applying cash/equity/margin deltas and returning the resulting
-`Trade` (or an `OrderRejectReason` on rejection). Requires bid/ask/last to
-deterministically value positions and compute margin during fills.
+Fills an order, applying cash/equity/margin deltas and returning the resulting `Trade`.
+Throws `OrderRejectError` when the fill is rejected (inactive instrument or risk checks).
+Requires bid/ask/last to deterministically value positions and compute margin during fills.
 """
 @inline function fill_order!(
     acc::Account{TTime},
@@ -181,9 +181,9 @@ deterministically value positions and compute margin during fills.
     bid::Price,
     ask::Price,
     last::Price,
-)::Union{Trade{TTime},OrderRejectReason.T} where {TTime<:Dates.AbstractTime}
+)::Trade{TTime} where {TTime<:Dates.AbstractTime}
     inst = order.inst
-    allow_inactive || is_active(inst, dt) || return OrderRejectReason.InstrumentNotAllowed
+    allow_inactive || is_active(inst, dt) || throw(OrderRejectError(OrderRejectReason.InstrumentNotAllowed))
 
     pos = get_position(acc, inst)
     fill_qty = fill_qty != 0 ? fill_qty : order.quantity
@@ -209,7 +209,7 @@ deterministically value positions and compute margin during fills.
     )
 
     rejection = check_fill_constraints(acc, pos, plan)
-    rejection == OrderRejectReason.None || return rejection
+    rejection == OrderRejectReason.None || throw(OrderRejectError(rejection))
 
     settle_cash_index = inst.settle_cash_index
     margin_cash_index = inst.margin_cash_index
@@ -272,6 +272,8 @@ it through `fill_order!` to record a trade and release margin.
 The caller must provide a finite settlement price (typically the stored mark).
 Physical-delivery instruments can be rejected by setting
 `physical_expiry_policy=PhysicalExpiryPolicy.Error`.
+
+Throws `OrderRejectError` if the synthetic close is rejected by risk checks.
 """
 function settle_expiry!(
     acc::Account{TTime},
@@ -282,7 +284,7 @@ function settle_expiry!(
     commission::Price=0.0,
     commission_pct::Price=0.0,
     physical_expiry_policy::PhysicalExpiryPolicy.T=PhysicalExpiryPolicy.Close,
-)::Union{Trade{TTime},OrderRejectReason.T,Nothing} where {TTime<:Dates.AbstractTime}
+)::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
     (pos.quantity == 0.0 || !is_expired(inst, dt)) && return nothing
     

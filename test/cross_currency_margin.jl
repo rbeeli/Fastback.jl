@@ -48,6 +48,12 @@ end
         margin_maint_long=0.25,
     ))
 
-    rej = fill_order!(acc, Order(oid!(acc), inst, DateTime(2024, 1, 1), 100.0, 10.0); dt=DateTime(2024, 1, 1), fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
-    @test rej == OrderRejectReason.InsufficientInitialMargin
+    err = try
+        fill_order!(acc, Order(oid!(acc), inst, DateTime(2024, 1, 1), 100.0, 10.0); dt=DateTime(2024, 1, 1), fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+        nothing
+    catch e
+        e
+    end
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.InsufficientInitialMargin
 end

@@ -465,8 +465,14 @@ end
 
     late_dt = expiry_dt + Day(1)
     late_order = Order(oid!(acc), inst, late_dt, 110.0, 1.0)
-    rejection = fill_order!(acc, late_order; dt=late_dt, fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
-    @test rejection == OrderRejectReason.InstrumentNotAllowed
+    err = try
+        fill_order!(acc, late_order; dt=late_dt, fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
+        nothing
+    catch e
+        e
+    end
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.InstrumentNotAllowed
 end
 
 @testitem "Cash account: buy too large is rejected" begin
@@ -479,8 +485,14 @@ end
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 200.0, 1.0)
 
-    result = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
-    @test result == OrderRejectReason.InsufficientCash
+    err = try
+        fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
+        nothing
+    catch e
+        e
+    end
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.InsufficientCash
     @test isempty(acc.trades)
     pos = get_position(acc, inst)
     @test pos.quantity == 0.0
@@ -496,8 +508,14 @@ end
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 10.0, -1.0)
-    result = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
-    @test result == OrderRejectReason.ShortNotAllowed
+    err = try
+        fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
+        nothing
+    catch e
+        e
+    end
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.ShortNotAllowed
     @test isempty(acc.trades)
     pos = get_position(acc, inst)
     @test pos.quantity == 0.0
@@ -547,9 +565,15 @@ end
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 100.0, 1.0)
-    result = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
+    err = try
+        fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
+        nothing
+    catch e
+        e
+    end
 
-    @test result == OrderRejectReason.InstrumentNotAllowed
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.InstrumentNotAllowed
     @test isempty(acc.trades)
     pos = get_position(acc, inst)
     @test pos.quantity == 0.0
@@ -571,8 +595,14 @@ end
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 1_000.0, 1.0)
-    result = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
-    @test result == OrderRejectReason.InsufficientInitialMargin
+    err = try
+        fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
+        nothing
+    catch e
+        e
+    end
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.InsufficientInitialMargin
     @test isempty(acc.trades)
     pos = get_position(acc, inst)
     @test pos.quantity == 0.0

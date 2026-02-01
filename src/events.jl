@@ -67,6 +67,8 @@ Requires positions to have finite marks.
 For physical-delivery contracts, set
 `physical_expiry_policy=PhysicalExpiryPolicy.Close` to auto-close or `PhysicalExpiryPolicy.Error` to
 refuse synthetic settlement.
+
+Throws `OrderRejectError` if a synthetic expiry close is rejected by risk checks.
 """
 function process_expiries!(
     acc::Account{TTime},
@@ -88,7 +90,7 @@ function process_expiries!(
             throw(ArgumentError("Expiry for $(inst.symbol) requires physical delivery; pass physical_expiry_policy=PhysicalExpiryPolicy.Close to auto-close."))
         end
 
-        trade_or_reason = settle_expiry!(
+        trade = settle_expiry!(
             acc,
             inst,
             dt;
@@ -97,12 +99,8 @@ function process_expiries!(
             commission_pct=commission_pct,
             physical_expiry_policy=physical_expiry_policy,
         )
-        trade_or_reason === nothing && continue
-        if trade_or_reason isa Trade
-            push!(trades, trade_or_reason)
-        elseif trade_or_reason isa OrderRejectReason.T
-            throw(ArgumentError("Expiry settlement rejected for $(pos.inst.symbol) with reason $(trade_or_reason)"))
-        end
+        trade === nothing && continue
+        push!(trades, trade)
     end
 
     trades
@@ -177,6 +175,8 @@ end
 
 Single-step event driver that advances time, updates FX, marks positions, applies funding,
 handles expiries, and optionally liquidates to maintenance if required.
+
+Throws `OrderRejectError` if expiry settlement or liquidation fills are rejected by risk checks.
 
 Ordering:
 1. Enforce non-decreasing time
