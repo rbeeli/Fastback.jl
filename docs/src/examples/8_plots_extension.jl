@@ -35,19 +35,26 @@ end
 # ---------------------------------------------------------
 # Basic plot helpers
 
-display(Fastback.plot_balance(balance_data))
+# Balance plot
+Fastback.plot_balance(balance_data)
 
-display(Fastback.plot_equity(equity_data))
+# Equity plot
+Fastback.plot_equity(equity_data)
 
-display(Fastback.plot_equity_seq(equity_data))
+# Equity plot (sequence index)
+Fastback.plot_equity_seq(equity_data)
 
-display(Fastback.plot_open_orders(open_orders_data))
+# Open orders plot
+Fastback.plot_open_orders(open_orders_data)
 
-display(Fastback.plot_open_orders_seq(open_orders_data))
+# Open orders plot (sequence index)
+Fastback.plot_open_orders_seq(open_orders_data)
 
-display(Fastback.plot_drawdown(drawdown_data))
+# Drawdown plot
+Fastback.plot_drawdown(drawdown_data)
 
-display(Fastback.plot_drawdown_seq(drawdown_data))
+# Drawdown plot (sequence index)
+Fastback.plot_drawdown_seq(drawdown_data)
 
 # ---------------------------------------------------------
 # Overlay helpers (plot_! variants)
@@ -55,7 +62,7 @@ display(Fastback.plot_drawdown_seq(drawdown_data))
 p = plot();
 Fastback.plot_balance!(p, balance_data; title="Account");
 Fastback.plot_equity!(p, equity_data);
-display(p)
+p
 
 # ---------------------------------------------------------
 # Synthetic trades for return-based plots
@@ -86,14 +93,20 @@ trades = filter(is_realizing, acc.trades);
 # ---------------------------------------------------------
 # Return-based plots
 
-display(Fastback.violin_nominal_returns_by_day(trades))
+# Returns by day (violin)
+Fastback.violin_nominal_returns_by_day(trades)
 
-display(Fastback.violin_nominal_returns_by_hour(trades))
+# Returns by hour (violin)
+Fastback.violin_nominal_returns_by_hour(trades)
 
-display(Fastback.plot_nominal_cum_returns_by_hour(trades))
+# Cumulative returns by hour
+Fastback.plot_nominal_cum_returns_by_hour(trades)
 
-display(Fastback.plot_nominal_cum_returns_by_hour_seq_net(trades))
+# Cumulative returns by hour (sequence index)
+Fastback.plot_nominal_cum_returns_by_hour_seq_net(trades)
 
-display(Fastback.plot_nominal_cum_returns_by_weekday(trades, t -> realized_return(t; zero_value=0.0)))
+# Cumulative returns by weekday
+Fastback.plot_nominal_cum_returns_by_weekday(trades, t -> realized_return(t; zero_value=0.0))
 
-display(Fastback.plot_nominal_cum_returns_by_weekday_seq(trades, t -> realized_return(t; zero_value=0.0)))
+# Cumulative returns by weekday (sequence index)
+Fastback.plot_nominal_cum_returns_by_weekday_seq(trades, t -> realized_return(t; zero_value=0.0))
