@@ -6,33 +6,29 @@
 
 Fastback provides a lightweight, flexible and highly efficient event-based backtesting library for quantitative trading strategies.
 
-The main value of Fastback is provided by the account and bookkeeping implementation.
-It keeps track of the open positions, account balance and equity.
-Furthermore, the execution logic supports commissions, slippage, partial fills and execution delays in its design.
+Fastback focuses on deterministic accounting: it tracks open positions, balances, equity, margin, and cashflows across multiple currencies.
+The execution pipeline supports fixed/percentage commissions and partial fills; slippage and delays are modeled by the timestamps and fill prices you pass in.
 
 Fastback does not try to model every aspect of a trading system, e.g. brokers, data sources, logging etc.
 Instead, it provides basic building blocks for creating a custom backtesting environment that is easy to understand and extend.
-For example, Fastback has no notion of "strategy" or "indicator", such constructs are highly strategy specific, and therefore up to the user to define.
+For example, Fastback has no notion of "strategy" or "indicator"; such constructs are highly strategy specific, and therefore up to the user to define.
 
-The event-based architecture aims to mimic the way a real-world trading systems works, where new data is ingested as a continuous data stream, i.e. events.
-This reduces the implementation gap from backtesting to real-world execution significantly compared to a vectorized backtesting frameworks.
+The event-based architecture aims to mimic how real-world trading systems ingest streaming data.
+You drive the engine with explicit mark, FX, and funding updates, plus optional expiry and liquidation steps, which reduces the implementation gap to live execution compared to vectorized backtesting frameworks.
 
 ## Features
 
-- Event-based, modular architecture that mirrors streaming execution
-- Spot (cash or asset-settled), perpetual, and future instruments with lifecycle guards (start/expiry) and optional contract multipliers
-- Spot on margin (asset-settled spot + margin modes) for leveraged longs/shorts with borrow-fee accrual on shorts
-- Asset, Cash, and Variation Margin settlement styles plus margin modes for mark-to-market and liquidation
-- Multi-currency accounts
-  - Hold multiple cash assets in parallel and trade instruments with different quote currencies
-  - FX helpers and base-currency margin metrics
-- Pluggable price data sources
-- Execution modelling: commissions, delays, slippage, partial fills
-- Netted positions per instrument using weighted average cost
-- Data collectors for balances, equity, drawdowns, etc. with Tables.jl outputs
-- Parallelized batch backtesting and hyperparameter sweeps
+- Event-driven accounting engine with explicit event processing (`process_step!`) for marks, FX, funding, expiries, and optional liquidation
+- Instruments: spot, spot-on-margin, perpetuals, and futures with lifecycle guards (start/expiry), optional contract multipliers, settlement styles (Asset/Cash/Variation Margin), and cash/physical delivery
+- Account modes: cash or margin; per-currency or base-currency margining; percent-notional or fixed-per-contract margin requirements
+- Multi-currency cash book with FX conversion helpers and base-currency metrics
+- Execution & risk: fixed/percentage commissions, partial fills, liquidation-aware marking (bid/ask/last), and initial/maintenance margin checks
+- Netted positions with weighted-average cost, realized/unrealized P&L, and a cashflow ledger + accrual helpers (interest, borrow fees on asset-settled shorts, funding, variation margin)
+- Expiry handling for futures (auto-close or error on physical delivery) plus deterministic liquidation helpers
+- Collectors (periodic, predicate, drawdown, min/max) and Tables.jl views for balances, equity, positions, trades, cashflows; pretty-print helpers
+- Batch backtesting and parameter sweeps with threaded runner and ETA logging
 - Integrations
-  - [Tables.jl](https://github.com/JuliaData/Tables.jl) for trades, positions, balances, collectors
+  - [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [StatsPlots.jl](https://github.com/JuliaPlots/StatsPlots.jl) for optional visualization helpers (via `FastbackPlotsExt`)
   - [NanoDates.jl](https://juliatime.github.io/NanoDates.jl/stable/) for nanosecond timestamps
   - [Timestamps64.jl](https://rbeeli.github.io/Timestamps64.jl/stable/) for efficient nanosecond timestamps
 
