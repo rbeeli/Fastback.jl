@@ -73,3 +73,9 @@ Fastback.plot_equity(equity_data, size=(800, 400))
 # ### Plot account equity drawdowns
 
 Fastback.plot_drawdown(drawdown_data, size=(800, 200),)
+
+#---------------------------------------------------------
+
+# ### Summary performance table
+
+performance_summary_table(equity_data; periods_per_year=365 * 24)

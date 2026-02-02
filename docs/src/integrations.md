@@ -48,6 +48,19 @@ df_equity_history = DataFrame(equity_data)
 df_drawdown_history = DataFrame(drawdown_data)
 ```
 
+## RiskPerf.jl
+
+Fastback integrates with [RiskPerf.jl](https://github.com/rbeeli/RiskPerf.jl) to generate
+summary performance tables as a single-row `DataFrame`.
+
+```julia
+using DataFrames
+using Fastback
+
+# equity_data is a PeriodicValues collector with equity history
+df_summary = performance_summary_table(equity_data; periods_per_year=365)
+```
+
 ## NanoDates.jl
 
 Fastback provides seamless integration to all `Dates.AbstractTime` types, which includes [NanoDates.jl](https://juliatime.github.io/NanoDates.jl/stable/).

@@ -66,6 +66,10 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 - `balances_table`, `equities_table`, `positions_table`, `trades_table`, `cashflows_table`
 
+## Analytics
+
+- `performance_summary_table`
+
 ## Formatting helpers
 
 - `format_cash`, `format_base`, `format_quote`, `format_period_HHMMSS`

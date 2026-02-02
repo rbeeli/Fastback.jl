@@ -25,6 +25,7 @@ include("logic.jl")
 include("invariants.jl")
 include("collectors.jl")
 include("tables.jl")
+include("analytics.jl")
 include("print.jl")
 include("plots.jl")
 include("backtest_runner.jl")
@@ -174,6 +175,9 @@ export balances_table,
     positions_table,
     trades_table,
     cashflows_table
+
+# Analytics
+export performance_summary_table
 
 # Formatting helpers
 export format_cash,
