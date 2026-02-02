@@ -41,6 +41,8 @@ end
 
 Advances the account clock to `dt`, enforcing non-decreasing time.
 Accrues interest and short borrow fees once per forward progression.
+Borrow-fee clocks are tracked per position and fills align accrual windows
+with actual short exposure.
 """
 function advance_time!(
     acc::Account{TTime},
@@ -177,6 +179,7 @@ Single-step event driver that advances time, updates FX, marks positions, applie
 handles expiries, and optionally liquidates to maintenance if required.
 
 Throws `OrderRejectError` if expiry settlement or liquidation fills are rejected by risk checks.
+Borrow-fee accrual uses per-position clocks; fills also advance/reset those clocks.
 
 Ordering:
 1. Enforce non-decreasing time

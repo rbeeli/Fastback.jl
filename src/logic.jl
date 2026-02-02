@@ -165,6 +165,8 @@ end
 
 """
 Fills an order, applying cash/equity/margin deltas and returning the resulting `Trade`.
+Accrues borrow fees for any existing asset-settled short exposure up to `dt` and
+restarts the borrow-fee clock based on the post-fill position.
 Throws `OrderRejectError` when the fill is rejected (inactive instrument or risk checks).
 Requires bid/ask/last to deterministically value positions and compute margin during fills.
 """
@@ -192,6 +194,8 @@ Requires bid/ask/last to deterministically value positions and compute margin du
     mark_for_valuation = _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
     needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_position || pos.last_price != last || pos.mark_time != dt
     needs_mark_update && _update_marks!(acc, pos, dt, mark_for_position, last)
+
+    _accrue_borrow_fee!(acc, pos, dt)
     pos_qty = pos.quantity
     pos_entry_price = pos.avg_entry_price
 
@@ -232,6 +236,11 @@ Requires bid/ask/last to deterministically value positions and compute margin du
     pos.mark_price = mark_for_valuation
     pos.last_price = last
     pos.mark_time = dt
+    if pos.quantity < 0.0 && inst.settlement == SettlementStyle.Asset
+        pos.borrow_fee_dt = dt
+    else
+        pos.borrow_fee_dt = TTime(0)
+    end
 
     # generate trade sequence number
     tid = tid!(acc)

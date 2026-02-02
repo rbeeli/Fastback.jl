@@ -70,3 +70,71 @@ end
 
     @test before_bal - after_bal ≈ expected_fee atol=1e-10
 end
+
+@testitem "borrow fees start at short open time" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("SHORTOPEN/USD"), :SHORTOPEN, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1, margin_init_short=0.1,
+        margin_maint_long=0.05, margin_maint_short=0.05,
+        short_borrow_rate=0.2))
+
+    dt0 = DateTime(2026, 1, 1)
+    accrue_borrow_fees!(acc, dt0) # no positions yet
+    @test isempty(acc.cashflows)
+
+    dt1 = dt0 + Day(1)
+    price = 100.0
+    qty = -5.0
+    fill_order!(acc, Order(oid!(acc), inst, dt1, price, qty); dt=dt1, fill_price=price, bid=price, ask=price, last=price)
+
+    dt2 = dt1 + Day(1)
+    accrue_borrow_fees!(acc, dt2)
+
+    yearfrac = Dates.value(Dates.Millisecond(dt2 - dt1)) / (1000 * 60 * 60 * 24 * 365.0)
+    expected_fee = abs(qty) * price * inst.multiplier * inst.short_borrow_rate * yearfrac
+
+    borrow_cfs = filter(cf -> cf.kind == CashflowKind.BorrowFee, acc.cashflows)
+    @test length(borrow_cfs) == 1
+    @test only(borrow_cfs).amount ≈ -expected_fee atol=1e-10
+end
+
+@testitem "borrow fees stop at short close time" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("SHORTCLOSE/USD"), :SHORTCLOSE, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1, margin_init_short=0.1,
+        margin_maint_long=0.05, margin_maint_short=0.05,
+        short_borrow_rate=0.2))
+
+    dt0 = DateTime(2026, 1, 1)
+    price = 100.0
+    qty = -5.0
+    fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price, bid=price, ask=price, last=price)
+
+    dt1 = dt0 + Day(1)
+    fill_order!(acc, Order(oid!(acc), inst, dt1, price, -qty); dt=dt1, fill_price=price, bid=price, ask=price, last=price)
+
+    yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
+    expected_fee = abs(qty) * price * inst.multiplier * inst.short_borrow_rate * yearfrac
+
+    borrow_cfs = filter(cf -> cf.kind == CashflowKind.BorrowFee, acc.cashflows)
+    @test length(borrow_cfs) == 1
+    @test only(borrow_cfs).amount ≈ -expected_fee atol=1e-10
+
+    dt2 = dt1 + Day(1)
+    accrue_borrow_fees!(acc, dt2)
+
+    borrow_cfs_after = filter(cf -> cf.kind == CashflowKind.BorrowFee, acc.cashflows)
+    @test length(borrow_cfs_after) == 1
+end

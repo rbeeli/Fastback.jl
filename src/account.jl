@@ -20,7 +20,6 @@ mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
     cashflow_sequence::Int
     last_event_dt::TTime
     last_interest_dt::TTime
-    last_borrow_fee_dt::TTime
     const date_format::Dates.DateFormat
 
     function Account(
@@ -56,7 +55,6 @@ mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
             0, # cashflow_sequence
             TTime(0), # last_event_dt
             TTime(0), # last_interest_dt
-            TTime(0), # last_borrow_fee_dt
             date_format
         )
     end

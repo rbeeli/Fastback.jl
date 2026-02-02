@@ -7,6 +7,7 @@ Position state tracked per instrument (see currency/unit semantics note in `cont
 - `init_margin_settle`, `maint_margin_settle`: margin currency (defaults to settlement)
 - `mark_price`: last valuation (liquidation) price at `mark_time`
 - `last_price`: last traded price used for margin calculations
+- `borrow_fee_dt`: last borrow-fee accrual timestamp for asset-settled shorts
 """
 mutable struct Position{TTime<:Dates.AbstractTime}
     const index::Int                # unique index for each position starting from 1 (used for array indexing and hashing)
@@ -23,6 +24,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
     mark_price::Price               # last valuation price
     last_price::Price               # last traded price
     mark_time::TTime                # timestamp of last valuation price
+    borrow_fee_dt::TTime            # timestamp of last borrow-fee accrual
     last_order::Union{Nothing,Order{TTime}}
     last_trade::Union{Nothing,Trade{TTime}}
 
@@ -42,6 +44,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
         mark_price::Price=Price(NaN),
         last_price::Price=Price(NaN),
         mark_time::TTime=TTime(0),
+        borrow_fee_dt::TTime=TTime(0),
         last_order::Union{Nothing,Order{TTime}}=nothing,
         last_trade::Union{Nothing,Trade{TTime}}=nothing,
     ) where {TTime<:Dates.AbstractTime}
@@ -60,6 +63,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
             mark_price,
             last_price,
             mark_time,
+            borrow_fee_dt,
             last_order,
             last_trade
         )
