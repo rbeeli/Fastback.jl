@@ -12,6 +12,10 @@ const _COLOR_BALANCE = "#0088DD"
 const _COLOR_EQUITY = "#BBBB00"
 const _COLOR_DRAWDOWN = "#BB0000"
 const _FILL_DRAWDOWN = "#BB000033"
+const _COLOR_EXPOSURE_GROSS = "#444444"
+const _COLOR_EXPOSURE_NET = "#0066BB"
+const _COLOR_EXPOSURE_LONG = "#22AA66"
+const _COLOR_EXPOSURE_SHORT = "#CC4444"
 
 @inline function _ensure_statsplots()
     if _HAS_STATSPLOTS[]
@@ -87,6 +91,104 @@ end
         w=1,
         legend=false,
     )
+end
+
+@inline function _exposure_kwargs(label::AbstractString, color)
+    (;
+        label=label,
+        linecolor=color,
+        linetype=:steppost,
+        yformatter=y -> @sprintf("%.0f", y),
+        w=1,
+    )
+end
+
+@inline function _has_values(pv)
+    pv !== nothing && !isempty(values(pv))
+end
+
+@inline function _plot_exposure_series!(
+    plt,
+    pv,
+    label::AbstractString,
+    color;
+    kwargs...
+)
+    _has_values(pv) || return plt
+    plot_kwargs = _merge_kwargs(_exposure_kwargs(label, color), kwargs)
+    Plots.plot!(plt, dates(pv), values(pv); plot_kwargs...)
+    plt
+end
+
+@inline function _drawdown_axis_label(pv::DrawdownValues)
+    pv.mode == DrawdownMode.Percentage ? "Drawdown [%]" : "Drawdown"
+end
+
+@inline function _max_drawdown_indices(vals::AbstractVector{<:Real})
+    n = length(vals)
+    n == 0 && return 0, 0, 0.0
+    max_val = Float64(vals[1])
+    max_idx = 1
+    peak_idx = 1
+    trough_idx = 1
+    max_dd = 0.0
+    for i in 2:n
+        v = Float64(vals[i])
+        if v > max_val
+            max_val = v
+            max_idx = i
+        end
+        dd = v - max_val
+        if dd < max_dd
+            max_dd = dd
+            peak_idx = max_idx
+            trough_idx = i
+        end
+    end
+    peak_idx, trough_idx, max_dd
+end
+
+@inline function _drawdown_value(peak_val::Real, trough_val::Real, mode::DrawdownMode.T)
+    dd = Float64(trough_val - peak_val)
+    if mode == DrawdownMode.Percentage
+        return peak_val == 0 ? 0.0 : dd / peak_val
+    end
+    dd
+end
+
+function _add_max_drawdown_markers!(
+    plt,
+    dts::AbstractVector{<:Dates.AbstractTime},
+    vals::AbstractVector{<:Real},
+    mode::DrawdownMode.T;
+    drawdown_axis::Bool=true,
+)
+    peak_idx, trough_idx, max_dd = _max_drawdown_indices(vals)
+    max_dd < 0 || return plt
+    peak_dt, trough_dt = dts[peak_idx], dts[trough_idx]
+    peak_val, trough_val = vals[peak_idx], vals[trough_idx]
+    _with_theme() do
+        Plots.scatter!(plt, [peak_dt], [peak_val];
+            marker=:utriangle,
+            markersize=4,
+            color=_COLOR_DRAWDOWN,
+            label=false)
+        Plots.scatter!(plt, [trough_dt], [trough_val];
+            marker=:dtriangle,
+            markersize=4,
+            color=_COLOR_DRAWDOWN,
+            label=false)
+        if drawdown_axis
+            dd_val = _drawdown_value(peak_val, trough_val, mode)
+            Plots.scatter!(plt, [trough_dt], [dd_val];
+                yaxis=:right,
+                marker=:circle,
+                markersize=4,
+                color=_COLOR_DRAWDOWN,
+                label="Max drawdown")
+        end
+    end
+    plt
 end
 
 struct PlotEvent{TTime<:Dates.AbstractTime}
@@ -287,6 +389,116 @@ function Fastback.plot_drawdown_seq(pv::DrawdownValues; kwargs...)
 end
 
 # -----------------------------------------------------------------------------
+
+"""
+Plot equity with drawdown overlay and max-drawdown markers.
+"""
+function Fastback.plot_equity_drawdown(
+    equity_pv::PeriodicValues,
+    drawdown_pv::DrawdownValues;
+    show_max_dd::Bool=true,
+    kwargs...
+)
+    eq_vals = values(equity_pv)
+    isempty(eq_vals) && return _empty_plot("No equity data"; kwargs...)
+    plt = Plots.plot()
+    Fastback.plot_equity_drawdown!(plt, equity_pv, drawdown_pv;
+        title="Equity & drawdown",
+        legend=:topleft,
+        show_max_dd=show_max_dd,
+        kwargs...)
+    plt
+end
+
+"""
+Add equity with drawdown overlay and max-drawdown markers to an existing plot.
+"""
+function Fastback.plot_equity_drawdown!(
+    plt,
+    equity_pv::PeriodicValues,
+    drawdown_pv::DrawdownValues;
+    show_max_dd::Bool=true,
+    kwargs...
+)
+    eq_vals = values(equity_pv)
+    isempty(eq_vals) && return plt
+
+    Fastback.plot_equity!(plt, equity_pv; kwargs...)
+
+    dd_vals = values(drawdown_pv)
+    if !isempty(dd_vals)
+        legend_val = haskey(kwargs, :legend) ? kwargs[:legend] : :topleft
+        dd_kwargs = _merge_kwargs(_drawdown_kwargs(drawdown_pv), (;
+            yaxis=:right,
+            ylabel=_drawdown_axis_label(drawdown_pv),
+            legend=legend_val,
+        ))
+        _with_theme() do
+            Plots.plot!(plt, dates(drawdown_pv), dd_vals; dd_kwargs...)
+        end
+    end
+
+    if show_max_dd
+        _add_max_drawdown_markers!(
+            plt,
+            dates(equity_pv),
+            eq_vals,
+            drawdown_pv.mode;
+            drawdown_axis=!isempty(dd_vals),
+        )
+    end
+    plt
+end
+
+# -----------------------------------------------------------------------------
+
+"""
+Plot exposure over time (gross, net, long, short).
+
+Pass any combination via keyword arguments: `gross`, `net`, `long`, `short`.
+"""
+function Fastback.plot_exposure(;
+    gross=nothing,
+    net=nothing,
+    long=nothing,
+    short=nothing,
+    kwargs...
+)
+    has_data = _has_values(gross) || _has_values(net) || _has_values(long) || _has_values(short)
+    has_data || return _empty_plot("No exposure data"; kwargs...)
+    plt = Plots.plot()
+    Fastback.plot_exposure!(plt;
+        gross=gross,
+        net=net,
+        long=long,
+        short=short,
+        title="Exposure",
+        legend=:topleft,
+        kwargs...)
+    plt
+end
+
+"""
+Add exposure series (gross, net, long, short) to an existing plot.
+
+Pass any combination via keyword arguments: `gross`, `net`, `long`, `short`.
+"""
+function Fastback.plot_exposure!(
+    plt;
+    gross=nothing,
+    net=nothing,
+    long=nothing,
+    short=nothing,
+    kwargs...
+)
+    _with_theme() do
+        _plot_exposure_series!(plt, gross, "Gross exposure", _COLOR_EXPOSURE_GROSS; kwargs...)
+        _plot_exposure_series!(plt, net, "Net exposure", _COLOR_EXPOSURE_NET; kwargs...)
+        _plot_exposure_series!(plt, long, "Long exposure", _COLOR_EXPOSURE_LONG; kwargs...)
+        _plot_exposure_series!(plt, short, "Short exposure", _COLOR_EXPOSURE_SHORT; kwargs...)
+    end
+    plt
+end
 
 """
 Plot account cashflows by type (one panel per `CashflowKind`).

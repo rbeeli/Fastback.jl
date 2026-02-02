@@ -28,6 +28,10 @@ collect_balance, balance_data = periodic_collector(Float64, Hour(1));
 collect_equity, equity_data = periodic_collector(Float64, Hour(1));
 collect_open, open_orders_data = periodic_collector(Int, Hour(1));
 collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Hour(1));
+collect_gross, gross_exposure = periodic_collector(Float64, Hour(1));
+collect_net, net_exposure = periodic_collector(Float64, Hour(1));
+collect_long, long_exposure = periodic_collector(Float64, Hour(1));
+collect_short, short_exposure = periodic_collector(Float64, Hour(1));
 
 dt0 = DateTime(2020, 1, 1);
 n_steps = 120;
@@ -67,7 +71,16 @@ for i in 1:n_steps
         eq = equity(acc, :USDT)
         collect_equity(dt, eq)
         collect_drawdown(dt, eq)
-        collect_open(dt, get_position(acc, perp).quantity == 0.0 ? 0 : 1)
+        pos = get_position(acc, perp)
+        collect_open(dt, pos.quantity == 0.0 ? 0 : 1)
+        notional = pos.quantity * last * perp.multiplier
+        long_exp = max(notional, 0.0)
+        short_exp = min(notional, 0.0)
+        gross_exp = long_exp - short_exp
+        collect_gross(dt, gross_exp)
+        collect_net(dt, notional)
+        collect_long(dt, long_exp)
+        collect_short(dt, short_exp)
     end
 end
 
@@ -103,12 +116,26 @@ Fastback.plot_drawdown(drawdown_data)
 # Drawdown plot (sequence index)
 Fastback.plot_drawdown_seq(drawdown_data)
 
+# Exposure plot (gross, net, long, short)
+Fastback.plot_exposure(;
+    gross=gross_exposure,
+    net=net_exposure,
+    long=long_exposure,
+    short=short_exposure)
+
+# Equity + drawdown overlay
+Fastback.plot_equity_drawdown(equity_data, drawdown_data)
+
 # ---------------------------------------------------------
 # Overlay helpers (plot_! variants)
 
 p = plot();
 Fastback.plot_balance!(p, balance_data; title="Account");
 Fastback.plot_equity!(p, equity_data);
+p
+
+p = plot();
+Fastback.plot_equity_drawdown!(p, equity_data, drawdown_data; title="Equity & drawdown");
 p
 
 # ---------------------------------------------------------
