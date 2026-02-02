@@ -4,8 +4,6 @@ Pull requests and issues are welcome.
 
 ## TODOs
 
-- Low: Interest accrual uses the same account-level timestamping pattern; balances are assumed constant between accrue_interest! calls. Deposits/withdrawals or cashflows between accrual points will be treated as if they were present for the whole interval, biasing interest earned/paid unless accrual is called immediately before each balance change. If that’s unintended, mirror the fix above or document the required call pattern. (src/interest.jl:35-56)
-
 - FX robustness for research-grade multi-currency margining (optional but high leverage)
 
     Right now SpotExchangeRates requires a direct rate for every required conversion pair. For research this gets annoying fast.
