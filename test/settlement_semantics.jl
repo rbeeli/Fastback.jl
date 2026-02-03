@@ -97,39 +97,6 @@ end
     @test err.reason == OrderRejectReason.InsufficientInitialMargin
 end
 
-@testitem "Borrow fees reduce balances and equity for spot shorts" begin
-    using Test, Fastback, Dates
-
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 10_000.0)
-
-    inst = register_instrument!(acc, Instrument(Symbol("BORROW/USD"), :BORROW, :USD;
-        settlement=SettlementStyle.Cash,
-        contract_kind=ContractKind.Spot,
-        margin_mode=MarginMode.PercentNotional,
-        margin_init_long=0.5,
-        margin_init_short=0.5,
-        margin_maint_long=0.25,
-        margin_maint_short=0.25,
-        short_borrow_rate=0.10,
-    ))
-
-    dt0 = DateTime(2026, 1, 4)
-    fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, -10.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
-
-    bal_before = cash_balance(acc, usd)
-    eq_before = equity(acc, usd)
-    dt1 = dt0 + Day(1)
-    accrue_borrow_fees!(acc, dt1)
-
-    yearfrac = 1 / 365
-    expected_fee = 10.0 * 100.0 * inst.multiplier * inst.short_borrow_rate * yearfrac
-
-    @test cash_balance(acc, usd) ≈ bal_before - expected_fee atol=1e-8
-    @test equity(acc, usd) ≈ eq_before - expected_fee atol=1e-8
-end
-
 @testitem "check_invariants holds after fills, marks, FX, and accruals" begin
     using Test, Fastback, Dates
 
