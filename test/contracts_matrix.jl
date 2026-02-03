@@ -8,9 +8,10 @@ using TestItemRunner
     expiry_dt = DateTime(2026, 1, 1)
 
     valid_cases = [
-        ("spot asset settlement", Instrument(Symbol("SPOT/ASSET"), :SPOT, :USD;
+        ("spot cash settlement", Instrument(Symbol("SPOT/CASH"), :SPOT, :USD;
             contract_kind=ContractKind.Spot,
-            settlement=SettlementStyle.Asset,
+            settlement=SettlementStyle.Cash,
+            margin_mode=MarginMode.PercentNotional,
             expiry=zero_dt,
         )),
         ("perpetual variation margin", Instrument(Symbol("PERP/VM"), :PERP, :USD;
@@ -37,6 +38,7 @@ using TestItemRunner
         ("spot variation margin disallowed", Instrument(Symbol("SPOT/VM"), :SPOT, :USD;
             contract_kind=ContractKind.Spot,
             settlement=SettlementStyle.VariationMargin,
+            margin_mode=MarginMode.PercentNotional,
         )),
         ("perpetual cannot expire", Instrument(Symbol("PERP/EXP"), :PERP, :USD;
             contract_kind=ContractKind.Perpetual,
@@ -44,9 +46,9 @@ using TestItemRunner
             margin_mode=MarginMode.PercentNotional,
             expiry=expiry_dt,
         )),
-        ("perpetual requires variation margin", Instrument(Symbol("PERP/ASSET"), :PERP, :USD;
+        ("perpetual requires variation margin", Instrument(Symbol("PERP/CASH"), :PERP, :USD;
             contract_kind=ContractKind.Perpetual,
-            settlement=SettlementStyle.Asset,
+            settlement=SettlementStyle.Cash,
             margin_mode=MarginMode.PercentNotional,
         )),
         ("future requires expiry", Instrument(Symbol("FUT/NOEXP"), :FUT, :USD;
@@ -76,7 +78,8 @@ end
 
     spot = Instrument(Symbol("SPOT/LIFE"), :SPOT, :USD;
         contract_kind=ContractKind.Spot,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
+        margin_mode=MarginMode.PercentNotional,
         expiry=DateTime(0),
     )
     @test is_active(spot, now_dt)

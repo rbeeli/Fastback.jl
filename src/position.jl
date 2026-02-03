@@ -7,7 +7,7 @@ Position state tracked per instrument (see currency/unit semantics note in `cont
 - `init_margin_settle`, `maint_margin_settle`: margin currency (defaults to settlement)
 - `mark_price`: last valuation (liquidation) price at `mark_time`
 - `last_price`: last traded price used for margin calculations
-- `borrow_fee_dt`: last borrow-fee accrual timestamp for asset-settled shorts
+- `borrow_fee_dt`: last borrow-fee accrual timestamp for cash-settled spot shorts
 """
 mutable struct Position{TTime<:Dates.AbstractTime}
     const index::Int                # unique index for each position starting from 1 (used for array indexing and hashing)
@@ -92,7 +92,7 @@ Calculates position P&L in local currency on the **settlement basis**.
 
 - Uses `avg_settle_price` (not the entry basis) so that variation-margin positions
   compute P&L since the last settlement price.
-- For `SettlementStyle.Asset` / `Cash`, this is the usual unrealized P&L.
+- For `SettlementStyle.Cash`, this is the usual unrealized P&L.
 - For `SettlementStyle.VariationMargin`, the caller settles this value into cash
   and then resets `avg_settle_price` to the mark, so subsequent calls reflect only
   moves after the last settlement.

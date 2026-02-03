@@ -1,7 +1,7 @@
 using Dates
 using TestItemRunner
 
-@testitem "Asset settlement opens: equity hit is commission only" begin
+@testitem "Cash settlement opens: equity hit is commission only" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -14,7 +14,7 @@ using TestItemRunner
             Symbol("AST/USD"),
             :AST,
             :USD;
-            settlement=SettlementStyle.Asset,
+            settlement=SettlementStyle.Cash,
             contract_kind=ContractKind.Spot,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.1,
@@ -37,7 +37,7 @@ using TestItemRunner
     @test equity_after ≈ equity_before - commission atol=1e-12
 
     pos = get_position(acc, inst)
-    @test pos.value_quote ≈ qty * price * inst.multiplier atol=1e-12
+    @test pos.value_quote ≈ 0.0 atol=1e-12
     @test pos.pnl_quote ≈ 0.0 atol=1e-12
 end
 

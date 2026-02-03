@@ -80,7 +80,7 @@ end
             :FX,
             :EUR;
             settle_symbol=:USD,
-            settlement=SettlementStyle.Asset,
+            settlement=SettlementStyle.Cash,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.0,
             margin_init_short=0.0,
@@ -100,7 +100,7 @@ end
     row = only(Tables.rows(tbl))
 
     commission_settle = commission_quote * 1.2
-    expected_cash_delta = to_settle(acc, inst, -(fill_price * qty * inst.multiplier) - commission_quote)
+    expected_cash_delta = to_settle(acc, inst, -commission_quote)
 
     @test trade === acc.trades[end]
     @test row.commission_settle ≈ commission_settle atol=1e-12

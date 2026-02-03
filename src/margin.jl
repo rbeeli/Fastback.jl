@@ -10,10 +10,6 @@ end
 Return `true` if the account is below maintenance requirements.
 """
 @inline function is_under_maintenance(acc)::Bool
-    if acc.mode == AccountMode.Cash
-        return false
-    end
-
     if acc.margining_style == MarginingStyle.BaseCurrency
         return excess_liquidity_base_ccy(acc) < 0
     end

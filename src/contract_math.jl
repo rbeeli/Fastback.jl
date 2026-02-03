@@ -24,9 +24,7 @@ Quote-currency position value contribution under the instrument settlement style
 """
 @inline function value_quote(inst::Instrument, qty, price, basis_price)::Price
     settlement = inst.settlement
-    if settlement == SettlementStyle.Asset
-        return qty * price * inst.multiplier
-    elseif settlement == SettlementStyle.Cash
+    if settlement == SettlementStyle.Cash
         return pnl_quote(inst, qty, price, basis_price)
     elseif settlement == SettlementStyle.VariationMargin
         return zero(Price)
@@ -46,9 +44,7 @@ Quote-currency cash delta for a fill, honoring settlement style.
     realized_pnl_quote::Price=0.0,
 )::Price
     settlement = inst.settlement
-    if settlement == SettlementStyle.Asset
-        return -(fill_price * fill_qty * inst.multiplier) - commission_total_quote
-    elseif settlement == SettlementStyle.Cash
+    if settlement == SettlementStyle.Cash
         return realized_pnl_quote - commission_total_quote
     elseif settlement == SettlementStyle.VariationMargin
         return realized_pnl_quote - commission_total_quote
@@ -61,7 +57,6 @@ end
 Calculates the initial margin requirement in the instrument margin currency.
 """
 @inline function margin_init_margin_ccy(acc::Account, inst::Instrument, qty, mark)::Price
-    acc.mode == AccountMode.Cash && return zero(Price)
     qty == 0 && return zero(Price)
     mode = inst.margin_mode
     if mode == MarginMode.None
@@ -81,7 +76,6 @@ end
 Calculates the maintenance margin requirement in the instrument margin currency.
 """
 @inline function margin_maint_margin_ccy(acc::Account, inst::Instrument, qty, mark)::Price
-    acc.mode == AccountMode.Cash && return zero(Price)
     qty == 0 && return zero(Price)
     mode = inst.margin_mode
     if mode == MarginMode.None

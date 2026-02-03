@@ -272,7 +272,7 @@ end
     @test trade.commission_settle == commission_pct * expected_nominal
 end
 
-@testitem "Spot long asset-settled valuation" begin
+@testitem "Spot long cash-settled valuation" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -282,7 +282,7 @@ end
         Symbol("SPOT/USD"),
         :SPOT,
         :USD;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
@@ -297,16 +297,16 @@ end
     order = Order(oid!(acc), inst, dt, price, qty)
     fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
 
-    @test cash_balance(acc, :USD) ≈ 5_000.0
-    @test pos.value_quote ≈ 5_000.0
+    @test cash_balance(acc, :USD) ≈ 10_000.0
+    @test pos.value_quote ≈ 0.0
     @test equity(acc, :USD) ≈ 10_000.0
 
     update_marks!(acc, pos, dt, 60.0, 60.0, 60.0)
-    @test pos.value_quote ≈ 6_000.0
+    @test pos.value_quote ≈ 1_000.0
     @test equity(acc, :USD) ≈ 11_000.0
 end
 
-@testitem "Spot short asset-settled valuation" begin
+@testitem "Spot short cash-settled valuation" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -316,7 +316,7 @@ end
         Symbol("SPOT/USD"),
         :SPOT,
         :USD;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
@@ -331,12 +331,12 @@ end
     order = Order(oid!(acc), inst, dt, price, qty)
     fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
 
-    @test cash_balance(acc, :USD) ≈ 15_000.0
-    @test pos.value_quote ≈ -5_000.0
+    @test cash_balance(acc, :USD) ≈ 10_000.0
+    @test pos.value_quote ≈ 0.0
     @test equity(acc, :USD) ≈ 10_000.0
 
     update_marks!(acc, pos, dt, 60.0, 60.0, 60.0)
-    @test pos.value_quote ≈ -6_000.0
+    @test pos.value_quote ≈ -1_000.0
     @test equity(acc, :USD) ≈ 9_000.0
 end
 
@@ -475,13 +475,13 @@ end
     @test err.reason == OrderRejectReason.InstrumentNotAllowed
 end
 
-@testitem "Cash account: buy too large is rejected" begin
+@testitem "Cash account: buy too large is rejected by margin" begin
     using Test, Fastback, Dates
 
     acc = Account(; base_currency=:USD)
     deposit!(acc, Cash(:USD), 100.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("CASH/USD"), :CASH, :USD; settlement=SettlementStyle.Asset))
+    inst = register_instrument!(acc, spot_instrument(Symbol("CASH/USD"), :CASH, :USD))
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 200.0, 1.0)
 
@@ -492,33 +492,32 @@ end
         e
     end
     @test err isa OrderRejectError
-    @test err.reason == OrderRejectReason.InsufficientCash
+    @test err.reason == OrderRejectReason.InsufficientInitialMargin
     @test isempty(acc.trades)
     pos = get_position(acc, inst)
     @test pos.quantity == 0.0
     @test cash_balance(acc, :USD) == 100.0
 end
 
-@testitem "Cash account: short sell is rejected" begin
+@testitem "Cash account: short sell allowed when margin supports" begin
     using Test, Fastback, Dates
 
     acc = Account(; base_currency=:USD)
     deposit!(acc, Cash(:USD), 1_000.0)
-    inst = register_instrument!(acc, Instrument(Symbol("SHORT/USD"), :SHORT, :USD; settlement=SettlementStyle.Asset))
+    inst = register_instrument!(acc, margin_spot_instrument(Symbol("SHORT/USD"), :SHORT, :USD;
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.5,
+        margin_init_short=0.5,
+        margin_maint_long=0.25,
+        margin_maint_short=0.25,
+    ))
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 10.0, -1.0)
-    err = try
-        fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
-        nothing
-    catch e
-        e
-    end
-    @test err isa OrderRejectError
-    @test err.reason == OrderRejectReason.ShortNotAllowed
-    @test isempty(acc.trades)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
+    @test trade isa Trade
     pos = get_position(acc, inst)
-    @test pos.quantity == 0.0
+    @test pos.quantity == -1.0
 end
 
 @testitem "Cash account: sell within holdings works" begin
@@ -526,7 +525,7 @@ end
 
     acc = Account(; base_currency=:USD)
     deposit!(acc, Cash(:USD), 1_000.0)
-    inst = register_instrument!(acc, Instrument(Symbol("CASHSELL/USD"), :CASHSELL, :USD; settlement=SettlementStyle.Asset))
+    inst = register_instrument!(acc, spot_instrument(Symbol("CASHSELL/USD"), :CASHSELL, :USD))
 
     buy_dt = DateTime(2026, 1, 1)
     buy_order = Order(oid!(acc), inst, buy_dt, 10.0, 50.0)
@@ -542,11 +541,11 @@ end
     @test pos.quantity == 30.0
     @test pos.avg_entry_price ≈ 10.0
     @test pos.avg_settle_price ≈ 10.0
-    @test cash_balance(acc, :USD) ≈ 740.0
+    @test cash_balance(acc, :USD) ≈ 1_040.0
     @test equity(acc, :USD) ≈ 1_100.0
 end
 
-@testitem "Cash account rejects margin instruments" begin
+@testitem "Cash account can trade variation-margin instruments" begin
     using Test, Fastback, Dates
 
     acc = Account(; base_currency=:USD)
@@ -565,18 +564,11 @@ end
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 100.0, 1.0)
-    err = try
-        fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
-        nothing
-    catch e
-        e
-    end
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
 
-    @test err isa OrderRejectError
-    @test err.reason == OrderRejectReason.InstrumentNotAllowed
-    @test isempty(acc.trades)
+    @test trade isa Trade
     pos = get_position(acc, inst)
-    @test pos.quantity == 0.0
+    @test pos.quantity == 1.0
 end
 
 @testitem "Insufficient initial margin rejects fill" begin
@@ -654,13 +646,23 @@ end
     @test acc.maint_margin_used[usd_index] == 0.0
 end
 
-@testitem "Margin disabled stays zero" begin
+@testitem "Zero margin rates keep margin usage at zero" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("NOMARGIN/USD"), :NOMARGIN, :USD; settlement=SettlementStyle.Asset))
+    inst = register_instrument!(acc, Instrument(
+        Symbol("NOMARGIN/USD"),
+        :NOMARGIN,
+        :USD;
+        settlement=SettlementStyle.Cash,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.0,
+        margin_init_short=0.0,
+        margin_maint_long=0.0,
+        margin_maint_short=0.0,
+    ))
     pos = get_position(acc, inst)
 
     dt = DateTime(2021, 1, 1)
@@ -872,11 +874,14 @@ end
         Symbol("FXEQ/EURUSD"),
         :FXEQ,
         :EUR;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         settle_symbol=:USD,
         contract_kind=ContractKind.Spot,
-        delivery_style=DeliveryStyle.PhysicalDeliver,
-        margin_mode=MarginMode.None,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.0,
+        margin_init_short=0.0,
+        margin_maint_long=0.0,
+        margin_maint_short=0.0,
     ))
 
     dt0 = DateTime(2026, 1, 1)
@@ -884,17 +889,17 @@ end
     fill_order!(acc, order; dt=dt0, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
 
     pos = get_position(acc, inst)
-    update_marks!(acc, pos, dt0, order.price, order.price, order.price)
+    update_marks!(acc, pos, dt0, 110.0, 110.0, 110.0)
 
     equity_usd_before = equity(acc, :USD)
     value_settle_before = pos.value_settle
 
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
     dt1 = dt0 + Day(1)
-    update_marks!(acc, pos, dt1, order.price, order.price, order.price)
+    update_marks!(acc, pos, dt1, 110.0, 110.0, 110.0)
 
-    @test pos.value_quote ≈ 100.0 atol=1e-12
-    @test pos.value_settle ≈ 120.0 atol=1e-12
+    @test pos.value_quote ≈ 10.0 atol=1e-12
+    @test pos.value_settle ≈ 12.0 atol=1e-12
     @test equity(acc, :USD) ≈ equity_usd_before + (pos.value_settle - value_settle_before) atol=1e-10
     @test Fastback.check_invariants(acc)
 end

@@ -1,13 +1,13 @@
 using TestItemRunner
 
-@testitem "short borrow fees accrue on asset-settled shorts" begin
+@testitem "short borrow fees accrue on cash-settled spot shorts" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 5_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("SHORT/USD"), :SHORT, :USD;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
         margin_maint_long=0.05, margin_maint_short=0.05,
@@ -44,7 +44,7 @@ end
     deposit!(acc, Cash(:USD), 5_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("SHORTSPREAD/USD"), :SHORTSPREAD, :USD;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
         margin_maint_long=0.05, margin_maint_short=0.05,
@@ -78,7 +78,7 @@ end
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("SHORTOPEN/USD"), :SHORTOPEN, :USD;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
         margin_maint_long=0.05, margin_maint_short=0.05,
@@ -111,7 +111,7 @@ end
     deposit!(acc, Cash(:USD), 10_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("SHORTCLOSE/USD"), :SHORTCLOSE, :USD;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
         margin_maint_long=0.05, margin_maint_short=0.05,

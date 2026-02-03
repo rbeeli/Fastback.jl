@@ -19,7 +19,6 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
     const margin_symbol::Symbol   # currency used for margin requirements
 
     const settlement::SettlementStyle.T
-    const delivery_style::DeliveryStyle.T
     const margin_mode::MarginMode.T
     const margin_init_long::Price
     const margin_init_short::Price
@@ -50,7 +49,6 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         settle_symbol::Symbol=quote_symbol,
         margin_symbol::Symbol=settle_symbol,
         settlement::SettlementStyle.T=SettlementStyle.Cash,
-        delivery_style::DeliveryStyle.T=DeliveryStyle.CashSettle,
         margin_mode::MarginMode.T=MarginMode.None,
         margin_init_long::Price=0.0,
         margin_init_short::Price=0.0,
@@ -62,9 +60,6 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         start_time::TTime=time_type(0),
         expiry::TTime=time_type(0),
     ) where {TTime<:Dates.AbstractTime}
-        # Infer sensible delivery default for spot asset-settled instruments while
-        # allowing explicit overrides for all other combinations.
-        delivery_style = _infer_delivery_style(contract_kind, settlement, delivery_style)
         new{TTime}(
             0, # index
             symbol,
@@ -79,7 +74,6 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
             settle_symbol,
             margin_symbol,
             settlement,
-            delivery_style,
             margin_mode,
             margin_init_long,
             margin_init_short,
@@ -109,19 +103,12 @@ Format a quote-currency value using the instrument's display precision.
 """
 @inline format_quote(inst::Instrument, value) = Printf.format(Printf.Format("%.$(inst.quote_digits)f"), value)
 
-@inline function _infer_delivery_style(contract_kind::ContractKind.T, settlement::SettlementStyle.T, delivery_style::DeliveryStyle.T)
-    if contract_kind == ContractKind.Spot && settlement == SettlementStyle.Asset && delivery_style == DeliveryStyle.CashSettle
-        return DeliveryStyle.PhysicalDeliver
-    end
-    delivery_style
-end
-
 """
     spot_instrument(symbol, base_symbol, quote_symbol; kwargs...)
 
-Convenience constructor for physically delivered spot instruments. Uses
-asset settlement with no margin requirements and validates the resulting
-instrument before returning it.
+Convenience constructor for cash-settled spot exposure. Uses percent-notional
+margin set to 100% (fully funded) and validates the resulting instrument
+before returning it.
 """
 function spot_instrument(
     symbol::Symbol,
@@ -151,9 +138,12 @@ function spot_instrument(
         contract_kind=ContractKind.Spot,
         settle_symbol=settle_symbol,
         margin_symbol=margin_symbol,
-        settlement=SettlementStyle.Asset,
-        delivery_style=DeliveryStyle.PhysicalDeliver,
-        margin_mode=MarginMode.None,
+        settlement=SettlementStyle.Cash,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=1.0,
+        margin_init_short=1.0,
+        margin_maint_long=1.0,
+        margin_maint_short=1.0,
         short_borrow_rate=short_borrow_rate,
         multiplier=multiplier,
         time_type=time_type,
@@ -167,8 +157,7 @@ end
 """
     margin_spot_instrument(symbol, base_symbol, quote_symbol; kwargs...)
 
-Spot instrument on margin. Uses asset settlement with physical delivery
-and requires explicit margin parameters with `margin_mode` set.
+Cash-settled spot instrument with explicit margin parameters.
 """
 function margin_spot_instrument(
     symbol::Symbol,
@@ -206,8 +195,7 @@ function margin_spot_instrument(
         contract_kind=ContractKind.Spot,
         settle_symbol=settle_symbol,
         margin_symbol=margin_symbol,
-        settlement=SettlementStyle.Asset,
-        delivery_style=DeliveryStyle.PhysicalDeliver,
+        settlement=SettlementStyle.Cash,
         margin_mode=margin_mode,
         margin_init_long=margin_init_long,
         margin_init_short=margin_init_short,
@@ -226,9 +214,8 @@ end
 """
     perpetual_instrument(symbol, base_symbol, quote_symbol; kwargs...)
 
-Perpetual swap constructor. Uses variation margin settlement, cash
-delivery, and requires explicit margin parameters. `expiry` is fixed to
-zero by construction.
+Perpetual swap constructor. Uses variation margin settlement and requires
+explicit margin parameters. `expiry` is fixed to zero by construction.
 """
 function perpetual_instrument(
     symbol::Symbol,
@@ -267,7 +254,6 @@ function perpetual_instrument(
         settle_symbol=settle_symbol,
         margin_symbol=margin_symbol,
         settlement=SettlementStyle.VariationMargin,
-        delivery_style=DeliveryStyle.CashSettle,
         margin_mode=margin_mode,
         margin_init_long=margin_init_long,
         margin_init_short=margin_init_short,
@@ -288,8 +274,7 @@ end
 
 Future constructor using variation margin settlement. Requires a
 non-zero `expiry`, a `margin_mode` other than `MarginMode.None`, and
-explicit margin parameters. Delivery style defaults to cash settlement
-but can be overridden to physical delivery.
+explicit margin parameters.
 """
 function future_instrument(
     symbol::Symbol,
@@ -309,7 +294,6 @@ function future_instrument(
     quote_digits::Int=2,
     settle_symbol::Symbol=quote_symbol,
     margin_symbol::Symbol=settle_symbol,
-    delivery_style::DeliveryStyle.T=DeliveryStyle.CashSettle,
     short_borrow_rate::Price=0.0,
     multiplier::Float64=1.0,
     time_type::Type{TTime}=DateTime,
@@ -330,7 +314,6 @@ function future_instrument(
         settle_symbol=settle_symbol,
         margin_symbol=margin_symbol,
         settlement=SettlementStyle.VariationMargin,
-        delivery_style=delivery_style,
         margin_mode=margin_mode,
         margin_init_long=margin_init_long,
         margin_init_short=margin_init_short,
@@ -388,13 +371,13 @@ end
 """
     is_margined_spot(inst)
 
-Returns `true` when the instrument is an asset-settled spot contract with
+Returns `true` when the instrument is a cash-settled spot contract with
 an explicit margin mode (percent-notional or fixed-per-contract). This is
 the canonical representation of “spot on margin”.
 """
 @inline function is_margined_spot(inst::Instrument)::Bool
     inst.contract_kind == ContractKind.Spot &&
-    inst.settlement == SettlementStyle.Asset &&
+    inst.settlement == SettlementStyle.Cash &&
     inst.margin_mode != MarginMode.None
 end
 
@@ -405,34 +388,23 @@ Throws an `ArgumentError` when mandatory invariants are violated.
 function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.AbstractTime}
     kind = inst.contract_kind
     settlement = inst.settlement
-    delivery = inst.delivery_style
     margin_mode = inst.margin_mode
 
-    if settlement == SettlementStyle.Cash
-        margin_mode != MarginMode.None || throw(ArgumentError("Cash-settled instrument $(inst.symbol) must set margin_mode."))
-        delivery == DeliveryStyle.CashSettle || throw(ArgumentError("Cash-settled instrument $(inst.symbol) must use CashSettle delivery_style."))
-    end
-
     if margin_mode == MarginMode.None
-        (iszero(inst.margin_init_long) &&
-         iszero(inst.margin_init_short) &&
-         iszero(inst.margin_maint_long) &&
-         iszero(inst.margin_maint_short)) ||
-            throw(ArgumentError("Instrument $(inst.symbol) with margin_mode=MarginMode.None must have zero margin parameters."))
+        throw(ArgumentError("Instrument $(inst.symbol) must set margin_mode."))
     end
 
     if kind == ContractKind.Spot
-        settlement == SettlementStyle.VariationMargin && throw(ArgumentError("Spot instrument $(inst.symbol) cannot use VariationMargin settlement."))
+        settlement == SettlementStyle.Cash || throw(ArgumentError("Spot instrument $(inst.symbol) must use Cash settlement."))
+        inst.margin_mode != MarginMode.None || throw(ArgumentError("Spot instrument $(inst.symbol) must set margin_mode."))
     elseif kind == ContractKind.Perpetual
         settlement == SettlementStyle.VariationMargin || throw(ArgumentError("Perpetual instrument $(inst.symbol) must use VariationMargin settlement."))
         inst.expiry == TTime(0) || throw(ArgumentError("Perpetual instrument $(inst.symbol) must not define an expiry."))
         inst.margin_mode != MarginMode.None || throw(ArgumentError("Perpetual instrument $(inst.symbol) must set margin_mode."))
-        delivery == DeliveryStyle.CashSettle || throw(ArgumentError("Perpetual instrument $(inst.symbol) must be cash-settled."))
     elseif kind == ContractKind.Future
         settlement == SettlementStyle.VariationMargin || throw(ArgumentError("Future instrument $(inst.symbol) must use VariationMargin settlement."))
         has_expiry(inst) || throw(ArgumentError("Future instrument $(inst.symbol) must define an expiry."))
         inst.margin_mode != MarginMode.None || throw(ArgumentError("Future instrument $(inst.symbol) must set margin_mode."))
-        delivery in (DeliveryStyle.CashSettle, DeliveryStyle.PhysicalDeliver) || throw(ArgumentError("Future instrument $(inst.symbol) has invalid delivery_style."))
     end
 
     nothing

@@ -10,7 +10,7 @@ using TestItemRunner
         Symbol("SPOT/USD"),
         :SPOT,
         :USD;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.25,
@@ -48,7 +48,7 @@ end
         :PER,
         :EUR;
         settle_symbol=:EUR,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.2,
         margin_init_short=0.2,

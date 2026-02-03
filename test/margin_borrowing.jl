@@ -1,7 +1,7 @@
 using Dates
 using TestItemRunner
 
-@testitem "margin account allows borrowing on margin-enabled instrument" begin
+@testitem "margin account allows exposure on margin-enabled instrument" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -11,7 +11,7 @@ using TestItemRunner
         Symbol("MARGINABLE/USD"),
         :MARGINABLE,
         :USD;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.25,
@@ -24,40 +24,25 @@ using TestItemRunner
     @test trade isa Trade
     pos = get_position(acc, inst)
     @test pos.quantity == 100.0
-    @test cash_balance(acc, :USD) ≈ -4_000.0
+    @test cash_balance(acc, :USD) ≈ 6_000.0
     @test equity(acc, :USD) ≈ 6_000.0
     @test init_margin_used(acc, :USD) ≈ 5_000.0
 end
 
-@testitem "non-marginable instrument stays cash-funded inside margin account" begin
+@testitem "non-marginable instruments are rejected" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 6_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = Instrument(
         Symbol("CASHONLY/USD"),
         :CASHONLY,
         :USD;
-        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.None,
-    ))
+    )
 
-    dt = DateTime(2026, 1, 1)
-    order = Order(oid!(acc), inst, dt, 100.0, 100.0)
-    err = try
-        fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
-        nothing
-    catch e
-        e
-    end
-
-    @test err isa OrderRejectError
-    @test err.reason == OrderRejectReason.InsufficientCash
-    @test isempty(acc.trades)
-    pos = get_position(acc, inst)
-    @test pos.quantity == 0.0
-    @test cash_balance(acc, :USD) == 6_000.0
+    @test_throws ArgumentError register_instrument!(acc, inst)
 end
 
 @testitem "risk-reducing trades bypass initial margin check" begin
@@ -70,7 +55,7 @@ end
         Symbol("DERISK/USD"),
         :DERISK,
         :USD;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.5,

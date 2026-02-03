@@ -57,12 +57,12 @@ Fastback.plot_equity(equity_data)
 ## Features
 
 - Event-driven accounting engine with explicit event processing (`process_step!`) for marks, FX, funding, expiries, and optional liquidation
-- Instruments: spot, spot-on-margin, perpetuals, and futures with lifecycle guards (start/expiry), optional contract multipliers, settlement styles (Asset/Cash/Variation Margin), and cash/physical delivery
+- Instruments: spot, spot-on-margin, perpetuals, and futures with lifecycle guards (start/expiry), optional contract multipliers, settlement styles (Cash/Variation Margin), and synthetic cash settlement
 - Account modes: cash or margin; per-currency or base-currency margining; percent-notional or fixed-per-contract margin requirements
 - Multi-currency cash book with FX conversion helpers and base-currency metrics
 - Execution & risk: fixed/percentage commissions, partial fills, liquidation-aware marking (bid/ask/last), and initial/maintenance margin checks
-- Netted positions with weighted-average cost, realized/unrealized P&L, and a cashflow ledger + accrual helpers (interest, borrow fees on asset-settled shorts, funding, variation margin)
-- Expiry handling for futures (auto-close or error on physical delivery) plus deterministic liquidation helpers
+- Netted positions with weighted-average cost, realized/unrealized P&L, and a cashflow ledger + accrual helpers (interest, borrow fees on cash-settled spot shorts, funding, variation margin)
+- Expiry handling for futures (auto-close via synthetic close) plus deterministic liquidation helpers
 - Collectors (periodic, predicate, drawdown, min/max) and Tables.jl views for balances, equity, positions, trades, cashflows; pretty-print helpers
 - Batch backtesting and parameter sweeps with threaded runner and ETA logging
 - Integrations

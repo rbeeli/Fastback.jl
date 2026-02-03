@@ -26,14 +26,13 @@ and it updates balances, equity, and margin deterministically.
 
 ## Settlement styles
 
-- Asset: physically delivered. Position value is the marked notional of the base asset.
-- Cash: cash-settled exposure. Position value is its P&L (no physical delivery).
+- Cash: cash-settled synthetic exposure. Position value is its P&L (no physical delivery).
 - VariationMargin: P&L is settled to cash at each mark; position value stays at zero.
 
 ## Margin modes and styles
 
-- Account modes: `AccountMode.Cash` for fully funded spot; `AccountMode.Margin` for leverage and cash-settled products.
-- Margin modes on instruments: `None`, `PercentNotional`, `FixedPerContract`.
+- Account modes: `AccountMode.Cash` and `AccountMode.Margin` control funding and withdrawal behavior.
+- Margin modes on instruments: `PercentNotional`, `FixedPerContract`.
 - Margining style: `PerCurrency` or `BaseCurrency`, controlling how margin totals are aggregated.
 
 ## Event loop
@@ -44,11 +43,12 @@ A typical loop is:
 
 1. Advance time (enforced non-decreasing timestamps): `advance_time!`.
 2. Apply FX updates if you run multi-currency: `update_rate!` (or `process_step!` with `FXUpdate`).
-3. Mark positions with bid/ask/last prices: `update_marks!`.
-4. Apply funding events (perpetuals): `apply_funding!`.
-5. Process expiries (futures): `process_expiries!`.
-6. Optionally liquidate to maintenance: `liquidate_to_maintenance!`.
-7. Decide and fill new orders for that step: `fill_order!` (after `Order` creation).
+3. Accrue interest and borrow fees as needed: `accrue_interest!`, `accrue_borrow_fees!`.
+4. Mark positions with bid/ask/last prices: `update_marks!`.
+5. Apply funding events (perpetuals): `apply_funding!`.
+6. Process expiries (futures): `process_expiries!`.
+7. Optionally liquidate to maintenance: `liquidate_to_maintenance!`.
+8. Decide and fill new orders for that step: `fill_order!` (after `Order` creation).
 
 You can either:
 

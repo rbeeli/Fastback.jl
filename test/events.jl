@@ -14,7 +14,7 @@ using TestItemRunner
             Symbol("SHRT/USD"),
             :SHRT,
             :USD;
-            settlement=SettlementStyle.Asset,
+            settlement=SettlementStyle.Cash,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
@@ -61,10 +61,10 @@ end
     usd = Cash(:USD)
     chf = Cash(:CHF)
     deposit!(acc, usd, 1_000.0)
-    deposit!(acc, chf, 0.0)
+    deposit!(acc, chf, 1_000.0)
 
     set_interest_rates!(acc, :USD; borrow=0.10, lend=0.0)
-    set_interest_rates!(acc, :CHF; borrow=0.03, lend=0.0)
+    set_interest_rates!(acc, :CHF; borrow=0.0, lend=0.03)
     update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), 1.0)
 
     dt0 = DateTime(2026, 1, 1)
@@ -75,7 +75,7 @@ end
         :SPOTORD,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         contract_kind=ContractKind.Spot,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
@@ -250,7 +250,7 @@ end
         :FXREVAL,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         contract_kind=ContractKind.Spot,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
@@ -299,7 +299,7 @@ end
             Symbol("BORROW/USD"),
             :BORROW,
             :USD;
-            settlement=SettlementStyle.Asset,
+            settlement=SettlementStyle.Cash,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
@@ -436,42 +436,4 @@ end
     @test maint_margin_used(acc, usd) ≈ 0.0 atol=1e-10
     @test equity(acc, usd) ≈ eq_before atol=1e-10
     @test cash_balance(acc, usd) ≈ cash_before atol=1e-10
-end
-
-@testitem "Physical-delivery futures can be refused via physical_expiry_policy" begin
-    using Test, Fastback, Dates
-
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 10_000.0)
-
-    dt_open = DateTime(2026, 1, 1)
-    dt_exp = dt_open + Day(2)
-
-    inst = register_instrument!(
-        acc,
-        Instrument(
-            Symbol("FUT/PHYEXPIRE"),
-            :FUT,
-            :USD;
-            contract_kind=ContractKind.Future,
-            settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
-            margin_init_long=0.1,
-            margin_maint_long=0.05,
-            delivery_style=DeliveryStyle.PhysicalDeliver,
-            expiry=dt_exp,
-        ),
-    )
-
-    order = Order(oid!(acc), inst, dt_open, 50.0, 1.0)
-    fill_order!(acc, order; dt=dt_open, fill_price=50.0, bid=50.0, ask=50.0, last=50.0)
-    update_marks!(acc, inst, dt_exp, 55.0, 55.0, 55.0)
-
-    @test_throws ArgumentError process_expiries!(acc, dt_exp; physical_expiry_policy=PhysicalExpiryPolicy.Error)
-    @test get_position(acc, inst).quantity == 1.0
-
-    trades = process_expiries!(acc, dt_exp; physical_expiry_policy=PhysicalExpiryPolicy.Close)
-    @test length(trades) == 1
-    @test get_position(acc, inst).quantity == 0.0
 end

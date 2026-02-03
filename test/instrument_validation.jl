@@ -10,12 +10,13 @@ using TestItemRunner
     inst = Instrument(Symbol("SPOT/VM"), :SPOT, :USD;
         contract_kind=ContractKind.Spot,
         settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
     )
 
     @test_throws ArgumentError register_instrument!(acc, inst)
 end
 
-@testitem "Cash-settled instruments must be margined and cash-settled" begin
+@testitem "Cash-settled instruments must be margined" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -26,23 +27,16 @@ end
         margin_mode=MarginMode.None,
     )
     @test_throws ArgumentError register_instrument!(acc, no_margin)
-
-    bad_delivery = Instrument(Symbol("CASH/PHY"), :CASH, :USD;
-        settlement=SettlementStyle.Cash,
-        margin_mode=MarginMode.PercentNotional,
-        delivery_style=DeliveryStyle.PhysicalDeliver,
-    )
-    @test_throws ArgumentError register_instrument!(acc, bad_delivery)
 end
 
-@testitem "MarginMode.None requires zero margin parameters" begin
+@testitem "MarginMode.None is rejected for spot instruments" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 0.0)
 
     nonzero_margin = Instrument(Symbol("NOMRG/RATES"), :NOMRG, :USD;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.None,
         margin_init_long=0.1,
         margin_maint_long=0.05,
@@ -123,63 +117,23 @@ end
     register_instrument!(acc, good)
 end
 
-@testitem "Delivery style defaults" begin
-    using Test, Fastback, Dates
-
-    spot_cash = Instrument(Symbol("SPOT/DEF"), :SPOT, :USD; contract_kind=ContractKind.Spot, margin_mode=MarginMode.PercentNotional)
-    spot_asset = Instrument(Symbol("SPOT/ASSET"), :SPOT, :USD; contract_kind=ContractKind.Spot, settlement=SettlementStyle.Asset)
-    perp = Instrument(Symbol("PERP/DEF"), :PERP, :USD; contract_kind=ContractKind.Perpetual, settlement=SettlementStyle.VariationMargin, margin_mode=MarginMode.PercentNotional)
-    fut = Instrument(Symbol("FUT/DEF"), :FUT, :USD;
-        contract_kind=ContractKind.Future,
-        settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
-        expiry=DateTime(2026,1,1))
-
-    @test spot_cash.delivery_style == DeliveryStyle.CashSettle
-    @test spot_asset.delivery_style == DeliveryStyle.PhysicalDeliver
-    @test perp.delivery_style == DeliveryStyle.CashSettle
-    @test fut.delivery_style == DeliveryStyle.CashSettle
-end
-
-@testitem "Marginable spot instruments validate" begin
+@testitem "is_margined_spot detects cash-settled spot" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 0.0)
 
     spot_margin = Instrument(Symbol("SPOT/MGN"), :SPOT, :USD;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
         margin_maint_long=0.05,
+        margin_init_short=0.1,
+        margin_maint_short=0.05,
     )
 
     register_instrument!(acc, spot_margin)
-    @test spot_margin.delivery_style == DeliveryStyle.PhysicalDeliver
-end
-
-@testitem "Delivery style validations" begin
-    using Test, Fastback, Dates
-
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 0.0)
-
-    bad_perp = Instrument(Symbol("PERP/PHY"), :PERP, :USD;
-        contract_kind=ContractKind.Perpetual,
-        settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
-        delivery_style=DeliveryStyle.PhysicalDeliver,
-    )
-    @test_throws ArgumentError register_instrument!(acc, bad_perp)
-
-    fut_phys = Instrument(Symbol("FUT/PHY"), :FUT, :USD;
-        contract_kind=ContractKind.Future,
-        settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
-        delivery_style=DeliveryStyle.PhysicalDeliver,
-        expiry=DateTime(2026,1,2),
-    )
-    register_instrument!(acc, fut_phys)
+    @test is_margined_spot(spot_margin)
 end
 
 @testitem "Instrument can have settle_symbol != quote_symbol when cash assets exist" begin

@@ -1,7 +1,6 @@
 # Pitfalls and gotchas
 
-- Cash accounts only accept asset-settled instruments (use `spot_instrument` or `settlement=SettlementStyle.Asset`).
-- Cash-settled or variation-margin instruments require `AccountMode.Margin`.
+- Margin checks apply to all instruments; account mode mainly affects funding/withdrawal behavior.
 - Use `update_marks!` to keep equity and margin in sync with prices.
 - Expiry settlement requires a finite `mark_price` on the position.
 - Multi-currency equity depends on `SpotExchangeRates` being present and updated.

@@ -7,9 +7,12 @@ using TestItemRunner
     spot = spot_instrument(Symbol("SPOT/PHYS"), :SPOT, :USD)
     @test Fastback.validate_instrument(spot) === nothing
     @test spot.contract_kind == ContractKind.Spot
-    @test spot.settlement == SettlementStyle.Asset
-    @test spot.delivery_style == DeliveryStyle.PhysicalDeliver
-    @test spot.margin_mode == MarginMode.None
+    @test spot.settlement == SettlementStyle.Cash
+    @test spot.margin_mode == MarginMode.PercentNotional
+    @test spot.margin_init_long == 1.0
+    @test spot.margin_init_short == 1.0
+    @test spot.margin_maint_long == 1.0
+    @test spot.margin_maint_short == 1.0
     @test spot.expiry == DateTime(0)
 
     mspot = margin_spot_instrument(Symbol("SPOT/MGN"), :SPOT, :USD;
@@ -32,7 +35,6 @@ using TestItemRunner
     @test Fastback.validate_instrument(perp) === nothing
     @test perp.contract_kind == ContractKind.Perpetual
     @test perp.settlement == SettlementStyle.VariationMargin
-    @test perp.delivery_style == DeliveryStyle.CashSettle
     @test perp.expiry == DateTime(0)
 
     fut = future_instrument(Symbol("FUT/VM"), :FUT, :USD;
@@ -72,6 +74,7 @@ end
     # direct validation guards for legacy constructor usage
     spot_vm = Instrument(Symbol("SPOT/VM"), :SPOT, :USD;
         settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
     )
     @test_throws ArgumentError Fastback.validate_instrument(spot_vm)
 

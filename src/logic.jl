@@ -58,7 +58,6 @@ end
 """
 Updates position valuation and account equity using the latest mark price.
 
-For asset-settled instruments, value is mark-to-market notional.
 For cash-settled instruments, value equals local P&L.
 For variation-margin instruments, unrealized P&L is settled into cash at each update.
 """
@@ -165,7 +164,7 @@ end
 
 """
 Fills an order, applying cash/equity/margin deltas and returning the resulting `Trade`.
-Accrues borrow fees for any existing asset-settled short exposure up to `dt` and
+Accrues borrow fees for any eligible cash-settled spot short exposure up to `dt` and
 restarts the borrow-fee clock based on the post-fill position.
 Throws `OrderRejectError` when the fill is rejected (inactive instrument or risk checks).
 Requires bid/ask/last to deterministically value positions and compute margin during fills.
@@ -236,7 +235,10 @@ Requires bid/ask/last to deterministically value positions and compute margin du
     pos.mark_price = mark_for_valuation
     pos.last_price = last
     pos.mark_time = dt
-    if pos.quantity < 0.0 && inst.settlement == SettlementStyle.Asset
+    if pos.quantity < 0.0 &&
+       inst.contract_kind == ContractKind.Spot &&
+       inst.settlement == SettlementStyle.Cash &&
+       inst.short_borrow_rate > 0.0
         pos.borrow_fee_dt = dt
     else
         pos.borrow_fee_dt = TTime(0)
@@ -279,8 +281,6 @@ If the instrument is expired at `dt` and the position quantity is non-zero,
 this generates a closing order with the provided settlement price and routes
 it through `fill_order!` to record a trade and release margin.
 The caller must provide a finite settlement price (typically the stored mark).
-Physical-delivery instruments can be rejected by setting
-`physical_expiry_policy=PhysicalExpiryPolicy.Error`.
 
 Throws `OrderRejectError` if the synthetic close is rejected by risk checks.
 """
@@ -292,14 +292,9 @@ function settle_expiry!(
     settle_price=get_position(acc, inst).mark_price,
     commission::Price=0.0,
     commission_pct::Price=0.0,
-    physical_expiry_policy::PhysicalExpiryPolicy.T=PhysicalExpiryPolicy.Close,
 )::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
     (pos.quantity == 0.0 || !is_expired(inst, dt)) && return nothing
-    
-    if inst.delivery_style == DeliveryStyle.PhysicalDeliver && physical_expiry_policy == PhysicalExpiryPolicy.Error
-        throw(ArgumentError("Expiry for $(inst.symbol) requires physical delivery; pass physical_expiry_policy=PhysicalExpiryPolicy.Close to auto-close."))
-    end
 
     qty = -pos.quantity
     order = Order(oid!(acc), inst, dt, settle_price, qty)

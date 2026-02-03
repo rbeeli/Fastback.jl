@@ -9,7 +9,7 @@ using TestItemRunner
     usd = Cash(:USD)
     chf = Cash(:CHF)
     deposit!(acc, usd, 50_000.0)
-    deposit!(acc, chf, 0.0) # register CHF
+    deposit!(acc, chf, 1_000.0)
 
     usd_to_chf = 0.9
     update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), usd_to_chf)
@@ -19,7 +19,7 @@ using TestItemRunner
         :SPOT,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.2,
         margin_init_short=0.2,
@@ -52,16 +52,17 @@ using TestItemRunner
         commission,
         0.0,
     )
-    expected_cash_delta = (-(price * qty * spot_inst.multiplier) - commission) * usd_to_chf
+    expected_cash_delta = -commission * usd_to_chf
     expected_init_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_init_short * usd_to_chf
     expected_maint_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_maint_short * usd_to_chf
     @test plan.cash_delta ≈ expected_cash_delta atol=1e-10
     @test plan.new_init_margin_settle ≈ expected_init_margin atol=1e-10
     @test plan.new_maint_margin_settle ≈ expected_maint_margin atol=1e-10
 
+    bal_before_open = acc.balances[chf_idx]
     trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission=commission)
     @test trade isa Trade
-    @test acc.balances[chf_idx] ≈ expected_cash_delta atol=1e-10
+    @test acc.balances[chf_idx] ≈ bal_before_open + expected_cash_delta atol=1e-10
     @test acc.init_margin_used[margin_idx] ≈ expected_init_margin atol=1e-10
 
     accrue_borrow_fees!(acc, dt) # initialize clock
@@ -117,7 +118,7 @@ end
     usd = Cash(:USD)
     chf = Cash(:CHF)
     deposit!(acc, usd, 50_000.0)
-    deposit!(acc, chf, 0.0) # register CHF
+    deposit!(acc, chf, 1_000.0)
 
     usd_to_chf = 0.8
     update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), usd_to_chf)
@@ -128,7 +129,7 @@ end
         :SPOTFXI,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         contract_kind=ContractKind.Spot,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
@@ -149,8 +150,6 @@ end
     chf_idx = inst.settle_cash_index
     bal_before = acc.balances[chf_idx]
     eq_before = acc.equities[chf_idx]
-
-    @test bal_before ≈  - (price * qty) * usd_to_chf atol=1e-10  # proceeds converted to CHF
 
     accrue_interest!(acc, dt0)
     accrue_borrow_fees!(acc, dt0)

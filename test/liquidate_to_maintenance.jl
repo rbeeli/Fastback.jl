@@ -76,14 +76,14 @@ end
 
     inst_eur = register_instrument!(acc, Instrument(Symbol("PER/EUR"), :PER, :EUR;
         settle_symbol=:EUR,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.2, margin_init_short=0.2,
         margin_maint_long=0.5, margin_maint_short=0.5))
 
     inst_usd = register_instrument!(acc, Instrument(Symbol("PER/USD"), :PER, :USD;
         settle_symbol=:USD,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.3, margin_init_short=0.3,
         margin_maint_long=0.2, margin_maint_short=0.2))

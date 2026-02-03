@@ -3,7 +3,7 @@
 
 Rebuild account equities from balances and open positions.
 Starts from `acc.balances` and adds each position's settlement-currency
-value for asset/cash-settled instruments. Variation-margin positions are
+value for cash-settled instruments. Variation-margin positions are
 expected to carry zero `value_quote`.
 """
 function recompute_equities(acc::Account)

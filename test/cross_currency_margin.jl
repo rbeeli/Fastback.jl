@@ -15,7 +15,7 @@ using TestItemRunner
         Symbol("EURSPOT/EUR"),
         :EURSPOT,
         :EUR;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.25,
@@ -23,7 +23,7 @@ using TestItemRunner
 
     trade = fill_order!(acc, Order(oid!(acc), inst, DateTime(2024, 1, 1), 100.0, 10.0); dt=DateTime(2024, 1, 1), fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     @test trade isa Trade
-    @test cash_balance(acc, :EUR) ≈ -1_000.0
+    @test cash_balance(acc, :EUR) ≈ 0.0
     @test init_margin_used_base_ccy(acc) ≈ 500.0 * 1.07 atol = 1e-8
 end
 
@@ -42,7 +42,7 @@ end
         Symbol("EURSPOT/EUR"),
         :EURSPOT,
         :EUR;
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.Cash,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.25,

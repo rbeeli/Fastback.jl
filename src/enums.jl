@@ -2,12 +2,10 @@ import Base: *, sign
 using EnumX
 
 @enumx TradeDir::Int8 Null = 0 Buy = 1 Sell = -1
-@enumx SettlementStyle::Int8 Asset = 1 Cash = 2 VariationMargin = 3
-@enumx DeliveryStyle::Int8 CashSettle = 1 PhysicalDeliver = 2
+@enumx SettlementStyle::Int8 Cash = 1 VariationMargin = 2
 @enumx MarginMode::Int8 None = 0 PercentNotional = 1 FixedPerContract = 2
 @enumx MarginingStyle::Int8 PerCurrency = 1 BaseCurrency = 2
 @enumx ContractKind::Int8 Spot = 1 Perpetual = 2 Future = 3
-@enumx PhysicalExpiryPolicy::Int8 Close = 1 Error = 2
 @enumx AccountMode::Int8 Cash = 1 Margin = 2
 @enumx OrderRejectReason::Int8 None = 0 InstrumentNotAllowed = 1 InsufficientCash = 2 ShortNotAllowed = 3 InsufficientInitialMargin = 4
 @enumx TradeReason::Int8 Normal = 0 Liquidation = 1 Expiry = 2

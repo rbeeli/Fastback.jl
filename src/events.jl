@@ -62,13 +62,10 @@ function advance_time!(
 end
 
 """
-    process_expiries!(acc, dt; commission=0.0, commission_pct=0.0, physical_expiry_policy=PhysicalExpiryPolicy.Close)
+    process_expiries!(acc, dt; commission=0.0, commission_pct=0.0)
 
 Settles expired futures deterministically at `dt` using the stored position mark.
 Requires positions to have finite marks.
-For physical-delivery contracts, set
-`physical_expiry_policy=PhysicalExpiryPolicy.Close` to auto-close or `PhysicalExpiryPolicy.Error` to
-refuse synthetic settlement.
 
 Throws `OrderRejectError` if a synthetic expiry close is rejected by risk checks.
 """
@@ -77,7 +74,6 @@ function process_expiries!(
     dt::TTime;
     commission::Price=0.0,
     commission_pct::Price=0.0,
-    physical_expiry_policy::PhysicalExpiryPolicy.T=PhysicalExpiryPolicy.Close,
 ) where {TTime<:Dates.AbstractTime}
     trades = Trade{TTime}[]
 
@@ -86,12 +82,6 @@ function process_expiries!(
         inst.contract_kind == ContractKind.Future || continue
         is_expired(inst, dt) || continue
         
-        if inst.delivery_style == DeliveryStyle.PhysicalDeliver &&
-           physical_expiry_policy == PhysicalExpiryPolicy.Error &&
-           pos.quantity != 0.0
-            throw(ArgumentError("Expiry for $(inst.symbol) requires physical delivery; pass physical_expiry_policy=PhysicalExpiryPolicy.Close to auto-close."))
-        end
-
         trade = settle_expiry!(
             acc,
             inst,
@@ -99,7 +89,6 @@ function process_expiries!(
             settle_price=pos.mark_price,
             commission=commission,
             commission_pct=commission_pct,
-            physical_expiry_policy=physical_expiry_policy,
         )
         trade === nothing && continue
         push!(trades, trade)
@@ -166,7 +155,6 @@ end
         marks=nothing,
         funding=nothing,
         expiries=true,
-        physical_expiry_policy=PhysicalExpiryPolicy.Close,
         liquidate=false,
         commission::Price=0.0,
         commission_pct::Price=0.0,
@@ -183,13 +171,14 @@ Borrow-fee accrual uses per-position clocks; fills also advance/reset those cloc
 
 Ordering:
 1. Enforce non-decreasing time
-2. Accrue interest then borrow fees (`accrue_interest!`, `accrue_borrow_fees!`)
-3. Apply FX updates
-4. Apply mark updates (`update_marks!`)
-5. Apply funding updates (`apply_funding!`)
-6. Process expiries (`process_expiries!`)
-7. Optional maintenance liquidation (runs after expiry/margin release)
-8. Stamp `last_event_dt`
+2. Apply FX updates
+3. Revalue FX caches (`_revalue_fx_caches!`)
+4. Accrue interest then borrow fees (`accrue_interest!`, `accrue_borrow_fees!`)
+5. Apply mark updates (`update_marks!`)
+6. Apply funding updates (`apply_funding!`)
+7. Process expiries (`process_expiries!`)
+8. Optional maintenance liquidation (runs after expiry/margin release)
+9. Stamp `last_event_dt`
 """
 function process_step!(
     acc::Account{TTime},
@@ -198,7 +187,6 @@ function process_step!(
     marks::Union{Nothing,Vector{MarkUpdate}}=nothing,
     funding::Union{Nothing,Vector{FundingUpdate}}=nothing,
     expiries::Bool=true,
-    physical_expiry_policy::PhysicalExpiryPolicy.T=PhysicalExpiryPolicy.Close,
     liquidate::Bool=false,
     commission::Price=0.0,
     commission_pct::Price=0.0,
@@ -210,9 +198,6 @@ function process_step!(
     (last_dt != TTime(0) && dt < last_dt) &&
         throw(ArgumentError("Event datetime $(dt) precedes last event $(last_dt)."))
 
-    accrue_interest && accrue_interest!(acc, dt)
-    accrue_borrow_fees && accrue_borrow_fees!(acc, dt)
-
     if fx_updates !== nothing
         er = acc.exchange_rates
         er isa SpotExchangeRates || throw(ArgumentError("FX updates require SpotExchangeRates on the account."))
@@ -223,6 +208,9 @@ function process_step!(
         end
         isempty(fx_updates) || _revalue_fx_caches!(acc)
     end
+
+    accrue_interest && accrue_interest!(acc, dt)
+    accrue_borrow_fees && accrue_borrow_fees!(acc, dt)
 
     if marks !== nothing
         @inbounds for m in marks
@@ -243,7 +231,6 @@ function process_step!(
         dt;
         commission=commission,
         commission_pct=commission_pct,
-        physical_expiry_policy=physical_expiry_policy,
     )
 
     if liquidate && is_under_maintenance(acc)

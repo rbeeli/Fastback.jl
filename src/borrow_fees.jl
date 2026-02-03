@@ -3,7 +3,7 @@ using Dates
 """
     accrue_borrow_fees!(acc, dt; year_basis=365.0)
 
-Accrues short borrow fees on asset-settled short positions between each position's
+Accrues short borrow fees on cash-settled spot short positions between each position's
 last borrow-fee timestamp and `dt`. The fee notional is based on the neutral last price
 (falling back to the liquidation mark if unavailable), charged in the instrument
 settlement currency, and applied to both balances and equities. Borrow-fee timestamps
@@ -18,7 +18,9 @@ with actual short exposure.
 ) where {TTime<:Dates.AbstractTime}
     pos.quantity < 0.0 || return acc
     inst = pos.inst
-    inst.settlement == SettlementStyle.Asset || return acc
+    inst.contract_kind == ContractKind.Spot || return acc
+    inst.settlement == SettlementStyle.Cash || return acc
+    inst.short_borrow_rate > 0.0 || return acc
 
     last_dt = pos.borrow_fee_dt
     if last_dt == TTime(0)
@@ -33,16 +35,14 @@ with actual short exposure.
 
     yearfrac = millis / (1000 * 60 * 60 * 24 * Price(year_basis))
 
-    if inst.short_borrow_rate > 0.0
-        fee_price = isnan(pos.last_price) ? pos.mark_price : pos.last_price
-        fee_quote = abs(pos.quantity) * fee_price * inst.multiplier * inst.short_borrow_rate * yearfrac
-        settle_idx = inst.settle_cash_index
-        fee = to_settle(acc, inst, fee_quote)
-        if fee != 0.0
-            acc.balances[settle_idx] -= fee
-            acc.equities[settle_idx] -= fee
-            push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.BorrowFee, settle_idx, -fee, inst.index))
-        end
+    fee_price = isnan(pos.last_price) ? pos.mark_price : pos.last_price
+    fee_quote = abs(pos.quantity) * fee_price * inst.multiplier * inst.short_borrow_rate * yearfrac
+    settle_idx = inst.settle_cash_index
+    fee = to_settle(acc, inst, fee_quote)
+    if fee != 0.0
+        acc.balances[settle_idx] -= fee
+        acc.equities[settle_idx] -= fee
+        push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.BorrowFee, settle_idx, -fee, inst.index))
     end
 
     pos.borrow_fee_dt = dt

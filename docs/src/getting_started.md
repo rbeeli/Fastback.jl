@@ -29,7 +29,7 @@ using Dates
 acc = Account(; mode=AccountMode.Cash, base_currency=:USD)
 deposit!(acc, Cash(:USD), 10_000.0)
 
-# 2) Instrument (spot, asset-settled)
+# 2) Instrument (spot, cash-settled synthetic exposure)
 ABC = register_instrument!(acc, spot_instrument(:ABC, :ABC, :USD))
 
 # 3) Small price series
