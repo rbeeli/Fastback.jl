@@ -19,6 +19,6 @@ The goal is backtesting research ideas and algorithmic trading strategies, not a
 Do a review for correctness of all calculations.
 Only report major correctness issues, not minor style issues.
 
-Codex: Review the code for correctness of all calculations, especially PnL calculations, margin calculations, FX conversions, and handling of futures contracts.
+Codex: Review my Julia backtesting package code for correctness of all calculations, especially PnL calculations, margin calculations, FX conversions, and handling of futures contracts.
 Identify any potential bugs or inaccuracies in the logic or formulas used.
 Only report major correctness issues, not minor style issues.
