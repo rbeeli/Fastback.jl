@@ -120,6 +120,26 @@ end
     @test cash_balance(acc, usd) == 100.0
 end
 
+@testitem "Cash account withdrawal respects margin usage" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Cash, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 10_000.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("CASHW/USD"), :CASHW, :USD))
+
+    dt = DateTime(2026, 1, 1)
+    price = 100.0
+    qty = 100.0
+    order = Order(oid!(acc), inst, dt, price, qty)
+    fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+
+    @test available_funds(acc, usd) ≈ 0.0 atol=1e-8
+    @test_throws ArgumentError withdraw!(acc, usd, 1.0)
+    @test cash_balance(acc, usd) ≈ 10_000.0 atol=1e-8
+end
+
 @testitem "Margin account withdrawal respects base-currency available funds" begin
     using Test, Fastback, Dates
 

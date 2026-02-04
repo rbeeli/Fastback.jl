@@ -55,9 +55,15 @@ end
 
 """
 Calculates the initial margin requirement in the instrument margin currency.
+
+`AccountMode.Cash` forces a fully funded requirement (full notional).
 """
 @inline function margin_init_margin_ccy(acc::Account, inst::Instrument, qty, mark)::Price
     qty == 0 && return zero(Price)
+    if acc.mode == AccountMode.Cash
+        quote_req = abs(qty) * mark * inst.multiplier
+        return to_margin(acc, inst, quote_req)
+    end
     mode = inst.margin_mode
     if mode == MarginMode.None
         return zero(Price)
@@ -74,9 +80,15 @@ end
 
 """
 Calculates the maintenance margin requirement in the instrument margin currency.
+
+`AccountMode.Cash` forces a fully funded requirement (full notional).
 """
 @inline function margin_maint_margin_ccy(acc::Account, inst::Instrument, qty, mark)::Price
     qty == 0 && return zero(Price)
+    if acc.mode == AccountMode.Cash
+        quote_req = abs(qty) * mark * inst.multiplier
+        return to_margin(acc, inst, quote_req)
+    end
     mode = inst.margin_mode
     if mode == MarginMode.None
         return zero(Price)

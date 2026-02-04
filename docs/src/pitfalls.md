@@ -1,6 +1,6 @@
 # Pitfalls and gotchas
 
-- Margin checks apply to all instruments; account mode mainly affects funding/withdrawal behavior.
+- `AccountMode.Cash` forces full-notional margin (no leverage), disallows short exposure, and withdrawals must keep available funds non-negative.
 - Use `update_marks!` to keep equity and margin in sync with prices.
 - Expiry settlement requires a finite `mark_price` on the position.
 - Multi-currency equity depends on `SpotExchangeRates` being present and updated.

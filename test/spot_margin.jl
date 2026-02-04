@@ -237,12 +237,76 @@ end
         e
     end
     @test err isa OrderRejectError
-    @test err.reason == OrderRejectReason.InsufficientInitialMargin
+    @test err.reason == OrderRejectReason.ShortNotAllowed
 
     @test cash_balance(acc, usd) ≈ balance_after_buy atol=1e-8
     @test cash_balance(acc, usd) ≥ 0.0
     @test acc.init_margin_used[usd_idx] == 5_000.0
     @test acc.maint_margin_used[usd_idx] == 5_000.0
+end
+
+@testitem "Cash account disallows opening short exposure" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Cash, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("SHORTC/USD"), :SHORTC, :USD))
+
+    dt = DateTime(2026, 1, 1)
+    price = 50.0
+    order = Order(oid!(acc), inst, dt, price, -1.0)
+
+    err = try
+        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+        nothing
+    catch e
+        e
+    end
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.ShortNotAllowed
+end
+
+@testitem "Cash account uses full notional margin" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Cash, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 10_000.0)
+
+    inst = register_instrument!(
+        acc,
+        margin_spot_instrument(
+            Symbol("MARGINC/USD"),
+            :MARGINC,
+            :USD;
+            margin_mode=MarginMode.PercentNotional,
+            margin_init_long=0.2,
+            margin_init_short=0.2,
+            margin_maint_long=0.1,
+            margin_maint_short=0.1,
+        ),
+    )
+
+    dt = DateTime(2026, 1, 1)
+    price = 100.0
+
+    oversized = Order(oid!(acc), inst, dt, price, 150.0)
+    err = try
+        fill_order!(acc, oversized; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+        nothing
+    catch e
+        e
+    end
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.InsufficientInitialMargin
+
+    ok_order = Order(oid!(acc), inst, dt, price, 100.0)
+    trade = fill_order!(acc, ok_order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+    @test trade isa Trade
+
+    usd = cash_asset(acc, :USD)
+    @test acc.init_margin_used[usd.index] ≈ 10_000.0 atol=1e-8
+    @test acc.maint_margin_used[usd.index] ≈ 10_000.0 atol=1e-8
 end
 
 @testitem "Spot mark move converts quote P&L into settlement equity" begin

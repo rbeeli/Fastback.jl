@@ -8,6 +8,10 @@
     margin_idx = inst.margin_cash_index
     inc_qty = calc_exposure_increase_quantity(pos.quantity, impact.fill_qty)
 
+    if acc.mode == AccountMode.Cash && inc_qty < 0
+        return OrderRejectReason.ShortNotAllowed
+    end
+
     # No added exposure → no margin check needed
     inc_qty == 0 && return OrderRejectReason.None
 

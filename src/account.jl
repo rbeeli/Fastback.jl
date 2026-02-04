@@ -185,7 +185,16 @@ function withdraw!(
     if acc.mode == AccountMode.Cash
         @inbounds post_balance = acc.balances[cash.index] - amount
         post_balance < 0 && throw(ArgumentError("Withdrawal would overdraw cash balance for $(cash.symbol)."))
-        return _adjust_cash!(acc, cash, -amount)
+        if acc.margining_style == MarginingStyle.PerCurrency
+            post_available = available_funds(acc, cash) - amount
+            post_available < 0 && throw(ArgumentError("Withdrawal exceeds available funds for $(cash.symbol)."))
+            return _adjust_cash!(acc, cash, -amount)
+        else
+            amount_base = amount * get_rate_base_ccy(acc, cash)
+            post_available_base = available_funds_base_ccy(acc) - amount_base
+            post_available_base < 0 && throw(ArgumentError("Withdrawal exceeds available funds in base currency."))
+            return _adjust_cash!(acc, cash, -amount)
+        end
     end
 
     if acc.margining_style == MarginingStyle.PerCurrency
