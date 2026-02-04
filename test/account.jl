@@ -519,7 +519,7 @@ end
     @test cash_balance(acc, :USD) == 100.0
 end
 
-@testitem "Cash account: short sell allowed when margin supports" begin
+@testitem "Cash account: short sell disallowed even with margin" begin
     using Test, Fastback, Dates
 
     acc = Account(; base_currency=:USD)
@@ -534,10 +534,16 @@ end
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 10.0, -1.0)
-    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
-    @test trade isa Trade
+    err = try
+        fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
+        nothing
+    catch e
+        e
+    end
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.ShortNotAllowed
     pos = get_position(acc, inst)
-    @test pos.quantity == -1.0
+    @test pos.quantity == 0.0
 end
 
 @testitem "Cash account: sell within holdings works" begin

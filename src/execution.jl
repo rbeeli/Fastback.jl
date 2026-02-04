@@ -50,7 +50,6 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     pos_avg_entry_price = pos.avg_entry_price
     pos_avg_settle_price = pos.avg_settle_price
     inc_qty = calc_exposure_increase_quantity(pos_qty, fill_qty)
-
     nominal_value_quote = fill_price * abs(fill_qty) * inst.multiplier
     commission_total_quote = commission + commission_pct * nominal_value_quote
 
@@ -68,17 +67,16 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     realized_pnl_settle = to_settle(acc, inst, realized_pnl_settle_quote)
 
     cash_delta_quote_val = if inst.settlement == SettlementStyle.VariationMargin
-        open_settle_quote = pnl_quote(inst, inc_qty, mark_price, fill_price)
-        open_settle_quote + realized_pnl_settle_quote - commission_total_quote
-    else
-        cash_pnl_quote = realized_pnl_entry_quote
-        cash_delta_quote(
+        cash_delta_quote_vm(
             inst,
-            fill_qty,
+            inc_qty,
+            realized_pnl_settle_quote,
+            mark_price,
             fill_price,
-            commission_total_quote;
-            realized_pnl_quote=cash_pnl_quote,
+            commission_total_quote,
         )
+    else
+        cash_delta_quote_cash(realized_pnl_entry_quote, commission_total_quote)
     end
 
     cash_delta = to_settle(acc, inst, cash_delta_quote_val)

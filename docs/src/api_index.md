@@ -35,7 +35,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Position analytics
 
-- `has_exposure`, `value_quote`, `pnl_quote`, `cash_delta_quote`, `calc_pnl_quote`, `calc_return_quote`
+- `has_exposure`, `value_quote`, `pnl_quote`, `calc_pnl_quote`, `calc_return_quote`
 - `margin_init_margin_ccy`, `margin_maint_margin_ccy`, `margin_init_settle`, `margin_maint_settle`
 - `calc_realized_qty`, `calc_exposure_increase_quantity`
 

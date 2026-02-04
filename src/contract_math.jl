@@ -34,23 +34,28 @@ Quote-currency position value contribution under the instrument settlement style
 end
 
 """
-Quote-currency cash delta for a fill, honoring settlement style.
+Quote-currency cash delta for a cash-settled fill.
 """
-@inline function cash_delta_quote(
-    inst::Instrument,
-    fill_qty,
-    fill_price,
-    commission_total_quote;
-    realized_pnl_quote::Price=0.0,
+@inline function cash_delta_quote_cash(
+    realized_pnl_entry_quote::Price,
+    commission_total_quote::Price,
 )::Price
-    settlement = inst.settlement
-    if settlement == SettlementStyle.Cash
-        return realized_pnl_quote - commission_total_quote
-    elseif settlement == SettlementStyle.VariationMargin
-        return realized_pnl_quote - commission_total_quote
-    else
-        throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
-    end
+    realized_pnl_entry_quote - commission_total_quote
+end
+
+"""
+Quote-currency cash delta for a variation-margin fill.
+"""
+@inline function cash_delta_quote_vm(
+    inst::Instrument,
+    inc_qty::Quantity,
+    realized_pnl_settle_quote::Price,
+    mark_price::Price,
+    fill_price::Price,
+    commission_total_quote::Price,
+)::Price
+    open_settle_quote = pnl_quote(inst, inc_qty, mark_price, fill_price)
+    open_settle_quote + realized_pnl_settle_quote - commission_total_quote
 end
 
 """

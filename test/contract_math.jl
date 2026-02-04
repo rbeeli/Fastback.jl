@@ -129,3 +129,48 @@ end
     @test pos.pnl_quote == 0.0
     @test pos.avg_settle_price ≈ 105.0 atol=1e-12
 end
+
+@testitem "cash_delta_quote_cash uses realized PnL minus commission" begin
+    using Test, Fastback
+
+    realized = 5.5
+    commission = 1.2
+
+    @test Fastback.cash_delta_quote_cash(realized, commission) ≈ 4.3 atol=1e-12
+end
+
+@testitem "cash_delta_quote_vm uses mark and exposure increase" begin
+    using Test, Fastback
+
+    inst = Instrument(
+        Symbol("VM2/USD"),
+        :VM2,
+        :USD;
+        settlement=SettlementStyle.VariationMargin,
+        multiplier=1.0,
+    )
+
+    pos_qty = 2.0
+    pos_avg_settle_price = 100.0
+    mark_price = 105.0
+    fill_qty = -3.0
+    fill_price = 103.0
+    commission = 1.0
+
+    realized_qty = Fastback.calc_realized_qty(pos_qty, fill_qty)
+    realized_pnl = Fastback.pnl_quote(inst, realized_qty, fill_price, pos_avg_settle_price)
+    inc_qty = Fastback.calc_exposure_increase_quantity(pos_qty, fill_qty)
+    open_settle = Fastback.pnl_quote(inst, inc_qty, mark_price, fill_price)
+    expected = open_settle + realized_pnl - commission
+
+    got = Fastback.cash_delta_quote_vm(
+        inst,
+        inc_qty,
+        realized_pnl,
+        mark_price,
+        fill_price,
+        commission,
+    )
+
+    @test got ≈ expected atol=1e-12
+end
