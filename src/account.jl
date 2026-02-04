@@ -21,6 +21,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
     last_event_dt::TTime
     last_interest_dt::TTime
     const date_format::Dates.DateFormat
+    const datetime_format::Dates.DateFormat
 
     function Account(
         ;
@@ -28,7 +29,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
         time_type::Type{TTime}=DateTime,
         mode::AccountMode.T=AccountMode.Cash,
         margining_style::MarginingStyle.T=MarginingStyle.BaseCurrency,
-        date_format=dateformat"yyyy-mm-dd HH:MM:SS",
+        date_format=dateformat"yyyy-mm-dd",
+        datetime_format=dateformat"yyyy-mm-dd HH:MM:SS",
         order_sequence=0,
         trade_sequence=0,
         exchange_rates::TER=OneExchangeRates(),
@@ -55,7 +57,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
             0, # cashflow_sequence
             TTime(0), # last_event_dt
             TTime(0), # last_interest_dt
-            date_format
+            date_format,
+            datetime_format,
         )
     end
 end
@@ -63,7 +66,8 @@ end
 """
 Format a timestamp using the account's configured date format.
 """
-@inline format_datetime(acc::Account, x) = Dates.format(x, acc.date_format)
+@inline format_datetime(acc::Account, x::Dates.AbstractDateTime) = Dates.format(x, acc.datetime_format)
+@inline format_datetime(acc::Account, x::Dates.Date) = Dates.format(x, acc.date_format)
 
 """
 Generates the next order ID sequence value for the account.

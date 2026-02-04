@@ -66,6 +66,7 @@ gen_markdown("5_NanoDates_integration.jl");
 gen_markdown("6_Timestamps64_integration.jl");
 gen_markdown("7_USDm_perp_trading.jl");
 gen_markdown("8_plots_extension.jl");
+gen_markdown("9_voo_vs_es_comparison.jl");
 
 # generate notebook files
 gen_notebook("1_random_trading.jl");
@@ -76,6 +77,7 @@ gen_notebook("5_NanoDates_integration.jl");
 gen_notebook("6_Timestamps64_integration.jl");
 gen_notebook("7_USDm_perp_trading.jl");
 gen_notebook("8_plots_extension.jl");
+gen_notebook("9_voo_vs_es_comparison.jl");
 
 makedocs(
     sitename="Fastback.jl",
@@ -99,6 +101,7 @@ makedocs(
                 "Portfolio trading" => "examples/gen/2_portfolio_trading.md",
                 "Multi-Currency trading" => "examples/gen/3_multi_currency.md",
                 "USD-M perpetual trading" => "examples/gen/7_USDm_perp_trading.md",
+                "VOO vs ES cost comparison" => "examples/gen/9_voo_vs_es_comparison.md",
             ],
             "Integrations" => [
                 "Tables.jl" => "examples/gen/4_Tables_integration.md",
