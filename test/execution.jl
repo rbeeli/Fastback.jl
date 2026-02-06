@@ -407,3 +407,79 @@ end
     @test pos.pnl_quote == 0.0
     @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
 end
+
+@testitem "fill_order! rejects non-finite price inputs" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 1_000.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("BADPX/USD"), :BADPX, :USD))
+    dt = DateTime(2026, 1, 1)
+    order = Order(oid!(acc), inst, dt, 100.0, 1.0)
+
+    bad_inputs = (
+        (NaN, 100.0, 100.0, 100.0),
+        (100.0, NaN, 100.0, 100.0),
+        (100.0, 100.0, NaN, 100.0),
+        (100.0, 100.0, 100.0, NaN),
+    )
+
+    for (fill_px, bid, ask, last) in bad_inputs
+        err = try
+            fill_order!(acc, order; dt=dt, fill_price=fill_px, bid=bid, ask=ask, last=last)
+            nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+    end
+
+    pos = get_position(acc, inst)
+    @test isempty(acc.trades)
+    @test pos.quantity == 0.0
+    @test cash_balance(acc, usd) == 1_000.0
+    @test equity(acc, usd) == 1_000.0
+end
+
+@testitem "update_marks! rejects non-finite price inputs" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 5_000.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("MARKBAD/USD"), :MARKBAD, :USD))
+    dt0 = DateTime(2026, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+
+    pos = get_position(acc, inst)
+    bal_before = cash_balance(acc, usd)
+    eq_before = equity(acc, usd)
+    mark_before = pos.mark_price
+    last_before = pos.last_price
+    time_before = pos.mark_time
+
+    bad_marks = (
+        (NaN, 100.0, 100.0),
+        (100.0, NaN, 100.0),
+        (100.0, 100.0, NaN),
+    )
+
+    for (bid, ask, last) in bad_marks
+        err = try
+            update_marks!(acc, inst, dt0 + Hour(1), bid, ask, last)
+            nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+    end
+
+    @test cash_balance(acc, usd) == bal_before
+    @test equity(acc, usd) == eq_before
+    @test pos.mark_price == mark_before
+    @test pos.last_price == last_before
+    @test pos.mark_time == time_before
+end

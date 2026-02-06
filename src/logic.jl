@@ -1,7 +1,6 @@
 # Positional signatures are the allocation-free hot paths; keyword wrappers are
 # kept for user ergonomics and forward directly.
 
-
 @inline function _update_valuation!(
     acc::Account,
     pos::Position{TTime},
@@ -61,8 +60,15 @@ Updates position valuation and account equity using the latest mark price.
 For asset-settled instruments, value equals marked notional.
 For variation-margin instruments, unrealized P&L is settled into cash at each update.
 """
-@inline update_valuation!(acc::Account, pos::Position{TTime}; dt::TTime, close_price::Price) where {TTime<:Dates.AbstractTime} =
+@inline function update_valuation!(
+    acc::Account,
+    pos::Position{TTime};
+    dt::TTime,
+    close_price::Price,
+) where {TTime<:Dates.AbstractTime}
+    isfinite(close_price) || throw(ArgumentError("update_valuation! requires finite close_price, got $(close_price) at dt=$(dt)."))
     _update_valuation!(acc, pos, dt, close_price)
+end
 
 @inline function _update_margin!(
     acc::Account,
@@ -91,7 +97,10 @@ Updates margin usage for a position and corresponding account totals.
 The function applies deltas to account margin vectors and stores the new
 margin values on the position.
 """
-@inline update_margin!(acc::Account, pos::Position; close_price::Price) = _update_margin!(acc, pos, close_price)
+@inline function update_margin!(acc::Account, pos::Position; close_price::Price)
+    isfinite(close_price) || throw(ArgumentError("update_margin! requires finite close_price, got $(close_price)."))
+    _update_margin!(acc, pos, close_price)
+end
 
 @inline function _update_marks!(
     acc::Account,
@@ -125,6 +134,9 @@ Margin uses `last` to avoid side-dependent bias.
     ask::Price,
     last::Price,
 ) where {TTime<:Dates.AbstractTime}
+    isfinite(bid) || throw(ArgumentError("update_marks! requires finite bid, got $(bid) at dt=$(dt)."))
+    isfinite(ask) || throw(ArgumentError("update_marks! requires finite ask, got $(ask) at dt=$(dt)."))
+    isfinite(last) || throw(ArgumentError("update_marks! requires finite last, got $(last) at dt=$(dt)."))
     close_price = _calc_mark_price(pos.inst, pos.quantity, bid, ask)
     _update_marks!(acc, pos, dt, close_price, last)
 end
@@ -157,6 +169,9 @@ then applies margin with `last`.
     ask::Price,
     last::Price,
 ) where {TTime<:Dates.AbstractTime}
+    isfinite(bid) || throw(ArgumentError("update_marks! requires finite bid, got $(bid) at dt=$(dt)."))
+    isfinite(ask) || throw(ArgumentError("update_marks! requires finite ask, got $(ask) at dt=$(dt)."))
+    isfinite(last) || throw(ArgumentError("update_marks! requires finite last, got $(last) at dt=$(dt)."))
     pos = get_position(acc, inst)
     close_price = _calc_mark_price(inst, pos.quantity, bid, ask)
     _update_marks!(acc, pos, dt, close_price, last)
@@ -184,6 +199,10 @@ Requires bid/ask/last to deterministically value positions and compute margin du
     last::Price,
 )::Trade{TTime} where {TTime<:Dates.AbstractTime}
     inst = order.inst
+    isfinite(fill_price) || throw(ArgumentError("fill_order! requires finite fill_price, got $(fill_price) at dt=$(dt)."))
+    isfinite(bid) || throw(ArgumentError("fill_order! requires finite bid, got $(bid) at dt=$(dt)."))
+    isfinite(ask) || throw(ArgumentError("fill_order! requires finite ask, got $(ask) at dt=$(dt)."))
+    isfinite(last) || throw(ArgumentError("fill_order! requires finite last, got $(last) at dt=$(dt)."))
     allow_inactive || is_active(inst, dt) || throw(OrderRejectError(OrderRejectReason.InstrumentNotAllowed))
 
     pos = get_position(acc, inst)

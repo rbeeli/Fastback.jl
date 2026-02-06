@@ -672,6 +672,55 @@ end
     @test acc.maint_margin_used[usd_index] == 0.0
 end
 
+@testitem "settle_expiry! rejects non-finite settle price" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 20_000.0)
+
+    start_dt = DateTime(2026, 1, 1)
+    expiry_dt = DateTime(2026, 2, 1)
+    inst = register_instrument!(acc, Instrument(
+        Symbol("FUTNAN/USD"),
+        :FUTNAN,
+        :USD;
+        contract_kind=ContractKind.Future,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.05,
+        start_time=start_dt,
+        expiry=expiry_dt,
+    ))
+    pos = get_position(acc, inst)
+
+    open_dt = start_dt + Day(10)
+    fill_order!(acc, Order(oid!(acc), inst, open_dt, 100.0, 2.0); dt=open_dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+
+    usd_index = usd.index
+    bal_before = acc.balances[usd_index]
+    eq_before = acc.equities[usd_index]
+    init_before = acc.init_margin_used[usd_index]
+    maint_before = acc.maint_margin_used[usd_index]
+    trade_count_before = length(acc.trades)
+
+    err = try
+        settle_expiry!(acc, inst, expiry_dt; settle_price=NaN)
+        nothing
+    catch e
+        e
+    end
+
+    @test err isa ArgumentError
+    @test pos.quantity == 2.0
+    @test acc.balances[usd_index] == bal_before
+    @test acc.equities[usd_index] == eq_before
+    @test acc.init_margin_used[usd_index] == init_before
+    @test acc.maint_margin_used[usd_index] == maint_before
+    @test length(acc.trades) == trade_count_before
+end
+
 @testitem "Zero margin rates keep margin usage at zero" begin
     using Test, Fastback, Dates
 
