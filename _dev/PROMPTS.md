@@ -20,5 +20,6 @@ Do a review for correctness of all calculations, and a consistent, intuitive API
 Only report major correctness issues, not minor style issues.
 
 Codex: Review my Julia backtesting package code for correctness of all calculations, especially PnL calculations, margin calculations, FX conversions, and handling of futures contracts.
+The goal is backtesting research ideas and algorithmic trading strategies, not a perfect replication of broker mechanics, only what is really PnL relevant for strategies.
 Identify any potential bugs or inaccuracies in the logic or formulas used.
 Only report major correctness issues, not minor style issues.

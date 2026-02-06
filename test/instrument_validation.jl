@@ -45,6 +45,55 @@ end
     @test_throws ArgumentError register_instrument!(acc, nonzero_margin)
 end
 
+@testitem "Margin parameters must be finite, non-negative, and ordered" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 0.0)
+
+    bad_negative = Instrument(Symbol("NEG/RATES"), :NEG, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=-0.1,
+    )
+    @test_throws ArgumentError register_instrument!(acc, bad_negative)
+
+    bad_non_finite = Instrument(Symbol("NAN/RATES"), :NAN, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=NaN,
+    )
+    @test_throws ArgumentError register_instrument!(acc, bad_non_finite)
+
+    bad_ordering = Instrument(Symbol("ORDER/RATES"), :ORDER, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.2,
+    )
+    @test_throws ArgumentError register_instrument!(acc, bad_ordering)
+
+    bad_fixed_ordering = Instrument(Symbol("FIX/ORDER"), :FIX, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.FixedPerContract,
+        margin_init_long=20.0,
+        margin_maint_long=21.0,
+        margin_init_short=10.0,
+        margin_maint_short=9.0,
+    )
+    @test_throws ArgumentError register_instrument!(acc, bad_fixed_ordering)
+
+    good_fixed = Instrument(Symbol("FIX/OK"), :FIXOK, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.FixedPerContract,
+        margin_init_long=20.0,
+        margin_maint_long=15.0,
+        margin_init_short=10.0,
+        margin_maint_short=8.0,
+    )
+    register_instrument!(acc, good_fixed)
+end
+
 @testitem "Perpetual validations" begin
     using Test, Fastback, Dates
 

@@ -342,6 +342,21 @@ function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.Abstra
         throw(ArgumentError("Instrument $(inst.symbol) must set margin_mode."))
     end
 
+    for (name, value) in (
+        ("margin_init_long", inst.margin_init_long),
+        ("margin_init_short", inst.margin_init_short),
+        ("margin_maint_long", inst.margin_maint_long),
+        ("margin_maint_short", inst.margin_maint_short),
+    )
+        isfinite(value) || throw(ArgumentError("Instrument $(inst.symbol) must set finite $(name)."))
+        value >= 0.0 || throw(ArgumentError("Instrument $(inst.symbol) must set non-negative $(name)."))
+    end
+
+    inst.margin_maint_long <= inst.margin_init_long ||
+        throw(ArgumentError("Instrument $(inst.symbol) must satisfy margin_maint_long <= margin_init_long."))
+    inst.margin_maint_short <= inst.margin_init_short ||
+        throw(ArgumentError("Instrument $(inst.symbol) must satisfy margin_maint_short <= margin_init_short."))
+
     if kind == ContractKind.Spot
         settlement == SettlementStyle.Asset || throw(ArgumentError("Spot instrument $(inst.symbol) must use Asset settlement."))
         inst.margin_mode != MarginMode.None || throw(ArgumentError("Spot instrument $(inst.symbol) must set margin_mode."))

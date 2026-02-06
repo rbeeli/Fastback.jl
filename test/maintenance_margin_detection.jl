@@ -50,15 +50,19 @@ end
         settle_symbol=:EUR,
         settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
-        margin_init_long=0.2,
-        margin_init_short=0.2,
-        margin_maint_long=0.5,
-        margin_maint_short=0.5,
+        margin_init_long=0.3,
+        margin_init_short=0.3,
+        margin_maint_long=0.2,
+        margin_maint_short=0.2,
     ))
 
     dt = DateTime(2026, 1, 1)
     trade = fill_order!(acc, Order(oid!(acc), inst_eur, dt, 100.0, 5.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     @test trade isa Trade
+
+    # With valid margin schedule (init >= maint), a mark-down can still create
+    # a per-currency maintenance deficit.
+    update_marks!(acc, inst_eur, dt + Hour(1), 70.0, 70.0, 70.0)
 
     @test excess_liquidity(acc, :USD) > 0
     @test excess_liquidity(acc, :EUR) < 0

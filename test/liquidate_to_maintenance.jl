@@ -46,18 +46,21 @@ end
     inst = register_instrument!(acc, Instrument(Symbol("RISK/USD"), :RISK, :USD;
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
-        margin_maint_long=2.0, margin_maint_short=2.0))
+        margin_maint_long=0.1, margin_maint_short=0.1))
 
     dt = DateTime(2024, 1, 1)
-    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 10.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 100.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
-    # Account is under maintenance immediately due to high maint requirement
+    dt2 = dt + Day(1)
+    update_marks!(acc, get_position(acc, inst), dt2, 90.0, 90.0, 90.0)
+
+    # Account is under maintenance after an adverse mark.
     @test is_under_maintenance(acc)
 
-    trades = liquidate_to_maintenance!(acc, dt; commission=1.0, commission_pct=0.02)
+    trades = liquidate_to_maintenance!(acc, dt2; commission=1.0, commission_pct=0.02)
 
     @test length(trades) == 1
-    @test trades[1].commission_settle ≈ 21.0 # 1 fixed + 2% of 100*10
+    @test trades[1].commission_settle ≈ 181.0 # 1 fixed + 2% of 90*100
     @test !is_under_maintenance(acc)
     @test get_position(acc, inst).quantity == 0.0
 end
@@ -78,8 +81,8 @@ end
         settle_symbol=:EUR,
         settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
-        margin_init_long=0.2, margin_init_short=0.2,
-        margin_maint_long=0.5, margin_maint_short=0.5))
+        margin_init_long=0.3, margin_init_short=0.3,
+        margin_maint_long=0.2, margin_maint_short=0.2))
 
     inst_usd = register_instrument!(acc, Instrument(Symbol("PER/USD"), :PER, :USD;
         settle_symbol=:USD,
@@ -92,10 +95,13 @@ end
     fill_order!(acc, Order(oid!(acc), inst_eur, dt, 100.0, 5.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     fill_order!(acc, Order(oid!(acc), inst_usd, dt, 100.0, 100.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
+    dt2 = dt + Hour(1)
+    update_marks!(acc, inst_eur, dt2, 70.0, 70.0, 70.0)
+
     @test excess_liquidity(acc, :EUR) < 0 # only EUR leg is stressed
     @test is_under_maintenance(acc)
 
-    trades = liquidate_to_maintenance!(acc, dt; commission=0.0)
+    trades = liquidate_to_maintenance!(acc, dt2; commission=0.0)
 
     @test length(trades) == 1
     @test trades[1].order.inst === inst_eur

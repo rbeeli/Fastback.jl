@@ -107,16 +107,16 @@ end
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
-        margin_maint_long=2.0,
+        margin_maint_long=0.5,
         margin_init_short=0.5,
-        margin_maint_short=2.0,
+        margin_maint_short=0.5,
         expiry=dt1,
         multiplier=1.0,
     ))
 
     spot_trade = fill_order!(acc, Order(oid!(acc), spot_inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     perp_trade = fill_order!(acc, Order(oid!(acc), perp_inst, dt0, 50.0, 1.0); dt=dt0, fill_price=50.0, bid=50.0, ask=50.0, last=50.0)
-    fut_trade = fill_order!(acc, Order(oid!(acc), fut_inst, dt0, 100.0, 10.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    fut_trade = fill_order!(acc, Order(oid!(acc), fut_inst, dt0, 100.0, -10.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     @test spot_trade isa Trade
     @test perp_trade isa Trade
     @test fut_trade isa Trade
@@ -125,7 +125,7 @@ end
     process_step!(acc, dt0)
 
     pre_deficit = maint_margin_used_base_ccy(acc) - equity_base_ccy(acc)
-    @test pre_deficit > 0
+    @test pre_deficit < 0
 
     bal_chf_before = cash_balance(acc, chf)
     eq_chf_before = equity(acc, chf)
@@ -136,7 +136,7 @@ end
     marks = [
         MarkUpdate(spot_inst.index, 110.0, 110.0, 110.0),
         MarkUpdate(perp_inst.index, 60.0, 60.0, 60.0),
-        MarkUpdate(fut_inst.index, 120.0, 120.0, 120.0),
+        MarkUpdate(fut_inst.index, 250.0, 250.0, 250.0),
     ]
     funding = [FundingUpdate(perp_inst.index, 0.01)]
 
@@ -152,7 +152,7 @@ end
     expected_spot_mark = expected_spot_value - spot_value_before
     expected_funding = -60.0 * 0.01
     expected_perp_vm = 10.0
-    expected_fut_vm = 200.0
+    expected_fut_vm = -1_500.0
 
     @test cash_balance(acc, chf) ≈ bal_chf_before + expected_chf_interest atol=1e-8
     @test equity(acc, chf) ≈ eq_chf_before + expected_chf_interest + expected_spot_mark atol=1e-8
