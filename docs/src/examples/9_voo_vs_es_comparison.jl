@@ -106,7 +106,8 @@ end
 
 ## shared backtest configuration
 initial_cash = 200_000.0
-notional_target = 2.0 * initial_cash  # Reg-T: ~2x buying power on equities
+leverage_factor = 2.0  # Reg-T: ~2x buying power on equities
+notional_target = leverage_factor * initial_cash
 
 rng = MersenneTwister(2025)
 pool = collect(15:(nrow(voo_df) - 15))
