@@ -19,7 +19,7 @@ using TestItemRunner
         :SPOT,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.2,
         margin_init_short=0.2,
@@ -52,7 +52,7 @@ using TestItemRunner
         commission,
         0.0,
     )
-    expected_cash_delta = -commission * usd_to_chf
+    expected_cash_delta = to_settle(acc, spot_inst, -(qty * price * spot_inst.multiplier + commission))
     expected_init_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_init_short * usd_to_chf
     expected_maint_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_maint_short * usd_to_chf
     @test plan.cash_delta ≈ expected_cash_delta atol=1e-10
@@ -129,7 +129,7 @@ end
         :SPOTFXI,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         contract_kind=ContractKind.Spot,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
@@ -168,7 +168,7 @@ end
 
     @test length(acc.cashflows) == 2
     interest_cf, fee_cf = acc.cashflows
-    @test interest_cf.kind == CashflowKind.Interest
+    @test interest_cf.kind == CashflowKind.LendInterest
     @test interest_cf.cash_index == chf_idx
     @test interest_cf.amount ≈ expected_interest atol=1e-8
 

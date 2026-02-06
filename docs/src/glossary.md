@@ -22,7 +22,7 @@ A `Position` maintains the net exposure for an instrument using a weighted-avera
 
 ### Spot on Margin
 
-A cash-settled spot instrument with an explicit margin mode (percent-notional or fixed-per-contract) represents "spot on margin". Use `is_margined_spot` to detect this case; leveraged longs/shorts post margin, and shorts can accrue borrow fees via `short_borrow_rate` (borrow-fee clocks are tracked per position and aligned to fills).
+An asset-settled spot instrument with an explicit margin mode (percent-notional or fixed-per-contract) represents "spot on margin". Use `is_margined_spot` to detect this case; leveraged longs/shorts post margin, and shorts can accrue borrow fees via `short_borrow_rate` (borrow-fee clocks are tracked per position and aligned to fills).
 
 ## Base Asset
 

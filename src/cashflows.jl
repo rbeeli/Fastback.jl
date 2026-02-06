@@ -2,11 +2,12 @@ using Dates
 using EnumX
 
 @enumx CashflowKind::Int8 begin
-    Interest = 1
-    BorrowFee = 2
-    Funding = 3
-    VariationMargin = 4
-    Other = 5
+    BorrowInterest = 1
+    LendInterest = 2
+    BorrowFee = 3
+    Funding = 4
+    VariationMargin = 5
+    Other = 6
 end
 
 mutable struct Cashflow{TTime<:Dates.AbstractTime}

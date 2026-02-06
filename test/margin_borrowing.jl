@@ -11,7 +11,7 @@ using TestItemRunner
         Symbol("MARGINABLE/USD"),
         :MARGINABLE,
         :USD;
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.25,
@@ -24,7 +24,7 @@ using TestItemRunner
     @test trade isa Trade
     pos = get_position(acc, inst)
     @test pos.quantity == 100.0
-    @test cash_balance(acc, :USD) ≈ 6_000.0
+    @test cash_balance(acc, :USD) ≈ -4_000.0
     @test equity(acc, :USD) ≈ 6_000.0
     @test init_margin_used(acc, :USD) ≈ 5_000.0
 end
@@ -55,7 +55,7 @@ end
         Symbol("DERISK/USD"),
         :DERISK,
         :USD;
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.5,

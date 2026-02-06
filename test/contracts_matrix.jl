@@ -10,7 +10,7 @@ using TestItemRunner
     valid_cases = [
         ("spot cash settlement", Instrument(Symbol("SPOT/CASH"), :SPOT, :USD;
             contract_kind=ContractKind.Spot,
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             margin_mode=MarginMode.PercentNotional,
             expiry=zero_dt,
         )),
@@ -48,7 +48,7 @@ using TestItemRunner
         )),
         ("perpetual requires variation margin", Instrument(Symbol("PERP/CASH"), :PERP, :USD;
             contract_kind=ContractKind.Perpetual,
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             margin_mode=MarginMode.PercentNotional,
         )),
         ("future requires expiry", Instrument(Symbol("FUT/NOEXP"), :FUT, :USD;
@@ -58,7 +58,7 @@ using TestItemRunner
         )),
         ("future requires variation margin", Instrument(Symbol("FUT/CASH"), :FUT, :USD;
             contract_kind=ContractKind.Future,
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             margin_mode=MarginMode.PercentNotional,
             expiry=expiry_dt,
         )),
@@ -78,7 +78,7 @@ end
 
     spot = Instrument(Symbol("SPOT/LIFE"), :SPOT, :USD;
         contract_kind=ContractKind.Spot,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         expiry=DateTime(0),
     )

@@ -169,6 +169,11 @@ handles expiries, and optionally liquidates to maintenance if required.
 Throws `OrderRejectError` if expiry settlement or liquidation fills are rejected by risk checks.
 Borrow-fee accrual uses per-position clocks; fills also advance/reset those clocks.
 
+Timing convention:
+- Interest/borrow-fee accrual runs before new marks.
+- Therefore, accrual over `(t_prev, t]` uses the previously stored balances/prices,
+  and the marks passed for `dt` apply to subsequent valuation windows.
+
 Ordering:
 1. Enforce non-decreasing time
 2. Apply FX updates

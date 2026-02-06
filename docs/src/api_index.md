@@ -74,7 +74,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 - `format_cash`, `format_base`, `format_quote`, `format_period_HHMMSS`
 - `has_expiry`, `is_expired`, `is_active`, `ensure_active`, `is_margined_spot`
-- `spot_instrument`, `margin_spot_instrument`, `perpetual_instrument`, `future_instrument`
+- `spot_instrument`, `perpetual_instrument`, `future_instrument`
 
 ## Printing helpers
 

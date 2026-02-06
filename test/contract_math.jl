@@ -1,7 +1,7 @@
 using Dates
 using TestItemRunner
 
-@testitem "Cash settlement opens: equity hit is commission only" begin
+@testitem "Asset settlement opens: equity hit is commission only" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -14,7 +14,7 @@ using TestItemRunner
             Symbol("AST/USD"),
             :AST,
             :USD;
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             contract_kind=ContractKind.Spot,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.1,
@@ -37,11 +37,11 @@ using TestItemRunner
     @test equity_after ≈ equity_before - commission atol=1e-12
 
     pos = get_position(acc, inst)
-    @test pos.value_quote ≈ 0.0 atol=1e-12
+    @test pos.value_quote ≈ qty * price * inst.multiplier atol=1e-12
     @test pos.pnl_quote ≈ 0.0 atol=1e-12
 end
 
-@testitem "Cash-settled equity tracks PnL, not notional" begin
+@testitem "Asset-settled equity tracks marked notional" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -54,7 +54,7 @@ end
             Symbol("CSH/USD"),
             :CSH,
             :USD;
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.1,
             margin_maint_long=0.05,
@@ -130,13 +130,16 @@ end
     @test pos.avg_settle_price ≈ 105.0 atol=1e-12
 end
 
-@testitem "cash_delta_quote_cash uses realized PnL minus commission" begin
+@testitem "cash_delta_quote_asset uses principal plus commission" begin
     using Test, Fastback
 
-    realized = 5.5
+    inst = Instrument(Symbol("A/USD"), :A, :USD; margin_mode=MarginMode.PercentNotional, multiplier=2.0)
+    fill_qty = 3.0
+    fill_price = 5.5
     commission = 1.2
 
-    @test Fastback.cash_delta_quote_cash(realized, commission) ≈ 4.3 atol=1e-12
+    expected = -(fill_qty * fill_price * inst.multiplier) - commission
+    @test Fastback.cash_delta_quote_asset(inst, fill_qty, fill_price, commission) ≈ expected atol=1e-12
 end
 
 @testitem "cash_delta_quote_vm uses mark and exposure increase" begin

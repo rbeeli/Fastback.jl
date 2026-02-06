@@ -1,7 +1,7 @@
 # # S&P 500 exposure: VOO on Reg-T margin vs Micro E-mini futures (MES)
 #
 # This example compares two ways to express S&P 500 exposure:
-# 1) VOO ETF on Reg-T margin (cash-settled spot)
+# 1) VOO ETF on Reg-T margin (asset-settled spot)
 # 2) Micro E-mini S&P 500 futures (MES) on variation margin
 #
 # The data is synthetic but realistic. VOO prices are **total-return adjusted**
@@ -19,10 +19,9 @@ using Random
 # ---------------------------------------------------------
 
 ## load synthetic daily data
-voo_path = "data/voo_tr_1d.csv";
-es_path = "data/es_1d.csv";
-
-isfile(voo_path) || cd("src/examples")
+example_dir = @__DIR__
+voo_path = joinpath(example_dir, "data", "voo_tr_1d.csv")
+es_path = joinpath(example_dir, "data", "es_1d.csv")
 
 voo_df = DataFrame(CSV.File(voo_path; dateformat="yyyy-mm-dd"))
 es_df = DataFrame(CSV.File(es_path; dateformat="yyyy-mm-dd"))
@@ -126,7 +125,7 @@ set_interest_rates!(acc_voo, :USD; borrow=0.06, lend=0.015)
 
 # IBKR-style: VOO (SMART/ARCA), USD stock, 0.01 tick
 # Reg-T margin (approx): 50% init, 25% maint for longs
-voo = register_instrument!(acc_voo, margin_spot_instrument(
+voo = register_instrument!(acc_voo, spot_instrument(
     :VOO, :VOO, :USD;
     time_type=Date,
     base_tick=1.0,
@@ -190,9 +189,11 @@ function summarize(acc, label, initial_cash)
     end_equity = equity(acc, :USD)
     pnl = end_equity - initial_cash
     commissions = sum(t.commission_settle for t in acc.trades, init=0.0)
-    interest = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.Interest, init=0.0)
+    lend_interest = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.LendInterest, init=0.0)
+    borrow_interest = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowInterest, init=0.0)
+    net_interest = lend_interest + borrow_interest
     borrow_fees = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowFee, init=0.0)
-    interest_cost = max(0.0, -interest)
+    interest_cost = max(0.0, -net_interest)
 
     return (
         instrument=label,

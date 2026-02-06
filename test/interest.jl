@@ -22,7 +22,7 @@ using TestItemRunner
     @test equity(acc, usd) ≈ eq_before + expected_interest atol=1e-8
 
     cf = only(acc.cashflows)
-    @test cf.kind == CashflowKind.Interest
+    @test cf.kind == CashflowKind.LendInterest
     @test cf.cash_index == usd.index
     @test cf.amount ≈ expected_interest atol=1e-8
     @test cf.inst_index == 0
@@ -53,7 +53,7 @@ end
     @test equity(acc, usd) ≈ eq_before + expected_interest atol=1e-8
 
     cf = only(acc.cashflows)
-    @test cf.kind == CashflowKind.Interest
+    @test cf.kind == CashflowKind.BorrowInterest
     @test cf.cash_index == usd.index
     @test cf.amount ≈ expected_interest atol=1e-8
     @test cf.inst_index == 0

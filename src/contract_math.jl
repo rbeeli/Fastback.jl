@@ -22,10 +22,10 @@ end
 """
 Quote-currency position value contribution under the instrument settlement style.
 """
-@inline function value_quote(inst::Instrument, qty, price, basis_price)::Price
+@inline function value_quote(inst::Instrument, qty, price)::Price
     settlement = inst.settlement
-    if settlement == SettlementStyle.Cash
-        return pnl_quote(inst, qty, price, basis_price)
+    if settlement == SettlementStyle.Asset
+        return qty * price * inst.multiplier
     elseif settlement == SettlementStyle.VariationMargin
         return zero(Price)
     else
@@ -34,13 +34,15 @@ Quote-currency position value contribution under the instrument settlement style
 end
 
 """
-Quote-currency cash delta for a cash-settled fill.
+Quote-currency cash delta for an asset-settled fill.
 """
-@inline function cash_delta_quote_cash(
-    realized_pnl_entry_quote::Price,
+@inline function cash_delta_quote_asset(
+    inst::Instrument,
+    fill_qty::Quantity,
+    fill_price::Price,
     commission_total_quote::Price,
 )::Price
-    realized_pnl_entry_quote - commission_total_quote
+    -(fill_qty * fill_price * inst.multiplier) - commission_total_quote
 end
 
 """

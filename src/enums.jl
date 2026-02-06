@@ -2,7 +2,7 @@ import Base: *, sign
 using EnumX
 
 @enumx TradeDir::Int8 Null = 0 Buy = 1 Sell = -1
-@enumx SettlementStyle::Int8 Cash = 1 VariationMargin = 2
+@enumx SettlementStyle::Int8 Asset = 1 VariationMargin = 2
 @enumx MarginMode::Int8 None = 0 PercentNotional = 1 FixedPerContract = 2
 @enumx MarginingStyle::Int8 PerCurrency = 1 BaseCurrency = 2
 @enumx ContractKind::Int8 Spot = 1 Perpetual = 2 Future = 3

@@ -3,7 +3,7 @@ using Dates
 """
     accrue_borrow_fees!(acc, dt; year_basis=365.0)
 
-Accrues short borrow fees on cash-settled spot short positions between each position's
+Accrues short borrow fees on asset-settled spot short positions between each position's
 last borrow-fee timestamp and `dt`. The fee notional is based on the neutral last price
 (falling back to the liquidation mark if unavailable), charged in the instrument
 settlement currency, and applied to both balances and equities. Borrow-fee timestamps
@@ -19,7 +19,7 @@ with actual short exposure.
     pos.quantity < 0.0 || return acc
     inst = pos.inst
     inst.contract_kind == ContractKind.Spot || return acc
-    inst.settlement == SettlementStyle.Cash || return acc
+    inst.settlement == SettlementStyle.Asset || return acc
     inst.short_borrow_rate > 0.0 || return acc
 
     last_dt = pos.borrow_fee_dt

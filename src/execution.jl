@@ -76,7 +76,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
             commission_total_quote,
         )
     else
-        cash_delta_quote_cash(realized_pnl_entry_quote, commission_total_quote)
+        cash_delta_quote_asset(inst, fill_qty, fill_price, commission_total_quote)
     end
 
     cash_delta = to_settle(acc, inst, cash_delta_quote_val)
@@ -114,7 +114,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     else
         basis_after = new_avg_entry_price
         new_pnl_quote = pnl_quote(inst, new_qty, mark_price, basis_after)
-        new_value_quote = value_quote(inst, new_qty, mark_price, basis_after)
+        new_value_quote = value_quote(inst, new_qty, mark_price)
     end
     new_value_settle = inst.settlement == SettlementStyle.VariationMargin ? 0.0 : to_settle(acc, inst, new_value_quote)
     value_delta_settle = new_value_settle - pos_value_settle

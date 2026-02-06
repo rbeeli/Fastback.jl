@@ -54,8 +54,8 @@ end
     @test length(trade_rows) == length(acc.trades)
     @test trade_rows[1].oid == order₁.oid
     @test trade_rows[end].realized_pnl_settle ≈ 2.0 atol = 1e-8
-    @test trade_rows[1].cash_delta_settle ≈ -0.5
-    @test trade_rows[end].cash_delta_settle ≈ 1.75
+    @test trade_rows[1].cash_delta_settle ≈ -10.5
+    @test trade_rows[end].cash_delta_settle ≈ 23.75
     trade_cols = Tables.columntable(tbl)
     @test trade_cols.symbol == fill(inst.symbol, length(acc.trades))
 
@@ -80,7 +80,7 @@ end
             :FX,
             :EUR;
             settle_symbol=:USD,
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.0,
             margin_init_short=0.0,
@@ -100,7 +100,7 @@ end
     row = only(Tables.rows(tbl))
 
     commission_settle = commission_quote * 1.2
-    expected_cash_delta = to_settle(acc, inst, -commission_quote)
+    expected_cash_delta = to_settle(acc, inst, -(qty * fill_price + commission_quote))
 
     @test trade === acc.trades[end]
     @test row.commission_settle ≈ commission_settle atol=1e-12

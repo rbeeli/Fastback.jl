@@ -44,7 +44,7 @@
         return
     end
 
-    new_value = value_quote(inst, qty, close_price, basis_price)
+    new_value = value_quote(inst, qty, close_price)
     new_value_settle = to_settle(acc, inst, new_value)
     value_delta_settle = new_value_settle - pos.value_settle
     @inbounds acc.equities[settle_cash_index] += value_delta_settle
@@ -58,7 +58,7 @@ end
 """
 Updates position valuation and account equity using the latest mark price.
 
-For cash-settled instruments, value equals local P&L.
+For asset-settled instruments, value equals marked notional.
 For variation-margin instruments, unrealized P&L is settled into cash at each update.
 """
 @inline update_valuation!(acc::Account, pos::Position{TTime}; dt::TTime, close_price::Price) where {TTime<:Dates.AbstractTime} =
@@ -164,7 +164,7 @@ end
 
 """
 Fills an order, applying cash/equity/margin deltas and returning the resulting `Trade`.
-Accrues borrow fees for any eligible cash-settled spot short exposure up to `dt` and
+Accrues borrow fees for any eligible asset-settled spot short exposure up to `dt` and
 restarts the borrow-fee clock based on the post-fill position.
 Throws `OrderRejectError` when the fill is rejected (inactive instrument or risk checks).
 Requires bid/ask/last to deterministically value positions and compute margin during fills.
@@ -237,7 +237,7 @@ Requires bid/ask/last to deterministically value positions and compute margin du
     pos.mark_time = dt
     if pos.quantity < 0.0 &&
        inst.contract_kind == ContractKind.Spot &&
-       inst.settlement == SettlementStyle.Cash &&
+       inst.settlement == SettlementStyle.Asset &&
        inst.short_borrow_rate > 0.0
         pos.borrow_fee_dt = dt
     else

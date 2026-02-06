@@ -14,7 +14,7 @@ using TestItemRunner
             Symbol("OPN/USD"),
             :OPN,
             :USD;
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             margin_mode=MarginMode.PercentNotional,
         ),
     )
@@ -28,8 +28,8 @@ using TestItemRunner
     @test trade.realized_pnl_entry == 0.0
     @test trade.realized_pnl_settle == 0.0
     @test trade.commission_settle ≈ commission atol=1e-12
-    @test trade.cash_delta_settle ≈ -commission atol=1e-12
-    @test cash_balance(acc, usd) ≈ 1_000.0 - commission atol=1e-12
+    @test trade.cash_delta_settle ≈ -(order.quantity * order.price) - commission atol=1e-12
+    @test cash_balance(acc, usd) ≈ 1_000.0 - order.quantity * order.price - commission atol=1e-12
     @test equity(acc, usd) ≈ cash_balance(acc, usd) + get_position(acc, inst).value_settle atol=1e-12
 end
 
@@ -46,7 +46,7 @@ end
             Symbol("CLS/USD"),
             :CLS,
             :USD;
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             margin_mode=MarginMode.PercentNotional,
         ),
     )
@@ -72,8 +72,8 @@ end
     @test close_trade.realized_pnl_entry ≈ expected_gross atol=1e-12
     @test close_trade.realized_pnl_settle ≈ expected_gross atol=1e-12
     @test close_trade.commission_settle ≈ commission_close atol=1e-12
-    @test close_trade.cash_delta_settle ≈ expected_gross - commission_close atol=1e-12
-    @test cash_balance(acc, usd) ≈ cash_after_open + expected_gross - commission_close atol=1e-12
+    @test close_trade.cash_delta_settle ≈ qty * price_close - commission_close atol=1e-12
+    @test cash_balance(acc, usd) ≈ cash_after_open + qty * price_close - commission_close atol=1e-12
     @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-12
 end
 
@@ -89,7 +89,7 @@ end
             Symbol("RET/USD"),
             :RET,
             :USD;
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             margin_mode=MarginMode.PercentNotional,
         ),
     )

@@ -187,7 +187,6 @@ export format_cash,
     ensure_active,
     is_margined_spot,
     spot_instrument,
-    margin_spot_instrument,
     perpetual_instrument,
     future_instrument
 

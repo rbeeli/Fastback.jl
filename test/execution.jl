@@ -1,7 +1,7 @@
 using Dates
 using TestItemRunner
 
-@testitem "plan_fill mirrors fill_order! (cash-settled open)" begin
+@testitem "plan_fill mirrors fill_order! (asset-settled open)" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -37,12 +37,12 @@ using TestItemRunner
     @test pos.quantity == pos_qty_before
     @test plan.fill_qty == order.quantity
     @test plan.commission == commission + commission_pct * nominal_value(order)
-    @test plan.cash_delta == -(plan.commission)
+    @test plan.cash_delta == -(order.quantity * price * inst.multiplier + plan.commission)
     @test plan.realized_pnl_entry == 0.0
     @test plan.realized_pnl_settle == 0.0
     @test plan.new_qty == order.quantity
     @test plan.new_avg_entry_price == price
-    @test plan.new_value_quote == 0.0
+    @test plan.new_value_quote == order.quantity * price * inst.multiplier
     @test plan.new_pnl_quote == 0.0
 
     trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission=commission, commission_pct=commission_pct)
@@ -81,12 +81,12 @@ end
 
     @test trade isa Trade
     @test pos.mark_price == 9.0
-    @test pos.value_quote ≈ -2.0 atol=1e-12
-    @test cash_balance(acc, usd) ≈ 100.0 atol=1e-12
+    @test pos.value_quote ≈ 9.0 atol=1e-12
+    @test cash_balance(acc, usd) ≈ 89.0 atol=1e-12
     @test equity(acc, usd) ≈ 98.0 atol=1e-12
 end
 
-@testitem "cash_delta captures cash-settled realized P&L" begin
+@testitem "cash_delta captures asset principal and commission" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -99,7 +99,7 @@ end
             Symbol("SPOT/USD"),
             :SPOT,
             :USD;
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             contract_kind=ContractKind.Spot,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.5,
@@ -137,7 +137,7 @@ end
         0.0,
     )
 
-    expected_cash_delta = 2.0 * (close_price - open_price) - commission
+    expected_cash_delta = abs(close_qty) * close_price - commission
     @test plan.cash_delta ≈ expected_cash_delta atol=1e-12
 
     trade = fill_order!(acc, close_order; dt=dt, fill_price=close_price, bid=close_price, ask=close_price, last=close_price, commission=commission)

@@ -23,7 +23,7 @@ end
     deposit!(acc, Cash(:USD), 0.0)
 
     no_margin = Instrument(Symbol("CASH/NOMRG"), :CASH, :USD;
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.None,
     )
     @test_throws ArgumentError register_instrument!(acc, no_margin)
@@ -36,7 +36,7 @@ end
     deposit!(acc, Cash(:USD), 0.0)
 
     nonzero_margin = Instrument(Symbol("NOMRG/RATES"), :NOMRG, :USD;
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.None,
         margin_init_long=0.1,
         margin_maint_long=0.05,
@@ -53,7 +53,7 @@ end
 
     bad_settle = Instrument(Symbol("PERP/BADSETTLE"), :PERP, :USD;
         contract_kind=ContractKind.Perpetual,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
     )
     @test_throws ArgumentError register_instrument!(acc, bad_settle)
@@ -88,7 +88,7 @@ end
 
     bad_settle = Instrument(Symbol("FUT/BADSETTLE"), :FUT, :USD;
         contract_kind=ContractKind.Future,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         expiry=DateTime(2026, 1, 2),
     )
@@ -117,14 +117,14 @@ end
     register_instrument!(acc, good)
 end
 
-@testitem "is_margined_spot detects cash-settled spot" begin
+@testitem "is_margined_spot detects asset-settled spot" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 0.0)
 
     spot_margin = Instrument(Symbol("SPOT/MGN"), :SPOT, :USD;
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
         margin_maint_long=0.05,

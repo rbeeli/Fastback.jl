@@ -24,7 +24,7 @@ using TestItemRunner
         :ASSET,
         :EUR;
         settle_symbol=:USD,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.2,
         margin_init_short=0.2,

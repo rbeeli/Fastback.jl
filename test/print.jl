@@ -56,7 +56,7 @@ end
             :FX,
             :EUR;
             settle_symbol=:USD,
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.0,
             margin_init_short=0.0,
@@ -78,6 +78,6 @@ end
     @test occursin("USD", output)           # settlement label
     @test occursin("Realized P&L", output)  # updated column header
     @test occursin("0.0000", output)        # P&L formatted with settle digits (gross, no commissions)
-    @test occursin("-2.4000", output)       # cash delta formatted with settle digits
+    @test occursin("-14.4000", output)      # cash delta formatted with settle digits
     @test occursin("2.4000", output)        # commission formatted with settle digits
 end

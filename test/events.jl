@@ -14,7 +14,7 @@ using TestItemRunner
             Symbol("SHRT/USD"),
             :SHRT,
             :USD;
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
@@ -75,7 +75,7 @@ end
         :SPOTORD,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         contract_kind=ContractKind.Spot,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
@@ -147,7 +147,7 @@ end
     expected_spot_value = to_settle(
         acc,
         spot_inst,
-        value_quote(spot_inst, spot_pos.quantity, 110.0, spot_pos.avg_entry_price),
+        value_quote(spot_inst, spot_pos.quantity, 110.0),
     )
     expected_spot_mark = expected_spot_value - spot_value_before
     expected_funding = -60.0 * 0.01
@@ -160,7 +160,7 @@ end
     @test length(acc.cashflows) == 4
     kinds = getfield.(acc.cashflows, :kind)
     @test kinds == [
-        CashflowKind.Interest,
+        CashflowKind.LendInterest,
         CashflowKind.VariationMargin,
         CashflowKind.VariationMargin,
         CashflowKind.Funding,
@@ -221,7 +221,7 @@ end
     expected_vm = 100.0 * (110.0 - 100.0) * inst.multiplier
     expected_funding = -100.0 * 110.0 * inst.multiplier * 0.01
 
-    interest_cfs = filter(cf -> cf.kind == CashflowKind.Interest, acc.cashflows)
+    interest_cfs = filter(cf -> cf.kind == CashflowKind.LendInterest, acc.cashflows)
     @test length(interest_cfs) == 1
     interest_cf = only(interest_cfs)
     @test interest_cf.amount ≈ expected_interest atol=1e-8
@@ -250,7 +250,7 @@ end
         :FXREVAL,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         contract_kind=ContractKind.Spot,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
@@ -299,7 +299,7 @@ end
             Symbol("BORROW/USD"),
             :BORROW,
             :USD;
-            settlement=SettlementStyle.Cash,
+            settlement=SettlementStyle.Asset,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,

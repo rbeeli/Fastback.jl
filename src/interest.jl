@@ -25,7 +25,8 @@ end
 
 Accrues interest on cash balances between the last accrual timestamp and `dt`.
 Positive balances earn `interest_lend_rate`, negative balances pay
-`interest_borrow_rate`. Interest is applied to both balances and equities.
+`interest_borrow_rate`. Interest is applied to both balances and equities and
+recorded as `CashflowKind.LendInterest` or `CashflowKind.BorrowInterest`.
 """
 function accrue_interest!(
     acc::Account{TTime},
@@ -52,7 +53,8 @@ function accrue_interest!(
         interest == 0.0 && continue
         acc.balances[i] += interest
         acc.equities[i] += interest
-        push!(cfs, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.Interest, i, interest, 0))
+        kind = interest >= 0 ? CashflowKind.LendInterest : CashflowKind.BorrowInterest
+        push!(cfs, Cashflow{TTime}(cfid!(acc), dt, kind, i, interest, 0))
     end
 
     acc.last_interest_dt = dt

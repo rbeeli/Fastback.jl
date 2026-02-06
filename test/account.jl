@@ -77,9 +77,9 @@ end
     @test pos.avg_settle_price == 100.0
     # update position and account P&L
     update_marks!(acc, pos, dates[2], prices[2], prices[2], prices[2])
-    @test pos.value_quote == pos.pnl_quote
+    @test pos.value_quote ≈ prices[2] * pos.quantity
     @test pos.pnl_quote ≈ (prices[2] - prices[1]) * pos.quantity
-    @test cash_balance(acc, :USD) ≈ 100_000.0
+    @test cash_balance(acc, :USD) ≈ 100_000.0 - prices[1] * qty
     @test equity(acc, :USD) ≈ 100_000.0 + (prices[2] - prices[1]) * pos.quantity
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
@@ -137,7 +137,7 @@ end
 
     @test available_funds(acc, usd) ≈ 0.0 atol=1e-8
     @test_throws ArgumentError withdraw!(acc, usd, 1.0)
-    @test cash_balance(acc, usd) ≈ 10_000.0 atol=1e-8
+    @test cash_balance(acc, usd) ≈ 0.0 atol=1e-8
 end
 
 @testitem "Margin account withdrawal respects base-currency available funds" begin
@@ -148,7 +148,7 @@ end
     deposit!(acc, usd, 600.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("MARG/USD"), :MARG, :USD;
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
@@ -166,7 +166,7 @@ end
     @test_throws ArgumentError withdraw!(acc, usd, 150.0)
 
     withdraw!(acc, usd, 50.0)
-    @test cash_balance(acc, usd) ≈ 550.0 atol=1e-8
+    @test cash_balance(acc, usd) ≈ -450.0 atol=1e-8
 end
 
 @testitem "Per-currency margin withdrawal respects available funds in that currency" begin
@@ -211,9 +211,9 @@ end
     # update position and account P&L
     update_marks!(acc, pos, dates[2], prices[2], prices[2], prices[2])
 
-    @test pos.value_quote == pos.pnl_quote
+    @test pos.value_quote ≈ prices[2] * pos.quantity
     @test pos.pnl_quote ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
-    @test cash_balance(acc, :USD) ≈ 100_000.0 - commission
+    @test cash_balance(acc, :USD) ≈ 100_000.0 - prices[1] * qty - commission
     @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - commission
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
@@ -255,9 +255,9 @@ end
     # update position and account P&L
     update_marks!(acc, pos, dates[2], prices[2], prices[2], prices[2])
 
-    @test pos.value_quote == pos.pnl_quote
+    @test pos.value_quote ≈ prices[2] * pos.quantity
     @test pos.pnl_quote ≈ (prices[2] - prices[1]) * pos.quantity # does not include commission!
-    @test cash_balance(acc, :USD) ≈ 100_000.0 - exe1.commission_settle
+    @test cash_balance(acc, :USD) ≈ 100_000.0 - prices[1] * qty - exe1.commission_settle
     @test equity(acc, :USD) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - exe1.commission_settle
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
@@ -292,7 +292,7 @@ end
     @test trade.commission_settle == commission_pct * expected_nominal
 end
 
-@testitem "Spot long cash-settled valuation" begin
+@testitem "Spot long asset-settled valuation" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -302,7 +302,7 @@ end
         Symbol("SPOT/USD"),
         :SPOT,
         :USD;
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
@@ -317,16 +317,16 @@ end
     order = Order(oid!(acc), inst, dt, price, qty)
     fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
 
-    @test cash_balance(acc, :USD) ≈ 10_000.0
-    @test pos.value_quote ≈ 0.0
+    @test cash_balance(acc, :USD) ≈ 5_000.0
+    @test pos.value_quote ≈ 5_000.0
     @test equity(acc, :USD) ≈ 10_000.0
 
     update_marks!(acc, pos, dt, 60.0, 60.0, 60.0)
-    @test pos.value_quote ≈ 1_000.0
+    @test pos.value_quote ≈ 6_000.0
     @test equity(acc, :USD) ≈ 11_000.0
 end
 
-@testitem "Spot short cash-settled valuation" begin
+@testitem "Spot short asset-settled valuation" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -336,7 +336,7 @@ end
         Symbol("SPOT/USD"),
         :SPOT,
         :USD;
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
@@ -351,12 +351,12 @@ end
     order = Order(oid!(acc), inst, dt, price, qty)
     fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
 
-    @test cash_balance(acc, :USD) ≈ 10_000.0
-    @test pos.value_quote ≈ 0.0
+    @test cash_balance(acc, :USD) ≈ 15_000.0
+    @test pos.value_quote ≈ -5_000.0
     @test equity(acc, :USD) ≈ 10_000.0
 
     update_marks!(acc, pos, dt, 60.0, 60.0, 60.0)
-    @test pos.value_quote ≈ -1_000.0
+    @test pos.value_quote ≈ -6_000.0
     @test equity(acc, :USD) ≈ 9_000.0
 end
 
@@ -524,7 +524,7 @@ end
 
     acc = Account(; base_currency=:USD)
     deposit!(acc, Cash(:USD), 1_000.0)
-    inst = register_instrument!(acc, margin_spot_instrument(Symbol("SHORT/USD"), :SHORT, :USD;
+    inst = register_instrument!(acc, spot_instrument(Symbol("SHORT/USD"), :SHORT, :USD;
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
@@ -567,7 +567,7 @@ end
     @test pos.quantity == 30.0
     @test pos.avg_entry_price ≈ 10.0
     @test pos.avg_settle_price ≈ 10.0
-    @test cash_balance(acc, :USD) ≈ 1_040.0
+    @test cash_balance(acc, :USD) ≈ 740.0
     @test equity(acc, :USD) ≈ 1_100.0
 end
 
@@ -682,7 +682,7 @@ end
         Symbol("NOMARGIN/USD"),
         :NOMARGIN,
         :USD;
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.0,
         margin_init_short=0.0,
@@ -835,7 +835,7 @@ end
         Symbol("FIXED/EUR"),
         :FIXED,
         :EUR;
-        settlement=SettlementStyle.Cash,     # settlement currency = EUR (and margin currency)
+        settlement=SettlementStyle.Asset,     # settlement currency = EUR (and margin currency)
         margin_mode=MarginMode.FixedPerContract,
         margin_init_long=100.0,              # per-contract in margin ccy (EUR)
         margin_init_short=120.0,
@@ -900,7 +900,7 @@ end
         Symbol("FXEQ/EURUSD"),
         :FXEQ,
         :EUR;
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         settle_symbol=:USD,
         contract_kind=ContractKind.Spot,
         margin_mode=MarginMode.PercentNotional,
@@ -924,8 +924,8 @@ end
     dt1 = dt0 + Day(1)
     update_marks!(acc, pos, dt1, 110.0, 110.0, 110.0)
 
-    @test pos.value_quote ≈ 10.0 atol=1e-12
-    @test pos.value_settle ≈ 12.0 atol=1e-12
+    @test pos.value_quote ≈ 110.0 atol=1e-12
+    @test pos.value_settle ≈ 132.0 atol=1e-12
     @test equity(acc, :USD) ≈ equity_usd_before + (pos.value_settle - value_settle_before) atol=1e-10
     @test Fastback.check_invariants(acc)
 end

@@ -7,7 +7,7 @@ using TestItemRunner
     spot = spot_instrument(Symbol("SPOT/PHYS"), :SPOT, :USD)
     @test Fastback.validate_instrument(spot) === nothing
     @test spot.contract_kind == ContractKind.Spot
-    @test spot.settlement == SettlementStyle.Cash
+    @test spot.settlement == SettlementStyle.Asset
     @test spot.margin_mode == MarginMode.PercentNotional
     @test spot.margin_init_long == 1.0
     @test spot.margin_init_short == 1.0
@@ -15,7 +15,7 @@ using TestItemRunner
     @test spot.margin_maint_short == 1.0
     @test spot.expiry == DateTime(0)
 
-    mspot = margin_spot_instrument(Symbol("SPOT/MGN"), :SPOT, :USD;
+    mspot = spot_instrument(Symbol("SPOT/MGN"), :SPOT, :USD;
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
@@ -54,7 +54,7 @@ end
 @testitem "Instrument constructor helpers reject invalid combinations" begin
     using Test, Fastback, Dates
 
-    @test_throws ArgumentError margin_spot_instrument(Symbol("SPOT/NONE"), :SPOT, :USD;
+    @test_throws ArgumentError spot_instrument(Symbol("SPOT/NONE"), :SPOT, :USD;
         margin_mode=MarginMode.None,
         margin_init_long=0.1,
         margin_init_short=0.1,

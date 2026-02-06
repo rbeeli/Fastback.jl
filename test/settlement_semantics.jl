@@ -1,7 +1,7 @@
 using Dates
 using TestItemRunner
 
-@testitem "Spot cash-settled open/close updates cash and equity" begin
+@testitem "Spot asset-settled open/close updates cash and equity" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
@@ -19,12 +19,12 @@ using TestItemRunner
     fill_order!(acc, order_open; dt=dt0, fill_price=open_price, bid=99.0, ask=101.0, last=100.0, commission=commission_open)
 
     cash_after_open = cash_balance(acc, usd)
-    @test cash_after_open ≈ 9_999.0 atol=1e-12
+    @test cash_after_open ≈ 8_989.0 atol=1e-12
 
     pos = get_position(acc, inst)
     expected_pnl = qty * (pos.mark_price - pos.avg_entry_price) * inst.multiplier
     @test expected_pnl ≈ -20.0 atol=1e-12
-    @test equity(acc, usd) ≈ cash_after_open + expected_pnl atol=1e-12
+    @test equity(acc, usd) ≈ cash_after_open + pos.value_settle atol=1e-12
 
     dt1 = dt0 + Hour(1)
     close_price = 102.0
@@ -33,7 +33,7 @@ using TestItemRunner
     fill_order!(acc, order_close; dt=dt1, fill_price=close_price, bid=close_price, ask=close_price, last=close_price, commission=commission_close)
 
     @test get_position(acc, inst).quantity == 0.0
-    expected_cash = 9_999.0 + qty * (close_price - open_price) - commission_close
+    expected_cash = 8_989.0 + qty * close_price - commission_close
     @test cash_balance(acc, usd) ≈ expected_cash atol=1e-12
     @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-12
 end
@@ -77,7 +77,7 @@ end
     deposit!(acc, Cash(:USD), 100.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("RISK/USD"), :RISK, :USD;
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
@@ -113,7 +113,7 @@ end
 
     spot = register_instrument!(acc, Instrument(Symbol("SPOT/EURUSD"), :SPOT, :EUR;
         settle_symbol=:USD,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,

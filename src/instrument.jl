@@ -48,7 +48,7 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         contract_kind::ContractKind.T=ContractKind.Spot,
         settle_symbol::Symbol=quote_symbol,
         margin_symbol::Symbol=settle_symbol,
-        settlement::SettlementStyle.T=SettlementStyle.Cash,
+        settlement::SettlementStyle.T=SettlementStyle.Asset,
         margin_mode::MarginMode.T=MarginMode.None,
         margin_init_long::Price=0.0,
         margin_init_short::Price=0.0,
@@ -106,14 +106,19 @@ Format a quote-currency value using the instrument's display precision.
 """
     spot_instrument(symbol, base_symbol, quote_symbol; kwargs...)
 
-Convenience constructor for cash-settled spot exposure. Uses percent-notional
-margin set to 100% (fully funded) and validates the resulting instrument
-before returning it.
+Convenience constructor for asset-settled spot exposure.
+Defaults to percent-notional margin set to 100% (fully funded) and validates
+the resulting instrument before returning it.
 """
 function spot_instrument(
     symbol::Symbol,
     base_symbol::Symbol,
     quote_symbol::Symbol;
+    margin_mode::MarginMode.T=MarginMode.PercentNotional,
+    margin_init_long::Price=1.0,
+    margin_init_short::Price=1.0,
+    margin_maint_long::Price=1.0,
+    margin_maint_short::Price=1.0,
     base_tick::Quantity=0.01,
     base_min::Quantity=-Inf,
     base_max::Quantity=Inf,
@@ -138,64 +143,7 @@ function spot_instrument(
         contract_kind=ContractKind.Spot,
         settle_symbol=settle_symbol,
         margin_symbol=margin_symbol,
-        settlement=SettlementStyle.Cash,
-        margin_mode=MarginMode.PercentNotional,
-        margin_init_long=1.0,
-        margin_init_short=1.0,
-        margin_maint_long=1.0,
-        margin_maint_short=1.0,
-        short_borrow_rate=short_borrow_rate,
-        multiplier=multiplier,
-        time_type=time_type,
-        start_time=start_time,
-        expiry=time_type(0),
-    )
-    validate_instrument(inst)
-    inst
-end
-
-"""
-    margin_spot_instrument(symbol, base_symbol, quote_symbol; kwargs...)
-
-Cash-settled spot instrument with explicit margin parameters.
-"""
-function margin_spot_instrument(
-    symbol::Symbol,
-    base_symbol::Symbol,
-    quote_symbol::Symbol;
-    margin_mode::MarginMode.T,
-    margin_init_long::Price,
-    margin_init_short::Price,
-    margin_maint_long::Price,
-    margin_maint_short::Price,
-    base_tick::Quantity=0.01,
-    base_min::Quantity=-Inf,
-    base_max::Quantity=Inf,
-    base_digits::Int=2,
-    quote_tick::Price=0.01,
-    quote_digits::Int=2,
-    settle_symbol::Symbol=quote_symbol,
-    margin_symbol::Symbol=settle_symbol,
-    short_borrow_rate::Price=0.0,
-    multiplier::Float64=1.0,
-    time_type::Type{TTime}=DateTime,
-    start_time::TTime=time_type(0),
-)::Instrument{TTime} where {TTime<:Dates.AbstractTime}
-    margin_mode == MarginMode.None &&
-        throw(ArgumentError("margin_spot_instrument requires a margin_mode other than MarginMode.None."))
-
-    inst = Instrument(
-        symbol, base_symbol, quote_symbol;
-        base_tick=base_tick,
-        base_min=base_min,
-        base_max=base_max,
-        base_digits=base_digits,
-        quote_tick=quote_tick,
-        quote_digits=quote_digits,
-        contract_kind=ContractKind.Spot,
-        settle_symbol=settle_symbol,
-        margin_symbol=margin_symbol,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=margin_mode,
         margin_init_long=margin_init_long,
         margin_init_short=margin_init_short,
@@ -371,13 +319,13 @@ end
 """
     is_margined_spot(inst)
 
-Returns `true` when the instrument is a cash-settled spot contract with
+Returns `true` when the instrument is an asset-settled spot contract with
 an explicit margin mode (percent-notional or fixed-per-contract). This is
 the canonical representation of “spot on margin”.
 """
 @inline function is_margined_spot(inst::Instrument)::Bool
     inst.contract_kind == ContractKind.Spot &&
-    inst.settlement == SettlementStyle.Cash &&
+    inst.settlement == SettlementStyle.Asset &&
     inst.margin_mode != MarginMode.None
 end
 
@@ -395,7 +343,7 @@ function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.Abstra
     end
 
     if kind == ContractKind.Spot
-        settlement == SettlementStyle.Cash || throw(ArgumentError("Spot instrument $(inst.symbol) must use Cash settlement."))
+        settlement == SettlementStyle.Asset || throw(ArgumentError("Spot instrument $(inst.symbol) must use Asset settlement."))
         inst.margin_mode != MarginMode.None || throw(ArgumentError("Spot instrument $(inst.symbol) must set margin_mode."))
     elseif kind == ContractKind.Perpetual
         settlement == SettlementStyle.VariationMargin || throw(ArgumentError("Perpetual instrument $(inst.symbol) must use VariationMargin settlement."))

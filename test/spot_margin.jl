@@ -11,7 +11,7 @@ using TestItemRunner
         :SPOTM,
         :USD;
         contract_kind=ContractKind.Spot,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.25,
@@ -29,26 +29,26 @@ using TestItemRunner
 
     usd = cash_asset(acc, :USD)
 
-    @test cash_balance(acc, usd) ≈ 10_000.0 atol=1e-8
+    @test cash_balance(acc, usd) ≈ -10_000.0 atol=1e-8
     @test equity(acc, usd) ≈ 10_000.0 atol=1e-8
     @test init_margin_used(acc, usd) ≈ 10_000.0 atol=1e-8
     @test available_funds(acc, usd) ≈ 0.0 atol=1e-8
     @test maint_margin_used(acc, usd) ≈ 5_000.0 atol=1e-8
 end
 
-@testitem "Margin spot long accrues financing interest" begin
+@testitem "Margin spot long accrues borrow interest" begin
     using Test, Fastback, Dates
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
-    set_interest_rates!(acc, :USD; borrow=0.0, lend=0.10)
+    set_interest_rates!(acc, :USD; borrow=0.10, lend=0.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("SPOTML/USD"),
         :SPOTML,
         :USD;
         contract_kind=ContractKind.Spot,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.25,
@@ -67,7 +67,7 @@ end
     bal_before = cash_balance(acc, usd)
     eq_before = equity(acc, usd)
 
-    @test bal_before ≈ 10_000.0 atol=1e-8
+    @test bal_before ≈ -10_000.0 atol=1e-8
     @test eq_before ≈ 10_000.0 atol=1e-8
 
     accrue_interest!(acc, dt0) # initialize clock
@@ -83,7 +83,7 @@ end
     @test equity(acc, usd) ≈ eq_before + expected_interest atol=1e-8
 
     cf = only(acc.cashflows)
-    @test cf.kind == CashflowKind.Interest
+    @test cf.kind == CashflowKind.BorrowInterest
     @test cf.cash_index == usd.index
     @test cf.amount ≈ expected_interest atol=1e-8
     @test cf.inst_index == 0
@@ -100,7 +100,7 @@ end
         :SPOTMS,
         :USD;
         contract_kind=ContractKind.Spot,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.25,
@@ -119,9 +119,10 @@ end
     usd = cash_asset(acc, :USD)
     usd_idx = usd.index
 
-    # Equity should remain the original deposit after opening the short
-    @test cash_balance(acc, usd) ≈ 10_000.0 atol=1e-8
-    @test get_position(acc, inst).value_quote ≈ 0.0 atol=1e-8
+    # Equity should remain the original deposit after opening the short.
+    # Cash increases from short proceeds and is offset by negative position value.
+    @test cash_balance(acc, usd) ≈ 30_000.0 atol=1e-8
+    @test get_position(acc, inst).value_quote ≈ -20_000.0 atol=1e-8
     @test equity(acc, usd) ≈ 10_000.0 atol=1e-8
     @test init_margin_used(acc, usd) ≈ 10_000.0 atol=1e-8
 
@@ -131,7 +132,7 @@ end
     accrue_borrow_fees!(acc, dt1)
 
     expected_fee = 20_000.0 * 0.10 / 365.0
-    @test acc.balances[usd_idx] ≈ 10_000.0 - expected_fee atol=1e-6
+    @test acc.balances[usd_idx] ≈ 30_000.0 - expected_fee atol=1e-6
     @test acc.equities[usd_idx] ≈ 10_000.0 - expected_fee atol=1e-6
     cf = only(acc.cashflows)
     @test cf.kind == CashflowKind.BorrowFee
@@ -152,7 +153,7 @@ end
         :SPOTMSI,
         :USD;
         contract_kind=ContractKind.Spot,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.25,
@@ -172,7 +173,7 @@ end
     bal_before = cash_balance(acc, usd)
     eq_before = equity(acc, usd)
 
-    @test bal_before ≈ 10_000.0 atol=1e-8
+    @test bal_before ≈ 30_000.0 atol=1e-8
     @test eq_before ≈ 10_000.0 atol=1e-8
 
     accrue_interest!(acc, dt0) # prime clocks
@@ -194,7 +195,7 @@ end
     interest_cf = acc.cashflows[1]
     fee_cf = acc.cashflows[2]
 
-    @test interest_cf.kind == CashflowKind.Interest
+    @test interest_cf.kind == CashflowKind.LendInterest
     @test interest_cf.cash_index == usd.index
     @test interest_cf.amount ≈ expected_interest atol=1e-8
 
@@ -222,10 +223,10 @@ end
     usd_idx = usd.index
 
     balance_after_buy = cash_balance(acc, usd)
-    @test balance_after_buy ≈ 10_000.0 atol=1e-8
+    @test balance_after_buy ≈ 5_000.0 atol=1e-8
     pos = get_position(acc, inst)
-    @test pos.value_quote ≈ 0.0 atol=1e-8
-    @test equity(acc, usd) ≈ balance_after_buy atol=1e-8
+    @test pos.value_quote ≈ 5_000.0 atol=1e-8
+    @test equity(acc, usd) ≈ 10_000.0 atol=1e-8
     @test acc.init_margin_used[usd_idx] == 5_000.0
     @test acc.maint_margin_used[usd_idx] == 5_000.0
 
@@ -275,7 +276,7 @@ end
 
     inst = register_instrument!(
         acc,
-        margin_spot_instrument(
+        spot_instrument(
             Symbol("MARGINC/USD"),
             :MARGINC,
             :USD;
@@ -305,6 +306,7 @@ end
     @test trade isa Trade
 
     usd = cash_asset(acc, :USD)
+    @test cash_balance(acc, usd) ≈ 0.0 atol=1e-8
     @test acc.init_margin_used[usd.index] ≈ 10_000.0 atol=1e-8
     @test acc.maint_margin_used[usd.index] ≈ 10_000.0 atol=1e-8
 end
@@ -327,7 +329,7 @@ end
         :SPOTFX,
         :EUR;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Cash,
+        settlement=SettlementStyle.Asset,
         contract_kind=ContractKind.Spot,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
