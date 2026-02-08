@@ -18,11 +18,13 @@ using Random
 
 # ---------------------------------------------------------
 
-## load synthetic daily data
-example_dir = @__DIR__
-voo_path = joinpath(example_dir, "data", "voo_tr_1d.csv")
-es_path = joinpath(example_dir, "data", "es_1d.csv")
+voo_path = "data/voo_tr_1d.csv";
+es_path = "data/es_1d.csv";
 
+## if data path doesn't exist, try to change working directory
+isfile(voo_path) || cd("src/examples")
+
+## load synthetic daily data
 voo_df = DataFrame(CSV.File(voo_path; dateformat="yyyy-mm-dd"))
 es_df = DataFrame(CSV.File(es_path; dateformat="yyyy-mm-dd"))
 
