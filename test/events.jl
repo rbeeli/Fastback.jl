@@ -333,6 +333,69 @@ end
     borrow_cf = only(borrow_cfs)
     @test borrow_cf.amount ≈ -expected_fee atol=1e-10
 end
+
+@testitem "process_step! accrues borrow fees before same-step FX updates" begin
+    using Test, Fastback, Dates
+
+    function setup_short_account()
+        er = SpotExchangeRates()
+        acc = Account(; mode=AccountMode.Margin, base_currency=:CHF, exchange_rates=er)
+        usd = Cash(:USD)
+        chf = Cash(:CHF)
+        deposit!(acc, usd, 0.0)
+        deposit!(acc, chf, 50_000.0)
+
+        update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), 1.0)
+
+        inst = register_instrument!(
+            acc,
+            Instrument(
+                Symbol("BORROWFX/USDCHF"),
+                :BORROWFX,
+                :USD;
+                settle_symbol=:CHF,
+                settlement=SettlementStyle.Asset,
+                margin_mode=MarginMode.PercentNotional,
+                margin_init_long=0.1,
+                margin_init_short=0.1,
+                margin_maint_long=0.1,
+                margin_maint_short=0.1,
+                short_borrow_rate=0.50,
+            ),
+        )
+
+        dt0 = DateTime(2026, 1, 1)
+        fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, -10.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+        process_step!(acc, dt0) # initialize accrual clocks
+
+        return acc, inst, dt0
+    end
+
+    acc_step, inst_step, dt0 = setup_short_account()
+    acc_manual, inst_manual, _ = setup_short_account()
+    dt1 = dt0 + Day(1)
+
+    # Path A: `process_step!` with same-step FX update.
+    fx_updates = [FXUpdate(cash_asset(acc_step, :USD).index, cash_asset(acc_step, :CHF).index, 2.0)]
+    process_step!(acc_step, dt1; fx_updates=fx_updates)
+
+    # Path B: manual loop with accrual first, then FX.
+    advance_time!(acc_manual, dt1)
+    update_rate!(acc_manual.exchange_rates, cash_asset(acc_manual, :USD), cash_asset(acc_manual, :CHF), 2.0)
+
+    borrow_step = only(filter(cf -> cf.kind == CashflowKind.BorrowFee, acc_step.cashflows))
+    borrow_manual = only(filter(cf -> cf.kind == CashflowKind.BorrowFee, acc_manual.cashflows))
+
+    yearfrac = 1 / 365
+    expected_old_fx = -abs(-10.0) * 100.0 * inst_step.multiplier * inst_step.short_borrow_rate * yearfrac * 1.0
+    expected_new_fx = -abs(-10.0) * 100.0 * inst_manual.multiplier * inst_manual.short_borrow_rate * yearfrac * 2.0
+
+    @test borrow_step.amount ≈ expected_old_fx atol=1e-10
+    @test borrow_manual.amount ≈ expected_old_fx atol=1e-10
+    @test borrow_step.amount ≈ borrow_manual.amount atol=1e-10
+    @test !isapprox(borrow_step.amount, expected_new_fx; atol=1e-12, rtol=1e-12)
+end
+
 @testitem "process_step! rejects backward time" begin
     using Test, Fastback, Dates
 

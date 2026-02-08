@@ -37,7 +37,7 @@ process_step!(acc, dt; fx_updates=fx_updates, marks=marks, funding=funding, expi
 
 Notes:
 
-- `process_step!` enforces non-decreasing timestamps and accrues interest/borrow fees.
+- `process_step!` enforces non-decreasing timestamps and accrues interest/borrow fees before same-step FX/mark updates.
 - FX updates require `SpotExchangeRates` on the account.
 - Orders are filled separately with `fill_order!`.
 

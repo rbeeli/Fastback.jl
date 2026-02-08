@@ -170,15 +170,15 @@ Throws `OrderRejectError` if expiry settlement or liquidation fills are rejected
 Borrow-fee accrual uses per-position clocks; fills also advance/reset those clocks.
 
 Timing convention:
-- Interest/borrow-fee accrual runs before new marks.
-- Therefore, accrual over `(t_prev, t]` uses the previously stored balances/prices,
-  and the marks passed for `dt` apply to subsequent valuation windows.
+- Interest/borrow-fee accrual runs before new marks and before FX updates.
+- Therefore, accrual over `(t_prev, t]` uses the previously stored balances/prices/FX,
+  and updates passed for `dt` apply to subsequent valuation windows.
 
 Ordering:
 1. Enforce non-decreasing time
-2. Apply FX updates
-3. Revalue FX caches (`_revalue_fx_caches!`)
-4. Accrue interest then borrow fees (`accrue_interest!`, `accrue_borrow_fees!`)
+2. Accrue interest then borrow fees (`accrue_interest!`, `accrue_borrow_fees!`)
+3. Apply FX updates
+4. Revalue FX caches (`_revalue_fx_caches!`)
 5. Apply mark updates (`update_marks!`)
 6. Apply funding updates (`apply_funding!`)
 7. Process expiries (`process_expiries!`)
@@ -203,6 +203,9 @@ function process_step!(
     (last_dt != TTime(0) && dt < last_dt) &&
         throw(ArgumentError("Event datetime $(dt) precedes last event $(last_dt)."))
 
+    accrue_interest && accrue_interest!(acc, dt)
+    accrue_borrow_fees && accrue_borrow_fees!(acc, dt)
+
     if fx_updates !== nothing
         er = acc.exchange_rates
         er isa SpotExchangeRates || throw(ArgumentError("FX updates require SpotExchangeRates on the account."))
@@ -213,9 +216,6 @@ function process_step!(
         end
         isempty(fx_updates) || _revalue_fx_caches!(acc)
     end
-
-    accrue_interest && accrue_interest!(acc, dt)
-    accrue_borrow_fees && accrue_borrow_fees!(acc, dt)
 
     if marks !== nothing
         @inbounds for m in marks

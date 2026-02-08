@@ -42,8 +42,8 @@ The engine is driven by explicit events.
 A typical loop is:
 
 1. Advance time (enforced non-decreasing timestamps): `advance_time!`.
-2. Apply FX updates if you run multi-currency: `update_rate!` (or `process_step!` with `FXUpdate`).
-3. Accrue interest and borrow fees as needed: `accrue_interest!`, `accrue_borrow_fees!`.
+2. Accrue interest and borrow fees as needed: `accrue_interest!`, `accrue_borrow_fees!`.
+3. Apply FX updates if you run multi-currency: `update_rate!` (or `process_step!` with `FXUpdate`).
 4. Mark positions with bid/ask/last prices: `update_marks!`.
 5. Apply funding events (perpetuals): `apply_funding!`.
 6. Process expiries (futures): `process_expiries!`.
