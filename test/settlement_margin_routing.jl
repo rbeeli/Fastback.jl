@@ -169,6 +169,51 @@ end
     @test init_margin_used_base_ccy(acc) ≈ expected_margin_eur * 1.1 atol=1e-8
 end
 
+@testitem "Per-currency fill rejects immediate settlement-currency deficit when margin currency differs" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
+    register_cash_asset!(acc, Cash(:USD))
+    register_cash_asset!(acc, Cash(:EUR))
+    deposit!(acc, cash_asset(acc, :USD), 0.0)
+    deposit!(acc, cash_asset(acc, :EUR), 1_000.0)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1) # EUR -> USD
+
+    inst = Instrument(Symbol("PCUR/SETTLEDEF"), :PCUR, :USD;
+        settle_symbol=:USD,
+        margin_symbol=:EUR,
+        contract_kind=ContractKind.Spot,
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=1.0,
+        margin_maint_long=0.5,
+        margin_init_short=1.0,
+        margin_maint_short=0.5,
+        multiplier=1.0,
+    )
+    register_instrument!(acc, inst)
+
+    # Notional 11*100=1100 USD -> 1000 EUR margin requirement, fully covered by EUR equity.
+    # But 50 USD commission would push USD post-fill equity below zero.
+    dt = DateTime(2026, 1, 1)
+    order = Order(oid!(acc), inst, dt, 100.0, 11.0)
+    err = try
+        fill_order!(acc, order; dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0, commission=50.0)
+        nothing
+    catch e
+        e
+    end
+
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.InsufficientInitialMargin
+    @test isempty(acc.trades)
+    @test cash_balance(acc, :USD) == 0.0
+    @test cash_balance(acc, :EUR) == 1_000.0
+    @test init_margin_used(acc, :USD) == 0.0
+    @test init_margin_used(acc, :EUR) == 0.0
+end
+
 @testitem "FX conversion applied to settlement currency" begin
     using Test, Fastback, Dates
 
