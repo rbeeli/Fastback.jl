@@ -18,9 +18,9 @@ mutable struct Trade{TTime<:Dates.AbstractTime}
 end
 
 """
-Nominal trade value in quote currency (abs qty × price × multiplier).
+Nominal trade value in quote currency (abs qty × abs price × multiplier).
 """
-@inline nominal_value(t::Trade) = t.fill_price * abs(t.fill_qty) * t.order.inst.multiplier
+@inline nominal_value(t::Trade) = abs(t.fill_price) * abs(t.fill_qty) * t.order.inst.multiplier
 
 """
 Return `true` if the trade realizes any P&L.

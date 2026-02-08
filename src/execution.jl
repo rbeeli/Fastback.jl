@@ -52,8 +52,12 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     pos_avg_entry_price_settle = pos.avg_entry_price_settle
     pos_avg_settle_price = pos.avg_settle_price
     inc_qty = calc_exposure_increase_quantity(pos_qty, fill_qty)
-    nominal_value_quote = fill_price * abs(fill_qty) * inst.multiplier
+
+    # Percentage commissions should be based on absolute traded notional,
+    # including contracts that can trade at negative prices.
+    nominal_value_quote = abs(fill_price) * abs(fill_qty) * inst.multiplier
     commission_total_quote = commission + commission_pct * nominal_value_quote
+    
     fill_price_settle = to_settle(acc, inst, fill_price)
 
     realized_qty = calc_realized_qty(pos_qty, fill_qty)

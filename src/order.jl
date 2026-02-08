@@ -66,9 +66,9 @@ A zero quantity indicates no position (i.e., flat) -> TradeDir.Null.
 @inline trade_dir(order::Order) = trade_dir(order.quantity)
 
 """
-Nominal order value in quote currency (abs(qty) * price * multiplier).
+Nominal order value in quote currency (abs(qty) * abs(price) * multiplier).
 """
-@inline nominal_value(order::Order) = abs(order.quantity) * order.price * order.inst.multiplier
+@inline nominal_value(order::Order) = abs(order.quantity) * abs(order.price) * order.inst.multiplier
 
 function Base.show(io::IO, o::Order{TTime}) where {TTime}
     date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS")

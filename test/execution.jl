@@ -408,6 +408,62 @@ end
     @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
 end
 
+@testitem "commission_pct uses absolute notional for negative prices" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    usd = Cash(:USD)
+    deposit!(acc, usd, 1_000.0)
+
+    inst = register_instrument!(
+        acc,
+        Instrument(
+            Symbol("NEGVM/USD"),
+            :NEGVM,
+            :USD;
+            contract_kind=ContractKind.Perpetual,
+            settlement=SettlementStyle.VariationMargin,
+            margin_mode=MarginMode.PercentNotional,
+            margin_init_long=0.1,
+            margin_init_short=0.1,
+            margin_maint_long=0.05,
+            margin_maint_short=0.05,
+        ),
+    )
+    pos = get_position(acc, inst)
+
+    dt = DateTime(2026, 1, 1)
+    fill_price = -10.0
+    fill_qty = 1.0
+    commission_pct = 0.01
+    order = Order(oid!(acc), inst, dt, fill_price, fill_qty)
+
+    plan = plan_fill(
+        acc,
+        pos,
+        order,
+        dt,
+        fill_price,
+        fill_price,
+        fill_price,
+        fill_qty,
+        0.0,
+        commission_pct,
+    )
+
+    @test nominal_value(order) ≈ 10.0 atol=1e-12
+    @test plan.commission ≈ 0.1 atol=1e-12
+    @test plan.cash_delta ≈ -0.1 atol=1e-12
+
+    cash_before = cash_balance(acc, usd)
+    trade = fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=fill_price, ask=fill_price, last=fill_price, commission_pct=commission_pct)
+
+    @test nominal_value(trade) ≈ 10.0 atol=1e-12
+    @test trade.commission_settle ≈ 0.1 atol=1e-12
+    @test trade.cash_delta_settle ≈ -0.1 atol=1e-12
+    @test cash_balance(acc, usd) ≈ cash_before - 0.1 atol=1e-12
+end
+
 @testitem "fill_order! rejects non-finite price inputs" begin
     using Test, Fastback, Dates
 
