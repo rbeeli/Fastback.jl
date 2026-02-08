@@ -94,6 +94,18 @@ end
     register_instrument!(acc, good_fixed)
 end
 
+@testitem "Multiplier must be finite and positive at instrument creation" begin
+    using Test, Fastback
+
+    @test_throws ArgumentError Instrument(Symbol("MUL/ZERO"), :MUL, :USD; multiplier=0.0)
+    @test_throws ArgumentError Instrument(Symbol("MUL/NEG"), :MUL, :USD; multiplier=-1.0)
+    @test_throws ArgumentError Instrument(Symbol("MUL/NAN"), :MUL, :USD; multiplier=NaN)
+    @test_throws ArgumentError Instrument(Symbol("MUL/INF"), :MUL, :USD; multiplier=Inf)
+
+    inst = Instrument(Symbol("MUL/OK"), :MUL, :USD; multiplier=2.0)
+    @test inst.multiplier == 2.0
+end
+
 @testitem "Perpetual validations" begin
     using Test, Fastback, Dates
 

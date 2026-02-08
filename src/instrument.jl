@@ -60,6 +60,9 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         start_time::TTime=time_type(0),
         expiry::TTime=time_type(0),
     ) where {TTime<:Dates.AbstractTime}
+        isfinite(multiplier) || throw(ArgumentError("Instrument $(symbol) must set finite multiplier."))
+        multiplier > 0.0 || throw(ArgumentError("Instrument $(symbol) must set positive multiplier."))
+
         new{TTime}(
             0, # index
             symbol,
