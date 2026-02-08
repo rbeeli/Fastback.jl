@@ -45,7 +45,7 @@ acc = Account(; mode=AccountMode.Margin, base_currency=:USD);
 deposit!(acc, Cash(:USD), 10_000.0);
 
 ## register instruments for all symbols
-instruments = map(sym -> Instrument(sym, sym, :USD; margin_mode=MarginMode.PercentNotional), symbols);
+instruments = map(sym -> spot_instrument(sym, sym, :USD), symbols);
 register_instrument!.(Ref(acc), instruments);
 
 ## data collector for account balance, equity and drawdowns (sampling every day)

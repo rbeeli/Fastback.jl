@@ -6,7 +6,7 @@ using TestItemRunner
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
-    inst = register_instrument!(acc, Instrument(Symbol("PERF/USD"), :PERF, :USD; margin_mode=MarginMode.PercentNotional))
+    inst = register_instrument!(acc, spot_instrument(Symbol("PERF/USD"), :PERF, :USD))
     pos = get_position(acc, inst)
 
     dt0 = DateTime(2026, 1, 1)
@@ -25,7 +25,7 @@ end
     function setup_account()
         acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
         deposit!(acc, Cash(:USD), 10_000.0)
-        inst = register_instrument!(acc, Instrument(Symbol("PERFFILL/USD"), :PERFFILL, :USD; margin_mode=MarginMode.PercentNotional))
+        inst = register_instrument!(acc, spot_instrument(Symbol("PERFFILL/USD"), :PERFFILL, :USD))
         dt0 = DateTime(2026, 1, 1)
         update_marks!(acc, get_position(acc, inst), dt0, 100.0, 100.0, 100.0)
         fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
@@ -61,7 +61,7 @@ end
     alloc = let
         acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
         deposit!(acc, Cash(:USD), 10_000.0)
-        inst = register_instrument!(acc, Instrument(Symbol("PERFSTEP/USD"), :PERFSTEP, :USD; margin_mode=MarginMode.PercentNotional))
+        inst = register_instrument!(acc, spot_instrument(Symbol("PERFSTEP/USD"), :PERFSTEP, :USD))
         pos = get_position(acc, inst)
 
         dt0 = DateTime(2026, 1, 1)

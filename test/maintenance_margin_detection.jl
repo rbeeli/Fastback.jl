@@ -13,7 +13,9 @@ using TestItemRunner
         settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.5,
+        margin_init_short=0.5,
         margin_maint_long=0.25,
+        margin_maint_short=0.25,
     ))
 
     dt = DateTime(2024, 1, 1)

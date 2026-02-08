@@ -50,10 +50,10 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         margin_symbol::Symbol=settle_symbol,
         settlement::SettlementStyle.T=SettlementStyle.Asset,
         margin_mode::MarginMode.T=MarginMode.None,
-        margin_init_long::Price=0.0,
-        margin_init_short::Price=0.0,
-        margin_maint_long::Price=0.0,
-        margin_maint_short::Price=0.0,
+        margin_init_long::Price=Price(NaN),
+        margin_init_short::Price=Price(NaN),
+        margin_maint_long::Price=Price(NaN),
+        margin_maint_short::Price=Price(NaN),
         short_borrow_rate::Price=0.0,
         multiplier::Float64=1.0,
         time_type::Type{TTime}=DateTime,
@@ -62,6 +62,12 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
     ) where {TTime<:Dates.AbstractTime}
         isfinite(multiplier) || throw(ArgumentError("Instrument $(symbol) must set finite multiplier."))
         multiplier > 0.0 || throw(ArgumentError("Instrument $(symbol) must set positive multiplier."))
+        if isnan(margin_init_long) != isnan(margin_init_short)
+            throw(ArgumentError("Instrument $(symbol) must set both margin_init_long and margin_init_short, or neither."))
+        end
+        if isnan(margin_maint_long) != isnan(margin_maint_short)
+            throw(ArgumentError("Instrument $(symbol) must set both margin_maint_long and margin_maint_short, or neither."))
+        end
 
         new{TTime}(
             0, # index
@@ -351,7 +357,7 @@ function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.Abstra
         ("margin_maint_long", inst.margin_maint_long),
         ("margin_maint_short", inst.margin_maint_short),
     )
-        isfinite(value) || throw(ArgumentError("Instrument $(inst.symbol) must set finite $(name)."))
+        isfinite(value) || throw(ArgumentError("Instrument $(inst.symbol) must explicitly set finite $(name)."))
         value >= 0.0 || throw(ArgumentError("Instrument $(inst.symbol) must set non-negative $(name)."))
     end
 

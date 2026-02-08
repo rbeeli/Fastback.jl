@@ -6,8 +6,8 @@ using TestItemRunner
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
 
-    inst1 = register_instrument!(acc, Instrument(Symbol("A/USD"), :A, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_maint_long=0.05))
-    inst2 = register_instrument!(acc, Instrument(Symbol("B/USD"), :B, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_maint_long=0.05))
+    inst1 = register_instrument!(acc, Instrument(Symbol("A/USD"), :A, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_init_short=0.1, margin_maint_long=0.05, margin_maint_short=0.05))
+    inst2 = register_instrument!(acc, Instrument(Symbol("B/USD"), :B, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_init_short=0.1, margin_maint_long=0.05, margin_maint_short=0.05))
 
     dt = DateTime(2024, 1, 1)
     fill_order!(acc, Order(oid!(acc), inst1, dt, 100.0, 10.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
@@ -27,7 +27,7 @@ end
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 5_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("C/USD"), :C, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_maint_long=0.05))
+    inst = register_instrument!(acc, Instrument(Symbol("C/USD"), :C, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_init_short=0.1, margin_maint_long=0.05, margin_maint_short=0.05))
 
     dt = DateTime(2024, 1, 1)
     fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 10.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)

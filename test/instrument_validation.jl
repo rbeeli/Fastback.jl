@@ -39,7 +39,9 @@ end
         settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.None,
         margin_init_long=0.1,
+        margin_init_short=0.1,
         margin_maint_long=0.05,
+        margin_maint_short=0.05,
     )
 
     @test_throws ArgumentError register_instrument!(acc, nonzero_margin)
@@ -51,10 +53,19 @@ end
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 0.0)
 
+    bad_missing = Instrument(Symbol("MISS/RATES"), :MISS, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+    )
+    @test_throws ArgumentError register_instrument!(acc, bad_missing)
+
     bad_negative = Instrument(Symbol("NEG/RATES"), :NEG, :USD;
         settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=-0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
     )
     @test_throws ArgumentError register_instrument!(acc, bad_negative)
 
@@ -62,6 +73,9 @@ end
         settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=NaN,
+        margin_init_short=NaN,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
     )
     @test_throws ArgumentError register_instrument!(acc, bad_non_finite)
 
@@ -69,7 +83,9 @@ end
         settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
+        margin_init_short=0.1,
         margin_maint_long=0.2,
+        margin_maint_short=0.05,
     )
     @test_throws ArgumentError register_instrument!(acc, bad_ordering)
 
@@ -82,6 +98,13 @@ end
         margin_maint_short=9.0,
     )
     @test_throws ArgumentError register_instrument!(acc, bad_fixed_ordering)
+
+    @test_throws ArgumentError Instrument(Symbol("SYM/BAD"), :SYM, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.2,
+        margin_maint_long=0.1,
+    )
 
     good_fixed = Instrument(Symbol("FIX/OK"), :FIXOK, :USD;
         settlement=SettlementStyle.Asset,
@@ -116,6 +139,10 @@ end
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
     )
     @test_throws ArgumentError register_instrument!(acc, bad_settle)
 
@@ -123,6 +150,10 @@ end
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
         expiry=DateTime(2026, 1, 1),
     )
     @test_throws ArgumentError register_instrument!(acc, bad_expiry)
@@ -137,6 +168,10 @@ end
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
     )
     register_instrument!(acc, good)
 end
@@ -151,6 +186,10 @@ end
         contract_kind=ContractKind.Future,
         settlement=SettlementStyle.Asset,
         margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
         expiry=DateTime(2026, 1, 2),
     )
     @test_throws ArgumentError register_instrument!(acc, bad_settle)
@@ -159,6 +198,10 @@ end
         contract_kind=ContractKind.Future,
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
     )
     @test_throws ArgumentError register_instrument!(acc, bad_expiry)
 
@@ -173,6 +216,10 @@ end
         contract_kind=ContractKind.Future,
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
         expiry=DateTime(2026, 1, 2),
     )
     register_instrument!(acc, good)
@@ -207,6 +254,10 @@ end
     inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
         settle_symbol=:EUR,
         margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
     )
 
     register_instrument!(acc, inst)
@@ -226,6 +277,10 @@ end
     inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
         settle_symbol=:EUR,
         margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
     )
 
     @test_throws ArgumentError register_instrument!(acc, inst)
@@ -242,6 +297,10 @@ end
         settle_symbol=:USD,
         margin_symbol=:GBP,
         margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
     )
 
     @test_throws ArgumentError register_instrument!(acc, inst)

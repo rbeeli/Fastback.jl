@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
     acc = Account(; base_currency=:USD);
     deposit!(acc, Cash(:USD), 100_000.0)
-    TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD; margin_mode=MarginMode.PercentNotional))
+    TEST = register_instrument!(acc, spot_instrument(Symbol("TEST/USD"), :TEST, :USD))
     px1, px2 = 500.0, 505.0
     # long
     pos = Position{DateTime}(1, TEST; avg_entry_price=px1, avg_settle_price=px1, quantity=500.0)
@@ -19,7 +19,7 @@ end
     using Test, Fastback, Dates
     acc = Account(; base_currency=:USD);
     deposit!(acc, Cash(:USD), 100_000.0)
-    TEST = register_instrument!(acc, Instrument(Symbol("TEST/USD"), :TEST, :USD; margin_mode=MarginMode.PercentNotional))
+    TEST = register_instrument!(acc, spot_instrument(Symbol("TEST/USD"), :TEST, :USD))
     px1, px2 = 500.0, 505.0
     # short
     pos = Position{DateTime}(2, TEST; avg_entry_price=px1, avg_settle_price=px1, quantity=-500.0)
@@ -79,7 +79,13 @@ end
     using Test, Fastback
 
     bad_mode = Core.Intrinsics.bitcast(MarginMode.T, Int8(7))
-    inst = Instrument(Symbol("BAD/USD"), :BAD, :USD; margin_mode=bad_mode)
+    inst = Instrument(Symbol("BAD/USD"), :BAD, :USD;
+        margin_mode=bad_mode,
+        margin_init_long=1.0,
+        margin_init_short=1.0,
+        margin_maint_long=1.0,
+        margin_maint_short=1.0,
+    )
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     register_cash_asset!(acc, Cash(:USD))

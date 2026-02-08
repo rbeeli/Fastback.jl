@@ -48,9 +48,9 @@ show(er)
 
 ## register stock instruments 
 instruments = [
-    register_instrument!(acc, Instrument(:TSLA, :TSLA, :USD; margin_mode=MarginMode.PercentNotional)), # Tesla (USD denominated)
-    register_instrument!(acc, Instrument(:POAHY, :POAHY, :EUR; margin_mode=MarginMode.PercentNotional)), # Porsche (EUR denominated)
-    register_instrument!(acc, Instrument(:TSCO_L, :TSCO_L, :GBP; margin_mode=MarginMode.PercentNotional)), # Tesco (GBP denominated)
+    register_instrument!(acc, spot_instrument(:TSLA, :TSLA, :USD)), # Tesla (USD denominated)
+    register_instrument!(acc, spot_instrument(:POAHY, :POAHY, :EUR)), # Porsche (EUR denominated)
+    register_instrument!(acc, spot_instrument(:TSCO_L, :TSCO_L, :GBP)), # Tesco (GBP denominated)
 ];
 
 ## data collector for account equity and drawdowns (sampling every hour)

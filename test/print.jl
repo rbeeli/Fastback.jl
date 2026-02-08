@@ -8,7 +8,7 @@ end
 
 @testitem "Print Instrument" begin
     using Test, Fastback
-    show(Instrument(Symbol("TEST/USD"), :TEST, :USD; margin_mode=MarginMode.PercentNotional))
+    show(spot_instrument(Symbol("TEST/USD"), :TEST, :USD))
 end
 
 @testitem "Print Order" begin
@@ -16,7 +16,7 @@ end
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
-    DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD; margin_mode=MarginMode.PercentNotional))
+    DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0
     quantity = 1.0
     dt = DateTime(2021, 1, 1, 0, 0, 0)
@@ -28,7 +28,7 @@ end
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 10_000.0)
-    DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD; margin_mode=MarginMode.PercentNotional))
+    DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0
     quantity = 1.0
     dt = DateTime(2021, 1, 1, 0, 0, 0)

@@ -18,7 +18,9 @@ using TestItemRunner
             settlement=SettlementStyle.VariationMargin,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.1,
+            margin_init_short=0.1,
             margin_maint_long=0.05,
+            margin_maint_short=0.05,
         ),
     )
 
@@ -72,7 +74,9 @@ end
             settlement=SettlementStyle.VariationMargin,
             margin_mode=MarginMode.PercentNotional,
             margin_init_long=0.1,
+            margin_init_short=0.1,
             margin_maint_long=0.05,
+            margin_maint_short=0.05,
             multiplier=1.0,
         ),
     )

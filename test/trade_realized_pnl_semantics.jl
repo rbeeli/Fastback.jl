@@ -10,12 +10,10 @@ using TestItemRunner
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        spot_instrument(
             Symbol("OPN/USD"),
             :OPN,
-            :USD;
-            settlement=SettlementStyle.Asset,
-            margin_mode=MarginMode.PercentNotional,
+            :USD,
         ),
     )
 
@@ -42,12 +40,10 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        spot_instrument(
             Symbol("CLS/USD"),
             :CLS,
-            :USD;
-            settlement=SettlementStyle.Asset,
-            margin_mode=MarginMode.PercentNotional,
+            :USD,
         ),
     )
 
@@ -85,12 +81,10 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        spot_instrument(
             Symbol("RET/USD"),
             :RET,
-            :USD;
-            settlement=SettlementStyle.Asset,
-            margin_mode=MarginMode.PercentNotional,
+            :USD,
         ),
     )
 

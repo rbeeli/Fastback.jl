@@ -26,8 +26,8 @@ acc = Account(; mode=AccountMode.Margin, base_currency=:USD);
 deposit!(acc, Cash(:USD), 5_000.0);
 
 ## register instruments
-AAPL = register_instrument!(acc, Instrument(Symbol("AAPL/USD"), :AAPL, :USD; margin_mode=MarginMode.PercentNotional));
-MSFT = register_instrument!(acc, Instrument(Symbol("MSFT/USD"), :MSFT, :USD; margin_mode=MarginMode.PercentNotional));
+AAPL = register_instrument!(acc, spot_instrument(Symbol("AAPL/USD"), :AAPL, :USD));
+MSFT = register_instrument!(acc, spot_instrument(Symbol("MSFT/USD"), :MSFT, :USD));
 
 ## data collectors
 collect_equity, equity_data = periodic_collector(Float64, Hour(12));

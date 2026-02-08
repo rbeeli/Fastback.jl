@@ -18,7 +18,7 @@ end
 
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 1_000.0)
-    inst = register_instrument!(acc, Instrument(Symbol("META/USD"), :META, :USD; margin_mode=MarginMode.PercentNotional))
+    inst = register_instrument!(acc, spot_instrument(Symbol("META/USD"), :META, :USD))
 
     dt = DateTime(2025, 1, 1)
     order = Order{DateTime}(oid!(acc), inst, dt, 10.0, 1.0)
@@ -38,12 +38,12 @@ end
     # register a different cash asset to ensure missing quote currency is detected
     deposit!(acc, Cash(:EUR), 100.0)
 
-    inst = Instrument(Symbol("MISS/USD"), :MISS, :USD; margin_mode=MarginMode.PercentNotional)
+    inst = spot_instrument(Symbol("MISS/USD"), :MISS, :USD)
     @test_throws ArgumentError register_instrument!(acc, inst)
 
     # once the quote cash asset is registered, the instrument should register successfully
     deposit!(acc, Cash(:USD), 0.0)
-    inst2 = Instrument(Symbol("MISS/USD"), :MISS, :USD; margin_mode=MarginMode.PercentNotional)
+    inst2 = spot_instrument(Symbol("MISS/USD"), :MISS, :USD)
     registered = register_instrument!(acc, inst2)
     @test registered === inst2
     @test get_position(acc, inst2).inst === inst2
@@ -59,7 +59,7 @@ end
     @test equity(acc, :USD) == 100_000.0
     @test length(acc.cash) == 1
     # create instrument
-    DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD; margin_mode=MarginMode.PercentNotional))
+    DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     pos = get_position(acc, DUMMY)
     # generate data
     dates = collect(DateTime(2018, 1, 2):Day(1):DateTime(2018, 1, 4))
@@ -191,7 +191,7 @@ end
     @test equity(acc, :USD) == 100_000.0
     @test length(acc.cash) == 1
     # create instrument
-    DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD; margin_mode=MarginMode.PercentNotional))
+    DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     pos = get_position(acc, DUMMY)
     # generate data
     dates = collect(DateTime(2018, 1, 2):Day(1):DateTime(2018, 1, 4))
@@ -236,7 +236,7 @@ end
     @test equity(acc, :USD) == 100_000.0
     @test length(acc.cash) == 1
     # create instrument
-    DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD; margin_mode=MarginMode.PercentNotional))
+    DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     pos = get_position(acc, DUMMY)
     # generate data
     dates = collect(DateTime(2018, 1, 2):Day(1):DateTime(2018, 1, 4))
@@ -277,7 +277,7 @@ end
     acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
     deposit!(acc, Cash(:USD), 100_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("MULTI/USD"), :MULTI, :USD; multiplier=10.0, margin_mode=MarginMode.PercentNotional))
+    inst = register_instrument!(acc, spot_instrument(Symbol("MULTI/USD"), :MULTI, :USD; multiplier=10.0))
 
     dates = collect(DateTime(2018, 1, 2):Day(1):DateTime(2018, 1, 3))
     price = 100.0
@@ -474,7 +474,9 @@ end
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
+        margin_init_short=0.1,
         margin_maint_long=0.05,
+        margin_maint_short=0.05,
         start_time=start_dt,
         expiry=expiry_dt,
     ))
@@ -585,7 +587,9 @@ end
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
+        margin_init_short=0.1,
         margin_maint_long=0.05,
+        margin_maint_short=0.05,
     ))
 
     dt = DateTime(2026, 1, 1)
@@ -608,7 +612,9 @@ end
         :USD;
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.2,
-        margin_maint_long=0.1
+        margin_init_short=0.2,
+        margin_maint_long=0.1,
+        margin_maint_short=0.1
     ))
 
     dt = DateTime(2026, 1, 1)
@@ -642,7 +648,9 @@ end
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
+        margin_init_short=0.1,
         margin_maint_long=0.05,
+        margin_maint_short=0.05,
         start_time=start_dt,
         expiry=expiry_dt,
     ))
@@ -689,7 +697,9 @@ end
         settlement=SettlementStyle.VariationMargin,
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
+        margin_init_short=0.1,
         margin_maint_long=0.05,
+        margin_maint_short=0.05,
         start_time=start_dt,
         expiry=expiry_dt,
     ))
@@ -802,7 +812,9 @@ end
         :USD;
         margin_mode=MarginMode.PercentNotional,
         margin_init_long=0.1,
+        margin_init_short=0.1,
         margin_maint_long=0.05,
+        margin_maint_short=0.05,
     ))
     pos = get_position(acc, inst)
 
@@ -912,7 +924,7 @@ end
     acc = Account(; mode=AccountMode.Margin, time_type=Date, date_format=dateformat"yyyy-mm-dd", base_currency=:USD)
     deposit!(acc, Cash(:USD), 1_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("DATE/USD"), :DATE, :USD; time_type=Date, margin_mode=MarginMode.PercentNotional))
+    inst = register_instrument!(acc, spot_instrument(Symbol("DATE/USD"), :DATE, :USD; time_type=Date))
 
     d₁ = Date(2020, 1, 1)
     order₁ = Order(oid!(acc), inst, d₁, 10.0, 1.0)

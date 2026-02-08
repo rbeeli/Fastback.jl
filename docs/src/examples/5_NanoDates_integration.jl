@@ -24,7 +24,7 @@ acc = Account(; time_type=NanoDate, mode=AccountMode.Margin, base_currency=:USD)
 deposit!(acc, Cash(:USD), 10_000.0)
 
 ## register a dummy instrument
-DUMMY = register_instrument!(acc, Instrument(Symbol("DUMMY/USD"), :DUMMY, :USD; time_type=NanoDate, margin_mode=MarginMode.PercentNotional))
+DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD; time_type=NanoDate))
 
 ## data collector for account equity and drawdowns (sampling every hour)
 collect_equity, equity_data = periodic_collector(Float64, Hour(1); time_type=NanoDate)
