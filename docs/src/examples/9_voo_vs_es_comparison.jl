@@ -127,7 +127,8 @@ deposit!(acc_voo, USD_voo, initial_cash)
 set_interest_rates!(acc_voo, :USD; borrow=0.06, lend=0.015)
 
 # IBKR-style: VOO (SMART/ARCA), USD stock, 0.01 tick
-# Reg-T margin (approx): 50% init, 25% maint for longs
+# Realistic house-style schedule: 45% init / 25% maint (long),
+# elevated requirements for shorts.
 voo = register_instrument!(acc_voo, spot_instrument(
     :VOO, :VOO, :USD;
     time_type=Date,
@@ -136,10 +137,10 @@ voo = register_instrument!(acc_voo, spot_instrument(
     quote_tick=0.01,
     quote_digits=2,
     margin_mode=MarginMode.PercentNotional,
-    margin_init_long=0.50,
-    margin_init_short=1.50,
+    margin_init_long=0.45,
+    margin_init_short=1.35,
     margin_maint_long=0.25,
-    margin_maint_short=1.30,
+    margin_maint_short=1.20,
 ))
 
 # ---------------------------------------------------------
