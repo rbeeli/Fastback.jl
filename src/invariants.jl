@@ -75,6 +75,9 @@ function check_invariants(acc::Account; atol::Real=1e-9, rtol::Real=1e-9)
             isfinite(pos.mark_price) || throw(AssertionError("Position $(inst.symbol) must have a finite mark_price when exposure is non-zero."))
             isfinite(pos.last_price) || throw(AssertionError("Position $(inst.symbol) must have a finite last_price when exposure is non-zero."))
             pos.mark_time != typeof(pos.mark_time)(0) || throw(AssertionError("Position $(inst.symbol) must have a mark_time when exposure is non-zero."))
+        else
+            isapprox(pos.avg_entry_price_settle, 0.0; atol=atol, rtol=rtol) ||
+                throw(AssertionError("Flat position $(inst.symbol) must have zero avg_entry_price_settle."))
         end
 
         if inst.settlement == SettlementStyle.VariationMargin

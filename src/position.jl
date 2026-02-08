@@ -1,7 +1,8 @@
 """
 Position state tracked per instrument (see currency/unit semantics note in `contract_math.jl`).
 
-- `avg_entry_price` / `avg_settle_price`: `price`
+- `avg_entry_price` / `avg_settle_price`: `price` in quote currency
+- `avg_entry_price_settle`: `price` translated into settlement currency at fill-time FX (used for realized settle P&L on asset settlement)
 - `quantity`: `qty`
 - `pnl_quote`, `pnl_settle`, `value_quote`, `value_settle`: cached valuation in quote/settlement currencies
 - `init_margin_settle`, `maint_margin_settle`: margin currency (defaults to settlement)
@@ -13,6 +14,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
     const index::Int                # unique index for each position starting from 1 (used for array indexing and hashing)
     const inst::Instrument{TTime}
     avg_entry_price::Price
+    avg_entry_price_settle::Price
     avg_settle_price::Price
     quantity::Quantity              # negative = short selling
     pnl_quote::Price                # quote currency P&L
@@ -33,6 +35,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
         inst::Instrument{TTime}
         ;
         avg_entry_price::Price=0.0,
+        avg_entry_price_settle::Price=0.0,
         avg_settle_price::Price=0.0,
         quantity::Quantity=0.0,
         pnl_quote::Price=0.0,
@@ -52,6 +55,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
             index,
             inst,
             avg_entry_price,
+            avg_entry_price_settle,
             avg_settle_price,
             quantity,
             pnl_quote,

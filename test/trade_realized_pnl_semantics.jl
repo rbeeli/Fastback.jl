@@ -108,3 +108,83 @@ end
     @test trade2.realized_pnl_settle == 0.0
     @test realized_return(trade2) == 0.0
 end
+
+@testitem "cross-currency asset realized settle P&L captures principal FX translation" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
+    register_cash_asset!(acc, Cash(:USD))
+    register_cash_asset!(acc, Cash(:EUR))
+    deposit!(acc, cash_asset(acc, :USD), 0.0)
+
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
+    inst = register_instrument!(acc, Instrument(
+        Symbol("FXREAL/EURUSD"),
+        :FXREAL,
+        :EUR;
+        settle_symbol=:USD,
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.0,
+        margin_init_short=0.0,
+        margin_maint_long=0.0,
+        margin_maint_short=0.0,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    open_order = Order(oid!(acc), inst, dt0, 100.0, 1.0)
+    fill_order!(acc, open_order; dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
+    dt1 = dt0 + Day(1)
+    close_order = Order(oid!(acc), inst, dt1, 100.0, -1.0)
+    close_trade = fill_order!(acc, close_order; dt=dt1, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+
+    # Quote P&L is zero, but settlement P&L realizes principal FX move: 100*(1.2-1.1)=10 USD.
+    @test close_trade.realized_pnl_entry ≈ 10.0 atol=1e-12
+    @test close_trade.realized_pnl_settle ≈ 10.0 atol=1e-12
+    @test cash_balance(acc, :USD) ≈ 10.0 atol=1e-12
+end
+
+@testitem "cross-currency scale-in uses settlement-entry basis for realized P&L" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
+    register_cash_asset!(acc, Cash(:USD))
+    register_cash_asset!(acc, Cash(:EUR))
+    deposit!(acc, cash_asset(acc, :USD), 0.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("FXREAL/SCALE"),
+        :FXREAL,
+        :EUR;
+        settle_symbol=:USD,
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.0,
+        margin_init_short=0.0,
+        margin_maint_long=0.0,
+        margin_maint_short=0.0,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+
+    # First entry: 100 EUR @ 1.0 => 100 USD basis.
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.0)
+    fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+
+    # Second entry: 120 EUR @ 2.0 => 240 USD basis, new settle-entry avg = (100+240)/2 = 170.
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 2.0)
+    fill_order!(acc, Order(oid!(acc), inst, dt0 + Hour(1), 120.0, 1.0); dt=dt0 + Hour(1), fill_price=120.0, bid=120.0, ask=120.0, last=120.0)
+
+    # Partial close: 110 EUR @ 1.5 => 165 USD close basis for realized qty 1.
+    # Settlement realized should be 165 - 170 = -5 USD, while quote-basis realized is zero.
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.5)
+    close_trade = fill_order!(acc, Order(oid!(acc), inst, dt0 + Day(1), 110.0, -1.0); dt=dt0 + Day(1), fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
+
+    @test close_trade.realized_pnl_entry ≈ -5.0 atol=1e-12
+    @test close_trade.realized_pnl_settle ≈ -5.0 atol=1e-12
+    @test get_position(acc, inst).avg_entry_price_settle ≈ 170.0 atol=1e-12
+end

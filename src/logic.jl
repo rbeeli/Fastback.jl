@@ -23,6 +23,7 @@
         pos.value_quote = 0.0
         if qty == 0.0
             pos.avg_entry_price = zero(Price)
+            pos.avg_entry_price_settle = zero(Price)
             pos.avg_settle_price = zero(Price)
             pos.pnl_quote = 0.0
             pos.pnl_settle = 0.0
@@ -242,7 +243,8 @@ Requires bid/ask/last to deterministically value positions and compute margin du
         acc.maint_margin_used[margin_cash_index] += plan.maint_margin_delta
     end
 
-    pos.avg_entry_price = plan.new_avg_entry_price
+    pos.avg_entry_price = plan.new_avg_entry_price_quote
+    pos.avg_entry_price_settle = plan.new_avg_entry_price_settle
     pos.avg_settle_price = plan.new_avg_settle_price
     pos.quantity = plan.new_qty
     pos.pnl_quote = plan.new_pnl_quote

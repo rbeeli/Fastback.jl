@@ -41,7 +41,7 @@ using TestItemRunner
     @test plan.realized_pnl_entry == 0.0
     @test plan.realized_pnl_settle == 0.0
     @test plan.new_qty == order.quantity
-    @test plan.new_avg_entry_price == price
+    @test plan.new_avg_entry_price_quote == price
     @test plan.new_value_quote == order.quantity * price * inst.multiplier
     @test plan.new_pnl_quote == 0.0
 
@@ -55,7 +55,7 @@ using TestItemRunner
     @test trade.commission_settle == plan.commission
     @test trade.cash_delta_settle == plan.cash_delta
     @test pos.quantity == plan.new_qty
-    @test pos.avg_entry_price == plan.new_avg_entry_price
+    @test pos.avg_entry_price == plan.new_avg_entry_price_quote
     @test pos.avg_settle_price == pos.avg_entry_price
     @test pos.value_quote == plan.new_value_quote
     @test pos.pnl_quote == plan.new_pnl_quote
@@ -205,7 +205,7 @@ end
     @test plan.realized_pnl_settle == 0.0
     @test plan.cash_delta == -commission
     @test plan.new_qty == 1.0
-    @test plan.new_avg_entry_price == price_open
+    @test plan.new_avg_entry_price_quote == price_open
     @test plan.new_value_quote == 0.0
     @test plan.new_pnl_quote == 0.0
     @test plan.new_init_margin_settle == abs(plan.new_qty) * price_mark * inst.multiplier * 0.1
@@ -218,7 +218,7 @@ end
     @test trade_close.commission_settle == plan.commission
     @test trade_close.cash_delta_settle == plan.cash_delta
     @test pos.quantity == plan.new_qty
-    @test pos.avg_entry_price == plan.new_avg_entry_price
+    @test pos.avg_entry_price == plan.new_avg_entry_price_quote
     @test pos.avg_settle_price == price_mark
     @test pos.value_quote == plan.new_value_quote
     @test pos.pnl_quote == plan.new_pnl_quote
