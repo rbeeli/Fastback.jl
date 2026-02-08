@@ -177,3 +177,75 @@ end
 
     @test got ≈ expected atol=1e-12
 end
+
+@testitem "Margin requirements use absolute notional when price is negative" begin
+    using Test, Fastback, Dates
+
+    acc_margin = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc_margin, Cash(:USD), 0.0)
+    inst_margin = register_instrument!(acc_margin, Instrument(
+        Symbol("NEG/MARGIN"),
+        :NEG,
+        :USD;
+        contract_kind=ContractKind.Perpetual,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.2,
+        margin_init_short=0.3,
+        margin_maint_long=0.1,
+        margin_maint_short=0.15,
+        multiplier=2.0,
+    ))
+
+    mark = -10.0
+    qty_long = 3.0
+    qty_short = -3.0
+    @test margin_init_margin_ccy(acc_margin, inst_margin, qty_long, mark) ≈ abs(qty_long) * abs(mark) * inst_margin.multiplier * inst_margin.margin_init_long
+    @test margin_maint_margin_ccy(acc_margin, inst_margin, qty_long, mark) ≈ abs(qty_long) * abs(mark) * inst_margin.multiplier * inst_margin.margin_maint_long
+    @test margin_init_margin_ccy(acc_margin, inst_margin, qty_short, mark) ≈ abs(qty_short) * abs(mark) * inst_margin.multiplier * inst_margin.margin_init_short
+    @test margin_maint_margin_ccy(acc_margin, inst_margin, qty_short, mark) ≈ abs(qty_short) * abs(mark) * inst_margin.multiplier * inst_margin.margin_maint_short
+
+    acc_cash = Account(; mode=AccountMode.Cash, base_currency=:USD)
+    deposit!(acc_cash, Cash(:USD), 0.0)
+    inst_cash = register_instrument!(acc_cash, spot_instrument(
+        Symbol("NEG/CASH"),
+        :NEG,
+        :USD;
+        multiplier=2.0,
+    ))
+    qty_cash = 3.0
+    expected_full_notional = abs(qty_cash) * abs(mark) * inst_cash.multiplier
+    @test margin_init_margin_ccy(acc_cash, inst_cash, qty_cash, mark) ≈ expected_full_notional
+    @test margin_maint_margin_ccy(acc_cash, inst_cash, qty_cash, mark) ≈ expected_full_notional
+end
+
+@testitem "Negative-priced fills still enforce positive margin requirements" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
+    deposit!(acc, Cash(:USD), 0.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("NEG/FILL"),
+        :NEG,
+        :USD;
+        contract_kind=ContractKind.Future,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_maint_long=0.05,
+        expiry=DateTime(2026, 2, 1),
+    ))
+
+    dt = DateTime(2026, 1, 1)
+    order = Order(oid!(acc), inst, dt, -10.0, 1.0)
+    err = try
+        fill_order!(acc, order; dt=dt, fill_price=-10.0, bid=-10.0, ask=-10.0, last=-10.0)
+        nothing
+    catch e
+        e
+    end
+
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.InsufficientInitialMargin
+end
