@@ -12,7 +12,23 @@ Ideally, it can be looped over or streamed efficiently.
 
 Initialize the account you want to backtest with.
 The account holds the assets (funds), positions, trades, and does all the bookkeeping.
-Fund the account with `deposit!(account, cash_asset, amount)` and reduce balances later with `withdraw!` when simulating outflows.
+Register all cash assets in a `CashLedger`, add them to `SpotExchangeRates` if used, then create `Account`:
+
+```julia
+ledger = CashLedger()
+usd = register_cash_asset!(ledger, :USD)
+eur = register_cash_asset!(ledger, :EUR, digits=2) # optional
+
+er = SpotExchangeRates()
+add_asset!(er, usd)
+add_asset!(er, eur)
+
+account = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, exchange_rates=er)
+```
+
+Fund the account with `deposit!(account, usd, amount)`.
+For non-base currencies, use their registered `Cash` handles, e.g. `deposit!(account, eur, amount)`.
+Use `withdraw!(account, usd, amount)` later when simulating outflows.
 
 ### 3. Instruments
 

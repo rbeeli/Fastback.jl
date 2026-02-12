@@ -22,8 +22,10 @@ prices = 100.0 .+ cumsum(randn(N) .* 0.5 .+ 0.05);
 dts = map(x -> DateTime(2021, 1, 1) + Hour(x), 0:N-1);
 
 ## create trading account with $5'000 start capital (margin-enabled for shorting)
-acc = Account(; mode=AccountMode.Margin, base_currency=:USD);
-deposit!(acc, Cash(:USD), 5_000.0);
+ledger = CashLedger()
+usd = register_cash_asset!(ledger, :USD)
+acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd);
+deposit!(acc, :USD, 5_000.0);
 
 ## register instruments
 AAPL = register_instrument!(acc, spot_instrument(Symbol("AAPL/USD"), :AAPL, :USD));
@@ -62,7 +64,7 @@ for (i, (dt, price)) in enumerate(zip(dts, prices))
 
     ## collect equity data
     if should_collect(equity_data, dt)
-        equity_value = equity(acc, :USD)
+        equity_value = equity(acc, usd)
         collect_equity(dt, equity_value)
         collect_drawdown(dt, equity_value)
     end

@@ -3,8 +3,10 @@ using TestItemRunner
 @testitem "Trade reasons default to Normal" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 1_000.0)
     inst = register_instrument!(acc, spot_instrument(Symbol("ABC/USD"), :ABC, :USD))
 
     dt = DateTime(2024, 1, 1)
@@ -16,8 +18,10 @@ end
 @testitem "Expiry trades are tagged as Expiry" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 1_000.0)
     inst = register_instrument!(acc, Instrument(
         Symbol("EXP/USD"),
         :EXP,

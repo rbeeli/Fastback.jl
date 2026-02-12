@@ -4,8 +4,10 @@ using TestItemRunner
 @testsnippet TablesTestSetup begin
     using Test, Fastback, Dates, Tables, DataFrames
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD; digits=2), 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("ABC/USD"),
@@ -66,12 +68,14 @@ end
     using Test, Fastback, Dates, Tables
 
     er = SpotExchangeRates()
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
-    usd = Cash(:USD; digits=4)
-    eur = Cash(:EUR; digits=2)
-    deposit!(acc, usd, 5_000.0)
-    register_cash_asset!(acc, eur)
-    update_rate!(er, eur, usd, 1.2)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
+    deposit!(acc, :USD, 5_000.0)
+    register_cash_asset!(acc.ledger, :EUR)
+    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.2)
 
     inst = register_instrument!(
         acc,
@@ -144,7 +148,7 @@ end
     @test balance_schema.names == (:index, :symbol, :balance, :digits)
     balance_row = only(Tables.rows(tbl))
     @test balance_row.symbol == :USD
-    @test balance_row.balance ≈ cash_balance(acc, :USD)
+    @test balance_row.balance ≈ cash_balance(acc, cash_asset(acc.ledger, :USD))
 
     println(DataFrame(tbl))
 end
@@ -155,7 +159,7 @@ end
     @test equity_schema.names == (:index, :symbol, :equity, :digits)
     equity_row = only(Tables.rows(tbl))
     @test equity_row.symbol == :USD
-    @test equity_row.equity ≈ equity(acc, :USD)
+    @test equity_row.equity ≈ equity(acc, cash_asset(acc.ledger, :USD))
 
     println(DataFrame(tbl))
 end

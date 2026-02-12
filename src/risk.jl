@@ -20,8 +20,8 @@
 
     if acc.margining_style == MarginingStyle.PerCurrency
         if margin_idx == settle_idx
-            equity_after = acc.equities[settle_idx] + cash_effect
-            init_after = acc.init_margin_used[settle_idx] + impact.init_margin_delta
+            equity_after = acc.ledger.equities[settle_idx] + cash_effect
+            init_after = acc.ledger.init_margin_used[settle_idx] + impact.init_margin_delta
             if equity_after - init_after < 0
                 return OrderRejectReason.InsufficientInitialMargin
             end
@@ -29,12 +29,12 @@
             # Distinct margin/settle currencies: require non-negative available funds in both
             # post-fill states, since cash/value effects land in settle ccy while margin usage
             # changes in margin ccy.
-            margin_equity_after = acc.equities[margin_idx]
-            margin_init_after = acc.init_margin_used[margin_idx] + impact.init_margin_delta
+            margin_equity_after = acc.ledger.equities[margin_idx]
+            margin_init_after = acc.ledger.init_margin_used[margin_idx] + impact.init_margin_delta
             margin_equity_after - margin_init_after < 0 && return OrderRejectReason.InsufficientInitialMargin
 
-            settle_equity_after = acc.equities[settle_idx] + cash_effect
-            settle_init_after = acc.init_margin_used[settle_idx]
+            settle_equity_after = acc.ledger.equities[settle_idx] + cash_effect
+            settle_init_after = acc.ledger.init_margin_used[settle_idx]
             settle_equity_after - settle_init_after < 0 && return OrderRejectReason.InsufficientInitialMargin
         end
         return OrderRejectReason.None

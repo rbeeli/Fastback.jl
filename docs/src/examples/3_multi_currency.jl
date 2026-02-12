@@ -23,26 +23,23 @@ df = DataFrame([
     :TSCO_L => 307 .+ cumsum(randn(N) .+ 0.08)
 ]);
 
-## create cash objects for USD, EUR and GBP
-USD = Cash(:USD; digits=2);
-EUR = Cash(:EUR; digits=2);
-GBP = Cash(:GBP; digits=2);
-
 ## create trading account with 10'000 USD, 5'000 EUR and 20'000 GBP cash (margin-enabled for shorting)
-acc = Account(; mode=AccountMode.Margin, base_currency=:USD);
-deposit!(acc, USD, 10_000);
-deposit!(acc, EUR, 5_000);
-deposit!(acc, GBP, 20_000);
-
-## exchange rates for spot rates
+ledger = CashLedger()
+usd = register_cash_asset!(ledger, :USD)
+eur = register_cash_asset!(ledger, :EUR, digits=2);
+gbp = register_cash_asset!(ledger, :GBP, digits=2);
 er = SpotExchangeRates();
+add_asset!(er, usd);
+add_asset!(er, eur);
+add_asset!(er, gbp);
+acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, exchange_rates=er);
+deposit!(acc, usd, 10_000);
+deposit!(acc, eur, 5_000);
+deposit!(acc, gbp, 20_000);
 
 ## set spot exchange rates once
-add_asset!(er, USD);
-add_asset!(er, EUR);
-add_asset!(er, GBP);
-update_rate!(er, EUR, USD, 1.07);
-update_rate!(er, GBP, USD, 1.27);
+update_rate!(er, eur, usd, 1.07);
+update_rate!(er, gbp, usd, 1.27);
 
 show(er)
 
@@ -79,9 +76,9 @@ for i in 1:N
     ## collect data for plotting
     if should_collect(equity_data, dt)
         total_equity = (
-            equity(acc, :USD) +
-            equity(acc, :EUR) * get_rate(er, EUR, USD) +
-            equity(acc, :GBP) * get_rate(er, GBP, USD)
+            equity(acc, usd) +
+            equity(acc, eur) * get_rate(er, eur, usd) +
+            equity(acc, gbp) * get_rate(er, gbp, usd)
         )
         collect_equity(dt, total_equity)
         collect_drawdown(dt, total_equity)

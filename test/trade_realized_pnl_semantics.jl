@@ -4,9 +4,11 @@ using TestItemRunner
 @testitem "opens keep realized P&L at zero while commissions hit cash" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
         acc,
@@ -34,9 +36,11 @@ end
 @testitem "closing fill reports gross realized P&L with commission separate" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 5_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(
         acc,
@@ -76,8 +80,10 @@ end
 @testitem "realized_return gated by realized quantity" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
         acc,
@@ -107,12 +113,15 @@ end
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
-    register_cash_asset!(acc, Cash(:USD))
-    register_cash_asset!(acc, Cash(:EUR))
-    deposit!(acc, cash_asset(acc, :USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
+    register_cash_asset!(acc.ledger, :EUR)
+    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    deposit!(acc, :USD, 0.0)
 
-    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.1)
     inst = register_instrument!(acc, Instrument(
         Symbol("FXREAL/EURUSD"),
         :FXREAL,
@@ -130,7 +139,7 @@ end
     open_order = Order(oid!(acc), inst, dt0, 100.0, 1.0)
     fill_order!(acc, open_order; dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
-    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.2)
     dt1 = dt0 + Day(1)
     close_order = Order(oid!(acc), inst, dt1, 100.0, -1.0)
     close_trade = fill_order!(acc, close_order; dt=dt1, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
@@ -138,17 +147,20 @@ end
     # Quote P&L is zero, but settlement P&L realizes principal FX move: 100*(1.2-1.1)=10 USD.
     @test close_trade.realized_pnl_entry ≈ 10.0 atol=1e-12
     @test close_trade.realized_pnl_settle ≈ 10.0 atol=1e-12
-    @test cash_balance(acc, :USD) ≈ 10.0 atol=1e-12
+    @test cash_balance(acc, cash_asset(acc.ledger, :USD)) ≈ 10.0 atol=1e-12
 end
 
 @testitem "cross-currency scale-in uses settlement-entry basis for realized P&L" begin
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
-    register_cash_asset!(acc, Cash(:USD))
-    register_cash_asset!(acc, Cash(:EUR))
-    deposit!(acc, cash_asset(acc, :USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
+    register_cash_asset!(acc.ledger, :EUR)
+    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    deposit!(acc, :USD, 0.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("FXREAL/SCALE"),
@@ -166,16 +178,16 @@ end
     dt0 = DateTime(2026, 1, 1)
 
     # First entry: 100 EUR @ 1.0 => 100 USD basis.
-    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.0)
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.0)
     fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
     # Second entry: 120 EUR @ 2.0 => 240 USD basis, new settle-entry avg = (100+240)/2 = 170.
-    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 2.0)
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 2.0)
     fill_order!(acc, Order(oid!(acc), inst, dt0 + Hour(1), 120.0, 1.0); dt=dt0 + Hour(1), fill_price=120.0, bid=120.0, ask=120.0, last=120.0)
 
     # Partial close: 110 EUR @ 1.5 => 165 USD close basis for realized qty 1.
     # Settlement realized should be 165 - 170 = -5 USD, while quote-basis realized is zero.
-    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.5)
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.5)
     close_trade = fill_order!(acc, Order(oid!(acc), inst, dt0 + Day(1), 110.0, -1.0); dt=dt0 + Day(1), fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
 
     @test close_trade.realized_pnl_entry ≈ -5.0 atol=1e-12

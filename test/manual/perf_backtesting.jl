@@ -5,8 +5,10 @@ using InteractiveUtils
 
 function run_backtest()
     # create trading account
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 100_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 100_000.0)
 
     # define instrument
     DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD; margin_mode=MarginMode.PercentNotional)
@@ -33,8 +35,10 @@ ProfileView.@profview map(i -> run_backtest(), 1:10)
 
 
 # create trading account
-const acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-deposit!(acc, Cash(:USD), 100_000.0)
+const ledger = CashLedger()
+const base_currency = register_cash_asset!(ledger, :USD)
+const acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+deposit!(acc, :USD, 100_000.0)
 
 # define instrument
 const DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD; margin_mode=MarginMode.PercentNotional)

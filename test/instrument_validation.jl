@@ -4,8 +4,10 @@ using TestItemRunner
 @testitem "Spot cannot use variation margin settlement" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 0.0)
 
     inst = Instrument(Symbol("SPOT/VM"), :SPOT, :USD;
         contract_kind=ContractKind.Spot,
@@ -19,8 +21,10 @@ end
 @testitem "Cash-settled instruments must be margined" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 0.0)
 
     no_margin = Instrument(Symbol("CASH/NOMRG"), :CASH, :USD;
         settlement=SettlementStyle.Asset,
@@ -32,8 +36,10 @@ end
 @testitem "MarginMode.None is rejected for spot instruments" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 0.0)
 
     nonzero_margin = Instrument(Symbol("NOMRG/RATES"), :NOMRG, :USD;
         settlement=SettlementStyle.Asset,
@@ -50,8 +56,10 @@ end
 @testitem "Margin parameters must be finite, non-negative, and ordered" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 0.0)
 
     bad_missing = Instrument(Symbol("MISS/RATES"), :MISS, :USD;
         settlement=SettlementStyle.Asset,
@@ -132,8 +140,10 @@ end
 @testitem "Perpetual validations" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 0.0)
 
     bad_settle = Instrument(Symbol("PERP/BADSETTLE"), :PERP, :USD;
         contract_kind=ContractKind.Perpetual,
@@ -179,8 +189,10 @@ end
 @testitem "Future validations" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 0.0)
 
     bad_settle = Instrument(Symbol("FUT/BADSETTLE"), :FUT, :USD;
         contract_kind=ContractKind.Future,
@@ -228,8 +240,10 @@ end
 @testitem "is_margined_spot detects asset-settled spot" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 0.0)
 
     spot_margin = Instrument(Symbol("SPOT/MGN"), :SPOT, :USD;
         settlement=SettlementStyle.Asset,
@@ -247,9 +261,10 @@ end
 @testitem "Instrument can have settle_symbol != quote_symbol when cash assets exist" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    register_cash_asset!(acc, Cash(:USD))
-    register_cash_asset!(acc, Cash(:EUR))
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    register_cash_asset!(acc.ledger, :EUR)
 
     inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
         settle_symbol=:EUR,
@@ -263,16 +278,17 @@ end
     register_instrument!(acc, inst)
 
     @test inst.settle_symbol == :EUR
-    @test inst.settle_cash_index == cash_asset(acc, inst.settle_symbol).index
-    @test inst.quote_cash_index == cash_asset(acc, inst.quote_symbol).index
-    @test inst.margin_cash_index == cash_asset(acc, inst.margin_symbol).index
+    @test inst.settle_cash_index == cash_asset(acc.ledger, inst.settle_symbol).index
+    @test inst.quote_cash_index == cash_asset(acc.ledger, inst.quote_symbol).index
+    @test inst.margin_cash_index == cash_asset(acc.ledger, inst.margin_symbol).index
 end
 
 @testitem "register_instrument! errors when settle_symbol cash not registered" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    register_cash_asset!(acc, Cash(:USD))
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
 
     inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
         settle_symbol=:EUR,
@@ -289,9 +305,10 @@ end
 @testitem "register_instrument! errors when margin_symbol cash not registered" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    register_cash_asset!(acc, Cash(:USD))
-    register_cash_asset!(acc, Cash(:EUR))
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    register_cash_asset!(acc.ledger, :EUR)
 
     inst = Instrument(Symbol("BTC/USD.GBP"), :BTC, :USD;
         settle_symbol=:USD,

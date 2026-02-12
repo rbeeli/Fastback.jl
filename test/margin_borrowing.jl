@@ -4,8 +4,10 @@ using TestItemRunner
 @testitem "margin account allows exposure on margin-enabled instrument" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 6_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 6_000.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("MARGINABLE/USD"),
@@ -26,16 +28,18 @@ using TestItemRunner
     @test trade isa Trade
     pos = get_position(acc, inst)
     @test pos.quantity == 100.0
-    @test cash_balance(acc, :USD) ≈ -4_000.0
-    @test equity(acc, :USD) ≈ 6_000.0
-    @test init_margin_used(acc, :USD) ≈ 5_000.0
+    @test cash_balance(acc, cash_asset(acc.ledger, :USD)) ≈ -4_000.0
+    @test equity(acc, cash_asset(acc.ledger, :USD)) ≈ 6_000.0
+    @test init_margin_used(acc, cash_asset(acc.ledger, :USD)) ≈ 5_000.0
 end
 
 @testitem "non-marginable instruments are rejected" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 6_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 6_000.0)
 
     inst = Instrument(
         Symbol("CASHONLY/USD"),
@@ -50,8 +54,10 @@ end
 @testitem "risk-reducing trades bypass initial margin check" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("DERISK/USD"),
@@ -74,7 +80,7 @@ end
     # Mark the position down sharply to become under-margined
     update_marks!(acc, pos, dt_open, 30.0, 30.0, 30.0)
 
-    @test equity(acc, :USD) < init_margin_used(acc, :USD)
+    @test equity(acc, cash_asset(acc.ledger, :USD)) < init_margin_used(acc, cash_asset(acc.ledger, :USD))
 
     dt_reduce = dt_open + Day(1)
     reduce_order = Order(oid!(acc), inst, dt_reduce, 30.0, -5.0)
@@ -82,5 +88,5 @@ end
 
     @test reduce_trade isa Trade
     @test pos.quantity == 15.0
-    @test init_margin_used(acc, :USD) ≈ margin_init_margin_ccy(acc, inst, pos.quantity, reduce_order.price)
+    @test init_margin_used(acc, cash_asset(acc.ledger, :USD)) ≈ margin_init_margin_ccy(acc, inst, pos.quantity, reduce_order.price)
 end

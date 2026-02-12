@@ -31,9 +31,10 @@ first(df, 5)
 # ---------------------------------------------------------
 
 ## create margin account funded in USDT
-acc = Account(; mode=AccountMode.Margin, base_currency=:USDT);
-USDT = Cash(:USDT; digits=2);
-deposit!(acc, USDT, 10_000.0);
+ledger = CashLedger()
+usdt = register_cash_asset!(ledger, :USDT)
+acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usdt);
+deposit!(acc, :USDT, 10_000.0);
 
 ## register a USD-M perpetual (variation margin, cash-settled)
 perp = register_instrument!(acc, perpetual_instrument(
@@ -84,7 +85,7 @@ for i in 1:nrow(df)
         signal = last > (1 + deadband) * ma ? 1.0 : (last < (1 - deadband) * ma ? -1.0 : 0.0)
 
         pos = get_position(acc, perp)
-        target_qty = signal == 0.0 ? 0.0 : signal * leverage_target * equity(acc, :USDT) / last
+        target_qty = signal == 0.0 ? 0.0 : signal * leverage_target * equity(acc, usdt) / last
         delta_qty = target_qty - pos.quantity
 
         if abs(delta_qty) > 1e-8
@@ -95,7 +96,7 @@ for i in 1:nrow(df)
 
     ## collect data for plotting
     if should_collect(equity_data, dt)
-        eq = equity(acc, :USDT)
+        eq = equity(acc, usdt)
         collect_equity(dt, eq)
         collect_drawdown(dt, eq)
     end

@@ -3,9 +3,11 @@ using TestItemRunner
 @testitem "process_step! accrual is idempotent for repeated timestamps" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 10_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 10_000.0)
     set_interest_rates!(acc, :USD; borrow=0.10, lend=0.05)
 
     inst = register_instrument!(
@@ -56,16 +58,20 @@ end
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
-    usd = Cash(:USD)
-    chf = Cash(:CHF)
-    deposit!(acc, usd, 1_000.0)
-    deposit!(acc, chf, 1_000.0)
+    usd = cash_asset(acc.ledger, :USD)
+    add_asset!(er, usd)
+    chf = register_cash_asset!(acc.ledger, :CHF)
+    add_asset!(er, chf)
+    deposit!(acc, :USD, 1_000.0)
+    deposit!(acc, :CHF, 1_000.0)
 
     set_interest_rates!(acc, :USD; borrow=0.10, lend=0.0)
     set_interest_rates!(acc, :CHF; borrow=0.0, lend=0.03)
-    update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), 1.0)
+    update_rate!(er, cash_asset(acc.ledger, :USD), cash_asset(acc.ledger, :CHF), 1.0)
 
     dt0 = DateTime(2026, 1, 1)
     dt1 = dt0 + Day(1)
@@ -132,7 +138,7 @@ end
     spot_pos = get_position(acc, spot_inst)
     spot_value_before = spot_pos.value_settle
 
-    fx_updates = [FXUpdate(usd.index, chf.index, 0.8)]
+    fx_updates = [FXUpdate(cash_asset(acc.ledger, :USD), cash_asset(acc.ledger, :CHF), 0.8)]
     marks = [
         MarkUpdate(spot_inst.index, 110.0, 110.0, 110.0),
         MarkUpdate(perp_inst.index, 60.0, 60.0, 60.0),
@@ -185,9 +191,11 @@ end
 @testitem "process_step! interest excludes end-of-step cashflows" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 10_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 10_000.0)
     set_interest_rates!(acc, :USD; borrow=0.0, lend=0.10)
 
     inst = register_instrument!(acc, Instrument(
@@ -237,13 +245,17 @@ end
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
 
-    usd = Cash(:USD)
-    chf = Cash(:CHF)
-    deposit!(acc, usd, 0.0)
-    deposit!(acc, chf, 1_000.0)
-    update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), 1.0)
+    usd = cash_asset(acc.ledger, :USD)
+    add_asset!(er, usd)
+    chf = register_cash_asset!(acc.ledger, :CHF)
+    add_asset!(er, chf)
+    deposit!(acc, :USD, 0.0)
+    deposit!(acc, :CHF, 1_000.0)
+    update_rate!(er, cash_asset(acc.ledger, :USD), cash_asset(acc.ledger, :CHF), 1.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("FXREVAL/USDCHF"),
@@ -272,7 +284,7 @@ end
     init_before = init_margin_used(acc, chf)
     value_before = pos.value_settle
 
-    fx_updates = [FXUpdate(usd.index, chf.index, 0.8)]
+    fx_updates = [FXUpdate(cash_asset(acc.ledger, :USD), cash_asset(acc.ledger, :CHF), 0.8)]
     process_step!(acc, dt1; fx_updates=fx_updates)
 
     pos_after = get_position(acc, inst)
@@ -289,9 +301,11 @@ end
 @testitem "process_step! accrues borrow fees using prior mark before step" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 50_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 50_000.0)
 
     inst = register_instrument!(
         acc,
@@ -339,13 +353,16 @@ end
 
     function setup_short_account()
         er = SpotExchangeRates()
-        acc = Account(; mode=AccountMode.Margin, base_currency=:CHF, exchange_rates=er)
-        usd = Cash(:USD)
-        chf = Cash(:CHF)
-        deposit!(acc, usd, 0.0)
-        deposit!(acc, chf, 50_000.0)
+        ledger = CashLedger()
+        base_currency = register_cash_asset!(ledger, :CHF)
+        acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
+        add_asset!(er, cash_asset(acc.ledger, :CHF))
+        register_cash_asset!(acc.ledger, :USD)
+        add_asset!(er, cash_asset(acc.ledger, :USD))
+        deposit!(acc, :USD, 0.0)
+        deposit!(acc, :CHF, 50_000.0)
 
-        update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), 1.0)
+        update_rate!(er, cash_asset(acc.ledger, :USD), cash_asset(acc.ledger, :CHF), 1.0)
 
         inst = register_instrument!(
             acc,
@@ -376,12 +393,12 @@ end
     dt1 = dt0 + Day(1)
 
     # Path A: `process_step!` with same-step FX update.
-    fx_updates = [FXUpdate(cash_asset(acc_step, :USD).index, cash_asset(acc_step, :CHF).index, 2.0)]
+    fx_updates = [FXUpdate(cash_asset(acc_step.ledger, :USD), cash_asset(acc_step.ledger, :CHF), 2.0)]
     process_step!(acc_step, dt1; fx_updates=fx_updates)
 
     # Path B: manual loop with accrual first, then FX.
     advance_time!(acc_manual, dt1)
-    update_rate!(acc_manual.exchange_rates, cash_asset(acc_manual, :USD), cash_asset(acc_manual, :CHF), 2.0)
+    update_rate!(acc_manual.exchange_rates, cash_asset(acc_manual.ledger, :USD), cash_asset(acc_manual.ledger, :CHF), 2.0)
 
     borrow_step = only(filter(cf -> cf.kind == CashflowKind.BorrowFee, acc_step.cashflows))
     borrow_manual = only(filter(cf -> cf.kind == CashflowKind.BorrowFee, acc_manual.cashflows))
@@ -399,9 +416,11 @@ end
 @testitem "process_step! rejects backward time" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
     set_interest_rates!(acc, :USD; borrow=0.05, lend=0.02)
 
     dt1 = DateTime(2026, 1, 1)
@@ -414,9 +433,11 @@ end
 @testitem "process_expiries! forwards commission_pct to expiry fill" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 5_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 5_000.0)
 
     dt_open = DateTime(2026, 1, 1)
     dt_exp = dt_open + Day(7)
@@ -453,9 +474,11 @@ end
 @testitem "Futures expiry auto-closes with no extra PnL beyond last variation settlement" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 20_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 20_000.0)
 
     dt_open = DateTime(2026, 1, 1)
     dt_exp = dt_open + Day(5)

@@ -2,12 +2,12 @@
     recompute_equities(acc)
 
 Rebuild account equities from balances and open positions.
-Starts from `acc.balances` and adds each position's settlement-currency
+Starts from `acc.ledger.balances` and adds each position's settlement-currency
 value for asset-settled instruments. Variation-margin positions are
 expected to carry zero `value_quote`.
 """
 function recompute_equities(acc::Account)
-    equities = copy(acc.balances)
+    equities = copy(acc.ledger.balances)
 
     @inbounds for pos in acc.positions
         inst = pos.inst
@@ -37,8 +37,8 @@ Rebuild the initial and maintenance margin usage vectors by summing the
 per-position stored margins into their margin cash indices.
 """
 function recompute_margins(acc::Account)
-    init = zero.(acc.init_margin_used)
-    maint = zero.(acc.maint_margin_used)
+    init = zero.(acc.ledger.init_margin_used)
+    maint = zero.(acc.ledger.maint_margin_used)
 
     @inbounds for pos in acc.positions
         margin_idx = pos.inst.margin_cash_index
@@ -98,13 +98,13 @@ function check_invariants(acc::Account; atol::Real=1e-9, rtol::Real=1e-9)
     end
 
     equities_recomputed = recompute_equities(acc)
-    isapprox(acc.equities, equities_recomputed; atol=atol, rtol=rtol) ||
+    isapprox(acc.ledger.equities, equities_recomputed; atol=atol, rtol=rtol) ||
         throw(AssertionError("Stored equities do not match recomputed equities."))
 
     init_recomputed, maint_recomputed = recompute_margins(acc)
-    isapprox(acc.init_margin_used, init_recomputed; atol=atol, rtol=rtol) ||
+    isapprox(acc.ledger.init_margin_used, init_recomputed; atol=atol, rtol=rtol) ||
         throw(AssertionError("Stored init_margin_used does not match recomputed values."))
-    isapprox(acc.maint_margin_used, maint_recomputed; atol=atol, rtol=rtol) ||
+    isapprox(acc.ledger.maint_margin_used, maint_recomputed; atol=atol, rtol=rtol) ||
         throw(AssertionError("Stored maint_margin_used does not match recomputed values."))
 
     return true

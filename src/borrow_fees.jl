@@ -40,8 +40,8 @@ with actual short exposure.
     settle_idx = inst.settle_cash_index
     fee = to_settle(acc, inst, fee_quote)
     if fee != 0.0
-        acc.balances[settle_idx] -= fee
-        acc.equities[settle_idx] -= fee
+        acc.ledger.balances[settle_idx] -= fee
+        acc.ledger.equities[settle_idx] -= fee
         push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.BorrowFee, settle_idx, -fee, inst.index))
     end
 

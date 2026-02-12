@@ -39,7 +39,127 @@ end
 
 Liquidates positions until the account is above maintenance requirements.
 Throws `OrderRejectError` if a liquidation fill is rejected by risk checks.
+
+Per-currency liquidation first targets the worst excess-liquidity currency by
+simulating full closes, then falls back to globally reducing maintenance if no
+candidate can directly improve that worst currency.
 """
+@inline function _largest_maint_contributor(
+    acc::Account,
+)
+    max_pos = nothing
+    max_score = -Inf
+
+    @inbounds for pos in acc.positions
+        qty = pos.quantity
+        qty == 0.0 && continue
+
+        score = pos.maint_margin_settle * _get_rate_base_ccy_idx(acc, pos.inst.margin_cash_index)
+
+        if score > max_score ||
+           (score == max_score && (max_pos === nothing || pos.inst.index < max_pos.inst.index))
+            max_score = score
+            max_pos = pos
+        end
+    end
+
+    max_pos
+end
+
+@inline function _worst_excess_currency(
+    acc::Account,
+)
+    worst_idx = 0
+    worst_excess = 0.0
+
+    @inbounds for i in eachindex(acc.ledger.maint_margin_used)
+        excess = acc.ledger.equities[i] - acc.ledger.maint_margin_used[i]
+        if excess < worst_excess
+            worst_excess = excess
+            worst_idx = i
+        end
+    end
+
+    worst_idx, worst_excess
+end
+
+@inline function _project_excess_after_full_close(
+    acc::Account{TTime},
+    pos::Position{TTime},
+    dt::TTime,
+    worst_idx::Int;
+    commission::Price,
+    commission_pct::Price,
+) where {TTime<:Dates.AbstractTime}
+    qty = pos.quantity
+    close_qty = -qty
+    fill_price = pos.mark_price
+    order = Order(0, pos.inst, dt, fill_price, close_qty)
+    plan = plan_fill(
+        acc,
+        pos,
+        order,
+        dt,
+        fill_price,
+        fill_price,
+        pos.last_price,
+        close_qty,
+        commission,
+        commission_pct,
+    )
+
+    current_excess = @inbounds acc.ledger.equities[worst_idx] - acc.ledger.maint_margin_used[worst_idx]
+    delta_equity = pos.inst.settle_cash_index == worst_idx ? (plan.cash_delta + plan.value_delta_settle) : 0.0
+    delta_maint = pos.inst.margin_cash_index == worst_idx ? plan.maint_margin_delta : 0.0
+    current_excess + delta_equity - delta_maint
+end
+
+@inline function _select_per_currency_liquidation_pos(
+    acc::Account{TTime},
+    dt::TTime,
+    worst_idx::Int,
+    worst_excess::Price;
+    commission::Price,
+    commission_pct::Price,
+) where {TTime<:Dates.AbstractTime}
+    best_pos = nothing
+    best_improvement = -Inf
+    best_margin_contrib = -Inf
+    fallback_pos = _largest_maint_contributor(acc)
+
+    @inbounds for pos in acc.positions
+        qty = pos.quantity
+        qty == 0.0 && continue
+
+        excess_after = _project_excess_after_full_close(
+            acc,
+            pos,
+            dt,
+            worst_idx;
+            commission=commission,
+            commission_pct=commission_pct,
+        )
+        improvement = excess_after - worst_excess
+        margin_contrib = pos.inst.margin_cash_index == worst_idx ? pos.maint_margin_settle : 0.0
+
+        if best_pos === nothing ||
+           improvement > best_improvement ||
+           (improvement == best_improvement && margin_contrib > best_margin_contrib) ||
+           (improvement == best_improvement && margin_contrib == best_margin_contrib && pos.inst.index < best_pos.inst.index)
+            best_improvement = improvement
+            best_margin_contrib = margin_contrib
+            best_pos = pos
+        end
+    end
+
+    if best_pos !== nothing && best_improvement > 0.0
+        return best_pos
+    end
+
+    # No direct improvement for the most-deficient currency: de-risk globally first.
+    fallback_pos
+end
+
 function liquidate_to_maintenance!(
     acc::Account{TTime},
     dt::TTime;
@@ -57,50 +177,19 @@ function liquidate_to_maintenance!(
         max_pos = nothing
 
         if acc.margining_style == MarginingStyle.BaseCurrency
-            max_margin_base = -Inf
-
-            @inbounds for pos in acc.positions
-                qty = pos.quantity
-                qty == 0.0 && continue
-
-                m_base = pos.maint_margin_settle * get_rate_base_ccy(acc, pos.inst.margin_cash_index)
-                if m_base > max_margin_base
-                    max_margin_base = m_base
-                    max_pos = pos
-                end
-            end
+            max_pos = _largest_maint_contributor(acc)
         else
-            worst_idx = 0
-            worst_excess = 0.0
-
-            @inbounds for i in eachindex(acc.maint_margin_used)
-                excess = acc.equities[i] - acc.maint_margin_used[i]
-                if excess < worst_excess
-                    worst_excess = excess
-                    worst_idx = i
-                end
-            end
+            worst_idx, worst_excess = _worst_excess_currency(acc)
 
             worst_idx == 0 && throw(ArgumentError("Account under maintenance but no currency deficit detected."))
-
-            max_margin_settle = -Inf
-
-            @inbounds for pos in acc.positions
-                qty = pos.quantity
-                qty == 0.0 && continue
-                pos.inst.margin_cash_index == worst_idx || continue
-
-                m_settle = pos.maint_margin_settle
-                if m_settle > max_margin_settle
-                    max_margin_settle = m_settle
-                    max_pos = pos
-                end
-            end
-
-            if max_pos === nothing
-                cash_sym = @inbounds acc.cash[worst_idx].symbol
-                throw(ArgumentError("Account under maintenance in $(cash_sym) but has no open positions to liquidate."))
-            end
+            max_pos = _select_per_currency_liquidation_pos(
+                acc,
+                dt,
+                worst_idx,
+                worst_excess;
+                commission=commission,
+                commission_pct=commission_pct,
+            )
         end
 
         max_pos === nothing && throw(ArgumentError("Account under maintenance but has no open positions to liquidate."))

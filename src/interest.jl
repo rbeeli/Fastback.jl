@@ -12,10 +12,10 @@ function set_interest_rates!(
     borrow::Real,
     lend::Real,
 ) where {TTime<:Dates.AbstractTime}
-    cash = cash_asset(acc, cash_symbol)
+    idx = cash_index(acc.ledger, cash_symbol)
     @inbounds begin
-        acc.interest_borrow_rate[cash.index] = Price(borrow)
-        acc.interest_lend_rate[cash.index] = Price(lend)
+        acc.ledger.interest_borrow_rate[idx] = Price(borrow)
+        acc.ledger.interest_lend_rate[idx] = Price(lend)
     end
     acc
 end
@@ -46,13 +46,13 @@ function accrue_interest!(
     yearfrac = millis / (1000 * 60 * 60 * 24 * Price(year_basis))
 
     cfs = acc.cashflows
-    @inbounds for i in eachindex(acc.balances)
-        bal = acc.balances[i]
-        rate = bal >= 0 ? acc.interest_lend_rate[i] : acc.interest_borrow_rate[i]
+    @inbounds for i in eachindex(acc.ledger.balances)
+        bal = acc.ledger.balances[i]
+        rate = bal >= 0 ? acc.ledger.interest_lend_rate[i] : acc.ledger.interest_borrow_rate[i]
         interest = bal * rate * yearfrac
         interest == 0.0 && continue
-        acc.balances[i] += interest
-        acc.equities[i] += interest
+        acc.ledger.balances[i] += interest
+        acc.ledger.equities[i] += interest
         kind = interest >= 0 ? CashflowKind.LendInterest : CashflowKind.BorrowInterest
         push!(cfs, Cashflow{TTime}(cfid!(acc), dt, kind, i, interest, 0))
     end

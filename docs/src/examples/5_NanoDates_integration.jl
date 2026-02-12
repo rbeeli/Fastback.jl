@@ -20,8 +20,10 @@ start_dt = NanoDate(2020, 1, 1)
 dts = [start_dt + Hour(i) for i in 0:N-1]
 
 ## create trading account with $10'000 start capital and NanoDate support (margin-enabled for shorting)
-acc = Account(; time_type=NanoDate, mode=AccountMode.Margin, base_currency=:USD)
-deposit!(acc, Cash(:USD), 10_000.0)
+ledger = CashLedger()
+usd = register_cash_asset!(ledger, :USD)
+acc = Account(; time_type=NanoDate, mode=AccountMode.Margin, ledger=ledger, base_currency=usd)
+deposit!(acc, :USD, 10_000.0)
 
 ## register a dummy instrument
 DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD; time_type=NanoDate))
@@ -44,7 +46,7 @@ for (dt, price) in zip(dts, prices)
 
     ## collect data for analysis
     if should_collect(equity_data, dt)
-        equity_value = equity(acc, :USD)
+        equity_value = equity(acc, usd)
         collect_equity(dt, equity_value)
         collect_drawdown(dt, equity_value)
     end

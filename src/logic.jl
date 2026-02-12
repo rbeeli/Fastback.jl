@@ -17,7 +17,7 @@
 
     if settlement == SettlementStyle.VariationMargin
         if pos.value_settle != 0.0
-            @inbounds acc.equities[settle_cash_index] -= pos.value_settle
+            @inbounds acc.ledger.equities[settle_cash_index] -= pos.value_settle
         end
         pos.value_settle = 0.0
         pos.value_quote = 0.0
@@ -32,8 +32,8 @@
         if new_pnl != 0.0
             settled_amount = to_settle(acc, inst, new_pnl)
             @inbounds begin
-                acc.balances[settle_cash_index] += settled_amount
-                acc.equities[settle_cash_index] += settled_amount
+                acc.ledger.balances[settle_cash_index] += settled_amount
+                acc.ledger.equities[settle_cash_index] += settled_amount
             end
             push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.VariationMargin, settle_cash_index, settled_amount, inst.index))
         end
@@ -47,7 +47,7 @@
     new_value = value_quote(inst, qty, close_price)
     new_value_settle = to_settle(acc, inst, new_value)
     value_delta_settle = new_value_settle - pos.value_settle
-    @inbounds acc.equities[settle_cash_index] += value_delta_settle
+    @inbounds acc.ledger.equities[settle_cash_index] += value_delta_settle
     pos.pnl_quote = new_pnl
     pos.pnl_settle = to_settle(acc, inst, new_pnl)
     pos.value_quote = new_value
@@ -84,8 +84,8 @@ end
     init_delta = new_init_margin - pos.init_margin_settle
     maint_delta = new_maint_margin - pos.maint_margin_settle
     @inbounds begin
-        acc.init_margin_used[margin_cash_index] += init_delta
-        acc.maint_margin_used[margin_cash_index] += maint_delta
+        acc.ledger.init_margin_used[margin_cash_index] += init_delta
+        acc.ledger.maint_margin_used[margin_cash_index] += maint_delta
     end
     pos.init_margin_settle = new_init_margin
     pos.maint_margin_settle = new_maint_margin
@@ -237,10 +237,10 @@ Requires bid/ask/last to deterministically value positions and compute margin du
     settle_cash_index = inst.settle_cash_index
     margin_cash_index = inst.margin_cash_index
     @inbounds begin
-        acc.balances[settle_cash_index] += plan.cash_delta
-        acc.equities[settle_cash_index] += plan.cash_delta + plan.value_delta_settle
-        acc.init_margin_used[margin_cash_index] += plan.init_margin_delta
-        acc.maint_margin_used[margin_cash_index] += plan.maint_margin_delta
+        acc.ledger.balances[settle_cash_index] += plan.cash_delta
+        acc.ledger.equities[settle_cash_index] += plan.cash_delta + plan.value_delta_settle
+        acc.ledger.init_margin_used[margin_cash_index] += plan.init_margin_delta
+        acc.ledger.maint_margin_used[margin_cash_index] += plan.maint_margin_delta
     end
 
     pos.avg_entry_price = plan.new_avg_entry_price_quote

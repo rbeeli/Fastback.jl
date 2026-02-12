@@ -4,9 +4,11 @@ using TestItemRunner
 @testitem "plan_fill mirrors fill_order! (asset-settled open)" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     pos = get_position(acc, inst)
@@ -59,17 +61,19 @@ using TestItemRunner
     @test pos.avg_settle_price == pos.avg_entry_price
     @test pos.value_quote == plan.new_value_quote
     @test pos.pnl_quote == plan.new_pnl_quote
-    @test acc.init_margin_used[inst.margin_cash_index] == plan.new_init_margin_settle
-    @test acc.maint_margin_used[inst.margin_cash_index] == plan.new_maint_margin_settle
+    @test acc.ledger.init_margin_used[inst.margin_cash_index] == plan.new_init_margin_settle
+    @test acc.ledger.maint_margin_used[inst.margin_cash_index] == plan.new_maint_margin_settle
     @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
 end
 
 @testitem "fills respect mark price when spreaded" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 100.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 100.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("SPRD/USD"), :SPRD, :USD))
     pos = get_position(acc, inst)
@@ -89,9 +93,11 @@ end
 @testitem "cash_delta captures asset principal and commission" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 5_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(
         acc,
@@ -149,9 +155,11 @@ end
 @testitem "plan_fill mirrors fill_order! (variation margin reduce)" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 10_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(
         acc,
@@ -180,8 +188,8 @@ end
     update_marks!(acc, pos, dt_mark, price_mark, price_mark, price_mark)
 
     cash_before = cash_balance(acc, usd)
-    init_before = acc.init_margin_used[inst.margin_cash_index]
-    maint_before = acc.maint_margin_used[inst.margin_cash_index]
+    init_before = acc.ledger.init_margin_used[inst.margin_cash_index]
+    maint_before = acc.ledger.maint_margin_used[inst.margin_cash_index]
     pos_qty_before = pos.quantity
 
     order_close = Order(oid!(acc), inst, dt_mark, price_mark, -1.0)
@@ -222,19 +230,21 @@ end
     @test pos.avg_settle_price == price_mark
     @test pos.value_quote == plan.new_value_quote
     @test pos.pnl_quote == plan.new_pnl_quote
-    @test acc.init_margin_used[inst.margin_cash_index] == plan.new_init_margin_settle
-    @test acc.maint_margin_used[inst.margin_cash_index] == plan.new_maint_margin_settle
+    @test acc.ledger.init_margin_used[inst.margin_cash_index] == plan.new_init_margin_settle
+    @test acc.ledger.maint_margin_used[inst.margin_cash_index] == plan.new_maint_margin_settle
     @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
-    @test acc.init_margin_used[inst.margin_cash_index] < init_before
-    @test acc.maint_margin_used[inst.margin_cash_index] < maint_before
+    @test acc.ledger.init_margin_used[inst.margin_cash_index] < init_before
+    @test acc.ledger.maint_margin_used[inst.margin_cash_index] < maint_before
 end
 
 @testitem "variation margin entry spread settles immediately" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 10_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(
         acc,
@@ -294,9 +304,11 @@ end
 @testitem "variation margin entry spread counted in init margin check" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 10.5)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 10.5)
 
     inst = register_instrument!(
         acc,
@@ -349,9 +361,11 @@ end
 @testitem "variation margin partial close realizes cash on settle basis" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 10_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(
         acc,
@@ -411,9 +425,11 @@ end
 @testitem "commission_pct uses absolute notional for negative prices" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
         acc,
@@ -467,9 +483,11 @@ end
 @testitem "fill_order! rejects non-finite price inputs" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("BADPX/USD"), :BADPX, :USD))
     dt = DateTime(2026, 1, 1)
@@ -502,9 +520,11 @@ end
 @testitem "update_marks! rejects non-finite price inputs" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 5_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("MARKBAD/USD"), :MARKBAD, :USD))
     dt0 = DateTime(2026, 1, 1)

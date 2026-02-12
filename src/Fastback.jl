@@ -47,6 +47,7 @@ export Fastback,
     OrderRejectError,
     TradeReason,
     Cash,
+    CashLedger,
     Instrument,
     Order,
     Trade,
@@ -73,13 +74,14 @@ export symbol,
     realized_return,
     cfid!
 
-# Account operations
+# Cash ledger operations
 export cash_asset,
+    cash_index,
     has_cash_asset,
-    has_base_ccy,
-    register_cash_asset!,
-    cash_base_ccy,
-    quote_cash,
+    register_cash_asset!
+
+# Account operations
+export quote_cash,
     settle_cash,
     margin_cash,
     get_rate_base_ccy,

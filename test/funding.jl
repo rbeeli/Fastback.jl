@@ -4,9 +4,11 @@ using TestItemRunner
 @testitem "Perpetual funding debits longs and credits shorts" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
         acc,
@@ -60,9 +62,11 @@ end
 @testitem "Perpetual funding uses mark price" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
         acc,

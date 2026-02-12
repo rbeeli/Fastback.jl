@@ -22,8 +22,10 @@ You drive the engine with explicit mark, FX, and funding updates, plus optional 
 using Fastback
 using Dates
 
-acc = Account(; mode=AccountMode.Cash, base_currency=:USD)
-deposit!(acc, Cash(:USD), 10_000.0)
+ledger = CashLedger()
+usd = register_cash_asset!(ledger, :USD)
+acc = Account(; mode=AccountMode.Cash, ledger=ledger, base_currency=usd)
+deposit!(acc, usd, 10_000.0)
 inst = register_instrument!(acc, spot_instrument(:ABC, :ABC, :USD))
 
 dts = [DateTime(2024, 1, 1) + Hour(i) for i in 0:3]
@@ -43,11 +45,11 @@ for (dt, price) in zip(dts, prices)
     end
 
     if should_collect(equity_data, dt)
-        collect_equity(dt, equity(acc, :USD))
+        collect_equity(dt, equity(acc, usd))
     end
 end
 
-equity(acc, :USD)
+equity(acc, usd)
 
 # Plots (requires Plots.jl)
 using Plots

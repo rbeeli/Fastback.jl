@@ -8,7 +8,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 - `Fastback`, `Price`, `Quantity`
 - `TradeDir`, `SettlementStyle`, `MarginMode`, `MarginingStyle`, `ContractKind`, `AccountMode`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `TradeReason`
-- `Cash`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
+- `Cash`, `CashLedger`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
 - `ExchangeRates`, `OneExchangeRates`, `SpotExchangeRates`
 
 ## Trade direction helpers
@@ -20,10 +20,13 @@ For details, open the REPL and type `?symbol` to view docstrings.
 - `symbol`, `nominal_value`, `FillPlan`, `plan_fill`, `fill_order!`
 - `is_realizing`, `realized_return`, `cfid!`
 
+## Cash ledger operations
+
+- `cash_asset`, `cash_index`, `has_cash_asset`, `register_cash_asset!`
+
 ## Account operations
 
-- `cash_asset`, `has_cash_asset`, `has_base_ccy`, `register_cash_asset!`
-- `cash_base_ccy`, `quote_cash`, `settle_cash`, `margin_cash`
+- `quote_cash`, `settle_cash`, `margin_cash`
 - `get_rate_base_ccy`, `to_settle`, `to_quote`, `to_margin`, `to_base`
 - `cash_balance`, `equity`, `equity_base_ccy`, `balance_base_ccy`
 - `init_margin_used`, `init_margin_used_base_ccy`, `maint_margin_used`, `maint_margin_used_base_ccy`

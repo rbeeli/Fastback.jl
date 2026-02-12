@@ -4,9 +4,12 @@ using TestItemRunner
     using Test, Fastback
 
     er = SpotExchangeRates()
-    acc = Account(; exchange_rates=er, base_currency=:USD)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; exchange_rates=er, ledger=ledger, base_currency=base_currency)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
 
-    deposit!(acc, Cash(:USD), 1.0)
+    deposit!(acc, :USD, 1.0)
 
-    @test get_rate(er, cash_asset(acc, :USD), cash_asset(acc, :USD)) == 1.0
+    @test get_rate(er, cash_asset(acc.ledger, :USD), cash_asset(acc.ledger, :USD)) == 1.0
 end

@@ -4,15 +4,18 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
-    usd = Cash(:USD)
-    chf = Cash(:CHF)
-    deposit!(acc, usd, 50_000.0)
-    deposit!(acc, chf, 1_000.0)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
+    deposit!(acc, :USD, 50_000.0)
+    register_cash_asset!(acc.ledger, :CHF)
+    add_asset!(er, cash_asset(acc.ledger, :CHF))
+    deposit!(acc, :CHF, 1_000.0)
 
     usd_to_chf = 0.9
-    update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), usd_to_chf)
+    update_rate!(er, cash_asset(acc.ledger, :USD), cash_asset(acc.ledger, :CHF), usd_to_chf)
 
     spot_inst = register_instrument!(acc, Instrument(
         Symbol("SPOT/USDCHF"),
@@ -59,17 +62,17 @@ using TestItemRunner
     @test plan.new_init_margin_settle ≈ expected_init_margin atol=1e-10
     @test plan.new_maint_margin_settle ≈ expected_maint_margin atol=1e-10
 
-    bal_before_open = acc.balances[chf_idx]
+    bal_before_open = acc.ledger.balances[chf_idx]
     trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission=commission)
     @test trade isa Trade
-    @test acc.balances[chf_idx] ≈ bal_before_open + expected_cash_delta atol=1e-10
-    @test acc.init_margin_used[margin_idx] ≈ expected_init_margin atol=1e-10
+    @test acc.ledger.balances[chf_idx] ≈ bal_before_open + expected_cash_delta atol=1e-10
+    @test acc.ledger.init_margin_used[margin_idx] ≈ expected_init_margin atol=1e-10
 
     accrue_borrow_fees!(acc, dt) # initialize clock
-    bal_before_fee = acc.balances[chf_idx]
+    bal_before_fee = acc.ledger.balances[chf_idx]
     dt_fee = dt + Day(1)
     accrue_borrow_fees!(acc, dt_fee)
-    bal_after_fee = acc.balances[chf_idx]
+    bal_after_fee = acc.ledger.balances[chf_idx]
     yearfrac = Dates.value(Dates.Millisecond(dt_fee - dt)) / (1000 * 60 * 60 * 24 * 365.0)
     expected_fee_settle = abs(qty) * price * spot_inst.multiplier * spot_inst.short_borrow_rate * yearfrac * usd_to_chf
     @test bal_before_fee - bal_after_fee ≈ expected_fee_settle atol=1e-8
@@ -97,12 +100,12 @@ using TestItemRunner
     trade_perp = fill_order!(acc, order_perp; dt=dt_perp, fill_price=order_perp.price, bid=order_perp.price, ask=order_perp.price, last=order_perp.price)
     @test trade_perp isa Trade
 
-    bal_before_funding = acc.balances[chf_idx]
+    bal_before_funding = acc.ledger.balances[chf_idx]
     funding_rate = 0.02
     apply_funding!(acc, perp_inst, dt_perp + Hour(8); funding_rate=funding_rate)
     payment_quote = -order_perp.quantity * order_perp.price * perp_inst.multiplier * funding_rate
     expected_payment_settle = payment_quote * usd_to_chf
-    @test acc.balances[chf_idx] ≈ bal_before_funding + expected_payment_settle atol=1e-8
+    @test acc.ledger.balances[chf_idx] ≈ bal_before_funding + expected_payment_settle atol=1e-8
     cf_funding = acc.cashflows[end]
     @test cf_funding.kind == CashflowKind.Funding
     @test cf_funding.cash_index == chf_idx
@@ -113,15 +116,18 @@ end
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
-    usd = Cash(:USD)
-    chf = Cash(:CHF)
-    deposit!(acc, usd, 50_000.0)
-    deposit!(acc, chf, 1_000.0)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
+    deposit!(acc, :USD, 50_000.0)
+    register_cash_asset!(acc.ledger, :CHF)
+    add_asset!(er, cash_asset(acc.ledger, :CHF))
+    deposit!(acc, :CHF, 1_000.0)
 
     usd_to_chf = 0.8
-    update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), usd_to_chf)
+    update_rate!(er, cash_asset(acc.ledger, :USD), cash_asset(acc.ledger, :CHF), usd_to_chf)
     set_interest_rates!(acc, :CHF; borrow=0.05, lend=0.02)
 
     inst = register_instrument!(acc, Instrument(
@@ -148,8 +154,8 @@ end
     @test trade isa Trade
 
     chf_idx = inst.settle_cash_index
-    bal_before = acc.balances[chf_idx]
-    eq_before = acc.equities[chf_idx]
+    bal_before = acc.ledger.balances[chf_idx]
+    eq_before = acc.ledger.equities[chf_idx]
 
     accrue_interest!(acc, dt0)
     accrue_borrow_fees!(acc, dt0)
@@ -163,8 +169,8 @@ end
     expected_fee_settle = abs(qty) * price * inst.multiplier * inst.short_borrow_rate * yearfrac * usd_to_chf
     expected_net = expected_interest - expected_fee_settle
 
-    @test acc.balances[chf_idx] ≈ bal_before + expected_net atol=1e-8
-    @test acc.equities[chf_idx] ≈ eq_before + expected_net atol=1e-8
+    @test acc.ledger.balances[chf_idx] ≈ bal_before + expected_net atol=1e-8
+    @test acc.ledger.equities[chf_idx] ≈ eq_before + expected_net atol=1e-8
 
     @test length(acc.cashflows) == 2
     interest_cf, fee_cf = acc.cashflows

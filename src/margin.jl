@@ -14,8 +14,8 @@ Return `true` if the account is below maintenance requirements.
         return excess_liquidity_base_ccy(acc) < 0
     end
 
-    @inbounds for i in eachindex(acc.maint_margin_used)
-        if acc.equities[i] - acc.maint_margin_used[i] < 0
+    @inbounds for i in eachindex(acc.ledger.maint_margin_used)
+        if acc.ledger.equities[i] - acc.ledger.maint_margin_used[i] < 0
             return true
         end
     end

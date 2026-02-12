@@ -1,17 +1,9 @@
 mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
     const mode::AccountMode.T
     const margining_style::MarginingStyle.T
-    const cash::Vector{Cash}
-    const cash_by_symbol::Dict{Symbol,Cash}
+    const ledger::CashLedger
+    const base_currency::Cash
     const exchange_rates::TER
-    base_currency::Symbol
-    base_ccy_index::Int
-    const balances::Vector{Price}              # balance per cash currency
-    const equities::Vector{Price}              # equity per cash currency
-    const interest_borrow_rate::Vector{Price}  # borrow interest per cash currency
-    const interest_lend_rate::Vector{Price}    # lend interest per cash currency
-    const init_margin_used::Vector{Price}      # initial margin used per cash currency
-    const maint_margin_used::Vector{Price}     # maintenance margin used per cash currency
     const positions::Vector{Position{TTime}}
     const trades::Vector{Trade{TTime}}
     const cashflows::Vector{Cashflow{TTime}}
@@ -25,7 +17,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
 
     function Account(
         ;
-        base_currency::Symbol,
+        ledger::CashLedger,
+        base_currency::Cash,
         time_type::Type{TTime}=DateTime,
         mode::AccountMode.T=AccountMode.Cash,
         margining_style::MarginingStyle.T=MarginingStyle.BaseCurrency,
@@ -35,20 +28,12 @@ mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
         trade_sequence=0,
         exchange_rates::TER=OneExchangeRates(),
     ) where {TTime<:Dates.AbstractTime,TER<:ExchangeRates}
-        new{TTime,TER}(
+        acc = new{TTime,TER}(
             mode,
             margining_style,
-            Vector{Cash}(), # cash
-            Dict{Symbol,Cash}(), # cash_by_symbol
-            exchange_rates,
+            ledger,
             base_currency,
-            0, # base_ccy_index
-            Vector{Price}(), # balances
-            Vector{Price}(), # equities
-            Vector{Price}(), # interest_borrow_rate
-            Vector{Price}(), # interest_lend_rate
-            Vector{Price}(), # init_margin_used
-            Vector{Price}(), # maint_margin_used
+            exchange_rates,
             Vector{Position{TTime}}(), # positions
             Vector{Trade{TTime}}(), # trades
             Vector{Cashflow{TTime}}(), # cashflows
@@ -60,6 +45,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
             date_format,
             datetime_format,
         )
+        acc
     end
 end
 
@@ -85,132 +71,101 @@ Generates the next cashflow ID sequence value for the account.
 @inline cfid!(acc::Account) = acc.cashflow_sequence += 1
 
 """
-Returns a `Cash` object with the given symbol.
-
-Cash objects must be registered first in the account before
-they can be accessed, see `register_cash_asset!`.
-"""
-@inline cash_asset(acc::Account, symbol::Symbol) = @inbounds acc.cash_by_symbol[symbol]
-
-"""
-Checks if the account has the given cash symbol registered.
-"""
-@inline has_cash_asset(acc::Account, symbol::Symbol) = haskey(acc.cash_by_symbol, symbol)
-
-"""
-Registers a new cash asset in the account.
-
-Cash is a liquid coin or currency that is used to trade instruments with, e.g. USD, CHF, BTC, ETH.
-When funding the account, the funds are added to the balance of the corresponding cash asset.
-"""
-function register_cash_asset!(
-    acc::Account{TTime},
-    cash::Cash
-) where {TTime<:Dates.AbstractTime}
-    # ensure cash symbol is valid
-    cash.index == 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' is already registered (index > 0)."))
-
-    # ensure cash object is not being reused
-    !has_cash_asset(acc, cash.symbol) || throw(ArgumentError("Cash with symbol '$(cash.symbol)' already registered."))
-
-    # set index for fast array indexing and hashing
-    cash.index = length(acc.cash) + 1
-
-    add_asset!(acc.exchange_rates, cash)
-
-    push!(acc.cash, cash)
-    acc.cash_by_symbol[cash.symbol] = cash
-    push!(acc.balances, zero(Price))
-    push!(acc.equities, zero(Price))
-    push!(acc.interest_borrow_rate, zero(Price))
-    push!(acc.interest_lend_rate, zero(Price))
-    push!(acc.init_margin_used, zero(Price))
-    push!(acc.maint_margin_used, zero(Price))
-
-    # set base cash when its currency is registered
-    if cash.symbol == acc.base_currency
-        acc.base_ccy_index = cash.index
-    end
-end
-
-@inline function _adjust_cash!(
-    acc::Account{TTime},
-    cash::Cash,
-    amount::Real
-) where {TTime<:Dates.AbstractTime}
-    # register cash object if not already registered
-    has_cash_asset(acc, cash.symbol) || register_cash_asset!(acc, cash)
-
-    # ensure cash object was registered
-    cash.index > 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered."))
-
-    # update balance and equity for the asset
-    @inbounds begin
-        acc.balances[cash.index] += Price(amount)
-        acc.equities[cash.index] += Price(amount)
-    end
-
-    cash
-end
-
-"""
 Deposits cash into the account balance.
 
 Cash is a liquid coin or currency that is used to trade instruments with, e.g. USD, CHF, BTC, ETH.
+The cash asset must already be registered in the account.
 
 The funds are added to the balance and equity of the corresponding cash asset.
 Use `withdraw!` to reduce the balance again.
+Returns the corresponding `Cash` handle.
 """
 function deposit!(
     acc::Account{TTime},
-    cash::Cash,
-    amount::Real
+    symbol::Symbol,
+    amount::Real,
 ) where {TTime<:Dates.AbstractTime}
     isless(amount, zero(amount)) && throw(ArgumentError("Deposit amount must be non-negative."))
-    _adjust_cash!(acc, cash, amount)
+    cash = cash_asset(acc.ledger, symbol)
+    deposit!(acc, cash, amount)
+end
+
+function deposit!(
+    acc::Account{TTime},
+    cash::Cash,
+    amount::Real,
+) where {TTime<:Dates.AbstractTime}
+    isless(amount, zero(amount)) && throw(ArgumentError("Deposit amount must be non-negative."))
+
+    idx = cash.index
+    _adjust_cash_idx!(acc.ledger, idx, Price(amount))
+    @inbounds acc.ledger.cash[idx]
 end
 
 """
 Withdraws cash from the account balance.
 
+The cash asset must already be registered in the account.
 The funds are subtracted from the balance and equity of the corresponding cash asset.
 Use `deposit!` to fund an account.
 """
-function withdraw!(
+@inline function _withdraw_idx!(
     acc::Account{TTime},
-    cash::Cash,
+    idx::Int,
+    symbol::Symbol,
     amount::Price,
 ) where {TTime<:Dates.AbstractTime}
-    isless(amount, zero(amount)) && throw(ArgumentError("Withdraw amount must be non-negative."))
-
-    has_cash_asset(acc, cash.symbol) || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered."))
-    cash.index > 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered."))
-
     if acc.mode == AccountMode.Cash
-        @inbounds post_balance = acc.balances[cash.index] - amount
-        post_balance < 0 && throw(ArgumentError("Withdrawal would overdraw cash balance for $(cash.symbol)."))
+        @inbounds post_balance = acc.ledger.balances[idx] - amount
+        post_balance < 0 && throw(ArgumentError("Withdrawal would overdraw cash balance for $(symbol)."))
         if acc.margining_style == MarginingStyle.PerCurrency
-            post_available = available_funds(acc, cash) - amount
-            post_available < 0 && throw(ArgumentError("Withdrawal exceeds available funds for $(cash.symbol)."))
-            return _adjust_cash!(acc, cash, -amount)
+            @inbounds post_available = acc.ledger.equities[idx] - acc.ledger.init_margin_used[idx] - amount
+            post_available < 0 && throw(ArgumentError("Withdrawal exceeds available funds for $(symbol)."))
+            _adjust_cash_idx!(acc.ledger, idx, -amount)
+            return nothing
         else
-            amount_base = amount * get_rate_base_ccy(acc, cash)
+            amount_base = amount * _get_rate_base_ccy_idx(acc, idx)
             post_available_base = available_funds_base_ccy(acc) - amount_base
             post_available_base < 0 && throw(ArgumentError("Withdrawal exceeds available funds in base currency."))
-            return _adjust_cash!(acc, cash, -amount)
+            _adjust_cash_idx!(acc.ledger, idx, -amount)
+            return nothing
         end
     end
 
     if acc.margining_style == MarginingStyle.PerCurrency
-        post_available = available_funds(acc, cash) - amount
-        post_available < 0 && throw(ArgumentError("Withdrawal exceeds available funds for $(cash.symbol)."))
-        return _adjust_cash!(acc, cash, -amount)
+        @inbounds post_available = acc.ledger.equities[idx] - acc.ledger.init_margin_used[idx] - amount
+        post_available < 0 && throw(ArgumentError("Withdrawal exceeds available funds for $(symbol)."))
+        _adjust_cash_idx!(acc.ledger, idx, -amount)
+        return nothing
     else
-        amount_base = amount * get_rate_base_ccy(acc, cash)
+        amount_base = amount * _get_rate_base_ccy_idx(acc, idx)
         post_available_base = available_funds_base_ccy(acc) - amount_base
         post_available_base < 0 && throw(ArgumentError("Withdrawal exceeds available funds in base currency."))
-        return _adjust_cash!(acc, cash, -amount)
+        _adjust_cash_idx!(acc.ledger, idx, -amount)
+        return nothing
     end
+end
+
+function withdraw!(
+    acc::Account{TTime},
+    symbol::Symbol,
+    amount::Real,
+) where {TTime<:Dates.AbstractTime}
+    isless(amount, zero(amount)) && throw(ArgumentError("Withdraw amount must be non-negative."))
+    amount_p = Price(amount)
+    cash = cash_asset(acc.ledger, symbol)
+    _withdraw_idx!(acc, cash.index, cash.symbol, amount_p)
+end
+
+@inline function withdraw!(
+    acc::Account{TTime},
+    cash::Cash,
+    amount::Real,
+) where {TTime<:Dates.AbstractTime}
+    isless(amount, zero(amount)) && throw(ArgumentError("Withdraw amount must be non-negative."))
+    amount_p = Price(amount)
+    idx = cash.index
+    _withdraw_idx!(acc, idx, cash.symbol, amount_p)
 end
 
 """
@@ -235,20 +190,20 @@ function register_instrument!(
     validate_instrument(inst)
 
     # ensure cash assets are registered in account
-    if !has_cash_asset(acc, inst.quote_symbol)
+    if !has_cash_asset(acc.ledger, inst.quote_symbol)
         throw(ArgumentError("Quote cash asset '$(inst.quote_symbol)' for instrument '$(inst.symbol)' not registered in account"))
     end
-    if !has_cash_asset(acc, inst.settle_symbol)
+    if !has_cash_asset(acc.ledger, inst.settle_symbol)
         throw(ArgumentError("Settlement cash asset '$(inst.settle_symbol)' for instrument '$(inst.symbol)' not registered in account"))
     end
-    if !has_cash_asset(acc, inst.margin_symbol)
+    if !has_cash_asset(acc.ledger, inst.margin_symbol)
         throw(ArgumentError("Margin cash asset '$(inst.margin_symbol)' for instrument '$(inst.symbol)' not registered in account"))
     end
 
     # set cash indexes for fast array indexing and margin calculations
-    inst.quote_cash_index = cash_asset(acc, inst.quote_symbol).index
-    inst.settle_cash_index = cash_asset(acc, inst.settle_symbol).index
-    inst.margin_cash_index = cash_asset(acc, inst.margin_symbol).index
+    inst.quote_cash_index = cash_index(acc.ledger, inst.quote_symbol)
+    inst.settle_cash_index = cash_index(acc.ledger, inst.settle_symbol)
+    inst.margin_cash_index = cash_index(acc.ledger, inst.margin_symbol)
 
     # set asset index for fast array indexing and hashing
     inst.index = length(acc.positions) + 1
@@ -286,15 +241,7 @@ Returns the cash balance of the provided cash asset in the account.
 
 The returned value does not include the P&L value of open positions.
 """
-@inline cash_balance(acc::Account, cash::Cash) = @inbounds acc.balances[cash.index]
-
-"""
-Returns the cash balance of the provided cash asset in the account.
-
-Convenience method dispatching on the cash symbol instead of the `Cash` object.
-The returned value does not include the P&L value of open positions.
-"""
-@inline cash_balance(acc::Account, cash_symbol::Symbol) = cash_balance(acc, cash_asset(acc, cash_symbol))
+@inline cash_balance(acc::Account, cash::Cash) = @inbounds acc.ledger.balances[cash.index]
 
 """
 Returns the equity value of the provided cash asset in the account.
@@ -302,86 +249,56 @@ Returns the equity value of the provided cash asset in the account.
 Equity is calculated as your cash balance +/- the floating profit/loss
 of your open positions in the same currency, not including closing commission.
 """
-@inline equity(acc::Account, cash::Cash) = @inbounds acc.equities[cash.index]
-
-"""
-Returns the equity value of the provided cash asset in the account.
-
-Equity is calculated as your cash balance +/- the floating profit/loss
-of your open positions in the same currency, not including closing commission.
-"""
-@inline equity(acc::Account, cash_symbol::Symbol) = equity(acc, cash_asset(acc, cash_symbol))
+@inline equity(acc::Account, cash::Cash) = @inbounds acc.ledger.equities[cash.index]
 
 """
 Initial margin currently used in the given currency.
 """
-@inline init_margin_used(acc::Account, cash::Cash)::Price = @inbounds acc.init_margin_used[cash.index]
-@inline init_margin_used(acc::Account, cash_symbol::Symbol)::Price = init_margin_used(acc, cash_asset(acc, cash_symbol))
+@inline init_margin_used(acc::Account, cash::Cash)::Price = @inbounds acc.ledger.init_margin_used[cash.index]
 
 """
 Maintenance margin currently used in the given currency.
 """
-@inline maint_margin_used(acc::Account, cash::Cash)::Price = @inbounds acc.maint_margin_used[cash.index]
-@inline maint_margin_used(acc::Account, cash_symbol::Symbol)::Price = maint_margin_used(acc, cash_asset(acc, cash_symbol))
+@inline maint_margin_used(acc::Account, cash::Cash)::Price = @inbounds acc.ledger.maint_margin_used[cash.index]
 
 """
 Available funds in a currency (equity minus initial margin used).
 """
 @inline available_funds(acc::Account, cash::Cash) = equity(acc, cash) - init_margin_used(acc, cash)
-@inline available_funds(acc::Account, cash_symbol::Symbol) = available_funds(acc, cash_asset(acc, cash_symbol))
 
 """
 Excess liquidity in a currency (equity minus maintenance margin used).
 """
 @inline excess_liquidity(acc::Account, cash::Cash) = equity(acc, cash) - maint_margin_used(acc, cash)
-@inline excess_liquidity(acc::Account, cash_symbol::Symbol) = excess_liquidity(acc, cash_asset(acc, cash_symbol))
 
 # ---------------------------------------------------------
 # Base currency helpers
 
 """
-Return `true` if the account has a base currency configured.
-"""
-@inline has_base_ccy(acc::Account)::Bool = acc.base_ccy_index > 0
-
-"""
-Return the base-currency `Cash` asset for the account.
-"""
-@inline function cash_base_ccy(acc::Account)::Cash
-    acc.base_ccy_index > 0 || throw(ArgumentError("Base currency cash asset is not registered in the account."))
-    @inbounds acc.cash[acc.base_ccy_index]
-end
-
-"""
 FX rate from the given cash index into the account base currency.
 """
-@inline function get_rate_base_ccy(acc::Account, i::Int)::Float64
-    acc.base_ccy_index > 0 || throw(ArgumentError("Base currency cash asset is not registered in the account."))
-    i == acc.base_ccy_index && return 1.0
-    from = @inbounds acc.cash[i]
-    to = cash_base_ccy(acc)
-    r = get_rate(acc.exchange_rates, from, to)
-    r
+@inline function _get_rate_base_ccy_idx(acc::Account, i::Int)::Float64
+    base_cash = acc.base_currency
+    i == base_cash.index && return 1.0
+    from = @inbounds acc.ledger.cash[i]
+    get_rate(acc.exchange_rates, from, base_cash)
 end
 
-@inline function get_rate(
+@inline function _get_rate_idx(
     acc::Account,
     from_idx::Int,
     to_idx::Int,
 )
-    from = @inbounds acc.cash[from_idx]
-    to = @inbounds acc.cash[to_idx]
-    r = get_rate(acc.exchange_rates, from, to)
-    r
+    from = @inbounds acc.ledger.cash[from_idx]
+    to = @inbounds acc.ledger.cash[to_idx]
+    get_rate(acc.exchange_rates, from, to)
 end
 
 """
 FX rate from the given cash asset into the account base currency.
 """
 @inline function get_rate_base_ccy(acc::Account, cash::Cash)::Float64
-    idx = cash.index
-    idx > 0 || throw(ArgumentError("Cash with symbol '$(cash.symbol)' not registered in account."))
-    get_rate_base_ccy(acc, idx)
+    _get_rate_base_ccy_idx(acc, cash.index)
 end
 
 # ---------------------------------------------------------
@@ -390,28 +307,27 @@ end
 """
 Retrieve the `Cash` object for the instrument quote currency without allocations.
 """
-@inline quote_cash(acc::Account, inst::Instrument) = @inbounds acc.cash[inst.quote_cash_index]
+@inline quote_cash(acc::Account, inst::Instrument) = @inbounds acc.ledger.cash[inst.quote_cash_index]
 
 """
 Retrieve the `Cash` object for the instrument settlement currency without allocations.
 """
-@inline settle_cash(acc::Account, inst::Instrument) = @inbounds acc.cash[inst.settle_cash_index]
+@inline settle_cash(acc::Account, inst::Instrument) = @inbounds acc.ledger.cash[inst.settle_cash_index]
 
 """
 Retrieve the `Cash` object for the instrument margin currency without allocations.
 """
-@inline margin_cash(acc::Account, inst::Instrument) = @inbounds acc.cash[inst.margin_cash_index]
+@inline margin_cash(acc::Account, inst::Instrument) = @inbounds acc.ledger.cash[inst.margin_cash_index]
 
 """
 Total account equity converted into base currency using stored FX rates.
 """
 function equity_base_ccy(acc::Account)::Price
-    has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
     total = zero(Price)
-    @inbounds for i in eachindex(acc.equities)
-        val = acc.equities[i]
+    @inbounds for i in eachindex(acc.ledger.equities)
+        val = acc.ledger.equities[i]
         iszero(val) && continue  # avoid 0 * NaN when rate is missing
-        total += val * get_rate_base_ccy(acc, i)
+        total += val * _get_rate_base_ccy_idx(acc, i)
     end
     total
 end
@@ -420,12 +336,11 @@ end
 Total account cash balance converted into base currency using stored FX rates.
 """
 function balance_base_ccy(acc::Account)::Price
-    has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
     total = zero(Price)
-    @inbounds for i in eachindex(acc.balances)
-        val = acc.balances[i]
+    @inbounds for i in eachindex(acc.ledger.balances)
+        val = acc.ledger.balances[i]
         iszero(val) && continue
-        total += val * get_rate_base_ccy(acc, i)
+        total += val * _get_rate_base_ccy_idx(acc, i)
     end
     total
 end
@@ -434,12 +349,11 @@ end
 Initial margin used, converted into base currency.
 """
 function init_margin_used_base_ccy(acc::Account)::Price
-    has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
     total = zero(Price)
-    @inbounds for i in eachindex(acc.init_margin_used)
-        val = acc.init_margin_used[i]
+    @inbounds for i in eachindex(acc.ledger.init_margin_used)
+        val = acc.ledger.init_margin_used[i]
         iszero(val) && continue
-        total += val * get_rate_base_ccy(acc, i)
+        total += val * _get_rate_base_ccy_idx(acc, i)
     end
     total
 end
@@ -448,12 +362,11 @@ end
 Maintenance margin used, converted into base currency.
 """
 function maint_margin_used_base_ccy(acc::Account)::Price
-    has_base_ccy(acc) || throw(ArgumentError("Account base currency not set."))
     total = zero(Price)
-    @inbounds for i in eachindex(acc.maint_margin_used)
-        val = acc.maint_margin_used[i]
+    @inbounds for i in eachindex(acc.ledger.maint_margin_used)
+        val = acc.ledger.maint_margin_used[i]
         iszero(val) && continue
-        total += val * get_rate_base_ccy(acc, i)
+        total += val * _get_rate_base_ccy_idx(acc, i)
     end
     total
 end
@@ -476,7 +389,7 @@ Convert a quote-currency amount into the instrument settlement currency.
 Naming follows the currency/unit semantics note in `contract_math.jl`.
 """
 @inline function to_settle(acc::Account, inst::Instrument, amount_quote::Price)::Price
-    amount_quote * get_rate(acc, inst.quote_cash_index, inst.settle_cash_index)
+    amount_quote * _get_rate_idx(acc, inst.quote_cash_index, inst.settle_cash_index)
 end
 
 """
@@ -484,14 +397,14 @@ Convert a settlement-currency amount back into the instrument quote currency.
 Inverse of `to_settle`; useful for round-trip tests and diagnostics.
 """
 @inline function to_quote(acc::Account, inst::Instrument, amount_settle::Price)::Price
-    amount_settle * get_rate(acc, inst.settle_cash_index, inst.quote_cash_index)
+    amount_settle * _get_rate_idx(acc, inst.settle_cash_index, inst.quote_cash_index)
 end
 
 """
 Convert a quote-currency amount into the instrument margin currency.
 """
 @inline function to_margin(acc::Account, inst::Instrument, amount_quote::Price)::Price
-    amount_quote * get_rate(acc, inst.quote_cash_index, inst.margin_cash_index)
+    amount_quote * _get_rate_idx(acc, inst.quote_cash_index, inst.margin_cash_index)
 end
 
 """
@@ -499,14 +412,14 @@ Convert a margin-currency amount back into the instrument quote currency.
 Inverse of `to_margin`; useful for diagnostics.
 """
 @inline function to_quote_from_margin(acc::Account, inst::Instrument, amount_margin::Price)::Price
-    amount_margin * get_rate(acc, inst.margin_cash_index, inst.quote_cash_index)
+    amount_margin * _get_rate_idx(acc, inst.margin_cash_index, inst.quote_cash_index)
 end
 
 """
 Convert a settlement-currency amount into the account base currency.
 """
 @inline function to_base(acc::Account, settle_idx::Int, amount_settle::Price)::Price
-    amount_settle * get_rate_base_ccy(acc, settle_idx)
+    amount_settle * _get_rate_base_ccy_idx(acc, settle_idx)
 end
 
 @inline to_base(acc::Account, cash::Cash, amount_settle::Price)::Price = to_base(acc, cash.index, amount_settle)

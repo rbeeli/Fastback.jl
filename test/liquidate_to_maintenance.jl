@@ -3,8 +3,10 @@ using TestItemRunner
 @testitem "liquidate_to_maintenance! closes largest maint contributor first" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 16_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 16_000.0)
 
     inst_big = register_instrument!(acc, Instrument(Symbol("BIG/USD"), :BIG, :USD;
         margin_mode=MarginMode.PercentNotional,
@@ -40,8 +42,10 @@ end
 @testitem "liquidate_to_maintenance! forwards commission_pct" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 1_500.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 1_500.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("RISK/USD"), :RISK, :USD;
         margin_mode=MarginMode.PercentNotional,
@@ -69,13 +73,16 @@ end
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
 
-    usd = Cash(:USD)
-    eur = Cash(:EUR)
-    deposit!(acc, usd, 10_000.0)
-    deposit!(acc, eur, 200.0)
-    update_rate!(er, eur, usd, 1.1)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
+    deposit!(acc, :USD, 10_000.0)
+    register_cash_asset!(acc.ledger, :EUR)
+    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    deposit!(acc, :EUR, 200.0)
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.1)
 
     inst_eur = register_instrument!(acc, Instrument(Symbol("PER/EUR"), :PER, :EUR;
         settle_symbol=:EUR,
@@ -98,7 +105,7 @@ end
     dt2 = dt + Hour(1)
     update_marks!(acc, inst_eur, dt2, 70.0, 70.0, 70.0)
 
-    @test excess_liquidity(acc, :EUR) < 0 # only EUR leg is stressed
+    @test excess_liquidity(acc, cash_asset(acc.ledger, :EUR)) < 0 # only EUR leg is stressed
     @test is_under_maintenance(acc)
 
     trades = liquidate_to_maintenance!(acc, dt2; commission=0.0)
@@ -109,4 +116,55 @@ end
     @test get_position(acc, inst_eur).quantity == 0.0
     @test get_position(acc, inst_usd).quantity == 100.0
     @test Fastback.check_invariants(acc)
+end
+
+@testitem "per-currency liquidation de-risks when worst currency has no margin-matched position" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
+    register_cash_asset!(acc.ledger, :EUR)
+    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    deposit!(acc, :USD, 0.0)
+    deposit!(acc, :EUR, 1_000.0)
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.1) # EUR -> USD
+
+    inst = register_instrument!(acc, Instrument(Symbol("PCUR/FALLBACK"), :PCUR, :USD;
+        settle_symbol=:USD,
+        margin_symbol=:EUR,
+        contract_kind=ContractKind.Spot,
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=1.0,
+        margin_init_short=1.0,
+        margin_maint_long=0.5,
+        margin_maint_short=0.5,
+        multiplier=1.0,
+    ))
+
+    dt = DateTime(2026, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 11.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+
+    dt2 = dt + Hour(1)
+    update_marks!(acc, inst, dt2, 50.0, 50.0, 50.0)
+
+    # Deficit is in USD, while margin is tracked in EUR.
+    @test excess_liquidity(acc, cash_asset(acc.ledger, :USD)) < 0
+    @test is_under_maintenance(acc)
+
+    err = try
+        liquidate_to_maintenance!(acc, dt2; commission=0.0)
+        nothing
+    catch e
+        e
+    end
+
+    # Liquidation should de-risk open positions first (no immediate "wrong-currency" abort),
+    # then fail only because no positions remain while equity is still negative.
+    @test err isa ArgumentError
+    @test get_position(acc, inst).quantity == 0.0
+    @test count(t -> t.reason == TradeReason.Liquidation, acc.trades) == 1
 end

@@ -2,7 +2,7 @@
 
 ## Account
 
-`Account` is Fastback's central ledger. It keeps the registered cash assets, open positions, executed trades, account-level balances and equities, along with order and trade sequence counters. Construction and mutation helpers such as `register_cash_asset!`, `register_instrument!`, `deposit!`, `withdraw!`, and `fill_order!` are provided by the account API.
+`Account` is Fastback's central state object. It owns a `CashLedger` (`acc.ledger`) for cash assets, balances, equities, and margin vectors, plus open positions, executed trades, and order/trade sequence counters.
 
 ## Order
 
@@ -70,7 +70,7 @@ Equity is the balance of a cash asset plus the unrealized P&L of open positions 
 
 ## Cash Asset
 
-A `Cash` object models a funding currency (USD, EUR, BTC, …) with display precision. Cash assets must be registered with an account before funds can be deposited or withdrawn using the `register_cash_asset!` function.
+A `Cash` object models a funding currency (USD, EUR, BTC, …) with display precision and a ledger-assigned index. `Cash` is owned by `CashLedger`. Register currencies with `register_cash_asset!` to get ledger-owned `Cash` handles.
 
 ## Collector
 

@@ -27,12 +27,12 @@ end
 """
 Typed FX rate update for `process_step!`.
 
-`from_cash_index` and `to_cash_index` refer to cash asset indexes within the account.
+`from_cash` and `to_cash` reference account cash assets.
 The rate is interpreted as `from` → `to` and the reciprocal is implied for `SpotExchangeRates`.
 """
 struct FXUpdate
-    from_cash_index::Int
-    to_cash_index::Int
+    from_cash::Cash
+    to_cash::Cash
     rate::Float64
 end
 
@@ -119,7 +119,7 @@ margin usage for percent-notional instruments using the latest stored last price
             new_value_settle = val_quote == 0.0 ? 0.0 : to_settle(acc, inst, val_quote)
             value_delta = new_value_settle - pos.value_settle
             if value_delta != 0.0
-                acc.equities[settle_idx] += value_delta
+                acc.ledger.equities[settle_idx] += value_delta
             end
             pos.value_settle = new_value_settle
 
@@ -134,10 +134,10 @@ margin usage for percent-notional instruments using the latest stored last price
             init_delta = new_init_margin - pos.init_margin_settle
             maint_delta = new_maint_margin - pos.maint_margin_settle
             if init_delta != 0.0
-                acc.init_margin_used[margin_idx] += init_delta
+                acc.ledger.init_margin_used[margin_idx] += init_delta
             end
             if maint_delta != 0.0
-                acc.maint_margin_used[margin_idx] += maint_delta
+                acc.ledger.maint_margin_used[margin_idx] += maint_delta
             end
             pos.init_margin_settle = new_init_margin
             pos.maint_margin_settle = new_maint_margin
@@ -210,9 +210,7 @@ function process_step!(
         er = acc.exchange_rates
         er isa SpotExchangeRates || throw(ArgumentError("FX updates require SpotExchangeRates on the account."))
         @inbounds for fx in fx_updates
-            from_cash = acc.cash[fx.from_cash_index]
-            to_cash = acc.cash[fx.to_cash_index]
-            update_rate!(er, from_cash, to_cash, fx.rate)
+            update_rate!(er, fx.from_cash, fx.to_cash, fx.rate)
         end
         isempty(fx_updates) || _revalue_fx_caches!(acc)
     end

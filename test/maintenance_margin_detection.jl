@@ -3,8 +3,10 @@ using TestItemRunner
 @testitem "Maintenance margin breach is detected" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 500.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 500.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("SPOT/USD"),
@@ -36,14 +38,17 @@ end
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
 
-    usd = Cash(:USD)
-    eur = Cash(:EUR)
-    deposit!(acc, usd, 10_000.0)
-    deposit!(acc, eur, 200.0)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
+    deposit!(acc, :USD, 10_000.0)
+    register_cash_asset!(acc.ledger, :EUR)
+    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    deposit!(acc, :EUR, 200.0)
 
-    update_rate!(er, eur, usd, 1.1)
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.1)
 
     inst_eur = register_instrument!(acc, Instrument(
         Symbol("PER/EUR"),
@@ -66,8 +71,8 @@ end
     # a per-currency maintenance deficit.
     update_marks!(acc, inst_eur, dt + Hour(1), 70.0, 70.0, 70.0)
 
-    @test excess_liquidity(acc, :USD) > 0
-    @test excess_liquidity(acc, :EUR) < 0
+    @test excess_liquidity(acc, cash_asset(acc.ledger, :USD)) > 0
+    @test excess_liquidity(acc, cash_asset(acc.ledger, :EUR)) < 0
     @test is_under_maintenance(acc)
     @test Fastback.check_invariants(acc)
 end

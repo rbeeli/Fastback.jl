@@ -9,8 +9,10 @@ Execution behavior (user-facing):
 ```@example
 using Fastback, Dates
 
-acc = Account(; base_currency=:USD)
-deposit!(acc, Cash(:USD), 100.0)
+ledger = CashLedger()
+usd = register_cash_asset!(ledger, :USD)
+acc = Account(; ledger=ledger, base_currency=usd)
+deposit!(acc, :USD, 100.0)
 inst = register_instrument!(acc, spot_instrument(:ABC, :ABC, :USD))
 
 order = Order(oid!(acc), inst, DateTime(2024, 1, 2), 200.0, 1.0)

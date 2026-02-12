@@ -3,7 +3,9 @@ using TestItemRunner
 
 @testitem "Print Cash" begin
     using Test, Fastback
-    show(Cash(:USD))
+    ledger = CashLedger()
+    usd = register_cash_asset!(ledger, :USD)
+    show(usd)
 end
 
 @testitem "Print Instrument" begin
@@ -14,8 +16,10 @@ end
 @testitem "Print Order" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 10_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 10_000.0)
     DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0
     quantity = 1.0
@@ -26,8 +30,10 @@ end
 @testitem "Print Account" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 10_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 10_000.0)
     DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0
     quantity = 1.0
@@ -42,12 +48,14 @@ end
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
-    usd = Cash(:USD; digits=4)
-    eur = Cash(:EUR; digits=2)
-    deposit!(acc, usd, 5_000.0)
-    register_cash_asset!(acc, eur)
-    update_rate!(er, eur, usd, 1.2)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :EUR)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
+    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    register_cash_asset!(acc.ledger, :USD, digits=4)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
+    deposit!(acc, :USD, 5_000.0)
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.2)
 
     inst = register_instrument!(
         acc,

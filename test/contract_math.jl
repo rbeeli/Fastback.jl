@@ -4,9 +4,11 @@ using TestItemRunner
 @testitem "Asset settlement opens: equity hit is commission only" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
         acc,
@@ -46,9 +48,11 @@ end
 @testitem "Asset-settled equity tracks marked notional" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
         acc,
@@ -91,9 +95,11 @@ end
 @testitem "Variation margin settles PnL to cash and rolls basis" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 5_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(
         acc,
@@ -187,8 +193,10 @@ end
 @testitem "Margin requirements use absolute notional when price is negative" begin
     using Test, Fastback, Dates
 
-    acc_margin = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc_margin, Cash(:USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc_margin = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc_margin, :USD, 0.0)
     inst_margin = register_instrument!(acc_margin, Instrument(
         Symbol("NEG/MARGIN"),
         :NEG,
@@ -211,8 +219,10 @@ end
     @test margin_init_margin_ccy(acc_margin, inst_margin, qty_short, mark) ≈ abs(qty_short) * abs(mark) * inst_margin.multiplier * inst_margin.margin_init_short
     @test margin_maint_margin_ccy(acc_margin, inst_margin, qty_short, mark) ≈ abs(qty_short) * abs(mark) * inst_margin.multiplier * inst_margin.margin_maint_short
 
-    acc_cash = Account(; mode=AccountMode.Cash, base_currency=:USD)
-    deposit!(acc_cash, Cash(:USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc_cash = Account(; mode=AccountMode.Cash, ledger=ledger, base_currency=base_currency)
+    deposit!(acc_cash, :USD, 0.0)
     inst_cash = register_instrument!(acc_cash, spot_instrument(
         Symbol("NEG/CASH"),
         :NEG,
@@ -228,8 +238,10 @@ end
 @testitem "Negative-priced fills still enforce positive margin requirements" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    deposit!(acc, Cash(:USD), 0.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 0.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("NEG/FILL"),

@@ -30,16 +30,16 @@ function print_trades(
         Dict(:name => "SL", :val => t -> t.order.stop_loss, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
         Dict(:name => "Ccy", :val => t -> t.order.inst.settle_symbol, :fmt => (t, v) -> v),
         Dict(:name => "Realized P&L (Settle)", :val => t -> t.realized_pnl_settle, :fmt => (t, v) -> begin
-            cash = acc.cash[t.order.inst.settle_cash_index]
+            cash = acc.ledger.cash[t.order.inst.settle_cash_index]
             isnan(v) ? "—" : format_cash(cash, v)
         end),
         Dict(:name => "Cash Δ", :val => t -> t.cash_delta_settle, :fmt => (t, v) -> begin
-            cash = acc.cash[t.order.inst.settle_cash_index]
+            cash = acc.ledger.cash[t.order.inst.settle_cash_index]
             format_cash(cash, v)
         end),
         Dict(:name => "Return", :val => t -> realized_return(t), :fmt => (t, v) -> @sprintf("%.2f%%", 100v)),
         Dict(:name => "Comm.", :val => t -> t.commission_settle, :fmt => (t, v) -> begin
-            cash = acc.cash[t.order.inst.settle_cash_index]
+            cash = acc.ledger.cash[t.order.inst.settle_cash_index]
             format_cash(cash, v)
         end),
     ]
@@ -95,7 +95,7 @@ function print_cashflows(
 ) where {TTime<:Dates.AbstractTime}
     flows = acc.cashflows
     isempty(flows) && return
-    cash = acc.cash
+    cash = acc.ledger.cash
     positions = acc.positions
 
     cols = [
@@ -207,7 +207,7 @@ function print_cash_balances(
     io::IO,
     acc::Account{TTime}
 ) where {TTime<:Dates.AbstractTime}
-    length(acc.balances) == 0 && return
+    length(acc.ledger.balances) == 0 && return
 
     cols = [
         Dict(
@@ -225,11 +225,11 @@ function print_cash_balances(
 
     data_columns = []
     for col in cols
-        push!(data_columns, map(col[:val], acc.cash))
+        push!(data_columns, map(col[:val], acc.ledger.cash))
     end
     data_matrix = reduce(hcat, data_columns)
 
-    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](acc.cash[row_ix], v)
+    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](acc.ledger.cash[row_ix], v)
 
     h_val_pos = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] > 0, crayon"#11BF11")
     h_val_neg = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] < 0, crayon"#DD0000")
@@ -255,7 +255,7 @@ function print_equity_balances(
     io::IO,
     acc::Account{TTime}
 ) where {TTime<:Dates.AbstractTime}
-    length(acc.equities) == 0 && return
+    length(acc.ledger.equities) == 0 && return
 
     cols = [
         Dict(
@@ -273,11 +273,11 @@ function print_equity_balances(
 
     data_columns = []
     for col in cols
-        push!(data_columns, map(col[:val], acc.cash))
+        push!(data_columns, map(col[:val], acc.ledger.cash))
     end
     data_matrix = reduce(hcat, data_columns)
 
-    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](acc.cash[row_ix], v)
+    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](acc.ledger.cash[row_ix], v)
 
     h_val_pos = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] > 0, crayon"#11BF11")
     h_val_neg = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] < 0, crayon"#DD0000")
@@ -313,10 +313,10 @@ function Base.show(
     title = " ACCOUNT SUMMARY "
     title_line = '━'^(floor(Int64, (display_width - length(title)) / 2))
     println(io, title_line * title * title_line)
-    print(io, "\033[1mCash balances\033[0m ($(length(acc.balances)))\n")
+    print(io, "\033[1mCash balances\033[0m ($(length(acc.ledger.balances)))\n")
     print_cash_balances(io, acc; kwargs...)
     print(io, "\n")
-    print(io, "\033[1mEquity balances\033[0m ($(length(acc.equities)))\n")
+    print(io, "\033[1mEquity balances\033[0m ($(length(acc.ledger.equities)))\n")
     print_equity_balances(io, acc; kwargs...)
     print(io, "\n")
     print(io, "\033[1mPositions\033[0m ($(count(has_exposure.(acc.positions))))\n")

@@ -120,10 +120,10 @@ trade_lookup = Dict(idx => i for (i, idx) in enumerate(trade_indices))
 
 ## account + instrument: VOO (Reg-T margin)
 
-acc_voo = Account(; mode=AccountMode.Margin, base_currency=:USD, time_type=Date)
-USD_voo = Cash(:USD; digits=2)
-register_cash_asset!(acc_voo, USD_voo)
-deposit!(acc_voo, USD_voo, initial_cash)
+ledger = CashLedger()
+usd = register_cash_asset!(ledger, :USD)
+acc_voo = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, time_type=Date)
+deposit!(acc_voo, :USD, initial_cash)
 set_interest_rates!(acc_voo, :USD; borrow=0.06, lend=0.015)
 
 # IBKR-style: VOO (SMART/ARCA), USD stock, 0.01 tick
@@ -147,10 +147,10 @@ voo = register_instrument!(acc_voo, spot_instrument(
 
 ## account + instrument: MES (Micro E-mini S&P 500 futures)
 
-acc_es = Account(; mode=AccountMode.Margin, base_currency=:USD, time_type=Date)
-USD_es = Cash(:USD; digits=2)
-register_cash_asset!(acc_es, USD_es)
-deposit!(acc_es, USD_es, initial_cash)
+ledger = CashLedger()
+usd = register_cash_asset!(ledger, :USD)
+acc_es = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, time_type=Date)
+deposit!(acc_es, :USD, initial_cash)
 set_interest_rates!(acc_es, :USD; borrow=0.06, lend=0.015)
 
 # IBKR-style: MES (GLOBEX), USD, 0.25 tick, multiplier 5
@@ -190,7 +190,7 @@ run_backtest!(acc_es, es, es_df, trade_lookup;
 ## summarize results (costs + net equity)
 
 function summarize(acc, label, initial_cash)
-    end_equity = equity(acc, :USD)
+    end_equity = equity(acc, cash_asset(acc.ledger, :USD))
     pnl = end_equity - initial_cash
     commissions = sum(t.commission_settle for t in acc.trades, init=0.0)
     lend_interest = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.LendInterest, init=0.0)

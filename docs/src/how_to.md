@@ -8,11 +8,15 @@ Short, practical snippets for common workflows.
 using Fastback
 using Dates
 
-acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=SpotExchangeRates())
-USD = Cash(:USD)
-EUR = Cash(:EUR)
-deposit!(acc, USD, 10_000.0)
-deposit!(acc, EUR, 5_000.0)
+ledger = CashLedger()
+usd = register_cash_asset!(ledger, :USD)
+eur = register_cash_asset!(ledger, :EUR)
+er = SpotExchangeRates()
+add_asset!(er, usd)
+add_asset!(er, eur)
+acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, exchange_rates=er)
+deposit!(acc, usd, 10_000.0)
+deposit!(acc, eur, 5_000.0)
 
 inst = register_instrument!(acc, perpetual_instrument(
     :BTCUSD, :BTC, :USD;
@@ -28,7 +32,7 @@ bid, ask, last = 100.0, 100.5, 100.2
 funding_rate = 0.0001
 eurusd = 1.07
 
-fx_updates = [FXUpdate(EUR.index, USD.index, eurusd)]
+fx_updates = [FXUpdate(eur, usd, eurusd)]
 marks = [MarkUpdate(inst.index, bid, ask, last)]
 funding = [FundingUpdate(inst.index, funding_rate)]
 
@@ -39,6 +43,8 @@ Notes:
 
 - `process_step!` enforces non-decreasing timestamps and accrues interest/borrow fees before same-step FX/mark updates.
 - FX updates require `SpotExchangeRates` on the account.
+- Caller is responsible for keeping `SpotExchangeRates` in sync with ledger cash assets via `add_asset!`.
+- Setup order: register all cash in `CashLedger`, add them to `SpotExchangeRates`, then create `Account` and fund it.
 - Orders are filled separately with `fill_order!`.
 
 ## Manual event loop
@@ -50,7 +56,7 @@ Use this when you need custom ordering or extra side effects per step.
 advance_time!(acc, dt)
 
 # optional FX update (SpotExchangeRates only)
-update_rate!(er, EUR, USD, 1.07)
+update_rate!(er, eur, usd, 1.07)
 
 # mark positions (also revalues equity for open positions)
 update_marks!(acc, inst, dt, bid, ask, last)
@@ -66,14 +72,17 @@ is_under_maintenance(acc) && liquidate_to_maintenance!(acc, dt)
 ## Multi-currency equity in base currency
 
 ```julia
+ledger = CashLedger()
+usd = register_cash_asset!(ledger, :USD)
+eur = register_cash_asset!(ledger, :EUR)
 er = SpotExchangeRates()
-acc = Account(; mode=AccountMode.Margin, base_currency=:USD, exchange_rates=er)
-USD = Cash(:USD)
-EUR = Cash(:EUR)
-deposit!(acc, USD, 10_000.0)
-deposit!(acc, EUR, 5_000.0)
+add_asset!(er, usd)
+add_asset!(er, eur)
+acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, exchange_rates=er)
+deposit!(acc, usd, 10_000.0)
+deposit!(acc, eur, 5_000.0)
 
-update_rate!(er, EUR, USD, 1.07)
+update_rate!(er, eur, usd, 1.07)
 equity_base_ccy(acc) # total equity in USD
 ```
 

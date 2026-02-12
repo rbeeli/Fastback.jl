@@ -41,8 +41,10 @@ symbols = Symbol.(names(df)[2:end]);
 describe(df)
 
 ## create trading account with $10'000 start capital
-acc = Account(; mode=AccountMode.Margin, base_currency=:USD);
-deposit!(acc, Cash(:USD), 10_000.0);
+ledger = CashLedger()
+usd = register_cash_asset!(ledger, :USD)
+acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd);
+deposit!(acc, :USD, 10_000.0);
 
 ## register instruments for all symbols
 instruments = map(sym -> spot_instrument(sym, sym, :USD), symbols);
@@ -55,7 +57,7 @@ collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Da
 
 function open_position!(acc, inst, dt, price)
     ## invest 20% of equity in the position
-    qty = 0.2equity(acc, :USD) / price
+    qty = 0.2equity(acc, usd) / price
     order = Order(oid!(acc), inst, dt, price, qty)
     fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission_pct=0.001)
 end
@@ -109,8 +111,8 @@ for i in 6:nrow(df)
 
     ## collect data for plotting
     if should_collect(equity_data, dt)
-        equity_value = equity(acc, :USD)
-        collect_balance(dt, cash_balance(acc, :USD))
+        equity_value = equity(acc, usd)
+        collect_balance(dt, cash_balance(acc, usd))
         collect_equity(dt, equity_value)
         collect_drawdown(dt, equity_value)
     end

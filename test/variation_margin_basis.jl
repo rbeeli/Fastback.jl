@@ -4,9 +4,11 @@ using TestItemRunner
 @testitem "Variation margin keeps entry vs settlement basis" begin
     using Test, Fastback, Dates
 
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
         acc,
@@ -65,9 +67,11 @@ end
     using Test, Fastback, Dates
 
     # Long: bid/ask mark should not settle a spread loss
-    acc = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd = Cash(:USD)
-    deposit!(acc, usd, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
         acc,
@@ -101,9 +105,11 @@ end
     @test pos.mark_price ≈ open_price
 
     # Short: same neutrality should hold
-    acc2 = Account(; mode=AccountMode.Margin, base_currency=:USD)
-    usd2 = Cash(:USD)
-    deposit!(acc2, usd2, 1_000.0)
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc2 = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd2 = cash_asset(acc2.ledger, :USD)
+    deposit!(acc2, :USD, 1_000.0)
 
     inst2 = register_instrument!(
         acc2,

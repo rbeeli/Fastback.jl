@@ -158,7 +158,7 @@ end
 """
 Return a Tables.jl view over account cashflows.
 """
-cashflows_table(acc::Account{TTime}) where {TTime<:Dates.AbstractTime} = CashflowsTable{TTime}(acc.cashflows, acc.cash)
+cashflows_table(acc::Account{TTime}) where {TTime<:Dates.AbstractTime} = CashflowsTable{TTime}(acc.cashflows, acc.ledger.cash)
 
 # -----------------------------------------------------------------------------
 
@@ -265,7 +265,7 @@ function Base.iterate(iter::CashBalanceRows, idx::Int=1)
     cash = @inbounds iter.cash[idx]
     balance = @inbounds iter.balances[idx]
     row = (
-        index=cash.index,
+        index=idx,
         symbol=cash.symbol,
         balance=balance,
         digits=cash.digits,
@@ -276,7 +276,7 @@ end
 """
 Return a Tables.jl view over account cash balances.
 """
-balances_table(acc::Account) = CashBalancesTable(acc.cash, acc.balances)
+balances_table(acc::Account) = CashBalancesTable(acc.ledger.cash, acc.ledger.balances)
 
 # -----------------------------------------------------------------------------
 
@@ -311,7 +311,7 @@ function Base.iterate(iter::EquityBalanceRows, idx::Int=1)
     cash = @inbounds iter.cash[idx]
     equity_value = @inbounds iter.equities[idx]
     row = (
-        index=cash.index,
+        index=idx,
         symbol=cash.symbol,
         equity=equity_value,
         digits=cash.digits,
@@ -322,7 +322,7 @@ end
 """
 Return a Tables.jl view over account equities.
 """
-equities_table(acc::Account) = EquityBalancesTable(acc.cash, acc.equities)
+equities_table(acc::Account) = EquityBalancesTable(acc.ledger.cash, acc.ledger.equities)
 
 # -------------------------- Collectors -----------------------------------
 
