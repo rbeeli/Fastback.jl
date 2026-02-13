@@ -118,6 +118,8 @@ Calculates position return on the **entry basis** (strategy-facing).
 
 - Uses `avg_entry_price` so it remains stable even when variation margin rolls the
   settlement basis forward.
+- Normalizes by `abs(avg_entry_price)` so return direction remains consistent even
+  for negative-priced contracts.
 - Returns zero when no entry price is defined (flat position or not yet set).
 - `avg_entry_price` itself resets when exposure flips sign (new trade reverses the
   position) or when the position is closed to flat; returns are therefore measured
@@ -132,7 +134,7 @@ Calculates position return on the **entry basis** (strategy-facing).
     if pos.avg_entry_price == 0
         return zero(close_price)
     end
-    sign(pos.quantity) * (close_price / pos.avg_entry_price - one(close_price))
+    sign(pos.quantity) * ((close_price - pos.avg_entry_price) / abs(pos.avg_entry_price))
 end
 
 """

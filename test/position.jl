@@ -33,6 +33,24 @@ end
     @test calc_return_quote(pos, px2) ≈ -(px2 - px1) / px1
 end
 
+@testitem "Position return remains sign-consistent at negative prices" begin
+    using Test, Fastback, Dates
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; ledger=ledger, base_currency=base_currency);
+    deposit!(acc, :USD, 100_000.0)
+    TEST = register_instrument!(acc, spot_instrument(Symbol("NEGRET/USD"), :NEGRET, :USD))
+
+    entry = -10.0
+    close = -5.0
+
+    pos_long = Position{DateTime}(1, TEST; avg_entry_price=entry, avg_settle_price=entry, quantity=2.0)
+    @test calc_return_quote(pos_long, close) ≈ 0.5
+
+    pos_short = Position{DateTime}(2, TEST; avg_entry_price=entry, avg_settle_price=entry, quantity=-2.0)
+    @test calc_return_quote(pos_short, close) ≈ -0.5
+end
+
 @testitem "calc_realized_qty" begin
     using Test, Fastback
     # Test 1: long position, sell order more than position

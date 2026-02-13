@@ -28,11 +28,12 @@ Return `true` if the trade realizes any P&L.
 @inline is_realizing(t::Trade) = t.realized_qty != 0
 
 """
-Realized return for a trade (returns 0.0 when the base is zero).
+Realized return for a trade, normalized by absolute entry price.
+Returns `0.0` when the base is zero.
 """
 @inline function realized_return(t::Trade)
     return if t.realized_qty != 0 && t.pos_price != 0
-        sign(t.pos_qty) * (t.fill_price / t.pos_price - 1)
+        sign(t.pos_qty) * ((t.fill_price - t.pos_price) / abs(t.pos_price))
     else
         0.0
     end

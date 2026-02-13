@@ -109,6 +109,47 @@ end
     @test realized_return(trade2) == 0.0
 end
 
+@testitem "realized_return remains sign-consistent at negative prices" begin
+    using Test, Fastback, Dates
+
+    function setup_acc(sym::Symbol)
+        ledger = CashLedger()
+        base_currency = register_cash_asset!(ledger, :USD)
+        acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+        deposit!(acc, :USD, 1_000.0)
+        inst = register_instrument!(
+            acc,
+            Instrument(
+                sym,
+                :RETNEG,
+                :USD;
+                contract_kind=ContractKind.Spot,
+                settlement=SettlementStyle.Asset,
+                margin_mode=MarginMode.PercentNotional,
+                margin_init_long=0.0,
+                margin_init_short=0.0,
+                margin_maint_long=0.0,
+                margin_maint_short=0.0,
+            ),
+        )
+        return acc, inst
+    end
+
+    dt = DateTime(2026, 1, 1)
+
+    acc_long, inst_long = setup_acc(Symbol("RETNEG_LONG/USD"))
+    fill_order!(acc_long, Order(oid!(acc_long), inst_long, dt, -10.0, 1.0); dt=dt, fill_price=-10.0, bid=-10.0, ask=-10.0, last=-10.0)
+    trade_long = fill_order!(acc_long, Order(oid!(acc_long), inst_long, dt + Day(1), -5.0, -1.0); dt=dt + Day(1), fill_price=-5.0, bid=-5.0, ask=-5.0, last=-5.0)
+    @test trade_long.realized_pnl_entry > 0.0
+    @test realized_return(trade_long) ≈ 0.5 atol=1e-12
+
+    acc_short, inst_short = setup_acc(Symbol("RETNEG_SHRT/USD"))
+    fill_order!(acc_short, Order(oid!(acc_short), inst_short, dt, -10.0, -1.0); dt=dt, fill_price=-10.0, bid=-10.0, ask=-10.0, last=-10.0)
+    trade_short = fill_order!(acc_short, Order(oid!(acc_short), inst_short, dt + Day(1), -5.0, 1.0); dt=dt + Day(1), fill_price=-5.0, bid=-5.0, ask=-5.0, last=-5.0)
+    @test trade_short.realized_pnl_entry < 0.0
+    @test realized_return(trade_short) ≈ -0.5 atol=1e-12
+end
+
 @testitem "cross-currency asset realized settle P&L captures principal FX translation" begin
     using Test, Fastback, Dates
 
