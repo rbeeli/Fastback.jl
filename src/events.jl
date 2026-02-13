@@ -102,7 +102,8 @@ Revalue cached settlement and margin-currency amounts after FX updates without
 touching marks or balances.
 
 Adjusts position `value_settle`/`pnl_settle` for non-VM instruments and updates
-margin usage for percent-notional instruments using the latest stored last prices.
+margin usage for FX-sensitive requirements (percent-notional, and all cash-mode
+requirements) using the latest stored last prices.
 """
 @inline function _revalue_fx_caches!(acc::Account)
     @inbounds for pos in acc.positions
@@ -112,7 +113,9 @@ margin usage for percent-notional instruments using the latest stored last price
         margin_idx = inst.margin_cash_index
         quote_settle_fx = quote_idx != settle_idx
         quote_margin_fx = quote_idx != margin_idx
-        quote_settle_fx || (inst.margin_mode == MarginMode.PercentNotional && quote_margin_fx) || continue
+        margin_fx_sensitive = quote_margin_fx && pos.quantity != 0.0 &&
+                              (acc.mode == AccountMode.Cash || inst.margin_mode == MarginMode.PercentNotional)
+        quote_settle_fx || margin_fx_sensitive || continue
 
         if quote_settle_fx && inst.settlement != SettlementStyle.VariationMargin
             val_quote = pos.value_quote
@@ -127,7 +130,7 @@ margin usage for percent-notional instruments using the latest stored last price
             pos.pnl_settle = pnl_quote_val == 0.0 ? 0.0 : to_settle(acc, inst, pnl_quote_val)
         end
 
-        if inst.margin_mode == MarginMode.PercentNotional && pos.quantity != 0.0 && quote_margin_fx
+        if margin_fx_sensitive
             last_price = pos.last_price
             new_init_margin = margin_init_margin_ccy(acc, inst, pos.quantity, last_price)
             new_maint_margin = margin_maint_margin_ccy(acc, inst, pos.quantity, last_price)

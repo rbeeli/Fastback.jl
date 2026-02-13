@@ -298,6 +298,69 @@ end
     @test init_margin_used(acc, chf) < init_before
 end
 
+@testitem "process_step! revalues cash-mode margin on FX updates for non-percent instruments" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Cash, ledger=ledger, base_currency=base_currency, exchange_rates=er)
+
+    usd = cash_asset(acc.ledger, :USD)
+    add_asset!(er, usd)
+    eur = register_cash_asset!(acc.ledger, :EUR)
+    add_asset!(er, eur)
+
+    deposit!(acc, :USD, 1_000.0)
+    deposit!(acc, :EUR, 0.0)
+    update_rate!(er, eur, usd, 1.1)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("FXCASH/EURUSD"),
+        :FXCASH,
+        :EUR;
+        settle_symbol=:EUR,
+        margin_symbol=:USD,
+        settlement=SettlementStyle.Asset,
+        contract_kind=ContractKind.Spot,
+        margin_mode=MarginMode.FixedPerContract,
+        margin_init_long=1.0,
+        margin_init_short=1.0,
+        margin_maint_long=1.0,
+        margin_maint_short=1.0,
+        multiplier=1.0,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0, 100.0, 1.0);
+        dt=dt0,
+        fill_price=100.0,
+        bid=100.0,
+        ask=100.0,
+        last=100.0,
+    )
+
+    pos = get_position(acc, inst)
+    init_before = init_margin_used(acc, usd)
+    maint_before = maint_margin_used(acc, usd)
+    @test init_before ≈ margin_init_margin_ccy(acc, inst, pos.quantity, pos.last_price) atol=1e-12
+    @test maint_before ≈ margin_maint_margin_ccy(acc, inst, pos.quantity, pos.last_price) atol=1e-12
+
+    dt1 = dt0 + Day(1)
+    fx_updates = [FXUpdate(eur, usd, 2.0)]
+    process_step!(acc, dt1; fx_updates=fx_updates, accrue_interest=false, accrue_borrow_fees=false)
+
+    expected_init = margin_init_margin_ccy(acc, inst, pos.quantity, pos.last_price)
+    expected_maint = margin_maint_margin_ccy(acc, inst, pos.quantity, pos.last_price)
+
+    @test init_margin_used(acc, usd) ≈ expected_init atol=1e-12
+    @test maint_margin_used(acc, usd) ≈ expected_maint atol=1e-12
+    @test init_margin_used(acc, usd) > init_before
+    @test maint_margin_used(acc, usd) > maint_before
+end
+
 @testitem "process_step! accrues borrow fees using prior mark before step" begin
     using Test, Fastback, Dates
 
