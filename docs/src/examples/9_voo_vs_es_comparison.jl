@@ -4,11 +4,11 @@
 # 1) VOO ETF on Reg-T margin (asset-settled spot)
 # 2) Micro E-mini S&P 500 futures (MES) on variation margin
 #
-# The data is synthetic but realistic. VOO prices are **total-return adjusted**
-# (dividends already embedded), so no dividend cashflows are applied.
+# It runs the same random trade schedule under two leverage factors (`1.0x` and
+# `2.0x`) so we can see how leverage changes costs and outcomes for each vehicle.
 #
-# The goal is to compare **costs** (commissions + financing) for the same
-# notional exposure using a simple random trade schedule (~20 trades).
+# The data is synthetic but realistic. VOO prices are total-return adjusted
+# (dividends already embedded), so no dividend cashflows are applied.
 
 using Fastback
 using Dates
@@ -35,13 +35,13 @@ es_df = DataFrame(CSV.File(es_path; dateformat="yyyy-mm-dd"))
 ## helper: per-order commissions (simple IBKR-like approximations)
 
 function ibkr_equity_commission(qty)
-    per_share = 0.0035   # USD per share
+    per_share = 0.0035
     min_commission = 1.00
     max(min_commission, abs(qty) * per_share)
 end
 
 function ibkr_futures_commission(qty)
-    per_contract = 1.25  # USD per contract (all-in)
+    per_contract = 1.25
     abs(qty) * per_contract
 end
 
@@ -51,7 +51,7 @@ function qty_for_notional(inst, price, notional)
     Float64(max(0, floor(Int, raw)))
 end
 
-## helper: backtest loop
+## helper: shared backtest loop
 function run_backtest!(acc, inst, df, trade_lookup; target_notional, commission_fn)
     for (i, row) in enumerate(eachrow(df))
         dt = row.dt
@@ -71,14 +71,13 @@ function run_backtest!(acc, inst, df, trade_lookup; target_notional, commission_
             if delta_qty != 0.0
                 fill_price = delta_qty > 0 ? ask : bid
                 order = Order(oid!(acc), inst, dt, fill_price, delta_qty)
-                commission = commission_fn(delta_qty)
                 fill_order!(acc, order;
                     dt=dt,
                     fill_price=fill_price,
                     bid=bid,
                     ask=ask,
                     last=last,
-                    commission=commission,
+                    commission=commission_fn(delta_qty),
                 )
             end
         end
@@ -90,106 +89,86 @@ function run_backtest!(acc, inst, df, trade_lookup; target_notional, commission_
     if pos.quantity != 0.0
         fill_price = pos.quantity > 0 ? last_row.bid : last_row.ask
         order = Order(oid!(acc), inst, last_row.dt, fill_price, -pos.quantity)
-        commission = commission_fn(-pos.quantity)
         fill_order!(acc, order;
             dt=last_row.dt,
             fill_price=fill_price,
             bid=last_row.bid,
             ask=last_row.ask,
             last=last_row.last,
-            commission=commission,
+            commission=commission_fn(-pos.quantity),
         )
     end
 
     acc
 end
 
-# ---------------------------------------------------------
-
-## shared backtest configuration
-initial_cash = 200_000.0
-leverage_factor = 2.0  # Reg-T: ~2x buying power on equities
-notional_target = leverage_factor * initial_cash
-
-rng = MersenneTwister(2025)
-pool = collect(15:(nrow(voo_df) - 15))
-trade_indices = sort(pool[randperm(rng, length(pool))[1:20]])
-trade_lookup = Dict(idx => i for (i, idx) in enumerate(trade_indices))
+## helper: deterministic random trade schedule (~20 toggles in/out)
+function make_trade_lookup(n_rows; n_events=20, seed=2025)
+    rng = MersenneTwister(seed)
+    pool = collect(15:(n_rows - 15))
+    trade_indices = sort(pool[randperm(rng, length(pool))[1:n_events]])
+    Dict(idx => i for (i, idx) in enumerate(trade_indices))
+end
 
 # ---------------------------------------------------------
 
-## account + instrument: VOO (Reg-T margin)
+## account + instrument builders
 
-ledger = CashLedger()
-usd = register_cash_asset!(ledger, :USD)
-acc_voo = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, time_type=Date)
-deposit!(acc_voo, :USD, initial_cash)
-set_interest_rates!(acc_voo, :USD; borrow=0.06, lend=0.015)
+function build_voo_account(initial_cash)
+    ledger = CashLedger()
+    usd = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, time_type=Date)
+    deposit!(acc, :USD, initial_cash)
+    set_interest_rates!(acc, :USD; borrow=0.06, lend=0.015)
 
-# IBKR-style: VOO (SMART/ARCA), USD stock, 0.01 tick
-# Realistic house-style schedule: 45% init / 25% maint (long),
-# elevated requirements for shorts.
-voo = register_instrument!(acc_voo, spot_instrument(
-    :VOO, :VOO, :USD;
-    time_type=Date,
-    base_tick=1.0,
-    base_digits=0,
-    quote_tick=0.01,
-    quote_digits=2,
-    margin_mode=MarginMode.PercentNotional,
-    margin_init_long=0.45,
-    margin_init_short=1.35,
-    margin_maint_long=0.25,
-    margin_maint_short=1.20,
-))
+    voo = register_instrument!(acc, spot_instrument(
+        :VOO, :VOO, :USD;
+        time_type=Date,
+        base_tick=1.0,
+        base_digits=0,
+        quote_tick=0.01,
+        quote_digits=2,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.45,
+        margin_init_short=1.35,
+        margin_maint_long=0.25,
+        margin_maint_short=1.20,
+    ))
 
-# ---------------------------------------------------------
+    acc, voo
+end
 
-## account + instrument: MES (Micro E-mini S&P 500 futures)
+function build_mes_account(initial_cash)
+    ledger = CashLedger()
+    usd = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, time_type=Date)
+    deposit!(acc, :USD, initial_cash)
+    set_interest_rates!(acc, :USD; borrow=0.06, lend=0.015)
 
-ledger = CashLedger()
-usd = register_cash_asset!(ledger, :USD)
-acc_es = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, time_type=Date)
-deposit!(acc_es, :USD, initial_cash)
-set_interest_rates!(acc_es, :USD; borrow=0.06, lend=0.015)
+    es = register_instrument!(acc, future_instrument(
+        :MES, :MES, :USD;
+        time_type=Date,
+        base_tick=1.0,
+        base_digits=0,
+        quote_tick=0.25,
+        quote_digits=2,
+        multiplier=5.0,
+        margin_mode=MarginMode.FixedPerContract,
+        margin_init_long=1_250.0,
+        margin_init_short=1_250.0,
+        margin_maint_long=1_150.0,
+        margin_maint_short=1_150.0,
+        expiry=Date(2026, 3, 20),
+    ))
 
-# IBKR-style: MES (GLOBEX), USD, 0.25 tick, multiplier 5
-# Margin is fixed per contract (values are realistic placeholders)
-es = register_instrument!(acc_es, future_instrument(
-    :MES, :MES, :USD;
-    time_type=Date,
-    base_tick=1.0,
-    base_digits=0,
-    quote_tick=0.25,
-    quote_digits=2,
-    multiplier=5.0,
-    margin_mode=MarginMode.FixedPerContract,
-    margin_init_long=1_250.0,
-    margin_init_short=1_250.0,
-    margin_maint_long=1_150.0,
-    margin_maint_short=1_150.0,
-    expiry=Date(2026, 3, 20),
-))
-
-# ---------------------------------------------------------
-
-## run both backtests with the same trade schedule
-
-run_backtest!(acc_voo, voo, voo_df, trade_lookup;
-    target_notional=notional_target,
-    commission_fn=ibkr_equity_commission,
-)
-
-run_backtest!(acc_es, es, es_df, trade_lookup;
-    target_notional=notional_target,
-    commission_fn=ibkr_futures_commission,
-)
+    acc, es
+end
 
 # ---------------------------------------------------------
 
 ## summarize results (costs + net equity)
 
-function summarize(acc, label, initial_cash)
+function summarize(acc, label, initial_cash, leverage_factor)
     end_equity = equity(acc, cash_asset(acc.ledger, :USD))
     pnl = end_equity - initial_cash
     commissions = sum(t.commission_settle for t in acc.trades, init=0.0)
@@ -199,8 +178,10 @@ function summarize(acc, label, initial_cash)
     borrow_fees = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowFee, init=0.0)
     interest_cost = max(0.0, -net_interest)
 
-    return (
+    (
+        leverage=leverage_factor,
         instrument=label,
+        target_notional=round(leverage_factor * initial_cash, digits=2),
         trades=length(acc.trades),
         end_equity=round(end_equity, digits=2),
         pnl=round(pnl, digits=2),
@@ -210,12 +191,57 @@ function summarize(acc, label, initial_cash)
     )
 end
 
-summary = DataFrame([
-    summarize(acc_voo, "VOO (Reg-T margin)", initial_cash),
-    summarize(acc_es, "MES (futures margin)", initial_cash),
-])
+# ---------------------------------------------------------
 
+## run scenarios
+
+initial_cash = 200_000.0
+leverage_factors = (1.0, 2.0)
+trade_lookup = make_trade_lookup(nrow(voo_df); n_events=20, seed=2025)
+
+rows = []
+for leverage_factor in leverage_factors
+    target_notional = leverage_factor * initial_cash
+
+    acc_voo, voo = build_voo_account(initial_cash)
+    run_backtest!(acc_voo, voo, voo_df, trade_lookup;
+        target_notional=target_notional,
+        commission_fn=ibkr_equity_commission,
+    )
+    push!(rows, summarize(acc_voo, "VOO (Reg-T margin)", initial_cash, leverage_factor))
+
+    acc_es, es = build_mes_account(initial_cash)
+    run_backtest!(acc_es, es, es_df, trade_lookup;
+        target_notional=target_notional,
+        commission_fn=ibkr_futures_commission,
+    )
+    push!(rows, summarize(acc_es, "MES (futures margin)", initial_cash, leverage_factor))
+end
+
+summary = DataFrame(rows)
+sort!(summary, [:leverage, :instrument])
 summary
+
+# ---------------------------------------------------------
+
+## compact view: leverage effect within each instrument
+leverage_effect = combine(groupby(summary, :instrument)) do sdf
+    s1 = sdf[sdf.leverage .== 1.0, :]
+    s2 = sdf[sdf.leverage .== 2.0, :]
+    @assert nrow(s1) == 1 && nrow(s2) == 1
+
+    (
+        pnl_1x=s1.pnl[1],
+        pnl_2x=s2.pnl[1],
+        pnl_delta_2x_minus_1x=round(s2.pnl[1] - s1.pnl[1], digits=2),
+        commissions_1x=s1.commissions[1],
+        commissions_2x=s2.commissions[1],
+        interest_cost_1x=s1.interest_cost[1],
+        interest_cost_2x=s2.interest_cost[1],
+    )
+end
+
+leverage_effect
 
 # ---------------------------------------------------------
 
