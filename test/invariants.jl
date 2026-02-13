@@ -5,17 +5,14 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
-    add_asset!(er, cash_asset(acc.ledger, :USD))
     deposit!(acc, :USD, 10_000.0)
-    register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :EUR, 5_000.0)
 
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.1)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
 
     set_interest_rates!(acc, :USD; borrow=0.0, lend=0.05)
     set_interest_rates!(acc, :EUR; borrow=0.0, lend=0.02)

@@ -4,18 +4,15 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
-    add_asset!(er, cash_asset(acc.ledger, :USD))
     deposit!(acc, :USD, 10_000.0)
-    register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :EUR, 0.0)
 
     # 1 EUR = 1.2 USD
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.2)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("TEST/EURUSD"),
@@ -55,16 +52,13 @@ end
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
-    add_asset!(er, cash_asset(acc.ledger, :USD))
-    register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :USD, 0.0)
 
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.1)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("PNLSET/EURUSD"),
@@ -86,7 +80,7 @@ end
     @test pos.pnl_quote ≈ 0.0 atol=1e-12
     @test pos.pnl_settle ≈ 0.0 atol=1e-12
 
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.2)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
     update_marks!(acc, pos, dt + Day(1), 100.0, 100.0, 100.0)
 
     @test pos.pnl_quote ≈ 0.0 atol=1e-12

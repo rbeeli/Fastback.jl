@@ -24,15 +24,11 @@ df = DataFrame([
 ]);
 
 ## create trading account with 10'000 USD, 5'000 EUR and 20'000 GBP cash (margin-enabled for shorting)
-ledger = CashLedger()
-usd = register_cash_asset!(ledger, :USD)
-eur = register_cash_asset!(ledger, :EUR, digits=2);
-gbp = register_cash_asset!(ledger, :GBP, digits=2);
 er = ExchangeRates();
-add_asset!(er, usd);
-add_asset!(er, eur);
-add_asset!(er, gbp);
-acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, exchange_rates=er);
+acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), exchange_rates=er);
+usd = cash_asset(acc, :USD)
+eur = register_cash_asset!(acc, CashSpec(:EUR; digits=2));
+gbp = register_cash_asset!(acc, CashSpec(:GBP; digits=2));
 deposit!(acc, usd, 10_000);
 deposit!(acc, eur, 5_000);
 deposit!(acc, gbp, 20_000);

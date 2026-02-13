@@ -8,13 +8,10 @@ Short, practical snippets for common workflows.
 using Fastback
 using Dates
 
-ledger = CashLedger()
-usd = register_cash_asset!(ledger, :USD)
-eur = register_cash_asset!(ledger, :EUR)
 er = ExchangeRates()
-add_asset!(er, usd)
-add_asset!(er, eur)
-acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, exchange_rates=er)
+acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), exchange_rates=er)
+usd = cash_asset(acc, :USD)
+eur = register_cash_asset!(acc, CashSpec(:EUR))
 deposit!(acc, usd, 10_000.0)
 deposit!(acc, eur, 5_000.0)
 
@@ -43,8 +40,8 @@ Notes:
 
 - `process_step!` enforces non-decreasing timestamps and accrues interest/borrow fees before same-step FX/mark updates.
 - FX updates are applied on the account's `ExchangeRates`.
-- Caller is responsible for keeping `ExchangeRates` in sync with ledger cash assets via `add_asset!`.
-- Setup order: register all cash in `CashLedger`, add them to `ExchangeRates`, then create `Account` and fund it.
+- Cash registration is account-owned: use `register_cash_asset!(acc, CashSpec(:EUR))` and `ExchangeRates` is resized automatically.
+- Setup order: create `Account`, register additional cash assets, set FX rates, then fund it.
 - Orders are filled separately with `fill_order!`.
 
 ## Manual event loop
@@ -72,13 +69,10 @@ is_under_maintenance(acc) && liquidate_to_maintenance!(acc, dt)
 ## Multi-currency equity in base currency
 
 ```julia
-ledger = CashLedger()
-usd = register_cash_asset!(ledger, :USD)
-eur = register_cash_asset!(ledger, :EUR)
 er = ExchangeRates()
-add_asset!(er, usd)
-add_asset!(er, eur)
-acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, exchange_rates=er)
+acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), exchange_rates=er)
+usd = cash_asset(acc, :USD)
+eur = register_cash_asset!(acc, CashSpec(:EUR))
 deposit!(acc, usd, 10_000.0)
 deposit!(acc, eur, 5_000.0)
 

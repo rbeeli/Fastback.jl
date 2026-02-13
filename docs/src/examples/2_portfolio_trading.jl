@@ -41,9 +41,8 @@ symbols = Symbol.(names(df)[2:end]);
 describe(df)
 
 ## create trading account with $10'000 start capital
-ledger = CashLedger()
-usd = register_cash_asset!(ledger, :USD)
-acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd);
+acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD));
+usd = cash_asset(acc, :USD)
 deposit!(acc, :USD, 10_000.0);
 
 ## register instruments for all symbols

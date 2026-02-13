@@ -8,7 +8,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 - `Fastback`, `Price`, `Quantity`
 - `TradeDir`, `SettlementStyle`, `MarginMode`, `MarginingStyle`, `ContractKind`, `AccountMode`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `TradeReason`
-- `Cash`, `CashLedger`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
+- `Cash`, `CashSpec`, `CashLedger`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
 - `ExchangeRates`
 
 ## Trade direction helpers
@@ -44,7 +44,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Exchange rate utilities
 
-- `add_asset!`, `get_rate`, `get_rates_matrix`, `update_rate!`
+- `get_rate`, `get_rates_matrix`, `update_rate!`
 
 ## Portfolio logic
 

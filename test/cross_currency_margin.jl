@@ -4,17 +4,14 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
 
-    add_asset!(er, cash_asset(acc.ledger, :USD))
     deposit!(acc, :USD, 1_000.0)
-    register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :EUR, 0.0) # register EUR quote ccy
 
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.07)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.07)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("EURSPOT/EUR"),
@@ -30,8 +27,8 @@ using TestItemRunner
 
     trade = fill_order!(acc, Order(oid!(acc), inst, DateTime(2024, 1, 1), 100.0, 10.0); dt=DateTime(2024, 1, 1), fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     @test trade isa Trade
-    @test cash_balance(acc, cash_asset(acc.ledger, :EUR)) ≈ -1_000.0
-    @test equity(acc, cash_asset(acc.ledger, :EUR)) ≈ 0.0
+    @test cash_balance(acc, cash_asset(acc, :EUR)) ≈ -1_000.0
+    @test equity(acc, cash_asset(acc, :EUR)) ≈ 0.0
     @test init_margin_used_base_ccy(acc) ≈ 500.0 * 1.07 atol = 1e-8
 end
 
@@ -39,17 +36,14 @@ end
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
 
-    add_asset!(er, cash_asset(acc.ledger, :USD))
     deposit!(acc, :USD, 400.0)
-    register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :EUR, 0.0)
 
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.07)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.07)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("EURSPOT/EUR"),

@@ -1,53 +1,38 @@
-using Dates
 using PrettyTables
 
 """
-Supports spot exchange rates between assets.
+Supports spot exchange rates between cash assets by index.
 """
 mutable struct ExchangeRates
     const rates::Vector{Vector{Float64}} # rates[from_idx][to_idx]
-    const assets::Vector{Cash}
-    const asset_by_symbol::Dict{Symbol,Int}
 
     function ExchangeRates()
-        new(
-            Vector{Vector{Float64}}(),
-            Vector{Cash}(),
-            Dict{Symbol,Int}(),
-        )
+        new(Vector{Vector{Float64}}())
     end
 end
 
 @inline function _ensure_rates_size!(er::ExchangeRates, required::Int)
     current = length(er.rates)
     if required > current
+        delta = required - current
+
         # extend existing rows with new NaN columns
         for row in er.rates
-            append!(row, fill(NaN, required - length(row)))
+            append!(row, fill(NaN, delta))
         end
 
         # add new rows sized to the new dimension
-        for _ in current+1:required
-            push!(er.rates, fill(NaN, required))
+        for i in current+1:required
+            row = fill(NaN, required)
+            row[i] = 1.0
+            push!(er.rates, row)
         end
     end
+
+    @inbounds for i in 1:required
+        isnan(er.rates[i][i]) && (er.rates[i][i] = 1.0)
+    end
     nothing
-end
-
-function add_asset!(er::ExchangeRates, cash::Cash)
-    haskey(er.asset_by_symbol, cash.symbol) &&
-        throw(ArgumentError("Exchange cash asset '$(cash.symbol)' was already added."))
-
-    idx = length(er.assets) + 1
-    cash.index == idx ||
-        throw(ArgumentError("Exchange cash asset '$(cash.symbol)' has index $(cash.index), expected $(idx)."))
-    push!(er.assets, cash)
-    er.asset_by_symbol[cash.symbol] = idx
-
-    _ensure_rates_size!(er, idx)
-    @inbounds er.rates[idx][idx] = 1.0
-
-    return idx
 end
 
 """
@@ -57,15 +42,29 @@ Get the exchange rate between two assets according to the current rates.
     from_idx == to_idx && return 1.0
     rate = @inbounds er.rates[from_idx][to_idx]
     if isnan(rate) && !allow_nan
-        from = @inbounds er.assets[from_idx]
-        to = @inbounds er.assets[to_idx]
-        throw(ArgumentError("No exchange rate available from $(from.symbol) to $(to.symbol)."))
+        throw(ArgumentError("No exchange rate available from cash index $(from_idx) to $(to_idx)."))
     end
     rate
 end
 
+@inline function get_rate(
+    er::ExchangeRates,
+    from_idx::Int,
+    to_idx::Int;
+    allow_nan::Bool=false,
+)
+    _get_rate_idx(er, from_idx, to_idx; allow_nan=allow_nan)
+end
+
 @inline function get_rate(er::ExchangeRates, from::Cash, to::Cash; allow_nan::Bool=false)
-    _get_rate_idx(er, from.index, to.index; allow_nan=allow_nan)
+    from_idx = from.index
+    to_idx = to.index
+    from_idx == to_idx && return 1.0
+    rate = get_rate(er, from_idx, to_idx; allow_nan=true)
+    if isnan(rate) && !allow_nan
+        throw(ArgumentError("No exchange rate available from $(from.symbol) to $(to.symbol)."))
+    end
+    rate
 end
 
 """
@@ -74,9 +73,10 @@ Builds an exchange rate matrix for all assets.
 Rows represent the asset to convert from, columns the asset to convert to.
 """
 function get_rates_matrix(er::ExchangeRates)
-    mat = fill(NaN, length(er.assets), length(er.assets))
-    for f in 1:length(er.assets)
-        for t in 1:length(er.assets)
+    n = length(er.rates)
+    mat = fill(NaN, n, n)
+    for f in 1:n
+        for t in 1:n
             @inbounds mat[f, t] = _get_rate_idx(er, f, t, allow_nan=true)
         end
     end
@@ -86,23 +86,29 @@ end
 """
 Update the exchange rate between two assets.
 """
-function update_rate!(er::ExchangeRates, from::Cash, to::Cash, rate::Real)
+function update_rate!(er::ExchangeRates, from_idx::Int, to_idx::Int, rate::Real)
     isfinite(rate) && rate > 0 || throw(ArgumentError("Exchange rate must be a positive finite number."))
     r = Float64(rate)
-    from_idx = from.index
-    to_idx = to.index
+    max_idx = max(from_idx, to_idx)
+    max_idx > length(er.rates) && _ensure_rates_size!(er, max_idx)
     @inbounds er.rates[from_idx][to_idx] = r
     @inbounds er.rates[to_idx][from_idx] = 1.0 / r
     return nothing
 end
 
+@inline function update_rate!(er::ExchangeRates, from::Cash, to::Cash, rate::Real)
+    update_rate!(er, from.index, to.index, rate)
+end
+
 function Base.show(io::IO, er::ExchangeRates)
-    length(er.assets) > 0 || return println(io, "No spot exchange rates available.")
+    n = length(er.rates)
+    n > 0 || return println(io, "No exchange rates available.")
+    labels = string.(1:n)
     pretty_table(
         io,
         get_rates_matrix(er),
         ;
-        column_labels=getfield.(er.assets, :symbol),
-        row_labels=getfield.(er.assets, :symbol),
+        column_labels=labels,
+        row_labels=labels,
         compact_printing=true)
 end

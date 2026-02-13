@@ -12,9 +12,8 @@ using Statistics
 # ---------------------------------------------------------
 # Simple backtest to generate plot data
 
-ledger = CashLedger()
-usdt = register_cash_asset!(ledger, :USDT)
-acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usdt);
+acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USDT));
+usdt = cash_asset(acc, :USDT)
 deposit!(acc, :USDT, 10_000.0);
 perp = register_instrument!(acc, perpetual_instrument(
     Symbol("BTCUSDT-PERP"), :BTC, :USDT;

@@ -4,10 +4,9 @@ using TestItemRunner
 @testitem "Accrues lend interest on positive balance" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
     set_interest_rates!(acc, :USD; borrow=0.10, lend=0.05)
 
@@ -25,7 +24,7 @@ using TestItemRunner
 
     cf = only(acc.cashflows)
     @test cf.kind == CashflowKind.LendInterest
-    @test cf.cash_index == cash_asset(acc.ledger, :USD).index
+    @test cf.cash_index == cash_asset(acc, :USD).index
     @test cf.amount ≈ expected_interest atol=1e-8
     @test cf.inst_index == 0
     @test cash_balance(acc, usd) - bal_before ≈ sum(cf.amount for cf in acc.cashflows) atol=1e-8
@@ -34,14 +33,13 @@ end
 @testitem "Accrues borrow interest on negative balance" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
 
     deposit!(acc, :USD, 0.0) # register cash asset
     # Simulate negative balance that could arise from mark-to-market losses
-    Fastback._adjust_cash_idx!(acc.ledger, cash_asset(acc.ledger, :USD).index, -1_000.0)
+    Fastback._adjust_cash_idx!(acc.ledger, cash_asset(acc, :USD).index, -1_000.0)
     set_interest_rates!(acc, :USD; borrow=0.10, lend=0.05)
 
     start_dt = DateTime(2026, 1, 1)
@@ -58,7 +56,7 @@ end
 
     cf = only(acc.cashflows)
     @test cf.kind == CashflowKind.BorrowInterest
-    @test cf.cash_index == cash_asset(acc.ledger, :USD).index
+    @test cf.cash_index == cash_asset(acc, :USD).index
     @test cf.amount ≈ expected_interest atol=1e-8
     @test cf.inst_index == 0
     @test cash_balance(acc, usd) - bal_before ≈ sum(cf.amount for cf in acc.cashflows) atol=1e-8

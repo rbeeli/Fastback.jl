@@ -17,8 +17,7 @@ mutable struct Account{TTime<:Dates.AbstractTime}
 
     function Account(
         ;
-        ledger::CashLedger,
-        base_currency::Cash,
+        base_currency::CashSpec,
         time_type::Type{TTime}=DateTime,
         mode::AccountMode.T=AccountMode.Cash,
         margining_style::MarginingStyle.T=MarginingStyle.BaseCurrency,
@@ -28,11 +27,15 @@ mutable struct Account{TTime<:Dates.AbstractTime}
         trade_sequence=0,
         exchange_rates::ExchangeRates=ExchangeRates(),
     ) where {TTime<:Dates.AbstractTime}
+        ledger = CashLedger()
+        base_cash = _register_cash_asset!(ledger, base_currency)
+        _ensure_rates_size!(exchange_rates, base_cash.index)
+
         acc = new{TTime}(
             mode,
             margining_style,
             ledger,
-            base_currency,
+            base_cash,
             exchange_rates,
             Vector{Position{TTime}}(), # positions
             Vector{Trade{TTime}}(), # trades
@@ -47,6 +50,20 @@ mutable struct Account{TTime<:Dates.AbstractTime}
         )
         acc
     end
+end
+
+@inline has_cash_asset(acc::Account, symbol::Symbol)::Bool = has_cash_asset(acc.ledger, symbol)
+@inline cash_index(acc::Account, symbol::Symbol)::Int = cash_index(acc.ledger, symbol)
+@inline cash_asset(acc::Account, symbol::Symbol)::Cash = cash_asset(acc.ledger, symbol)
+@inline cash_asset(acc::Account, idx::Int)::Cash = @inbounds acc.ledger.cash[idx]
+
+"""
+Registers a new cash asset in the account and synchronizes the FX matrix size.
+"""
+function register_cash_asset!(acc::Account, spec::CashSpec)::Cash
+    cash = _register_cash_asset!(acc.ledger, spec)
+    _ensure_rates_size!(acc.exchange_rates, cash.index)
+    cash
 end
 
 """
@@ -280,8 +297,7 @@ FX rate from the given cash index into the account base currency.
 @inline function _get_rate_base_ccy_idx(acc::Account, i::Int)::Float64
     base_cash = acc.base_currency
     i == base_cash.index && return 1.0
-    from = @inbounds acc.ledger.cash[i]
-    get_rate(acc.exchange_rates, from, base_cash)
+    get_rate(acc.exchange_rates, i, base_cash.index)
 end
 
 @inline function _get_rate_idx(
@@ -289,9 +305,7 @@ end
     from_idx::Int,
     to_idx::Int,
 )
-    from = @inbounds acc.ledger.cash[from_idx]
-    to = @inbounds acc.ledger.cash[to_idx]
-    get_rate(acc.exchange_rates, from, to)
+    get_rate(acc.exchange_rates, from_idx, to_idx)
 end
 
 """
@@ -299,6 +313,88 @@ FX rate from the given cash asset into the account base currency.
 """
 @inline function get_rate_base_ccy(acc::Account, cash::Cash)::Float64
     _get_rate_base_ccy_idx(acc, cash.index)
+end
+
+"""
+FX rate from a cash index into the account base currency.
+"""
+@inline function get_rate_base_ccy(acc::Account, from_idx::Int)::Float64
+    _get_rate_base_ccy_idx(acc, from_idx)
+end
+
+"""
+FX rate from a cash symbol into the account base currency.
+"""
+@inline function get_rate_base_ccy(acc::Account, from_symbol::Symbol)::Float64
+    _get_rate_base_ccy_idx(acc, cash_index(acc.ledger, from_symbol))
+end
+
+@inline function _ensure_account_cash_index(acc::Account, idx::Int)::Int
+    n = length(acc.ledger.cash)
+    1 <= idx <= n || throw(ArgumentError("Cash index $(idx) not registered in account."))
+    idx
+end
+
+@inline function update_rate!(
+    acc::Account,
+    from_idx::Int,
+    to_idx::Int,
+    rate::Real,
+)
+    _ensure_account_cash_index(acc, from_idx)
+    _ensure_account_cash_index(acc, to_idx)
+    update_rate!(acc.exchange_rates, from_idx, to_idx, rate)
+end
+
+@inline function update_rate!(
+    acc::Account,
+    from::Cash,
+    to::Cash,
+    rate::Real,
+)
+    update_rate!(acc.exchange_rates, from, to, rate)
+end
+
+@inline function update_rate!(
+    acc::Account,
+    from_symbol::Symbol,
+    to_symbol::Symbol,
+    rate::Real,
+)
+    from = cash_asset(acc.ledger, from_symbol)
+    to = cash_asset(acc.ledger, to_symbol)
+    update_rate!(acc.exchange_rates, from, to, rate)
+end
+
+@inline function get_rate(
+    acc::Account,
+    from_idx::Int,
+    to_idx::Int;
+    allow_nan::Bool=false,
+)
+    _ensure_account_cash_index(acc, from_idx)
+    _ensure_account_cash_index(acc, to_idx)
+    get_rate(acc.exchange_rates, from_idx, to_idx; allow_nan=allow_nan)
+end
+
+@inline function get_rate(
+    acc::Account,
+    from::Cash,
+    to::Cash;
+    allow_nan::Bool=false,
+)
+    get_rate(acc.exchange_rates, from, to; allow_nan=allow_nan)
+end
+
+@inline function get_rate(
+    acc::Account,
+    from_symbol::Symbol,
+    to_symbol::Symbol;
+    allow_nan::Bool=false,
+)
+    from = cash_asset(acc.ledger, from_symbol)
+    to = cash_asset(acc.ledger, to_symbol)
+    get_rate(acc.exchange_rates, from, to; allow_nan=allow_nan)
 end
 
 # ---------------------------------------------------------

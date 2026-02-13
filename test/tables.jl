@@ -4,9 +4,8 @@ using TestItemRunner
 @testsnippet TablesTestSetup begin
     using Test, Fastback, Dates, Tables, DataFrames
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -68,14 +67,11 @@ end
     using Test, Fastback, Dates, Tables
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
-    add_asset!(er, cash_asset(acc.ledger, :USD))
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
     deposit!(acc, :USD, 5_000.0)
-    register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.2)
+    register_cash_asset!(acc, CashSpec(:EUR))
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
 
     inst = register_instrument!(
         acc,
@@ -148,7 +144,7 @@ end
     @test balance_schema.names == (:index, :symbol, :balance, :digits)
     balance_row = only(Tables.rows(tbl))
     @test balance_row.symbol == :USD
-    @test balance_row.balance ≈ cash_balance(acc, cash_asset(acc.ledger, :USD))
+    @test balance_row.balance ≈ cash_balance(acc, cash_asset(acc, :USD))
 
     println(DataFrame(tbl))
 end
@@ -159,7 +155,7 @@ end
     @test equity_schema.names == (:index, :symbol, :equity, :digits)
     equity_row = only(Tables.rows(tbl))
     @test equity_row.symbol == :USD
-    @test equity_row.equity ≈ equity(acc, cash_asset(acc.ledger, :USD))
+    @test equity_row.equity ≈ equity(acc, cash_asset(acc, :USD))
 
     println(DataFrame(tbl))
 end

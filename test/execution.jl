@@ -4,10 +4,9 @@ using TestItemRunner
 @testitem "plan_fill mirrors fill_order! (asset-settled open)" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
@@ -69,10 +68,9 @@ end
 @testitem "fills respect mark price when spreaded" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 100.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("SPRD/USD"), :SPRD, :USD))
@@ -93,10 +91,9 @@ end
 @testitem "cash_delta captures asset principal and commission" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(
@@ -155,10 +152,9 @@ end
 @testitem "plan_fill mirrors fill_order! (variation margin reduce)" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(
@@ -240,10 +236,9 @@ end
 @testitem "variation margin entry spread settles immediately" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(
@@ -304,10 +299,9 @@ end
 @testitem "variation margin entry spread counted in init margin check" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10.5)
 
     inst = register_instrument!(
@@ -361,10 +355,9 @@ end
 @testitem "variation margin partial close realizes cash on settle basis" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(
@@ -425,10 +418,9 @@ end
 @testitem "commission_pct uses absolute notional for negative prices" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
@@ -483,10 +475,9 @@ end
 @testitem "fill_order! rejects non-finite price inputs" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("BADPX/USD"), :BADPX, :USD))
@@ -520,10 +511,9 @@ end
 @testitem "update_marks! rejects non-finite price inputs" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("MARKBAD/USD"), :MARKBAD, :USD))

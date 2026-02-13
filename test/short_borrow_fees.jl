@@ -3,9 +3,8 @@ using TestItemRunner
 @testitem "short borrow fees accrue on asset-settled spot shorts" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("SHORT/USD"), :SHORT, :USD;
@@ -42,9 +41,8 @@ end
 @testitem "short borrow fees use last price, not liquidation mark" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("SHORTSPREAD/USD"), :SHORTSPREAD, :USD;
@@ -63,11 +61,11 @@ end
     fill_order!(acc, Order(oid!(acc), inst, dt0, last, qty); dt=dt0, fill_price=last, bid=bid, ask=ask, last=last)
 
     accrue_borrow_fees!(acc, dt0) # initialize clock
-    before_bal = cash_balance(acc, cash_asset(acc.ledger, :USD))
+    before_bal = cash_balance(acc, cash_asset(acc, :USD))
 
     dt1 = dt0 + Day(1)
     accrue_borrow_fees!(acc, dt1)
-    after_bal = cash_balance(acc, cash_asset(acc.ledger, :USD))
+    after_bal = cash_balance(acc, cash_asset(acc, :USD))
 
     yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
     expected_fee = abs(qty) * last * inst.multiplier * inst.short_borrow_rate * yearfrac
@@ -78,10 +76,9 @@ end
 @testitem "short borrow fees use absolute price when market is negative" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("SHORTNEG/USD"), :SHORTNEG, :USD;
@@ -123,9 +120,8 @@ end
 @testitem "borrow fees start at short open time" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("SHORTOPEN/USD"), :SHORTOPEN, :USD;
@@ -158,9 +154,8 @@ end
 @testitem "borrow fees stop at short close time" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("SHORTCLOSE/USD"), :SHORTCLOSE, :USD;

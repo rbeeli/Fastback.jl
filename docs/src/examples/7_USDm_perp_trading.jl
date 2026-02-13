@@ -31,9 +31,8 @@ first(df, 5)
 # ---------------------------------------------------------
 
 ## create margin account funded in USDT
-ledger = CashLedger()
-usdt = register_cash_asset!(ledger, :USDT)
-acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usdt);
+acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USDT));
+usdt = cash_asset(acc, :USDT)
 deposit!(acc, :USDT, 10_000.0);
 
 ## register a USD-M perpetual (variation margin, cash-settled)

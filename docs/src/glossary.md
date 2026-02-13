@@ -70,7 +70,7 @@ Equity is the balance of a cash asset plus the unrealized P&L of open positions 
 
 ## Cash Asset
 
-A `Cash` object models a funding currency (USD, EUR, BTC, …) with display precision and a ledger-assigned index. `Cash` is owned by `CashLedger`. Register currencies with `register_cash_asset!` to get ledger-owned `Cash` handles.
+A `Cash` object models a funding currency (USD, EUR, BTC, …) with display precision and a ledger-assigned index. `Cash` is owned by `CashLedger`. Register currencies through `register_cash_asset!(acc, CashSpec(:EUR))` to get account-owned `Cash` handles.
 
 ## Collector
 

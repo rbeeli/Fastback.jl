@@ -3,9 +3,8 @@ using TestItemRunner
 
 @testitem "Position long pnl/return" begin
     using Test, Fastback, Dates
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; ledger=ledger, base_currency=base_currency);
+    base_currency=CashSpec(:USD)
+    acc = Account(; base_currency=base_currency);
     deposit!(acc, :USD, 100_000.0)
     TEST = register_instrument!(acc, spot_instrument(Symbol("TEST/USD"), :TEST, :USD))
     px1, px2 = 500.0, 505.0
@@ -19,9 +18,8 @@ end
 
 @testitem "Position short pnl/return" begin
     using Test, Fastback, Dates
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; ledger=ledger, base_currency=base_currency);
+    base_currency=CashSpec(:USD)
+    acc = Account(; base_currency=base_currency);
     deposit!(acc, :USD, 100_000.0)
     TEST = register_instrument!(acc, spot_instrument(Symbol("TEST/USD"), :TEST, :USD))
     px1, px2 = 500.0, 505.0
@@ -35,9 +33,8 @@ end
 
 @testitem "Position return remains sign-consistent at negative prices" begin
     using Test, Fastback, Dates
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; ledger=ledger, base_currency=base_currency);
+    base_currency=CashSpec(:USD)
+    acc = Account(; base_currency=base_currency);
     deposit!(acc, :USD, 100_000.0)
     TEST = register_instrument!(acc, spot_instrument(Symbol("NEGRET/USD"), :NEGRET, :USD))
 
@@ -109,9 +106,8 @@ end
         margin_maint_short=1.0,
     )
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     register_instrument!(acc, inst)
 
     @test_throws ArgumentError margin_init_margin_ccy(acc, inst, 1.0, 10.0)
@@ -121,9 +117,8 @@ end
 @testitem "mark_price set on fills and marks" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
     inst = register_instrument!(acc, Instrument(
         Symbol("MK/USD"),

@@ -4,18 +4,15 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
-    add_asset!(er, cash_asset(acc.ledger, :USD))
     deposit!(acc, :USD, 50_000.0)
-    register_cash_asset!(acc.ledger, :CHF)
-    add_asset!(er, cash_asset(acc.ledger, :CHF))
+    register_cash_asset!(acc, CashSpec(:CHF))
     deposit!(acc, :CHF, 1_000.0)
 
     usd_to_chf = 0.9
-    update_rate!(er, cash_asset(acc.ledger, :USD), cash_asset(acc.ledger, :CHF), usd_to_chf)
+    update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), usd_to_chf)
 
     spot_inst = register_instrument!(acc, Instrument(
         Symbol("SPOT/USDCHF"),
@@ -116,18 +113,15 @@ end
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
-    add_asset!(er, cash_asset(acc.ledger, :USD))
     deposit!(acc, :USD, 50_000.0)
-    register_cash_asset!(acc.ledger, :CHF)
-    add_asset!(er, cash_asset(acc.ledger, :CHF))
+    register_cash_asset!(acc, CashSpec(:CHF))
     deposit!(acc, :CHF, 1_000.0)
 
     usd_to_chf = 0.8
-    update_rate!(er, cash_asset(acc.ledger, :USD), cash_asset(acc.ledger, :CHF), usd_to_chf)
+    update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), usd_to_chf)
     set_interest_rates!(acc, :CHF; borrow=0.05, lend=0.02)
 
     inst = register_instrument!(acc, Instrument(

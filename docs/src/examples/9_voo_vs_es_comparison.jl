@@ -115,9 +115,7 @@ end
 ## account + instrument builders
 
 function build_voo_account(initial_cash)
-    ledger = CashLedger()
-    usd = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, time_type=Date)
+    acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), time_type=Date)
     deposit!(acc, :USD, initial_cash)
     set_interest_rates!(acc, :USD; borrow=0.06, lend=0.015)
 
@@ -139,9 +137,7 @@ function build_voo_account(initial_cash)
 end
 
 function build_mes_account(initial_cash)
-    ledger = CashLedger()
-    usd = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, time_type=Date)
+    acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), time_type=Date)
     deposit!(acc, :USD, initial_cash)
     set_interest_rates!(acc, :USD; borrow=0.06, lend=0.015)
 
@@ -169,7 +165,7 @@ end
 ## summarize results (costs + net equity)
 
 function summarize(acc, label, initial_cash, leverage_factor)
-    end_equity = equity(acc, cash_asset(acc.ledger, :USD))
+    end_equity = equity(acc, cash_asset(acc, :USD))
     pnl = end_equity - initial_cash
     commissions = sum(t.commission_settle for t in acc.trades, init=0.0)
     lend_interest = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.LendInterest, init=0.0)

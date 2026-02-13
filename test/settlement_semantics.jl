@@ -4,10 +4,9 @@ using TestItemRunner
 @testitem "Spot asset-settled open/close updates cash and equity" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("SPOT/USD"), :SPOT, :USD))
@@ -43,10 +42,9 @@ end
 @testitem "Variation margin settles P&L and resets basis" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
-    usd = cash_asset(acc.ledger, :USD)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(acc, perpetual_instrument(Symbol("PERP/USD"), :PERP, :USD;
@@ -77,9 +75,8 @@ end
 @testitem "Margin sufficiency rejects exposure increases" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 100.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("RISK/USD"), :RISK, :USD;
@@ -107,17 +104,14 @@ end
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
-    usd = cash_asset(acc.ledger, :USD)
-    add_asset!(er, usd)
+    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
-    eur = register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, eur)
+    eur = register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :EUR, 0.0)
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.1)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
 
     set_interest_rates!(acc, :USD; borrow=0.0, lend=0.01)
 
@@ -146,7 +140,7 @@ end
     process_step!(acc, dt0) # initialize clocks
 
     dt1 = dt0 + Day(1)
-    fx_updates = [FXUpdate(cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.2)]
+    fx_updates = [FXUpdate(cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)]
     marks = [
         MarkUpdate(spot.index, 110.0, 110.0, 110.0),
         MarkUpdate(perp.index, 60.0, 60.0, 60.0),

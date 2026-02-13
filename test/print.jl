@@ -3,8 +3,8 @@ using TestItemRunner
 
 @testitem "Print Cash" begin
     using Test, Fastback
-    ledger = CashLedger()
-    usd = register_cash_asset!(ledger, :USD)
+    acc = Account(; base_currency=CashSpec(:USD))
+    usd = cash_asset(acc, :USD)
     show(usd)
 end
 
@@ -17,8 +17,8 @@ end
     using Test, Fastback, Dates
 
     ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
     DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0
@@ -31,8 +31,8 @@ end
     using Test, Fastback, Dates
 
     ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
     DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0
@@ -49,13 +49,11 @@ end
 
     er = ExchangeRates()
     ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :EUR)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
-    register_cash_asset!(acc.ledger, :USD, digits=4)
-    add_asset!(er, cash_asset(acc.ledger, :USD))
+    base_currency=CashSpec(:EUR)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    register_cash_asset!(acc, CashSpec(:USD; digits=4))
     deposit!(acc, :USD, 5_000.0)
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.2)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
 
     inst = register_instrument!(
         acc,

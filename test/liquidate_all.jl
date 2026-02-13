@@ -3,9 +3,8 @@ using TestItemRunner
 @testitem "liquidate_all! closes all positions with liquidation reason" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst1 = register_instrument!(acc, Instrument(Symbol("A/USD"), :A, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_init_short=0.1, margin_maint_long=0.05, margin_maint_short=0.05))
@@ -26,9 +25,8 @@ end
 @testitem "liquidate_all! applies commission percentage" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("C/USD"), :C, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_init_short=0.1, margin_maint_long=0.05, margin_maint_short=0.05))

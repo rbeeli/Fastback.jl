@@ -26,9 +26,8 @@ using Fastback
 using Dates
 
 # 1) Account and cash
-ledger = CashLedger()
-usd = register_cash_asset!(ledger, :USD)
-acc = Account(; mode=AccountMode.Cash, ledger=ledger, base_currency=usd)
+acc = Account(; mode=AccountMode.Cash, base_currency=CashSpec(:USD))
+usd = cash_asset(acc, :USD)
 deposit!(acc, usd, 10_000.0)
 
 # 2) Instrument (spot, cash-settled synthetic exposure)

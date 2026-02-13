@@ -5,13 +5,10 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
-    add_asset!(er, cash_asset(acc.ledger, :USD))
-    register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.0)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    register_cash_asset!(acc, CashSpec(:EUR))
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.0)
     deposit!(acc, :USD, 10_000.0)
 
     inst = Instrument(Symbol("BTC/EUR_SETL_USD"), :BTC, :EUR;
@@ -33,8 +30,8 @@ using TestItemRunner
     trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
     @test trade isa Trade
 
-    usd_idx = cash_asset(acc.ledger, :USD).index
-    eur_idx = cash_asset(acc.ledger, :EUR).index
+    usd_idx = cash_asset(acc, :USD).index
+    eur_idx = cash_asset(acc, :EUR).index
 
     # No settlement movement on entry for VM
     @test acc.ledger.balances[usd_idx] == 10_000.0
@@ -54,9 +51,8 @@ end
 @testitem "Variation margin settlements recorded as cashflows" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(
@@ -80,7 +76,7 @@ end
     order = Order(oid!(acc), inst, dt0, 100.0, 1.0)
     fill_order!(acc, order; dt=dt0, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
 
-    usd_idx = cash_asset(acc.ledger, :USD).index
+    usd_idx = cash_asset(acc, :USD).index
     @test isempty(acc.cashflows)
 
     bal_before_up = acc.ledger.balances[usd_idx]
@@ -109,13 +105,10 @@ end
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
-    add_asset!(er, cash_asset(acc.ledger, :USD))
-    register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.0)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    register_cash_asset!(acc, CashSpec(:EUR))
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.0)
     deposit!(acc, :USD, 5_000.0)
 
     inst = Instrument(Symbol("DERIV/EUR-MEUR"), :BTC, :EUR;
@@ -137,8 +130,8 @@ end
     trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
     @test trade isa Trade
 
-    usd_idx = cash_asset(acc.ledger, :USD).index
-    eur_idx = cash_asset(acc.ledger, :EUR).index
+    usd_idx = cash_asset(acc, :USD).index
+    eur_idx = cash_asset(acc, :EUR).index
 
     # Margin is recorded in margin currency (EUR), not USD
     @test acc.ledger.init_margin_used[eur_idx] > 0
@@ -151,15 +144,12 @@ end
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
-    add_asset!(er, cash_asset(acc.ledger, :USD))
-    register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :USD, 10_000.0)
 
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.1) # EUR -> USD
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1) # EUR -> USD
 
     inst = Instrument(Symbol("MARGIN/EUR"), :MARG, :USD;
         settle_symbol=:USD,
@@ -181,8 +171,8 @@ end
     trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
     @test trade isa Trade
 
-    eur_idx = cash_asset(acc.ledger, :EUR).index
-    usd_idx = cash_asset(acc.ledger, :USD).index
+    eur_idx = cash_asset(acc, :EUR).index
+    usd_idx = cash_asset(acc, :USD).index
 
     expected_margin_eur = 100.0 * 0.1 * (1.0 / 1.1)
     @test inst.margin_cash_index == eur_idx
@@ -195,15 +185,12 @@ end
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
-    add_asset!(er, cash_asset(acc.ledger, :USD))
-    register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
+    register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :USD, 0.0)
     deposit!(acc, :EUR, 1_000.0)
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.1) # EUR -> USD
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1) # EUR -> USD
 
     inst = Instrument(Symbol("PCUR/SETTLEDEF"), :PCUR, :USD;
         settle_symbol=:USD,
@@ -233,24 +220,21 @@ end
     @test err isa OrderRejectError
     @test err.reason == OrderRejectReason.InsufficientInitialMargin
     @test isempty(acc.trades)
-    @test cash_balance(acc, cash_asset(acc.ledger, :USD)) == 0.0
-    @test cash_balance(acc, cash_asset(acc.ledger, :EUR)) == 1_000.0
-    @test init_margin_used(acc, cash_asset(acc.ledger, :USD)) == 0.0
-    @test init_margin_used(acc, cash_asset(acc.ledger, :EUR)) == 0.0
+    @test cash_balance(acc, cash_asset(acc, :USD)) == 0.0
+    @test cash_balance(acc, cash_asset(acc, :EUR)) == 1_000.0
+    @test init_margin_used(acc, cash_asset(acc, :USD)) == 0.0
+    @test init_margin_used(acc, cash_asset(acc, :EUR)) == 0.0
 end
 
 @testitem "FX conversion applied to settlement currency" begin
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
-    add_asset!(er, cash_asset(acc.ledger, :USD))
-    register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    register_cash_asset!(acc, CashSpec(:EUR))
     # Set EURUSD = 1.1
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.1)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
 
     deposit!(acc, :USD, 10_000.0)
 
@@ -273,8 +257,8 @@ end
     trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
     @test trade isa Trade
 
-    usd_idx = cash_asset(acc.ledger, :USD).index
-    eur_idx = cash_asset(acc.ledger, :EUR).index
+    usd_idx = cash_asset(acc, :USD).index
+    eur_idx = cash_asset(acc, :EUR).index
 
     # Initial VM cash impact zero; margin should be in USD (margin currency) with FX applied
     @test acc.ledger.balances[usd_idx] == 10_000.0

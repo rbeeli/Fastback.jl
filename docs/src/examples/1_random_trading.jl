@@ -25,9 +25,8 @@ prices = 1000.0 .+ cumsum(randn(N) .+ 0.1);
 dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N-1);
 
 ## create trading account with $10'000 start capital (margin-enabled for shorting)
-ledger = CashLedger()
-usd = register_cash_asset!(ledger, :USD)
-acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd);
+acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD));
+usd = cash_asset(acc, :USD)
 deposit!(acc, :USD, 10_000.0);
 
 ## register a dummy instrument

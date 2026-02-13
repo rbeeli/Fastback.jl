@@ -12,18 +12,13 @@ Ideally, it can be looped over or streamed efficiently.
 
 Initialize the account you want to backtest with.
 The account holds the assets (funds), positions, trades, and does all the bookkeeping.
-Register all cash assets in a `CashLedger`, add them to `ExchangeRates` if used, then create `Account`:
+Create `Account` first, then register additional cash assets on the account:
 
 ```julia
-ledger = CashLedger()
-usd = register_cash_asset!(ledger, :USD)
-eur = register_cash_asset!(ledger, :EUR, digits=2) # optional
-
 er = ExchangeRates()
-add_asset!(er, usd)
-add_asset!(er, eur)
-
-account = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, exchange_rates=er)
+account = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), exchange_rates=er)
+usd = cash_asset(account, :USD)
+eur = register_cash_asset!(account, CashSpec(:EUR; digits=2)) # optional
 ```
 
 Fund the account with `deposit!(account, usd, amount)`.

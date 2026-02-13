@@ -3,9 +3,8 @@ using TestItemRunner
 @testitem "Spot on margin long uses initial margin" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -29,7 +28,7 @@ using TestItemRunner
     trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt=dt, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
-    usd = cash_asset(acc.ledger, :USD)
+    usd = cash_asset(acc, :USD)
 
     @test cash_balance(acc, usd) ≈ -10_000.0 atol=1e-8
     @test equity(acc, usd) ≈ 10_000.0 atol=1e-8
@@ -41,9 +40,8 @@ end
 @testitem "Margin spot long accrues borrow interest" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
     set_interest_rates!(acc, :USD; borrow=0.10, lend=0.0)
 
@@ -67,7 +65,7 @@ end
     trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
-    usd = cash_asset(acc.ledger, :USD)
+    usd = cash_asset(acc, :USD)
     bal_before = cash_balance(acc, usd)
     eq_before = equity(acc, usd)
 
@@ -88,7 +86,7 @@ end
 
     cf = only(acc.cashflows)
     @test cf.kind == CashflowKind.BorrowInterest
-    @test cf.cash_index == cash_asset(acc.ledger, :USD).index
+    @test cf.cash_index == cash_asset(acc, :USD).index
     @test cf.amount ≈ expected_interest atol=1e-8
     @test cf.inst_index == 0
 end
@@ -96,9 +94,8 @@ end
 @testitem "Spot on margin short keeps equity, accrues borrow fees" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -122,8 +119,8 @@ end
     trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
-    usd = cash_asset(acc.ledger, :USD)
-    usd_idx = cash_asset(acc.ledger, :USD).index
+    usd = cash_asset(acc, :USD)
+    usd_idx = cash_asset(acc, :USD).index
 
     # Equity should remain the original deposit after opening the short.
     # Cash increases from short proceeds and is offset by negative position value.
@@ -150,9 +147,8 @@ end
 @testitem "Margin spot short accrues borrow fee and interest" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
     set_interest_rates!(acc, :USD; borrow=0.05, lend=0.02)
 
@@ -177,7 +173,7 @@ end
     trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
-    usd = cash_asset(acc.ledger, :USD)
+    usd = cash_asset(acc, :USD)
     bal_before = cash_balance(acc, usd)
     eq_before = equity(acc, usd)
 
@@ -204,11 +200,11 @@ end
     fee_cf = acc.cashflows[2]
 
     @test interest_cf.kind == CashflowKind.LendInterest
-    @test interest_cf.cash_index == cash_asset(acc.ledger, :USD).index
+    @test interest_cf.cash_index == cash_asset(acc, :USD).index
     @test interest_cf.amount ≈ expected_interest atol=1e-8
 
     @test fee_cf.kind == CashflowKind.BorrowFee
-    @test fee_cf.cash_index == cash_asset(acc.ledger, :USD).index
+    @test fee_cf.cash_index == cash_asset(acc, :USD).index
     @test fee_cf.inst_index == inst.index
     @test fee_cf.amount ≈ -expected_fee atol=1e-8
 end
@@ -216,9 +212,8 @@ end
 @testitem "Cash account applies margin checks to spot" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Cash, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Cash, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("SPOTC/USD"), :SPOTC, :USD))
@@ -229,8 +224,8 @@ end
     trade = fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt=dt, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
-    usd = cash_asset(acc.ledger, :USD)
-    usd_idx = cash_asset(acc.ledger, :USD).index
+    usd = cash_asset(acc, :USD)
+    usd_idx = cash_asset(acc, :USD).index
 
     balance_after_buy = cash_balance(acc, usd)
     @test balance_after_buy ≈ 5_000.0 atol=1e-8
@@ -259,13 +254,12 @@ end
 @testitem "Cash account spread does not create synthetic margin deficit" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Cash, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Cash, base_currency=base_currency)
     deposit!(acc, :USD, 100.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("SPREADC/USD"), :SPREADC, :USD))
-    usd = cash_asset(acc.ledger, :USD)
+    usd = cash_asset(acc, :USD)
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 100.0, 1.0)
@@ -297,9 +291,8 @@ end
 @testitem "Cash account disallows opening short exposure" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Cash, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Cash, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("SHORTC/USD"), :SHORTC, :USD))
@@ -321,9 +314,8 @@ end
 @testitem "Cash account uses full notional margin" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Cash, ledger=ledger, base_currency=base_currency)
+    base_currency=CashSpec(:USD)
+    acc = Account(; mode=AccountMode.Cash, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(
@@ -357,28 +349,25 @@ end
     trade = fill_order!(acc, ok_order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
 
-    usd = cash_asset(acc.ledger, :USD)
+    usd = cash_asset(acc, :USD)
     @test cash_balance(acc, usd) ≈ 0.0 atol=1e-8
-    @test acc.ledger.init_margin_used[cash_asset(acc.ledger, :USD).index] ≈ 10_000.0 atol=1e-8
-    @test acc.ledger.maint_margin_used[cash_asset(acc.ledger, :USD).index] ≈ 10_000.0 atol=1e-8
+    @test acc.ledger.init_margin_used[cash_asset(acc, :USD).index] ≈ 10_000.0 atol=1e-8
+    @test acc.ledger.maint_margin_used[cash_asset(acc, :USD).index] ≈ 10_000.0 atol=1e-8
 end
 
 @testitem "Spot mark move converts quote P&L into settlement equity" begin
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
-    base_currency = register_cash_asset!(ledger, :CHF)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    base_currency=CashSpec(:CHF)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
-    chf = cash_asset(acc.ledger, :CHF)
-    add_asset!(er, chf)
+    chf = cash_asset(acc, :CHF)
     deposit!(acc, :CHF, 10_000.0)
-    eur = register_cash_asset!(acc.ledger, :EUR)
-    add_asset!(er, eur)
+    eur = register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :EUR, 0.0) # register quote currency
 
-    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :CHF), 1.1)
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :CHF), 1.1)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("SPOTFX/EURCHF"),
@@ -410,7 +399,7 @@ end
     expected_pnl_quote = qty * (price_mark - price_entry) * inst.multiplier
     @test pos.pnl_quote ≈ expected_pnl_quote atol=1e-8
 
-    rate = get_rate(acc.exchange_rates, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :CHF))
+    rate = get_rate(acc.exchange_rates, cash_asset(acc, :EUR), cash_asset(acc, :CHF))
     @test rate ≈ 1.1 atol=1e-12
     equity_after = equity(acc, chf)
     @test equity_after - equity_before ≈ expected_pnl_quote * rate atol=1e-8

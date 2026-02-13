@@ -47,6 +47,7 @@ export Fastback,
     OrderRejectError,
     TradeReason,
     Cash,
+    CashSpec,
     CashLedger,
     Instrument,
     Order,
@@ -129,8 +130,7 @@ export has_exposure,
     calc_exposure_increase_quantity
 
 # Exchange rate utilities
-export add_asset!,
-    get_rate,
+export get_rate,
     get_rates_matrix,
     update_rate!
 

@@ -16,6 +16,19 @@ end
 
 @inline Base.hash(cash::Cash) = cash.index  # custom hash for better performance
 
+struct CashSpec
+    symbol::Symbol
+    digits::Int
+
+    function CashSpec(
+        symbol::Symbol;
+        digits::Int=2,
+    )
+        digits >= 0 || throw(ArgumentError("Cash digits must be >= 0."))
+        new(symbol, digits)
+    end
+end
+
 """
 Format a cash value using the cash asset's display precision.
 """
@@ -64,15 +77,15 @@ end
     @inbounds ledger.cash[cash_index(ledger, symbol)]
 end
 
-function register_cash_asset!(
+function _register_cash_asset!(
     ledger::CashLedger,
-    symbol::Symbol;
-    digits::Int=2,
+    spec::CashSpec,
 )::Cash
+    symbol = spec.symbol
     !has_cash_asset(ledger, symbol) || throw(ArgumentError("Cash with symbol '$(symbol)' already registered."))
 
     idx = length(ledger.cash) + 1
-    cash = Cash(idx, symbol, digits)
+    cash = Cash(idx, symbol, spec.digits)
     push!(ledger.cash, cash)
     ledger.by_symbol[symbol] = idx
 
