@@ -173,8 +173,8 @@ function summarize(acc, label, initial_cash, leverage_factor)
     pnl = end_equity - initial_cash
     commissions = sum(t.commission_settle for t in acc.trades, init=0.0)
     lend_interest = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.LendInterest, init=0.0)
-    borrow_interest = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowInterest, init=0.0)
-    net_interest = lend_interest + borrow_interest
+    borrow_interest = -sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowInterest, init=0.0)
+    net_interest = lend_interest - borrow_interest
     borrow_fees = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowFee, init=0.0)
     interest_cost = max(0.0, -net_interest)
 
@@ -186,6 +186,9 @@ function summarize(acc, label, initial_cash, leverage_factor)
         end_equity=round(end_equity, digits=2),
         pnl=round(pnl, digits=2),
         commissions=round(commissions, digits=2),
+        lend_interest=round(lend_interest, digits=2),
+        borrow_interest=round(borrow_interest, digits=2),
+        net_interest=round(net_interest, digits=2),
         interest_cost=round(interest_cost, digits=2),
         borrow_fees=round(borrow_fees, digits=2),
     )
@@ -225,7 +228,7 @@ summary
 # ---------------------------------------------------------
 
 ## compact view: leverage effect within each instrument
-leverage_effect = combine(groupby(summary, :instrument)) do sdf
+leverage_effect_wide = combine(groupby(summary, :instrument)) do sdf
     s1 = sdf[sdf.leverage .== 1.0, :]
     s2 = sdf[sdf.leverage .== 2.0, :]
     @assert nrow(s1) == 1 && nrow(s2) == 1
@@ -234,11 +237,21 @@ leverage_effect = combine(groupby(summary, :instrument)) do sdf
         pnl_1x=s1.pnl[1],
         pnl_2x=s2.pnl[1],
         pnl_delta_2x_minus_1x=round(s2.pnl[1] - s1.pnl[1], digits=2),
-        commissions_1x=s1.commissions[1],
-        commissions_2x=s2.commissions[1],
-        interest_cost_1x=s1.interest_cost[1],
-        interest_cost_2x=s2.interest_cost[1],
+        comm_1x=s1.commissions[1],
+        comm_2x=s2.commissions[1],
+        lend_interest_1x=s1.lend_interest[1],
+        lend_interest_2x=s2.lend_interest[1],
+        borrow_interest_1x=s1.borrow_interest[1],
+        borrow_interest_2x=s2.borrow_interest[1],
+        net_interest_1x=s1.net_interest[1],
+        net_interest_2x=s2.net_interest[1],
     )
+end
+
+metric_cols = names(leverage_effect_wide, Not(:instrument))
+leverage_effect = DataFrame(metric=String.(metric_cols))
+for row in eachrow(leverage_effect_wide)
+    leverage_effect[!, Symbol(row.instrument)] = [row[col] for col in metric_cols]
 end
 
 leverage_effect
@@ -248,4 +261,5 @@ leverage_effect
 # Notes:
 # - VOO prices are total-return adjusted (no separate dividend cashflows).
 # - MES is treated as a continuous contract; expiry is set beyond the test window.
+# - `borrow_interest` is reported as a positive paid amount; `net_interest = lend_interest - borrow_interest`.
 # - Margin/commission numbers are realistic placeholders for comparison only.
