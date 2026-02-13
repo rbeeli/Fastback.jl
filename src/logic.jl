@@ -114,7 +114,8 @@ end
     if pos.inst.settlement != SettlementStyle.VariationMargin
         pos.avg_settle_price = pos.avg_entry_price
     end
-    _update_margin!(acc, pos, last_price)
+    margin_price = margin_reference_price(acc, close_price, last_price)
+    _update_margin!(acc, pos, margin_price)
     pos.mark_price = close_price
     pos.last_price = last_price
     pos.mark_time = dt
@@ -125,7 +126,7 @@ end
 Updates valuation and margin for a position using the latest bid/ask/last.
 
 Valuation uses a liquidation-aware mark (bid/ask, mid when flat; mid for VM).
-Margin uses `last` to avoid side-dependent bias.
+Margin uses liquidation marks in cash accounts and `last` in margin accounts.
 """
 @inline function update_marks!(
     acc::Account,
@@ -160,7 +161,7 @@ end
 Marks an instrument by bid/ask/last, updating its position valuation, margin, and mark stamp.
 
 Uses mid for variation-margin instruments and side-aware bid/ask for others,
-then applies margin with `last`.
+then applies margin using account-mode reference pricing.
 """
 @inline function update_marks!(
     acc::Account{TTime},
@@ -211,6 +212,7 @@ Requires bid/ask/last to deterministically value positions and compute margin du
 
     mark_for_position = _calc_mark_price(inst, pos.quantity, bid, ask)
     mark_for_valuation = _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
+    margin_for_valuation = margin_reference_price(acc, mark_for_valuation, last)
     needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_position || pos.last_price != last || pos.mark_time != dt
     needs_mark_update && _update_marks!(acc, pos, dt, mark_for_position, last)
 
@@ -225,7 +227,7 @@ Requires bid/ask/last to deterministically value positions and compute margin du
         dt,
         fill_price,
         mark_for_valuation,
-        last,
+        margin_for_valuation,
         fill_qty,
         commission,
         commission_pct,

@@ -103,7 +103,7 @@ touching marks or balances.
 
 Adjusts position `value_settle`/`pnl_settle` for non-VM instruments and updates
 margin usage for FX-sensitive requirements (percent-notional, and all cash-mode
-requirements) using the latest stored last prices.
+requirements) using account-mode margin reference prices.
 """
 @inline function _revalue_fx_caches!(acc::Account)
     @inbounds for pos in acc.positions
@@ -130,9 +130,9 @@ requirements) using the latest stored last prices.
         end
 
         if margin_fx_sensitive
-            last_price = pos.last_price
-            new_init_margin = margin_init_margin_ccy(acc, inst, pos.quantity, last_price)
-            new_maint_margin = margin_maint_margin_ccy(acc, inst, pos.quantity, last_price)
+            margin_price = margin_reference_price(acc, pos.mark_price, pos.last_price)
+            new_init_margin = margin_init_margin_ccy(acc, inst, pos.quantity, margin_price)
+            new_maint_margin = margin_maint_margin_ccy(acc, inst, pos.quantity, margin_price)
             init_delta = new_init_margin - pos.init_margin_settle
             maint_delta = new_maint_margin - pos.maint_margin_settle
             if init_delta != 0.0

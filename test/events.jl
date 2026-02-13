@@ -300,7 +300,7 @@ end
     @test init_margin_used(acc, chf) < init_before
 end
 
-@testitem "process_step! revalues cash-mode margin on FX updates for non-percent instruments" begin
+@testitem "process_step! revalues cash-mode margin on FX updates using liquidation marks" begin
     using Test, Fastback, Dates
 
     er = SpotExchangeRates()
@@ -339,7 +339,7 @@ end
         Order(oid!(acc), inst, dt0, 100.0, 1.0);
         dt=dt0,
         fill_price=100.0,
-        bid=100.0,
+        bid=99.0,
         ask=100.0,
         last=100.0,
     )
@@ -347,18 +347,24 @@ end
     pos = get_position(acc, inst)
     init_before = init_margin_used(acc, usd)
     maint_before = maint_margin_used(acc, usd)
-    @test init_before ≈ margin_init_margin_ccy(acc, inst, pos.quantity, pos.last_price) atol=1e-12
-    @test maint_before ≈ margin_maint_margin_ccy(acc, inst, pos.quantity, pos.last_price) atol=1e-12
+    @test pos.mark_price ≈ 99.0 atol=1e-12
+    @test pos.last_price ≈ 100.0 atol=1e-12
+    @test init_before ≈ margin_init_margin_ccy(acc, inst, pos.quantity, pos.mark_price) atol=1e-12
+    @test maint_before ≈ margin_maint_margin_ccy(acc, inst, pos.quantity, pos.mark_price) atol=1e-12
 
     dt1 = dt0 + Day(1)
     fx_updates = [FXUpdate(eur, usd, 2.0)]
     process_step!(acc, dt1; fx_updates=fx_updates, accrue_interest=false, accrue_borrow_fees=false)
 
-    expected_init = margin_init_margin_ccy(acc, inst, pos.quantity, pos.last_price)
-    expected_maint = margin_maint_margin_ccy(acc, inst, pos.quantity, pos.last_price)
+    expected_init = margin_init_margin_ccy(acc, inst, pos.quantity, pos.mark_price)
+    expected_maint = margin_maint_margin_ccy(acc, inst, pos.quantity, pos.mark_price)
+    expected_init_last = margin_init_margin_ccy(acc, inst, pos.quantity, pos.last_price)
+    expected_maint_last = margin_maint_margin_ccy(acc, inst, pos.quantity, pos.last_price)
 
     @test init_margin_used(acc, usd) ≈ expected_init atol=1e-12
     @test maint_margin_used(acc, usd) ≈ expected_maint atol=1e-12
+    @test !isapprox(init_margin_used(acc, usd), expected_init_last; atol=1e-12, rtol=1e-12)
+    @test !isapprox(maint_margin_used(acc, usd), expected_maint_last; atol=1e-12, rtol=1e-12)
     @test init_margin_used(acc, usd) > init_before
     @test maint_margin_used(acc, usd) > maint_before
 end

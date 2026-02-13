@@ -77,14 +77,30 @@ Quote-currency cash delta for a variation-margin fill.
 end
 
 """
+Return the reference price used for margin requirements.
+
+- `AccountMode.Cash`: uses liquidation-aware marks so full-notional requirements
+  stay aligned with equity under bid/ask spreads.
+- `AccountMode.Margin`: uses last-traded prices to avoid side-dependent bias.
+"""
+@inline function margin_reference_price(
+    acc::Account,
+    mark_price::Price,
+    last_price::Price,
+)::Price
+    acc.mode == AccountMode.Cash ? mark_price : last_price
+end
+
+"""
 Calculates the initial margin requirement in the instrument margin currency.
 
-`AccountMode.Cash` forces a fully funded requirement (full notional).
+`AccountMode.Cash` forces a fully funded requirement (full notional), evaluated
+at the caller-provided margin reference price.
 """
-@inline function margin_init_margin_ccy(acc::Account, inst::Instrument, qty, mark)::Price
+@inline function margin_init_margin_ccy(acc::Account, inst::Instrument, qty, price)::Price
     qty == 0 && return zero(Price)
     if acc.mode == AccountMode.Cash
-        quote_req = abs(qty) * abs(mark) * inst.multiplier
+        quote_req = abs(qty) * abs(price) * inst.multiplier
         return to_margin(acc, inst, quote_req)
     end
     mode = inst.margin_mode
@@ -92,7 +108,7 @@ Calculates the initial margin requirement in the instrument margin currency.
         return zero(Price)
     elseif mode == MarginMode.PercentNotional
         rate = qty > 0 ? inst.margin_init_long : inst.margin_init_short
-        quote_req = abs(qty) * abs(mark) * inst.multiplier * rate
+        quote_req = abs(qty) * abs(price) * inst.multiplier * rate
         return to_margin(acc, inst, quote_req)
     elseif mode == MarginMode.FixedPerContract
         per_contract = qty > 0 ? inst.margin_init_long : inst.margin_init_short
@@ -104,12 +120,13 @@ end
 """
 Calculates the maintenance margin requirement in the instrument margin currency.
 
-`AccountMode.Cash` forces a fully funded requirement (full notional).
+`AccountMode.Cash` forces a fully funded requirement (full notional), evaluated
+at the caller-provided margin reference price.
 """
-@inline function margin_maint_margin_ccy(acc::Account, inst::Instrument, qty, mark)::Price
+@inline function margin_maint_margin_ccy(acc::Account, inst::Instrument, qty, price)::Price
     qty == 0 && return zero(Price)
     if acc.mode == AccountMode.Cash
-        quote_req = abs(qty) * abs(mark) * inst.multiplier
+        quote_req = abs(qty) * abs(price) * inst.multiplier
         return to_margin(acc, inst, quote_req)
     end
     mode = inst.margin_mode
@@ -117,7 +134,7 @@ Calculates the maintenance margin requirement in the instrument margin currency.
         return zero(Price)
     elseif mode == MarginMode.PercentNotional
         rate = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
-        quote_req = abs(qty) * abs(mark) * inst.multiplier * rate
+        quote_req = abs(qty) * abs(price) * inst.multiplier * rate
         return to_margin(acc, inst, quote_req)
     elseif mode == MarginMode.FixedPerContract
         per_contract = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short

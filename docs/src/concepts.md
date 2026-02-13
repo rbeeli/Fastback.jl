@@ -31,7 +31,7 @@ and it updates balances, equity, and margin deterministically.
 
 ## Margin modes and styles
 
-- Account modes: `AccountMode.Cash` enforces fully funded exposure (full notional margin), disallows short exposure, and withdrawals must respect available funds; `AccountMode.Margin` uses instrument margin settings.
+- Account modes: `AccountMode.Cash` enforces fully funded exposure (full notional margin), disallows short exposure, prices requirements from liquidation marks (bid for longs, ask for shorts), and requires withdrawals to respect available funds; `AccountMode.Margin` uses instrument margin settings with last-trade based margin pricing.
 - Margin modes on instruments: `PercentNotional`, `FixedPerContract`.
 - Margining style: `PerCurrency` or `BaseCurrency`, controlling how margin totals are aggregated.
 

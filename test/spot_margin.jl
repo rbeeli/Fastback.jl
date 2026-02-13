@@ -256,6 +256,44 @@ end
     @test acc.ledger.maint_margin_used[usd_idx] == 5_000.0
 end
 
+@testitem "Cash account spread does not create synthetic margin deficit" begin
+    using Test, Fastback, Dates
+
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Cash, ledger=ledger, base_currency=base_currency)
+    deposit!(acc, :USD, 100.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("SPREADC/USD"), :SPREADC, :USD))
+    usd = cash_asset(acc.ledger, :USD)
+
+    dt = DateTime(2026, 1, 1)
+    order = Order(oid!(acc), inst, dt, 100.0, 1.0)
+    trade = fill_order!(acc, order; dt=dt, fill_price=100.0, bid=99.0, ask=100.0, last=100.0)
+    @test trade isa Trade
+
+    pos = get_position(acc, inst)
+    @test cash_balance(acc, usd) ≈ 0.0 atol=1e-12
+    @test pos.mark_price ≈ 99.0 atol=1e-12
+    @test pos.last_price ≈ 100.0 atol=1e-12
+    @test equity(acc, usd) ≈ 99.0 atol=1e-12
+    @test init_margin_used(acc, usd) ≈ 99.0 atol=1e-12
+    @test maint_margin_used(acc, usd) ≈ 99.0 atol=1e-12
+    @test available_funds(acc, usd) ≈ 0.0 atol=1e-12
+    @test excess_liquidity(acc, usd) ≈ 0.0 atol=1e-12
+    @test !is_under_maintenance(acc)
+
+    update_marks!(acc, inst, dt + Hour(1), 98.0, 99.0, 99.0)
+    @test pos.mark_price ≈ 98.0 atol=1e-12
+    @test pos.last_price ≈ 99.0 atol=1e-12
+    @test equity(acc, usd) ≈ 98.0 atol=1e-12
+    @test init_margin_used(acc, usd) ≈ 98.0 atol=1e-12
+    @test maint_margin_used(acc, usd) ≈ 98.0 atol=1e-12
+    @test available_funds(acc, usd) ≈ 0.0 atol=1e-12
+    @test excess_liquidity(acc, usd) ≈ 0.0 atol=1e-12
+    @test !is_under_maintenance(acc)
+end
+
 @testitem "Cash account disallows opening short exposure" begin
     using Test, Fastback, Dates
 
