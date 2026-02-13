@@ -942,7 +942,7 @@ end
 @testitem "Fixed-per-contract margin uses margin currency FX" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
@@ -1012,7 +1012,7 @@ end
 @testitem "FX move updates cached settlement value" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)

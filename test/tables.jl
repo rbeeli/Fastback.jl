@@ -67,7 +67,7 @@ end
 @testitem "trades_table uses settlement currency for quote/settle mismatch" begin
     using Test, Fastback, Dates, Tables
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)

@@ -3,7 +3,7 @@ using TestItemRunner
 @testitem "FX conversions centralize quote→settle→base flows" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
@@ -115,7 +115,7 @@ end
 @testitem "FX financing lands in settlement cash with borrow fee + interest" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)

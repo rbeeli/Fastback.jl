@@ -57,7 +57,7 @@ end
 @testitem "process_step! executes steps in documented order" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
@@ -244,7 +244,7 @@ end
 @testitem "process_step! revalues cross-currency positions on FX updates" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
@@ -303,7 +303,7 @@ end
 @testitem "process_step! revalues cash-mode margin on FX updates using liquidation marks" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Cash, ledger=ledger, base_currency=base_currency, exchange_rates=er)
@@ -423,7 +423,7 @@ end
     using Test, Fastback, Dates
 
     function setup_short_account()
-        er = SpotExchangeRates()
+        er = ExchangeRates()
         ledger = CashLedger()
         base_currency = register_cash_asset!(ledger, :CHF)
         acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)

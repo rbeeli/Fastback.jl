@@ -153,7 +153,7 @@ end
 @testitem "cross-currency asset realized settle P&L captures principal FX translation" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)
@@ -194,7 +194,7 @@ end
 @testitem "cross-currency scale-in uses settlement-entry basis for realized P&L" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, exchange_rates=er)

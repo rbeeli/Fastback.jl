@@ -3,7 +3,7 @@ using TestItemRunner
 @testitem "Quote/settle invariants and equity conversion" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
@@ -54,7 +54,7 @@ end
 @testitem "Asset settlement pnl_settle reflects principal FX translation" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)

@@ -78,7 +78,7 @@ Collectors are lightweight recorders that capture time-series or summary statist
 
 ## Exchange Rate
 
-Exchange-rate providers convert values between cash assets. `OneExchangeRates` always returns 1.0, while `SpotExchangeRates` maintains a mutable matrix of pairwise rates and their inverses.
+`ExchangeRates` converts values between cash assets using a mutable matrix of pairwise rates and implied reciprocals.
 
 ## Batch Backtest
 

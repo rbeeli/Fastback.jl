@@ -3,7 +3,7 @@ using TestItemRunner
 @testitem "Base currency metrics" begin
     using Test, Fastback
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, exchange_rates=er, ledger=ledger, base_currency=base_currency)

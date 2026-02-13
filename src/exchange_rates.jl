@@ -2,52 +2,14 @@ using Dates
 using PrettyTables
 
 """
-Abstract type for exchange rates.
-
-Exchange rates are used to convert between different assets,
-for example to convert account assets to the account's base currency.
-"""
-abstract type ExchangeRates end
-
-"""
-Register a cash asset with the exchange rate provider.
-
-Default implementation is a no-op.
-"""
-@inline add_asset!(er::ExchangeRates, cash::Cash) = nothing
-
-# ---------------------------------------------------------
-
-"""
-Dummy exchange rate implementation which always returns 1.0 as exchange rate.
-"""
-struct OneExchangeRates <: ExchangeRates end
-
-"""
-Get the exchange rate between two assets.
-
-For `OneExchangeRates`, the exchange rate is always 1.0.
-"""
-@inline get_rate(er::OneExchangeRates, from::Cash, to::Cash; allow_nan::Bool=false) = 1.0
-
-"""
-Register a cash asset with the exchange rate provider.
-
-For `OneExchangeRates`, this is a no-op.
-"""
-@inline add_asset!(er::OneExchangeRates, cash::Cash) = nothing
-
-# ---------------------------------------------------------
-
-"""
 Supports spot exchange rates between assets.
 """
-mutable struct SpotExchangeRates <: ExchangeRates
+mutable struct ExchangeRates
     const rates::Vector{Vector{Float64}} # rates[from_idx][to_idx]
     const assets::Vector{Cash}
     const asset_by_symbol::Dict{Symbol,Int}
 
-    function SpotExchangeRates()
+    function ExchangeRates()
         new(
             Vector{Vector{Float64}}(),
             Vector{Cash}(),
@@ -56,7 +18,7 @@ mutable struct SpotExchangeRates <: ExchangeRates
     end
 end
 
-@inline function _ensure_rates_size!(er::SpotExchangeRates, required::Int)
+@inline function _ensure_rates_size!(er::ExchangeRates, required::Int)
     current = length(er.rates)
     if required > current
         # extend existing rows with new NaN columns
@@ -72,7 +34,7 @@ end
     nothing
 end
 
-function add_asset!(er::SpotExchangeRates, cash::Cash)
+function add_asset!(er::ExchangeRates, cash::Cash)
     haskey(er.asset_by_symbol, cash.symbol) &&
         throw(ArgumentError("Exchange cash asset '$(cash.symbol)' was already added."))
 
@@ -91,7 +53,8 @@ end
 """
 Get the exchange rate between two assets according to the current rates.
 """
-@inline function _get_rate_idx(er::SpotExchangeRates, from_idx::Int, to_idx::Int; allow_nan::Bool=false)
+@inline function _get_rate_idx(er::ExchangeRates, from_idx::Int, to_idx::Int; allow_nan::Bool=false)
+    from_idx == to_idx && return 1.0
     rate = @inbounds er.rates[from_idx][to_idx]
     if isnan(rate) && !allow_nan
         from = @inbounds er.assets[from_idx]
@@ -101,7 +64,7 @@ Get the exchange rate between two assets according to the current rates.
     rate
 end
 
-@inline function get_rate(er::SpotExchangeRates, from::Cash, to::Cash; allow_nan::Bool=false)
+@inline function get_rate(er::ExchangeRates, from::Cash, to::Cash; allow_nan::Bool=false)
     _get_rate_idx(er, from.index, to.index; allow_nan=allow_nan)
 end
 
@@ -110,7 +73,7 @@ Builds an exchange rate matrix for all assets.
 
 Rows represent the asset to convert from, columns the asset to convert to.
 """
-function get_rates_matrix(er::SpotExchangeRates)
+function get_rates_matrix(er::ExchangeRates)
     mat = fill(NaN, length(er.assets), length(er.assets))
     for f in 1:length(er.assets)
         for t in 1:length(er.assets)
@@ -123,7 +86,7 @@ end
 """
 Update the exchange rate between two assets.
 """
-function update_rate!(er::SpotExchangeRates, from::Cash, to::Cash, rate::Real)
+function update_rate!(er::ExchangeRates, from::Cash, to::Cash, rate::Real)
     isfinite(rate) && rate > 0 || throw(ArgumentError("Exchange rate must be a positive finite number."))
     r = Float64(rate)
     from_idx = from.index
@@ -133,7 +96,7 @@ function update_rate!(er::SpotExchangeRates, from::Cash, to::Cash, rate::Real)
     return nothing
 end
 
-function Base.show(io::IO, er::SpotExchangeRates)
+function Base.show(io::IO, er::ExchangeRates)
     length(er.assets) > 0 || return println(io, "No spot exchange rates available.")
     pretty_table(
         io,

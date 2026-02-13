@@ -1,9 +1,9 @@
-mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
+mutable struct Account{TTime<:Dates.AbstractTime}
     const mode::AccountMode.T
     const margining_style::MarginingStyle.T
     const ledger::CashLedger
     const base_currency::Cash
-    const exchange_rates::TER
+    const exchange_rates::ExchangeRates
     const positions::Vector{Position{TTime}}
     const trades::Vector{Trade{TTime}}
     const cashflows::Vector{Cashflow{TTime}}
@@ -26,9 +26,9 @@ mutable struct Account{TTime<:Dates.AbstractTime,TER<:ExchangeRates}
         datetime_format=dateformat"yyyy-mm-dd HH:MM:SS",
         order_sequence=0,
         trade_sequence=0,
-        exchange_rates::TER=OneExchangeRates(),
-    ) where {TTime<:Dates.AbstractTime,TER<:ExchangeRates}
-        acc = new{TTime,TER}(
+        exchange_rates::ExchangeRates=ExchangeRates(),
+    ) where {TTime<:Dates.AbstractTime}
+        acc = new{TTime}(
             mode,
             margining_style,
             ledger,

@@ -28,7 +28,7 @@ end
 Typed FX rate update for `process_step!`.
 
 `from_cash` and `to_cash` reference account cash assets.
-The rate is interpreted as `from` → `to` and the reciprocal is implied for `SpotExchangeRates`.
+The rate is interpreted as `from` → `to` and the reciprocal is implied for `ExchangeRates`.
 """
 struct FXUpdate
     from_cash::Cash
@@ -210,7 +210,6 @@ function process_step!(
 
     if fx_updates !== nothing
         er = acc.exchange_rates
-        er isa SpotExchangeRates || throw(ArgumentError("FX updates require SpotExchangeRates on the account."))
         @inbounds for fx in fx_updates
             update_rate!(er, fx.from_cash, fx.to_cash, fx.rate)
         end

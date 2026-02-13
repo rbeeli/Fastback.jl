@@ -11,7 +11,7 @@ using Dates
 ledger = CashLedger()
 usd = register_cash_asset!(ledger, :USD)
 eur = register_cash_asset!(ledger, :EUR)
-er = SpotExchangeRates()
+er = ExchangeRates()
 add_asset!(er, usd)
 add_asset!(er, eur)
 acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, exchange_rates=er)
@@ -42,9 +42,9 @@ process_step!(acc, dt; fx_updates=fx_updates, marks=marks, funding=funding, expi
 Notes:
 
 - `process_step!` enforces non-decreasing timestamps and accrues interest/borrow fees before same-step FX/mark updates.
-- FX updates require `SpotExchangeRates` on the account.
-- Caller is responsible for keeping `SpotExchangeRates` in sync with ledger cash assets via `add_asset!`.
-- Setup order: register all cash in `CashLedger`, add them to `SpotExchangeRates`, then create `Account` and fund it.
+- FX updates are applied on the account's `ExchangeRates`.
+- Caller is responsible for keeping `ExchangeRates` in sync with ledger cash assets via `add_asset!`.
+- Setup order: register all cash in `CashLedger`, add them to `ExchangeRates`, then create `Account` and fund it.
 - Orders are filled separately with `fill_order!`.
 
 ## Manual event loop
@@ -55,7 +55,7 @@ Use this when you need custom ordering or extra side effects per step.
 # advance time (accrues interest/borrow fees by default)
 advance_time!(acc, dt)
 
-# optional FX update (SpotExchangeRates only)
+# optional FX update
 update_rate!(er, eur, usd, 1.07)
 
 # mark positions (also revalues equity for open positions)
@@ -75,7 +75,7 @@ is_under_maintenance(acc) && liquidate_to_maintenance!(acc, dt)
 ledger = CashLedger()
 usd = register_cash_asset!(ledger, :USD)
 eur = register_cash_asset!(ledger, :EUR)
-er = SpotExchangeRates()
+er = ExchangeRates()
 add_asset!(er, usd)
 add_asset!(er, eur)
 acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=usd, exchange_rates=er)

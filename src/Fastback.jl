@@ -54,9 +54,7 @@ export Fastback,
     Cashflow,
     Position,
     Account,
-    ExchangeRates,
-    OneExchangeRates,
-    SpotExchangeRates
+    ExchangeRates
 
 # Trade direction helpers
 export trade_dir,

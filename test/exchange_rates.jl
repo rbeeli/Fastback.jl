@@ -9,7 +9,7 @@ using TestItemRunner
     usd = cash_asset(acc.ledger, :USD)
     eur = register_cash_asset!(acc.ledger, :EUR)
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     add_asset!(er, usd)
     add_asset!(er, eur)
 
@@ -24,7 +24,7 @@ end
 @testitem "Spot exchange rates reject duplicate cash symbols" begin
     using Test, Fastback
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     nok = register_cash_asset!(ledger, :NOK)
 

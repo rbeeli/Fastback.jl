@@ -28,7 +28,7 @@ ledger = CashLedger()
 usd = register_cash_asset!(ledger, :USD)
 eur = register_cash_asset!(ledger, :EUR, digits=2);
 gbp = register_cash_asset!(ledger, :GBP, digits=2);
-er = SpotExchangeRates();
+er = ExchangeRates();
 add_asset!(er, usd);
 add_asset!(er, eur);
 add_asset!(er, gbp);

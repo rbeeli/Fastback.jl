@@ -4,10 +4,14 @@ using TestItemRunner
 @testitem "Settlement cashflows routed to settlement currency" begin
     using Test, Fastback, Dates
 
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
     register_cash_asset!(acc.ledger, :EUR)
+    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.0)
     deposit!(acc, :USD, 10_000.0)
 
     inst = Instrument(Symbol("BTC/EUR_SETL_USD"), :BTC, :EUR;
@@ -104,10 +108,14 @@ end
 @testitem "Margin requirement recorded in margin currency" begin
     using Test, Fastback, Dates
 
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
-    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    add_asset!(er, cash_asset(acc.ledger, :USD))
     register_cash_asset!(acc.ledger, :EUR)
+    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.0)
     deposit!(acc, :USD, 5_000.0)
 
     inst = Instrument(Symbol("DERIV/EUR-MEUR"), :BTC, :EUR;
@@ -142,7 +150,7 @@ end
 @testitem "Margin requirement routed to explicit margin currency" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
@@ -186,7 +194,7 @@ end
 @testitem "Per-currency fill rejects immediate settlement-currency deficit when margin currency differs" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
@@ -234,7 +242,7 @@ end
 @testitem "FX conversion applied to settlement currency" begin
     using Test, Fastback, Dates
 
-    er = SpotExchangeRates()
+    er = ExchangeRates()
     ledger = CashLedger()
     base_currency = register_cash_asset!(ledger, :USD)
     acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
