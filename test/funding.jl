@@ -98,3 +98,63 @@ end
     @test cash_balance(acc, usd) ≈ 1_000.0 + expected_payment atol=1e-8
     @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-8
 end
+
+@testitem "Perpetual funding uses absolute price when market is negative" begin
+    using Test, Fastback, Dates
+
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 1_000.0)
+
+    inst = register_instrument!(
+        acc,
+        Instrument(
+            Symbol("PERPNEG/USD"),
+            :PERPNEG,
+            :USD;
+            contract_kind=ContractKind.Perpetual,
+            settlement=SettlementStyle.VariationMargin,
+            margin_mode=MarginMode.PercentNotional,
+            margin_init_long=0.1,
+            margin_init_short=0.1,
+            margin_maint_long=0.05,
+            margin_maint_short=0.05,
+            multiplier=1.0,
+        ),
+    )
+
+    dt = DateTime(2026, 1, 1)
+    negative_price = -100.0
+    funding_rate = 0.01
+
+    fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt, negative_price, 1.0);
+        dt=dt,
+        fill_price=negative_price,
+        bid=negative_price,
+        ask=negative_price,
+        last=negative_price,
+    )
+
+    apply_funding!(acc, inst, dt + Hour(8); funding_rate=funding_rate)
+    cf_long = acc.cashflows[end]
+    expected_long_payment = -abs(negative_price) * inst.multiplier * funding_rate
+    @test cf_long.amount ≈ expected_long_payment atol=1e-8
+
+    fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt + Day(1), negative_price, -2.0);
+        dt=dt + Day(1),
+        fill_price=negative_price,
+        bid=negative_price,
+        ask=negative_price,
+        last=negative_price,
+    )
+    apply_funding!(acc, inst, dt + Day(1) + Hour(8); funding_rate=funding_rate)
+    cf_short = acc.cashflows[end]
+    expected_short_payment = abs(negative_price) * inst.multiplier * funding_rate
+    @test cf_short.amount ≈ expected_short_payment atol=1e-8
+end

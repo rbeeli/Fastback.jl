@@ -75,6 +75,51 @@ end
     @test before_bal - after_bal ≈ expected_fee atol=1e-10
 end
 
+@testitem "short borrow fees use absolute price when market is negative" begin
+    using Test, Fastback, Dates
+
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency)
+    usd = cash_asset(acc.ledger, :USD)
+    deposit!(acc, :USD, 5_000.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("SHORTNEG/USD"), :SHORTNEG, :USD;
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1, margin_init_short=0.1,
+        margin_maint_long=0.05, margin_maint_short=0.05,
+        short_borrow_rate=0.1))
+
+    dt0 = DateTime(2026, 1, 1)
+    negative_price = -100.0
+    qty = -10.0
+
+    fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0, negative_price, qty);
+        dt=dt0,
+        fill_price=negative_price,
+        bid=negative_price,
+        ask=negative_price,
+        last=negative_price,
+    )
+
+    accrue_borrow_fees!(acc, dt0) # initialize clock
+    bal_before = cash_balance(acc, usd)
+    dt1 = dt0 + Day(1)
+    accrue_borrow_fees!(acc, dt1)
+    bal_after = cash_balance(acc, usd)
+
+    yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
+    expected_fee = abs(qty) * abs(negative_price) * inst.multiplier * inst.short_borrow_rate * yearfrac
+    cf = acc.cashflows[end]
+
+    @test bal_before - bal_after ≈ expected_fee atol=1e-10
+    @test cf.kind == CashflowKind.BorrowFee
+    @test cf.amount ≈ -expected_fee atol=1e-10
+end
+
 @testitem "borrow fees start at short open time" begin
     using Test, Fastback, Dates
 

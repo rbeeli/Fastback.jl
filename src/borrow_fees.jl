@@ -4,7 +4,7 @@ using Dates
     accrue_borrow_fees!(acc, dt; year_basis=365.0)
 
 Accrues short borrow fees on asset-settled spot short positions between each position's
-last borrow-fee timestamp and `dt`. The fee notional is based on the neutral last price
+last borrow-fee timestamp and `dt`. The fee notional is based on the absolute neutral last price
 (falling back to the liquidation mark if unavailable), charged in the instrument
 settlement currency, and applied to both balances and equities. Borrow-fee timestamps
 are tracked per position and advanced inside `fill_order!` so accrual windows align
@@ -36,7 +36,8 @@ with actual short exposure.
     yearfrac = millis / (1000 * 60 * 60 * 24 * Price(year_basis))
 
     fee_price = isnan(pos.last_price) ? pos.mark_price : pos.last_price
-    fee_quote = abs(pos.quantity) * fee_price * inst.multiplier * inst.short_borrow_rate * yearfrac
+    # Borrow-fee notional should be non-negative even when contracts trade at negative prices.
+    fee_quote = abs(pos.quantity) * abs(fee_price) * inst.multiplier * inst.short_borrow_rate * yearfrac
     settle_idx = inst.settle_cash_index
     fee = to_settle(acc, inst, fee_quote)
     if fee != 0.0
