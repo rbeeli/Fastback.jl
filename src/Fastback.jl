@@ -66,8 +66,6 @@ export trade_dir,
 # Order and trade utilities
 export symbol,
     nominal_value,
-    FillPlan,
-    plan_fill,
     fill_order!,
     is_realizing,
     realized_return,

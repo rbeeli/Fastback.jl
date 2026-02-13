@@ -239,8 +239,8 @@ Requires bid/ask/last to deterministically value positions and compute margin du
     settle_cash_index = inst.settle_cash_index
     margin_cash_index = inst.margin_cash_index
     @inbounds begin
-        acc.ledger.balances[settle_cash_index] += plan.cash_delta
-        acc.ledger.equities[settle_cash_index] += plan.cash_delta + plan.value_delta_settle
+        acc.ledger.balances[settle_cash_index] += plan.cash_delta_settle
+        acc.ledger.equities[settle_cash_index] += plan.cash_delta_settle + plan.value_delta_settle
         acc.ledger.init_margin_used[margin_cash_index] += plan.init_margin_delta
         acc.ledger.maint_margin_used[margin_cash_index] += plan.maint_margin_delta
     end
@@ -278,11 +278,10 @@ Requires bid/ask/last to deterministically value positions and compute margin du
         fill_price,
         plan.fill_qty,
         plan.remaining_qty,
-        plan.realized_pnl_entry,
-        plan.realized_pnl_settle,
+        plan.fill_pnl_settle,
         plan.realized_qty,
-        plan.commission,
-        plan.cash_delta,
+        plan.commission_settle,
+        plan.cash_delta_settle,
         pos_qty,
         pos_entry_price,
         trade_reason

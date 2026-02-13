@@ -113,6 +113,14 @@ end
 funding_pnl = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.Funding)
 println("Funding P&L (USDT): ", round(funding_pnl, digits=2))
 
+## fill-level P&L decomposition (variation margin)
+gross_fill_settled_pnl = sum(t.fill_pnl_settle for t in acc.trades, init=0.0)
+commissions = sum(t.commission_settle for t in acc.trades, init=0.0)
+net_fill_cash = sum(t.cash_delta_settle for t in acc.trades, init=0.0)
+println("Gross fill settled P&L (USDT): ", round(gross_fill_settled_pnl, digits=2))
+println("Commissions (USDT): ", round(commissions, digits=2))
+println("Net fill cash delta (USDT): ", round(net_fill_cash, digits=2))
+
 ## print account summary
 show(acc)
 

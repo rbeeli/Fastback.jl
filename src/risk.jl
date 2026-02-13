@@ -16,7 +16,7 @@
     inc_qty == 0 && return OrderRejectReason.None
 
     # Compute equity and margin after the fill
-    cash_effect = impact.cash_delta + impact.value_delta_settle
+    cash_effect = impact.cash_delta_settle + impact.value_delta_settle
 
     if acc.margining_style == MarginingStyle.PerCurrency
         if margin_idx == settle_idx

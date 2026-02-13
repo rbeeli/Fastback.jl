@@ -17,7 +17,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Order and trade utilities
 
-- `symbol`, `nominal_value`, `FillPlan`, `plan_fill`, `fill_order!`
+- `symbol`, `nominal_value`, `fill_order!`
 - `is_realizing`, `realized_return`, `cfid!`
 
 ## Cash ledger operations
@@ -39,7 +39,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 ## Position analytics
 
 - `has_exposure`, `value_quote`, `pnl_quote`, `calc_pnl_quote`, `calc_return_quote`
-- `margin_init_margin_ccy`, `margin_maint_margin_ccy`, `margin_init_settle`, `margin_maint_settle`
+- `margin_init_margin_ccy`, `margin_maint_margin_ccy`
 - `calc_realized_qty`, `calc_exposure_increase_quantity`
 
 ## Exchange rate utilities

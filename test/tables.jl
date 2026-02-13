@@ -37,13 +37,14 @@ end
         :trade_date,
         :order_date,
         :symbol,
+        :settlement_style,
         :side,
         :fill_price,
         :fill_qty,
         :remaining_qty,
         :take_profit,
         :stop_loss,
-        :realized_pnl_settle,
+        :fill_pnl_settle,
         :realized_qty,
         :position_qty,
         :position_price,
@@ -54,9 +55,10 @@ end
     trade_rows = collect(Tables.rows(tbl))
     @test length(trade_rows) == length(acc.trades)
     @test trade_rows[1].oid == order₁.oid
-    @test trade_rows[end].realized_pnl_settle ≈ 2.0 atol = 1e-8
+    @test trade_rows[end].fill_pnl_settle ≈ 2.0 atol = 1e-8
     @test trade_rows[1].cash_delta_settle ≈ -10.5
     @test trade_rows[end].cash_delta_settle ≈ 23.75
+    @test trade_rows[end].settlement_style == SettlementStyle.Asset
     trade_cols = Tables.columntable(tbl)
     @test trade_cols.symbol == fill(inst.symbol, length(acc.trades))
 
@@ -104,7 +106,7 @@ end
 
     @test trade === acc.trades[end]
     @test row.commission_settle ≈ commission_settle atol=1e-12
-    @test row.realized_pnl_settle ≈ 0.0 atol=1e-12
+    @test row.fill_pnl_settle ≈ 0.0 atol=1e-12
     @test row.cash_delta_settle ≈ expected_cash_delta atol=1e-12
     @test row.symbol == inst.symbol
 end

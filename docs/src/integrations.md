@@ -28,6 +28,11 @@ df_equities = DataFrame(equities_table(acc))
 
 All helpers return read-through views, so changes to the underlying account are visible immediately without copying.
 
+Trade table semantics:
+
+- `fill_pnl_settle` is additive gross fill-settled P&L.
+- `cash_delta_settle` is additive net fill cash movement.
+
 ### Collectors
 
 Time-series collectors already satisfy the Tables.jl contract, so you can hand

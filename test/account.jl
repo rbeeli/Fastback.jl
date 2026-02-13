@@ -77,7 +77,7 @@ end
     @test exe1 == acc.trades[end]
     @test exe1.commission_settle == 0.0
     @test nominal_value(exe1) == qty * prices[1]
-    @test exe1.realized_pnl_settle == 0.0
+    @test exe1.fill_pnl_settle == 0.0
     # @test realized_return(exe1) == 0.0
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
@@ -216,7 +216,7 @@ end
     @test exe1 == acc.trades[end]
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.commission_settle == commission
-    @test exe1.realized_pnl_settle == 0.0
+    @test exe1.fill_pnl_settle == 0.0
     # @test realized_return(exe1) == 0.0
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
@@ -261,7 +261,7 @@ end
     exe1 = fill_order!(acc, order; dt=dates[1], fill_price=prices[1], bid=prices[1], ask=prices[1], last=prices[1], commission_pct=commission_pct1)
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.commission_settle == commission_pct1*nominal_value(exe1)
-    @test acc.trades[end].realized_pnl_settle == 0.0
+    @test acc.trades[end].fill_pnl_settle == 0.0
     # @test realized_return(acc.trades[end]) == 0.0
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
@@ -467,8 +467,7 @@ end
     order_close = Order(oid!(acc), inst, dt_close, close_price, reduce_qty)
     trade = fill_order!(acc, order_close; dt=dt_close, fill_price=close_price, bid=close_price, ask=close_price, last=close_price)
 
-    @test trade.realized_pnl_entry ≈ (close_price - open_price) * abs(reduce_qty)
-    @test trade.realized_pnl_settle ≈ 0.0
+    @test trade.fill_pnl_settle ≈ 0.0
     @test pos.quantity ≈ qty + reduce_qty
     @test pos.avg_entry_price ≈ open_price
     @test pos.avg_settle_price ≈ close_price

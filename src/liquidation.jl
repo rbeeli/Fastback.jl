@@ -110,7 +110,7 @@ end
     )
 
     current_excess = @inbounds acc.ledger.equities[worst_idx] - acc.ledger.maint_margin_used[worst_idx]
-    delta_equity = pos.inst.settle_cash_index == worst_idx ? (plan.cash_delta + plan.value_delta_settle) : 0.0
+    delta_equity = pos.inst.settle_cash_index == worst_idx ? (plan.cash_delta_settle + plan.value_delta_settle) : 0.0
     delta_maint = pos.inst.margin_cash_index == worst_idx ? plan.maint_margin_delta : 0.0
     current_excess + delta_equity - delta_maint
 end

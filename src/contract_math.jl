@@ -67,13 +67,13 @@ Quote-currency cash delta for a variation-margin fill.
 @inline function cash_delta_quote_vm(
     inst::Instrument,
     inc_qty::Quantity,
-    realized_pnl_settle_quote::Price,
+    realized_pnl_reduce_quote::Price,
     mark_price::Price,
     fill_price::Price,
     commission_total_quote::Price,
 )::Price
     open_settle_quote = pnl_quote(inst, inc_qty, mark_price, fill_price)
-    open_settle_quote + realized_pnl_settle_quote - commission_total_quote
+    open_settle_quote + realized_pnl_reduce_quote - commission_total_quote
 end
 
 """

@@ -1,12 +1,9 @@
 struct FillPlan
     fill_qty::Quantity
     remaining_qty::Quantity
-    commission::Price
-    cash_delta::Price
-    realized_pnl_entry_quote::Price
-    realized_pnl_settle_quote::Price  # settle-basis PnL, still in quote ccy (used for VM cash)
-    realized_pnl_entry::Price         # entry-basis realized P&L in settlement currency (gross, excludes commissions)
-    realized_pnl_settle::Price        # settlement-basis realized P&L in settlement currency (gross, excludes commissions)
+    commission_settle::Price
+    cash_delta_settle::Price
+    fill_pnl_settle::Price            # gross additive fill P&L in settlement ccy (excludes commissions)
     realized_qty::Quantity
     new_qty::Quantity
     new_avg_entry_price_quote::Price
@@ -61,10 +58,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     fill_price_settle = to_settle(acc, inst, fill_price)
 
     realized_qty = calc_realized_qty(pos_qty, fill_qty)
-    realized_pnl_entry_quote = realized_qty != 0.0 ?
-        pnl_quote(inst, realized_qty, fill_price, pos_avg_entry_price) :
-        0.0
-    realized_pnl_settle_quote = realized_qty != 0.0 ?
+    realized_pnl_reduce_quote = realized_qty != 0.0 ?
         pnl_quote(inst, realized_qty, fill_price, pos_avg_settle_price) :
         0.0
 
@@ -73,20 +67,26 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     if inst.settlement == SettlementStyle.Asset
         # Asset settlement exchanges full principal, so realized settle P&L must use
         # settlement-entry basis (captures FX translation between entry and exit).
-        realized_pnl_entry = realized_qty != 0.0 ?
+        fill_pnl_settle = realized_qty != 0.0 ?
             realized_qty * (fill_price_settle - pos_avg_entry_price_settle) * inst.multiplier :
             0.0
-        realized_pnl_settle = realized_pnl_entry
     else
-        realized_pnl_entry = to_settle(acc, inst, realized_pnl_entry_quote)
-        realized_pnl_settle = to_settle(acc, inst, realized_pnl_settle_quote)
+        fill_pnl_quote = cash_delta_quote_vm(
+            inst,
+            inc_qty,
+            realized_pnl_reduce_quote,
+            mark_price,
+            fill_price,
+            0.0,
+        )
+        fill_pnl_settle = to_settle(acc, inst, fill_pnl_quote)
     end
 
     cash_delta_quote_val = if inst.settlement == SettlementStyle.VariationMargin
         cash_delta_quote_vm(
             inst,
             inc_qty,
-            realized_pnl_settle_quote,
+            realized_pnl_reduce_quote,
             mark_price,
             fill_price,
             commission_total_quote,
@@ -95,7 +95,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
         cash_delta_quote_asset(inst, fill_qty, fill_price, commission_total_quote)
     end
 
-    cash_delta = to_settle(acc, inst, cash_delta_quote_val)
+    cash_delta_settle = to_settle(acc, inst, cash_delta_quote_val)
 
     new_qty = pos_qty + fill_qty
     new_avg_entry_price_quote = if new_qty == 0.0
@@ -160,11 +160,8 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
         fill_qty,
         remaining_qty,
         commission_settle,
-        cash_delta,
-        realized_pnl_entry_quote,
-        realized_pnl_settle_quote,
-        realized_pnl_entry,
-        realized_pnl_settle,
+        cash_delta_settle,
+        fill_pnl_settle,
         realized_qty,
         new_qty,
         new_avg_entry_price_quote,

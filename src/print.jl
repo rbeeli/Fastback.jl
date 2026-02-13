@@ -29,7 +29,7 @@ function print_trades(
         Dict(:name => "TP", :val => t -> t.order.take_profit, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
         Dict(:name => "SL", :val => t -> t.order.stop_loss, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
         Dict(:name => "Ccy", :val => t -> t.order.inst.settle_symbol, :fmt => (t, v) -> v),
-        Dict(:name => "Realized P&L (Settle)", :val => t -> t.realized_pnl_settle, :fmt => (t, v) -> begin
+        Dict(:name => "Fill P&L", :val => t -> t.fill_pnl_settle, :fmt => (t, v) -> begin
             cash = acc.ledger.cash[t.order.inst.settle_cash_index]
             isnan(v) ? "—" : format_cash(cash, v)
         end),
@@ -53,8 +53,8 @@ function print_trades(
 
     formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](trades[row_ix], v)
 
-    h_pnl_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Realized P&L (Settle)" && data_columns[j][i] > 0, crayon"#11BF11")
-    h_pnl_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Realized P&L (Settle)" && data_columns[j][i] < 0, crayon"#DD0000")
+    h_pnl_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Fill P&L" && data_columns[j][i] > 0, crayon"#11BF11")
+    h_pnl_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Fill P&L" && data_columns[j][i] < 0, crayon"#DD0000")
     h_qty_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] > 0, crayon"#DD00DD")
     h_qty_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] < 0, crayon"#DDDD00")
     h_ret_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Return" && data_columns[j][i] > 0, crayon"#11BF11")

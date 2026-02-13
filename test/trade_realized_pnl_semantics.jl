@@ -24,8 +24,7 @@ using TestItemRunner
     trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price, commission=commission)
 
     @test trade.realized_qty == 0.0
-    @test trade.realized_pnl_entry == 0.0
-    @test trade.realized_pnl_settle == 0.0
+    @test trade.fill_pnl_settle == 0.0
     @test trade.commission_settle ≈ commission atol=1e-12
     @test trade.cash_delta_settle ≈ -(order.quantity * order.price) - commission atol=1e-12
     @test cash_balance(acc, usd) ≈ 1_000.0 - order.quantity * order.price - commission atol=1e-12
@@ -67,8 +66,7 @@ end
     expected_gross = (price_close - price_open) * qty
 
     @test close_trade.realized_qty == qty
-    @test close_trade.realized_pnl_entry ≈ expected_gross atol=1e-12
-    @test close_trade.realized_pnl_settle ≈ expected_gross atol=1e-12
+    @test close_trade.fill_pnl_settle ≈ expected_gross atol=1e-12
     @test close_trade.commission_settle ≈ commission_close atol=1e-12
     @test close_trade.cash_delta_settle ≈ qty * price_close - commission_close atol=1e-12
     @test cash_balance(acc, usd) ≈ cash_after_open + qty * price_close - commission_close atol=1e-12
@@ -101,8 +99,7 @@ end
     trade2 = fill_order!(acc, order2; dt=dt2, fill_price=order2.price, bid=order2.price, ask=order2.price, last=order2.price, commission=commission)
 
     @test trade2.realized_qty == 0.0
-    @test trade2.realized_pnl_entry == 0.0
-    @test trade2.realized_pnl_settle == 0.0
+    @test trade2.fill_pnl_settle == 0.0
     @test realized_return(trade2) == 0.0
 end
 
@@ -136,13 +133,13 @@ end
     acc_long, inst_long = setup_acc(Symbol("RETNEG_LONG/USD"))
     fill_order!(acc_long, Order(oid!(acc_long), inst_long, dt, -10.0, 1.0); dt=dt, fill_price=-10.0, bid=-10.0, ask=-10.0, last=-10.0)
     trade_long = fill_order!(acc_long, Order(oid!(acc_long), inst_long, dt + Day(1), -5.0, -1.0); dt=dt + Day(1), fill_price=-5.0, bid=-5.0, ask=-5.0, last=-5.0)
-    @test trade_long.realized_pnl_entry > 0.0
+    @test trade_long.fill_pnl_settle > 0.0
     @test realized_return(trade_long) ≈ 0.5 atol=1e-12
 
     acc_short, inst_short = setup_acc(Symbol("RETNEG_SHRT/USD"))
     fill_order!(acc_short, Order(oid!(acc_short), inst_short, dt, -10.0, -1.0); dt=dt, fill_price=-10.0, bid=-10.0, ask=-10.0, last=-10.0)
     trade_short = fill_order!(acc_short, Order(oid!(acc_short), inst_short, dt + Day(1), -5.0, 1.0); dt=dt + Day(1), fill_price=-5.0, bid=-5.0, ask=-5.0, last=-5.0)
-    @test trade_short.realized_pnl_entry < 0.0
+    @test trade_short.fill_pnl_settle < 0.0
     @test realized_return(trade_short) ≈ -0.5 atol=1e-12
 end
 
@@ -179,8 +176,7 @@ end
     close_trade = fill_order!(acc, close_order; dt=dt1, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
     # Quote P&L is zero, but settlement P&L realizes principal FX move: 100*(1.2-1.1)=10 USD.
-    @test close_trade.realized_pnl_entry ≈ 10.0 atol=1e-12
-    @test close_trade.realized_pnl_settle ≈ 10.0 atol=1e-12
+    @test close_trade.fill_pnl_settle ≈ 10.0 atol=1e-12
     @test cash_balance(acc, cash_asset(acc, :USD)) ≈ 10.0 atol=1e-12
 end
 
@@ -221,7 +217,6 @@ end
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.5)
     close_trade = fill_order!(acc, Order(oid!(acc), inst, dt0 + Day(1), 110.0, -1.0); dt=dt0 + Day(1), fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
 
-    @test close_trade.realized_pnl_entry ≈ -5.0 atol=1e-12
-    @test close_trade.realized_pnl_settle ≈ -5.0 atol=1e-12
+    @test close_trade.fill_pnl_settle ≈ -5.0 atol=1e-12
     @test get_position(acc, inst).avg_entry_price_settle ≈ 170.0 atol=1e-12
 end

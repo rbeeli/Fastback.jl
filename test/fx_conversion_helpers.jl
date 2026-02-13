@@ -40,7 +40,7 @@ using TestItemRunner
 
     update_marks!(acc, pos_spot, dt, price, price, price)
 
-    plan = plan_fill(
+    plan = Fastback.plan_fill(
         acc,
         pos_spot,
         order,
@@ -55,7 +55,7 @@ using TestItemRunner
     expected_cash_delta = to_settle(acc, spot_inst, -(qty * price * spot_inst.multiplier + commission))
     expected_init_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_init_short * usd_to_chf
     expected_maint_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_maint_short * usd_to_chf
-    @test plan.cash_delta ≈ expected_cash_delta atol=1e-10
+    @test plan.cash_delta_settle ≈ expected_cash_delta atol=1e-10
     @test plan.new_init_margin_settle ≈ expected_init_margin atol=1e-10
     @test plan.new_maint_margin_settle ≈ expected_maint_margin atol=1e-10
 

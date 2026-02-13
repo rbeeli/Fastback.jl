@@ -22,7 +22,7 @@ using TestItemRunner
 
     commission = 0.5
     commission_pct = 0.001
-    plan = plan_fill(
+    plan = Fastback.plan_fill(
         acc,
         pos,
         order,
@@ -37,10 +37,9 @@ using TestItemRunner
 
     @test pos.quantity == pos_qty_before
     @test plan.fill_qty == order.quantity
-    @test plan.commission == commission + commission_pct * nominal_value(order)
-    @test plan.cash_delta == -(order.quantity * price * inst.multiplier + plan.commission)
-    @test plan.realized_pnl_entry == 0.0
-    @test plan.realized_pnl_settle == 0.0
+    @test plan.commission_settle == commission + commission_pct * nominal_value(order)
+    @test plan.cash_delta_settle == -(order.quantity * price * inst.multiplier + plan.commission_settle)
+    @test plan.fill_pnl_settle == 0.0
     @test plan.new_qty == order.quantity
     @test plan.new_avg_entry_price_quote == price
     @test plan.new_value_quote == order.quantity * price * inst.multiplier
@@ -50,11 +49,10 @@ using TestItemRunner
 
     @test trade.fill_qty == plan.fill_qty
     @test trade.remaining_qty == plan.remaining_qty
-    @test trade.realized_pnl_entry == plan.realized_pnl_entry
-    @test trade.realized_pnl_settle == plan.realized_pnl_settle
+    @test trade.fill_pnl_settle == plan.fill_pnl_settle
     @test trade.realized_qty == plan.realized_qty
-    @test trade.commission_settle == plan.commission
-    @test trade.cash_delta_settle == plan.cash_delta
+    @test trade.commission_settle == plan.commission_settle
+    @test trade.cash_delta_settle == plan.cash_delta_settle
     @test pos.quantity == plan.new_qty
     @test pos.avg_entry_price == plan.new_avg_entry_price_quote
     @test pos.avg_settle_price == pos.avg_entry_price
@@ -62,7 +60,7 @@ using TestItemRunner
     @test pos.pnl_quote == plan.new_pnl_quote
     @test acc.ledger.init_margin_used[inst.margin_cash_index] == plan.new_init_margin_settle
     @test acc.ledger.maint_margin_used[inst.margin_cash_index] == plan.new_maint_margin_settle
-    @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
+    @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta_settle atol=1e-12
 end
 
 @testitem "fills respect mark price when spreaded" begin
@@ -127,7 +125,7 @@ end
     close_qty = -2.0
     commission = 0.75
     close_order = Order(oid!(acc), inst, dt, close_price, close_qty)
-    plan = plan_fill(
+    plan = Fastback.plan_fill(
         acc,
         pos,
         close_order,
@@ -141,7 +139,7 @@ end
     )
 
     expected_cash_delta = abs(close_qty) * close_price - commission
-    @test plan.cash_delta ≈ expected_cash_delta atol=1e-12
+    @test plan.cash_delta_settle ≈ expected_cash_delta atol=1e-12
 
     trade = fill_order!(acc, close_order; dt=dt, fill_price=close_price, bid=close_price, ask=close_price, last=close_price, commission=commission)
 
@@ -190,7 +188,7 @@ end
 
     order_close = Order(oid!(acc), inst, dt_mark, price_mark, -1.0)
     commission = 0.25
-    plan = plan_fill(
+    plan = Fastback.plan_fill(
         acc,
         pos,
         order_close,
@@ -205,9 +203,8 @@ end
 
     @test pos.quantity == pos_qty_before
     @test plan.fill_qty == -1.0
-    @test plan.realized_pnl_entry == 10.0
-    @test plan.realized_pnl_settle == 0.0
-    @test plan.cash_delta == -commission
+    @test plan.fill_pnl_settle == 0.0
+    @test plan.cash_delta_settle == -commission
     @test plan.new_qty == 1.0
     @test plan.new_avg_entry_price_quote == price_open
     @test plan.new_value_quote == 0.0
@@ -217,10 +214,9 @@ end
 
     trade_close = fill_order!(acc, order_close; dt=dt_mark, fill_price=price_mark, bid=price_mark, ask=price_mark, last=price_mark, commission=commission)
 
-    @test trade_close.realized_pnl_entry == plan.realized_pnl_entry
-    @test trade_close.realized_pnl_settle == plan.realized_pnl_settle
-    @test trade_close.commission_settle == plan.commission
-    @test trade_close.cash_delta_settle == plan.cash_delta
+    @test trade_close.fill_pnl_settle == plan.fill_pnl_settle
+    @test trade_close.commission_settle == plan.commission_settle
+    @test trade_close.cash_delta_settle == plan.cash_delta_settle
     @test pos.quantity == plan.new_qty
     @test pos.avg_entry_price == plan.new_avg_entry_price_quote
     @test pos.avg_settle_price == price_mark
@@ -228,7 +224,7 @@ end
     @test pos.pnl_quote == plan.new_pnl_quote
     @test acc.ledger.init_margin_used[inst.margin_cash_index] == plan.new_init_margin_settle
     @test acc.ledger.maint_margin_used[inst.margin_cash_index] == plan.new_maint_margin_settle
-    @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
+    @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta_settle atol=1e-12
     @test acc.ledger.init_margin_used[inst.margin_cash_index] < init_before
     @test acc.ledger.maint_margin_used[inst.margin_cash_index] < maint_before
 end
@@ -264,7 +260,7 @@ end
     ask = 101.0
 
     order = Order(oid!(acc), inst, dt, ask, 1.0)
-    plan = plan_fill(
+    plan = Fastback.plan_fill(
         acc,
         pos,
         order,
@@ -284,8 +280,11 @@ end
 
     @test plan.new_qty == 1.0
     @test trade isa Trade
+    @test trade.fill_pnl_settle ≈ expected_settle atol=1e-12
     @test trade.cash_delta_settle ≈ expected_settle atol=1e-12
-    @test plan.cash_delta ≈ expected_settle atol=1e-12
+    @test trade.cash_delta_settle ≈ trade.fill_pnl_settle atol=1e-12
+    @test plan.fill_pnl_settle ≈ expected_settle atol=1e-12
+    @test plan.cash_delta_settle ≈ expected_settle atol=1e-12
     @test cash_balance(acc, usd) ≈ cash_before_fill + expected_settle atol=1e-12
     @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-12
     @test pos.quantity == 1.0
@@ -327,7 +326,7 @@ end
     qty = 1.0
     order = Order(oid!(acc), inst, dt, fill_price, qty)
 
-    plan = plan_fill(
+    plan = Fastback.plan_fill(
         acc,
         pos,
         order,
@@ -346,7 +345,7 @@ end
         e
     end
 
-    @test plan.cash_delta < 0
+    @test plan.cash_delta_settle < 0
     @test err isa OrderRejectError
     @test err.reason == OrderRejectReason.InsufficientInitialMargin
     @test pos.quantity == 0.0
@@ -385,7 +384,7 @@ end
     reduce_order = Order(oid!(acc), inst, dt_reduce, 99.0, -4.0)
     commission = 0.5
 
-    plan = plan_fill(
+    plan = Fastback.plan_fill(
         acc,
         pos,
         reduce_order,
@@ -402,17 +401,16 @@ end
     trade = fill_order!(acc, reduce_order; dt=dt_reduce, fill_price=reduce_order.price, bid=100.0, ask=100.0, last=100.0, commission=commission)
 
     @test trade isa Trade
-    @test plan.realized_pnl_settle_quote ≈ -4.0 atol=1e-12
-    @test plan.realized_pnl_settle ≈ -4.0 atol=1e-12
-    @test plan.cash_delta ≈ -4.0 - commission atol=1e-12
-    @test trade.cash_delta_settle ≈ plan.cash_delta atol=1e-12
-    @test trade.realized_pnl_settle ≈ plan.realized_pnl_settle atol=1e-12
-    @test trade.realized_pnl_entry ≈ plan.realized_pnl_entry atol=1e-12
+    @test plan.fill_pnl_settle ≈ -4.0 atol=1e-12
+    @test plan.cash_delta_settle ≈ -4.0 - commission atol=1e-12
+    @test trade.cash_delta_settle ≈ plan.cash_delta_settle atol=1e-12
+    @test trade.fill_pnl_settle ≈ plan.fill_pnl_settle atol=1e-12
+    @test trade.cash_delta_settle ≈ trade.fill_pnl_settle - trade.commission_settle atol=1e-12
     @test pos.quantity == 6.0
     @test pos.avg_settle_price == 100.0
     @test pos.avg_entry_price == 100.0
     @test pos.pnl_quote == 0.0
-    @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta atol=1e-12
+    @test cash_balance(acc, usd) ≈ cash_before + plan.cash_delta_settle atol=1e-12
 end
 
 @testitem "commission_pct uses absolute notional for negative prices" begin
@@ -446,7 +444,7 @@ end
     commission_pct = 0.01
     order = Order(oid!(acc), inst, dt, fill_price, fill_qty)
 
-    plan = plan_fill(
+    plan = Fastback.plan_fill(
         acc,
         pos,
         order,
@@ -460,8 +458,8 @@ end
     )
 
     @test nominal_value(order) ≈ 10.0 atol=1e-12
-    @test plan.commission ≈ 0.1 atol=1e-12
-    @test plan.cash_delta ≈ -0.1 atol=1e-12
+    @test plan.commission_settle ≈ 0.1 atol=1e-12
+    @test plan.cash_delta_settle ≈ -0.1 atol=1e-12
 
     cash_before = cash_balance(acc, usd)
     trade = fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=fill_price, ask=fill_price, last=fill_price, commission_pct=commission_pct)

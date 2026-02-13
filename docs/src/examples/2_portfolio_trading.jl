@@ -155,7 +155,7 @@ pnl_by_inst = acc.trades |>
               @groupby(_.order.inst.symbol) |>
               @map({
                   symbol = key(_),
-                  pnl = sum(getfield.(_, :realized_pnl_settle))
+                  pnl = sum(getfield.(_, :fill_pnl_settle))
               }) |> DataFrame
 p4 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
     legend=false,
@@ -187,10 +187,10 @@ df = acc.trades |>
 @groupby(_.order.inst.symbol) |>
 @map({
     symbol = key(_),
-    avg_pnl = sum(getfield.(_, :realized_pnl_settle)) / length(_),
-    worst_pnl = minimum(getfield.(_, :realized_pnl_settle)),
-    best_pnl = maximum(getfield.(_, :realized_pnl_settle)),
-    win_rate = round.(count(getfield.(_, :realized_pnl_settle) .> 0) / count(is_realizing.(_)), sigdigits=2),
+    avg_pnl = sum(getfield.(_, :fill_pnl_settle)) / length(_),
+    worst_pnl = minimum(getfield.(_, :fill_pnl_settle)),
+    best_pnl = maximum(getfield.(_, :fill_pnl_settle)),
+    win_rate = round.(count(getfield.(_, :fill_pnl_settle) .> 0) / count(is_realizing.(_)), sigdigits=2),
 }) |> DataFrame
 
 pretty_table(df; column_labels=["Symbol", "Avg P&L", "Worst P&L", "Best P&L", "Win Rate"])

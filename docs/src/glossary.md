@@ -10,7 +10,7 @@ An `Order` encapsulates an instruction to trade an instrument at a specific time
 
 ## Trade
 
-A `Trade` records the actual execution of an order, including fill price, filled and remaining quantity, realized P&L on both entry and settlement bases (`realized_pnl_entry`, `realized_pnl_settle`), realized quantity, commission (`commission_settle`), settlement cash movement (`cash_delta_settle`), and the pre-trade position state. Trades accumulate in `Account.trades`.
+A `Trade` records the actual execution of an order, including fill price, filled and remaining quantity, realized quantity, gross additive fill P&L in settlement currency (`fill_pnl_settle`), commission (`commission_settle`), settlement cash movement (`cash_delta_settle`), and the pre-trade position state. Trades accumulate in `Account.trades`.
 
 ## Position
 
@@ -50,7 +50,12 @@ Commission is specified in the quote currency, converted to the instrument settl
 
 ## Realized P&L
 
-Realized P&L is produced when exposure decreases and is recorded gross of commissions. `fill_order!` computes realized P&L via `calc_realized_qty` on two bases: `realized_pnl_entry` uses the entry basis, while `realized_pnl_settle` uses the settlement basis. For asset settlement this settlement basis is the FX-translated entry basis (`avg_entry_price_settle`); for variation-margin instruments it is the rolling settle basis (`avg_settle_price`) and aligns with fill cash movement (gross of commissions). Commissions are applied separately via `commission_settle`/`cash_delta_settle`.
+Realized P&L is produced when exposure decreases (`realized_qty`) and is recorded gross of commissions as `fill_pnl_settle`.
+
+For asset settlement, `fill_pnl_settle` equals closed-position realized P&L.
+For variation-margin settlement, it includes both open mark-to-fill settlement and reduce-basis settlement.
+
+Commissions are separate via `commission_settle`. The actual fill cash movement is always `cash_delta_settle`; for variation margin, `cash_delta_settle = fill_pnl_settle - commission_settle`.
 
 ## Unrealized P&L
 

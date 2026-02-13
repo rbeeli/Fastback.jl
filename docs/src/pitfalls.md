@@ -5,5 +5,6 @@
 - Expiry settlement requires a finite `mark_price` on the position.
 - Multi-currency equity depends on `ExchangeRates` being updated.
 - Register non-base currencies via `register_cash_asset!(acc, CashSpec(:EUR))`.
+- For variation-margin instruments, trade-level additive fill P&L is `fill_pnl_settle` (gross) and `cash_delta_settle` (net of commission).
 - `OrderRejectError` can be thrown by `fill_order!`, `settle_expiry!`, `process_expiries!`, `liquidate_all!`, and `liquidate_to_maintenance!`.
 - The package contains optionally loaded `Plots.jl` extension functions (some functions additionally require `StatsPlots.jl`).

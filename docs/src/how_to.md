@@ -91,3 +91,8 @@ df_balances = DataFrame(balances_table(acc))
 df_equities = DataFrame(equities_table(acc))
 df_cashflows = DataFrame(cashflows_table(acc))
 ```
+
+Notes:
+
+- `df_trades.fill_pnl_settle` is the additive gross fill-settled P&L column.
+- `df_trades.cash_delta_settle` is the additive net cash movement per fill.
