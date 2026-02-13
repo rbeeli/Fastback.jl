@@ -6,9 +6,9 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Core types and enums
 
-- `Fastback`, `Price`, `Quantity`
+- `Price`, `Quantity`
 - `TradeDir`, `SettlementStyle`, `MarginMode`, `MarginingStyle`, `ContractKind`, `AccountMode`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `TradeReason`
-- `Cash`, `CashSpec`, `CashLedger`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
+- `Cash`, `CashSpec`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
 - `ExchangeRates`
 
 ## Trade direction helpers
@@ -18,7 +18,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 ## Order and trade utilities
 
 - `symbol`, `nominal_value`, `fill_order!`
-- `is_realizing`, `realized_return`, `cfid!`
+- `is_realizing`, `realized_return`
 
 ## Cash ledger operations
 
@@ -33,14 +33,13 @@ For details, open the REPL and type `?symbol` to view docstrings.
 - `available_funds`, `available_funds_base_ccy`, `excess_liquidity`, `excess_liquidity_base_ccy`
 - `maint_deficit_base_ccy`, `init_deficit_base_ccy`, `is_under_maintenance`
 - `deposit!`, `withdraw!`, `set_interest_rates!`, `accrue_interest!`, `accrue_borrow_fees!`, `apply_funding!`
-- `register_instrument!`, `get_position`, `is_exposed_to`, `oid!`, `tid!`, `format_datetime`
+- `register_instrument!`, `get_position`, `is_exposed_to`, `oid!`, `format_datetime`
 - `liquidate_all!`, `liquidate_to_maintenance!`
 
 ## Position analytics
 
-- `has_exposure`, `value_quote`, `pnl_quote`, `calc_pnl_quote`, `calc_return_quote`
+- `has_exposure`, `value_quote`, `pnl_quote`
 - `margin_init_margin_ccy`, `margin_maint_margin_ccy`
-- `calc_realized_qty`, `calc_exposure_increase_quantity`
 
 ## Exchange rate utilities
 
@@ -48,7 +47,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Portfolio logic
 
-- `update_valuation!`, `update_margin!`, `update_marks!`, `settle_expiry!`
+- `update_marks!`, `settle_expiry!`
 
 ## Collectors
 
@@ -75,7 +74,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Formatting helpers
 
-- `format_cash`, `format_base`, `format_quote`, `format_period_HHMMSS`
+- `format_cash`, `format_base`, `format_quote`
 - `has_expiry`, `is_expired`, `is_active`, `ensure_active`, `is_margined_spot`
 - `spot_instrument`, `perpetual_instrument`, `future_instrument`
 
@@ -85,7 +84,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Utilities
 
-- `params_combinations`, `compute_eta`
+- `params_combinations`
 
 ## Plots extension (requires Plots.jl; violins need StatsPlots)
 

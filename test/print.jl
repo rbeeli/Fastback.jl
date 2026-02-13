@@ -16,7 +16,7 @@ end
 @testitem "Print Order" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
+    ledger = Fastback.CashLedger()
     base_currency=CashSpec(:USD)
     acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
@@ -30,7 +30,7 @@ end
 @testitem "Print Account" begin
     using Test, Fastback, Dates
 
-    ledger = CashLedger()
+    ledger = Fastback.CashLedger()
     base_currency=CashSpec(:USD)
     acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
@@ -48,7 +48,7 @@ end
     using Test, Fastback, Dates
 
     er = ExchangeRates()
-    ledger = CashLedger()
+    ledger = Fastback.CashLedger()
     base_currency=CashSpec(:EUR)
     acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
     register_cash_asset!(acc, CashSpec(:USD; digits=4))

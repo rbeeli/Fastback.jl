@@ -33,8 +33,7 @@ include("liquidation.jl")
 include("events.jl")
 
 # Core types
-export Fastback,
-    Price,
+export Price,
     Quantity,
     TradeDir,
     SettlementStyle,
@@ -48,7 +47,6 @@ export Fastback,
     TradeReason,
     Cash,
     CashSpec,
-    CashLedger,
     Instrument,
     Order,
     Trade,
@@ -68,8 +66,7 @@ export symbol,
     nominal_value,
     fill_order!,
     is_realizing,
-    realized_return,
-    cfid!
+    realized_return
 
 # Cash ledger operations
 export cash_asset,
@@ -111,7 +108,6 @@ export quote_cash,
     get_position,
     is_exposed_to,
     oid!,
-    tid!,
     format_datetime,
     liquidate_all!,
     liquidate_to_maintenance!
@@ -120,12 +116,8 @@ export quote_cash,
 export has_exposure,
     value_quote,
     pnl_quote,
-    calc_pnl_quote,
-    calc_return_quote,
     margin_init_margin_ccy,
-    margin_maint_margin_ccy,
-    calc_realized_qty,
-    calc_exposure_increase_quantity
+    margin_maint_margin_ccy
 
 # Exchange rate utilities
 export get_rate,
@@ -133,9 +125,7 @@ export get_rate,
     update_rate!
 
 # Portfolio logic
-export update_valuation!,
-    update_margin!,
-    update_marks!,
+export update_marks!,
     settle_expiry!
 
 # Collectors
@@ -178,7 +168,6 @@ export performance_summary_table
 export format_cash,
     format_base,
     format_quote,
-    format_period_HHMMSS,
     has_expiry,
     is_expired,
     is_active,
@@ -223,7 +212,6 @@ export plot_title,
     plot_realized_cum_returns_by_weekday_seq
 
 # Utilities
-export params_combinations,
-    compute_eta
+export params_combinations
 
 end # module

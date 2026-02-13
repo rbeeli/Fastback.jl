@@ -46,14 +46,14 @@ end
 
 @testitem "compute_eta" begin
     using Test, Fastback, Dates
-    @test compute_eta(Dates.Hour(1), 0.5) == convert(Millisecond, Hour(1))
-    @test compute_eta(Dates.Second(30), 0.1) == convert(Millisecond, Second(270))
-    @test isnan(compute_eta(Dates.Minute(20), 0))
+    @test Fastback.compute_eta(Dates.Hour(1), 0.5) == convert(Millisecond, Hour(1))
+    @test Fastback.compute_eta(Dates.Second(30), 0.1) == convert(Millisecond, Second(270))
+    @test isnan(Fastback.compute_eta(Dates.Minute(20), 0))
 end
 
 @testitem "format_period_HHMMSS" begin
     using Test, Fastback, Dates
-    @test format_period_HHMMSS(Dates.Hour(1) + Dates.Minute(30) + Dates.Second(45)) == "01:30:45"
-    @test format_period_HHMMSS(NaN) == "Inf"
-    @test format_period_HHMMSS(NaN, nan_value="N/A") == "N/A"
+    @test Fastback.format_period_HHMMSS(Dates.Hour(1) + Dates.Minute(30) + Dates.Second(45)) == "01:30:45"
+    @test Fastback.format_period_HHMMSS(NaN) == "Inf"
+    @test Fastback.format_period_HHMMSS(NaN, nan_value="N/A") == "N/A"
 end

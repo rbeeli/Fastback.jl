@@ -34,7 +34,6 @@ ProfileView.@profview map(i -> run_backtest(), 1:10)
 
 
 # create trading account
-const ledger = CashLedger()
 const base_currency=CashSpec(:USD)
 const acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
 deposit!(acc, :USD, 100_000.0)

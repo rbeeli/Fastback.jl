@@ -10,7 +10,7 @@ using TestItemRunner
 
     @test isempty(acc.cashflows)
     @test acc.cashflow_sequence == 0
-    @test cfid!(acc) == 1
+    @test Fastback.cfid!(acc) == 1
     @test acc.cashflow_sequence == 1
 end
 
