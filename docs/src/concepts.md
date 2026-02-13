@@ -22,7 +22,7 @@ and it updates balances, equity, and margin deterministically.
 ## Realized vs unrealized P&L
 
 - Realized P&L is produced when exposure decreases. It is recorded on the `Trade` and immediately affects balances.
-- Unrealized P&L lives on the `Position` and is mirrored into equity via `update_marks!` or `process_step!`.
+- Unrealized P&L lives on the `Position` (`pnl_quote`, `pnl_settle`) and is mirrored into equity via `update_marks!` or `process_step!`.
 
 ## Settlement styles
 

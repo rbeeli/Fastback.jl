@@ -4,7 +4,7 @@ Position state tracked per instrument (see currency/unit semantics note in `cont
 - `avg_entry_price` / `avg_settle_price`: `price` in quote currency
 - `avg_entry_price_settle`: `price` translated into settlement currency at fill-time FX (used for realized settle P&L on asset settlement)
 - `quantity`: `qty`
-- `pnl_quote`, `pnl_settle`, `value_quote`, `value_settle`: cached valuation in quote/settlement currencies
+- `pnl_quote`, `pnl_settle`, `value_quote`, `value_settle`: cached valuation in quote/settlement currencies (`pnl_settle` for asset settlement includes FX translation versus `avg_entry_price_settle`)
 - `init_margin_settle`, `maint_margin_settle`: margin currency (defaults to settlement)
 - `mark_price`: last valuation (liquidation) price at `mark_time`
 - `last_price`: last traded price used for margin calculations

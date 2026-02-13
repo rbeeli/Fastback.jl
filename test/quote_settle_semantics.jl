@@ -50,3 +50,46 @@ using TestItemRunner
     expected_delta_settle = (10.0 * (60.0 - 50.0)) * 1.2
     @test eq_after - eq_before ≈ expected_delta_settle atol = 1e-10
 end
+
+@testitem "Asset settlement pnl_settle reflects principal FX translation" begin
+    using Test, Fastback, Dates
+
+    er = SpotExchangeRates()
+    ledger = CashLedger()
+    base_currency = register_cash_asset!(ledger, :USD)
+    acc = Account(; mode=AccountMode.Margin, ledger=ledger, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+
+    add_asset!(er, cash_asset(acc.ledger, :USD))
+    register_cash_asset!(acc.ledger, :EUR)
+    add_asset!(er, cash_asset(acc.ledger, :EUR))
+    deposit!(acc, :USD, 0.0)
+
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.1)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("PNLSET/EURUSD"),
+        :PNLSET,
+        :EUR;
+        settle_symbol=:USD,
+        settlement=SettlementStyle.Asset,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.0,
+        margin_init_short=0.0,
+        margin_maint_long=0.0,
+        margin_maint_short=0.0,
+        multiplier=1.0,
+    ))
+
+    dt = DateTime(2026, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 1.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    pos = get_position(acc, inst)
+    @test pos.pnl_quote ≈ 0.0 atol=1e-12
+    @test pos.pnl_settle ≈ 0.0 atol=1e-12
+
+    update_rate!(er, cash_asset(acc.ledger, :EUR), cash_asset(acc.ledger, :USD), 1.2)
+    update_marks!(acc, pos, dt + Day(1), 100.0, 100.0, 100.0)
+
+    @test pos.pnl_quote ≈ 0.0 atol=1e-12
+    @test pos.value_settle ≈ 120.0 atol=1e-12
+    @test pos.pnl_settle ≈ 10.0 atol=1e-12
+end

@@ -14,7 +14,7 @@ A `Trade` records the actual execution of an order, including fill price, filled
 
 ## Position
 
-A `Position` maintains the net exposure for an instrument using a weighted-average cost basis. It stores the average price, quantity, and unrealized P&L (`pnl_quote`), and powers helpers like `calc_pnl_quote` and `calc_return_quote`. Positions are stored in `Account.positions`.
+A `Position` maintains the net exposure for an instrument using a weighted-average cost basis. It stores the average prices, quantity, and unrealized P&L caches (`pnl_quote`, `pnl_settle`). For asset-settled instruments, `pnl_settle` includes both quote-price move and FX translation versus `avg_entry_price_settle`. Positions are stored in `Account.positions`.
 
 ## Instrument
 
@@ -50,11 +50,11 @@ Commission is specified in the quote currency, converted to the instrument settl
 
 ## Realized P&L
 
-Realized P&L is produced when exposure decreases and is recorded gross of commissions. `fill_order!` computes realized P&L via `calc_realized_qty` on two bases: `realized_pnl_entry` uses the entry basis (`avg_entry_price`), while `realized_pnl_settle` uses the settlement basis (`avg_settle_price`). Both are stored in settlement currency. For variation-margin instruments, the settlement-basis value aligns with the cash movement on the fill (gross of commissions); commissions are applied separately via `commission_settle`/`cash_delta_settle`.
+Realized P&L is produced when exposure decreases and is recorded gross of commissions. `fill_order!` computes realized P&L via `calc_realized_qty` on two bases: `realized_pnl_entry` uses the entry basis, while `realized_pnl_settle` uses the settlement basis. For asset settlement this settlement basis is the FX-translated entry basis (`avg_entry_price_settle`); for variation-margin instruments it is the rolling settle basis (`avg_settle_price`) and aligns with fill cash movement (gross of commissions). Commissions are applied separately via `commission_settle`/`cash_delta_settle`.
 
 ## Unrealized P&L
 
-Unrealized P&L (stored as `pnl_quote` on a `Position`) reflects the floating profit or loss based on the current mark price. `update_marks!` keeps it in sync and mirrors the change into account equity without touching balances.
+Unrealized P&L is cached on positions as `pnl_quote` and `pnl_settle`. `update_marks!` keeps these caches in sync and mirrors the resulting value change into equity. For asset-settled cross-currency positions, `pnl_settle` includes principal FX translation from the settlement-entry basis.
 
 ## Trade Direction
 

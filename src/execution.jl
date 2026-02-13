@@ -145,7 +145,11 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     new_value_settle = inst.settlement == SettlementStyle.VariationMargin ? 0.0 : to_settle(acc, inst, new_value_quote)
     value_delta_settle = new_value_settle - pos_value_settle
 
-    new_pnl_settle = inst.settlement == SettlementStyle.VariationMargin ? 0.0 : to_settle(acc, inst, new_pnl_quote)
+    new_pnl_settle = if inst.settlement == SettlementStyle.VariationMargin
+        0.0
+    else
+        pnl_settle_asset(inst, new_qty, new_value_settle, new_avg_entry_price_settle)
+    end
 
     new_init_margin_settle = margin_init_margin_ccy(acc, inst, new_qty, margin_price)
     new_maint_margin_settle = margin_maint_margin_ccy(acc, inst, new_qty, margin_price)

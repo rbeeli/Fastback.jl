@@ -91,7 +91,7 @@ function check_invariants(acc::Account; atol::Real=1e-9, rtol::Real=1e-9)
             val_settle_expected = to_settle(acc, inst, pos.value_quote)
             isapprox(pos.value_settle, val_settle_expected; atol=atol, rtol=rtol) ||
                 throw(AssertionError("Position $(inst.symbol) value_settle cache is stale (expected $(val_settle_expected), found $(pos.value_settle))."))
-            pnl_settle_expected = to_settle(acc, inst, pos.pnl_quote)
+            pnl_settle_expected = pnl_settle_asset(inst, pos.quantity, pos.value_settle, pos.avg_entry_price_settle)
             isapprox(pos.pnl_settle, pnl_settle_expected; atol=atol, rtol=rtol) ||
                 throw(AssertionError("Position $(inst.symbol) pnl_settle cache is stale (expected $(pnl_settle_expected), found $(pos.pnl_settle))."))
         end

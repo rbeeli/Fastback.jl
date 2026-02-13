@@ -34,6 +34,22 @@ Quote-currency position value contribution under the instrument settlement style
 end
 
 """
+Settlement-currency unrealized P&L for asset-settled exposure.
+
+Uses settlement value minus the settlement-entry notional basis so FX translation
+of open principal is reflected in unrealized settlement P&L.
+"""
+@inline function pnl_settle_asset(
+    inst::Instrument,
+    qty,
+    value_settle::Price,
+    avg_entry_price_settle::Price,
+)::Price
+    qty == 0 && return zero(Price)
+    value_settle - qty * avg_entry_price_settle * inst.multiplier
+end
+
+"""
 Quote-currency cash delta for an asset-settled fill.
 """
 @inline function cash_delta_quote_asset(

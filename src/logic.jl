@@ -49,7 +49,7 @@
     value_delta_settle = new_value_settle - pos.value_settle
     @inbounds acc.ledger.equities[settle_cash_index] += value_delta_settle
     pos.pnl_quote = new_pnl
-    pos.pnl_settle = to_settle(acc, inst, new_pnl)
+    pos.pnl_settle = pnl_settle_asset(inst, qty, new_value_settle, pos.avg_entry_price_settle)
     pos.value_quote = new_value
     pos.value_settle = new_value_settle
     return

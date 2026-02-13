@@ -126,8 +126,7 @@ requirements) using the latest stored last prices.
             end
             pos.value_settle = new_value_settle
 
-            pnl_quote_val = pos.pnl_quote
-            pos.pnl_settle = pnl_quote_val == 0.0 ? 0.0 : to_settle(acc, inst, pnl_quote_val)
+            pos.pnl_settle = pnl_settle_asset(inst, pos.quantity, new_value_settle, pos.avg_entry_price_settle)
         end
 
         if margin_fx_sensitive

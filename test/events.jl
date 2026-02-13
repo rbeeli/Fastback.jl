@@ -291,8 +291,10 @@ end
     expected_value = to_settle(acc, inst, pos_after.value_quote)
     expected_eq = eq_before + (expected_value - value_before)
     expected_init = margin_init_margin_ccy(acc, inst, pos_after.quantity, pos_after.last_price)
+    expected_pnl_settle = expected_value - pos_after.quantity * pos_after.avg_entry_price_settle * inst.multiplier
 
     @test pos_after.value_settle ≈ expected_value atol=1e-12
+    @test pos_after.pnl_settle ≈ expected_pnl_settle atol=1e-12
     @test equity(acc, chf) ≈ expected_eq atol=1e-12
     @test init_margin_used(acc, chf) ≈ expected_init atol=1e-12
     @test init_margin_used(acc, chf) < init_before
