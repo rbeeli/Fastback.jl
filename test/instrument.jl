@@ -68,3 +68,13 @@ end
     @test ensure_active(fut, start_dt) === fut
     @test_throws ArgumentError ensure_active(fut, expiry_dt)
 end
+
+@testitem "symbol helper supports instrument and order" begin
+    using Test, Fastback, Dates
+
+    inst = Instrument(Symbol("BTC/USD"), :BTC, :USD)
+    order = Order(1, inst, DateTime(2026, 1, 1), 100.0, 1.0)
+
+    @test symbol(inst) == Symbol("BTC/USD")
+    @test symbol(order) == Symbol("BTC/USD")
+end

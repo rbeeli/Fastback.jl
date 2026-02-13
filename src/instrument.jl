@@ -103,6 +103,11 @@ end
 @inline Base.hash(inst::Instrument{T}) where {T} = inst.index  # custom hash for better performance
 
 """
+Return the symbol identifier of the given instrument.
+"""
+@inline symbol(inst::Instrument) = inst.symbol
+
+"""
 Format a base-asset quantity using the instrument's display precision.
 """
 @inline format_base(inst::Instrument, value) = Printf.format(Printf.Format("%.$(inst.base_digits)f"), value)
