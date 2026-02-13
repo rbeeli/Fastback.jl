@@ -100,7 +100,7 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
     end
 end
 
-@inline Base.hash(inst::Instrument{T}) where {T} = inst.index  # custom hash for better performance
+@inline Base.hash(inst::Instrument, h::UInt) = hash(inst.index, h)
 
 """
 Return the symbol identifier of the given instrument.

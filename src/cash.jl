@@ -14,7 +14,7 @@ mutable struct Cash
     end
 end
 
-@inline Base.hash(cash::Cash) = cash.index  # custom hash for better performance
+@inline Base.hash(cash::Cash, h::UInt) = hash(cash.index, h)
 
 struct CashSpec
     symbol::Symbol

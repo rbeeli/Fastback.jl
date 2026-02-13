@@ -74,7 +74,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
     end
 end
 
-@inline Base.hash(pos::Position) = pos.index  # custom hash for better performance
+@inline Base.hash(pos::Position, h::UInt) = hash(pos.index, h)
 
 @inline is_long(pos::Position) = pos.quantity > zero(Quantity)
 @inline is_short(pos::Position) = pos.quantity < zero(Quantity)
