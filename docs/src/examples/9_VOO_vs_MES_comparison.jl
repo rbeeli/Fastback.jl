@@ -18,8 +18,38 @@ using Random
 
 # ---------------------------------------------------------
 
+## IBKR Pro Fixed assumptions (kept compact, not broker-statement exact)
+const IBKR_BORROW_SPREAD = 0.015
+const IBKR_LEND_SPREAD = 0.005
+const IBKR_USD_CREDIT_NO_INTEREST_BALANCE = 10_000.0
+const CREDIT_VOO_CASH = true
+const CREDIT_MES_CASH = false
+const MES_INIT_MARGIN = 2_800.0
+const MES_MAINT_MARGIN = 2_421.0
+const VOO_REGT_INIT_LONG = 0.50
+
+@inline function ibkr_usd_benchmark(dt::Date)
+    @inbounds for i in length(IBKR_USD_BENCHMARK_SCHEDULE):-1:1
+        start_dt, rate = IBKR_USD_BENCHMARK_SCHEDULE[i]
+        dt >= start_dt && return rate
+    end
+    IBKR_USD_BENCHMARK_SCHEDULE[1][2]
+end
+
+@inline ibkr_usd_borrow_rate(dt::Date) = ibkr_usd_benchmark(dt) + IBKR_BORROW_SPREAD
+@inline ibkr_usd_lend_rate(dt::Date) = max(0.0, ibkr_usd_benchmark(dt) - IBKR_LEND_SPREAD)
+
+## IBKR does not pay credit interest on the first USD 10k.
+@inline function ibkr_effective_lend_rate(balance::Float64, raw_lend_rate::Float64)
+    balance <= IBKR_USD_CREDIT_NO_INTEREST_BALANCE && return 0.0
+    raw_lend_rate * (balance - IBKR_USD_CREDIT_NO_INTEREST_BALANCE) / balance
+end
+
+# ---------------------------------------------------------
+
 voo_path = "data/voo_tr_1d.csv";
 es_path = "data/es_1d.csv";
+ibkr_usd_benchmark_schedule_path = "data/ibkr_usd_benchmark_schedule_2025.csv";
 
 ## if data path doesn't exist, try to change working directory
 isfile(voo_path) || cd("src/examples")
@@ -30,19 +60,35 @@ es_df = DataFrame(CSV.File(es_path; dateformat="yyyy-mm-dd"))
 
 @assert nrow(voo_df) == nrow(es_df)
 
+## load USD benchmark schedule for 2025
+## Source: IBKR monthly interest-rate export (Jun-Dec 2025); Jan-May approximated
+## at 4.33% as unchanged pre-cut.
+const IBKR_USD_BENCHMARK_SCHEDULE = Tuple(
+    (Date(row.start_dt), Float64(row.usd_benchmark))
+    for row in CSV.File(ibkr_usd_benchmark_schedule_path; dateformat="yyyy-mm-dd")
+)
+@assert !isempty(IBKR_USD_BENCHMARK_SCHEDULE)
+
 # ---------------------------------------------------------
 
-## helper: per-order commissions (simple IBKR-like approximations)
+## helper: per-order commissions (IBKR Pro Fixed approximations)
 
-function ibkr_equity_commission(qty)
-    per_share = 0.0035
+function ibkr_equity_commission_fixed(qty, fill_price)
+    qty_abs = abs(qty)
+    qty_abs == 0.0 && return 0.0
+    per_share = 0.005
     min_commission = 1.00
-    max(min_commission, abs(qty) * per_share)
+    max_commission = 0.01 * qty_abs * abs(fill_price) # 1% of trade value cap
+    min(max(min_commission, qty_abs * per_share), max_commission)
 end
 
-function ibkr_futures_commission(qty)
-    per_contract = 1.25
-    abs(qty) * per_contract
+function ibkr_futures_commission_fixed(qty, _fill_price)
+    qty_abs = abs(qty)
+    qty_abs == 0.0 && return 0.0
+    exec_fixed = 0.85
+    exchange_fee = 0.35
+    regulatory_fee = 0.02
+    qty_abs * (exec_fixed + exchange_fee + regulatory_fee)
 end
 
 ## helper: discrete quantity for a target notional
@@ -52,12 +98,30 @@ function qty_for_notional(inst, price, notional)
 end
 
 ## helper: shared backtest loop
-function run_backtest!(acc, inst, df, trade_lookup; target_notional, commission_fn)
+function run_backtest!(
+    acc,
+    inst,
+    df,
+    trade_lookup;
+    target_notional,
+    commission_fn,
+    lend_interest_enabled=true,
+)
+    usd = cash_asset(acc, :USD)
+
     for (i, row) in enumerate(eachrow(df))
         dt = row.dt
         bid = row.bid
         ask = row.ask
         last = row.last
+
+        raw_lend = lend_interest_enabled ? ibkr_usd_lend_rate(dt) : 0.0
+        bal = cash_balance(acc, usd)
+        lend = (lend_interest_enabled && bal > 0.0) ? ibkr_effective_lend_rate(bal, raw_lend) : 0.0
+        set_interest_rates!(acc, :USD;
+            borrow=ibkr_usd_borrow_rate(dt),
+            lend=lend,
+        )
 
         marks = [MarkUpdate(inst.index, bid, ask, last)]
         process_step!(acc, dt; marks=marks, liquidate=true)
@@ -77,7 +141,7 @@ function run_backtest!(acc, inst, df, trade_lookup; target_notional, commission_
                     bid=bid,
                     ask=ask,
                     last=last,
-                    commission=commission_fn(delta_qty),
+                    commission=commission_fn(delta_qty, fill_price),
                 )
             end
         end
@@ -95,7 +159,7 @@ function run_backtest!(acc, inst, df, trade_lookup; target_notional, commission_
             bid=last_row.bid,
             ask=last_row.ask,
             last=last_row.last,
-            commission=commission_fn(-pos.quantity),
+            commission=commission_fn(-pos.quantity, fill_price),
         )
     end
 
@@ -117,7 +181,6 @@ end
 function build_voo_account(initial_cash)
     acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), time_type=Date)
     deposit!(acc, :USD, initial_cash)
-    set_interest_rates!(acc, :USD; borrow=0.06, lend=0.015)
 
     voo = register_instrument!(acc, spot_instrument(
         :VOO, :VOO, :USD;
@@ -127,7 +190,7 @@ function build_voo_account(initial_cash)
         quote_tick=0.01,
         quote_digits=2,
         margin_mode=MarginMode.PercentNotional,
-        margin_init_long=0.45,
+        margin_init_long=VOO_REGT_INIT_LONG,
         margin_init_short=1.35,
         margin_maint_long=0.25,
         margin_maint_short=1.20,
@@ -139,7 +202,6 @@ end
 function build_mes_account(initial_cash)
     acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), time_type=Date)
     deposit!(acc, :USD, initial_cash)
-    set_interest_rates!(acc, :USD; borrow=0.06, lend=0.015)
 
     es = register_instrument!(acc, future_instrument(
         :MES, :MES, :USD;
@@ -150,10 +212,10 @@ function build_mes_account(initial_cash)
         quote_digits=2,
         multiplier=5.0,
         margin_mode=MarginMode.FixedPerContract,
-        margin_init_long=1_250.0,
-        margin_init_short=1_250.0,
-        margin_maint_long=1_150.0,
-        margin_maint_short=1_150.0,
+        margin_init_long=MES_INIT_MARGIN,
+        margin_init_short=MES_INIT_MARGIN,
+        margin_maint_long=MES_MAINT_MARGIN,
+        margin_maint_short=MES_MAINT_MARGIN,
         expiry=Date(2026, 3, 20),
     ))
 
@@ -205,21 +267,23 @@ for leverage_factor in leverage_factors
     acc_voo, voo = build_voo_account(initial_cash)
     run_backtest!(acc_voo, voo, voo_df, trade_lookup;
         target_notional=target_notional,
-        commission_fn=ibkr_equity_commission,
+        commission_fn=ibkr_equity_commission_fixed,
+        lend_interest_enabled=CREDIT_VOO_CASH,
     )
     push!(rows, summarize(acc_voo, "VOO (Reg-T margin)", initial_cash, leverage_factor))
 
     acc_es, es = build_mes_account(initial_cash)
     run_backtest!(acc_es, es, es_df, trade_lookup;
         target_notional=target_notional,
-        commission_fn=ibkr_futures_commission,
+        commission_fn=ibkr_futures_commission_fixed,
+        lend_interest_enabled=CREDIT_MES_CASH,
     )
     push!(rows, summarize(acc_es, "MES (futures margin)", initial_cash, leverage_factor))
 end
 
 summary = DataFrame(rows)
 sort!(summary, [:leverage, :instrument])
-summary
+display(summary)
 
 # ---------------------------------------------------------
 
@@ -250,12 +314,17 @@ for row in eachrow(leverage_effect_wide)
     leverage_effect[!, Symbol(row.instrument)] = [row[col] for col in metric_cols]
 end
 
-leverage_effect
+display(leverage_effect)
 
 # ---------------------------------------------------------
 
 # Notes:
 # - VOO prices are total-return adjusted (no separate dividend cashflows).
 # - MES is treated as a continuous contract; expiry is set beyond the test window.
+# - Financing uses a simplified IBKR Pro model:
+#   `borrow = usd_benchmark + 1.50%`, `lend = max(usd_benchmark - 0.50%, 0)`.
+# - For credit interest, first USD 10k is assumed to earn 0% (effective-rate approximation).
+# - `CREDIT_MES_CASH=false` approximates no interest on futures-segment idle cash
+#   unless an explicit sweep is modeled.
 # - `borrow_interest` is reported as a positive paid amount; `net_interest = lend_interest - borrow_interest`.
-# - Margin/commission numbers are realistic placeholders for comparison only.
+# - Margin/commission numbers are simplified placeholders for comparison only.
