@@ -46,10 +46,10 @@ example_dir = normpath(joinpath(@__DIR__, "..", "..", "..", "src", "examples", "
 isdir(example_dir) || (example_dir = @__DIR__)
 data_dir = joinpath(example_dir, "data")
 
-voo_ohlcv_path = joinpath(data_dir, "VOO_ohlcv_daily_2020.01-2024.12.csv")
-voo_dividends_path = joinpath(data_dir, "VOO_dividends_2020.01-2024.12.csv")
-voo_splits_path = joinpath(data_dir, "VOO_splits_2020.01-2024.12.csv")
-mes_contracts_path = joinpath(data_dir, "MES_futures_contracts_2020.01-2024.12.csv")
+voo_ohlcv_path = joinpath(data_dir, "VOO_ohlcv_daily.csv")
+voo_dividends_path = joinpath(data_dir, "VOO_dividends.csv")
+voo_splits_path = joinpath(data_dir, "VOO_splits.csv")
+mes_contracts_path = joinpath(data_dir, "MES_futures_contracts.csv")
 ibkr_usd_benchmark_schedule_path = joinpath(data_dir, "ibkr_usd_benchmark_schedule_2025.csv")
 
 include(joinpath(example_dir, "data_prep.jl"))
