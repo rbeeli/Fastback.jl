@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 6_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -36,7 +36,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 6_000.0)
 
     inst = Instrument(
@@ -53,7 +53,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, Instrument(

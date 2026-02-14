@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates, Tables, DataFrames
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.5))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.5))
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -70,7 +70,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er, broker=FlatFeeBrokerProfile(fixed=2.0))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er, broker=FlatFeeBroker(fixed=2.0))
     deposit!(acc, :USD, 5_000.0)
     register_cash_asset!(acc, CashSpec(:EUR))
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)

@@ -4,7 +4,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -41,7 +41,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
     set_interest_rates!(acc, :USD; borrow=0.10, lend=0.0)
 
@@ -95,7 +95,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -148,7 +148,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
     set_interest_rates!(acc, :USD; borrow=0.05, lend=0.02)
 
@@ -213,7 +213,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Cash, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Cash, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("SPOTC/USD"), :SPOTC, :USD))
@@ -255,7 +255,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Cash, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Cash, base_currency=base_currency)
     deposit!(acc, :USD, 100.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("SPREADC/USD"), :SPREADC, :USD))
@@ -292,7 +292,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Cash, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Cash, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("SHORTC/USD"), :SHORTC, :USD))
@@ -315,7 +315,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Cash, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Cash, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(
@@ -360,7 +360,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:CHF)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
     chf = cash_asset(acc, :CHF)
     deposit!(acc, :CHF, 10_000.0)

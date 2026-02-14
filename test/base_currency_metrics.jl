@@ -5,7 +5,7 @@ using TestItemRunner
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, exchange_rates=er, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, exchange_rates=er, base_currency=base_currency)
 
     deposit!(acc, :USD, 1_000.0)
     register_cash_asset!(acc, CashSpec(:EUR))

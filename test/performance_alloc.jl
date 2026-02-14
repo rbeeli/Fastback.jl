@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
     inst = register_instrument!(acc, spot_instrument(Symbol("PERF/USD"), :PERF, :USD))
     pos = get_position(acc, inst)
@@ -25,7 +25,7 @@ end
 
     function setup_account()
         base_currency=CashSpec(:USD)
-        acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+        acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
         deposit!(acc, :USD, 10_000.0)
         inst = register_instrument!(acc, spot_instrument(Symbol("PERFFILL/USD"), :PERFFILL, :USD))
         dt0 = DateTime(2026, 1, 1)
@@ -62,7 +62,7 @@ end
 
     alloc = let
         base_currency=CashSpec(:USD)
-        acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+        acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
         deposit!(acc, :USD, 10_000.0)
         inst = register_instrument!(acc, spot_instrument(Symbol("PERFSTEP/USD"), :PERFSTEP, :USD))
         pos = get_position(acc, inst)

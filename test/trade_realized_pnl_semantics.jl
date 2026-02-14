@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=2.5))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=2.5))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -35,7 +35,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.75))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.75))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
@@ -77,7 +77,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.5))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.5))
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
@@ -108,7 +108,7 @@ end
 
     function setup_acc(sym::Symbol)
         base_currency=CashSpec(:USD)
-        acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+        acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
         deposit!(acc, :USD, 1_000.0)
         inst = register_instrument!(
             acc,
@@ -148,7 +148,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
     register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :USD, 0.0)
 
@@ -185,7 +185,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
     register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :USD, 0.0)
 

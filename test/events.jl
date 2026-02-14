@@ -4,7 +4,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
     set_interest_rates!(acc, :USD; borrow=0.10, lend=0.05)
@@ -58,7 +58,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
     usd = cash_asset(acc, :USD)
     chf = register_cash_asset!(acc, CashSpec(:CHF))
@@ -188,7 +188,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
     set_interest_rates!(acc, :USD; borrow=0.0, lend=0.10)
@@ -241,7 +241,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
 
     usd = cash_asset(acc, :USD)
     chf = register_cash_asset!(acc, CashSpec(:CHF))
@@ -297,7 +297,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Cash, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Cash, base_currency=base_currency, exchange_rates=er)
 
     usd = cash_asset(acc, :USD)
     eur = register_cash_asset!(acc, CashSpec(:EUR))
@@ -362,7 +362,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 50_000.0)
 
@@ -413,7 +413,7 @@ end
     function setup_short_account()
         er = ExchangeRates()
         base_currency=CashSpec(:CHF)
-        acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+        acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
         register_cash_asset!(acc, CashSpec(:USD))
         deposit!(acc, :USD, 0.0)
         deposit!(acc, :CHF, 50_000.0)
@@ -473,7 +473,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
     set_interest_rates!(acc, :USD; borrow=0.05, lend=0.02)
@@ -490,7 +490,7 @@ end
 
     base_currency=CashSpec(:USD)
     commission_pct = 0.01
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(pct=commission_pct))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(pct=commission_pct))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
@@ -529,7 +529,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 20_000.0)
 

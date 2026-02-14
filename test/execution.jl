@@ -8,7 +8,7 @@ using TestItemRunner
     acc = Account(;
         mode=AccountMode.Margin,
         base_currency=base_currency,
-        broker=FlatFeeBrokerProfile(fixed=0.5, pct=0.001),
+        broker=FlatFeeBroker(fixed=0.5, pct=0.001),
     )
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
@@ -71,7 +71,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 100.0)
 
@@ -94,7 +94,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.75))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.75))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
@@ -155,7 +155,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.25))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.25))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
@@ -237,7 +237,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
@@ -303,7 +303,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.5))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.5))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10.5)
 
@@ -359,7 +359,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.5))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.5))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
@@ -421,7 +421,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(pct=0.01))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(pct=0.01))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -478,7 +478,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -514,7 +514,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 

@@ -81,6 +81,7 @@ export broker_commission,
 export symbol,
     nominal_value,
     fill_order!,
+    roll_position!,
     is_realizing,
     realized_return
 

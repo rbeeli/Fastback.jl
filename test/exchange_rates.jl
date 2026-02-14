@@ -4,7 +4,7 @@ using TestItemRunner
     using Test, Fastback
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     eur = register_cash_asset!(acc, CashSpec(:EUR))
 
@@ -22,7 +22,7 @@ end
     using Test, Fastback
 
     er = ExchangeRates()
-    acc = Account(; broker=NoBrokerProfile(), base_currency=CashSpec(:NOK))
+    acc = Account(; broker=NoOpBroker(), base_currency=CashSpec(:NOK))
     nok = cash_asset(acc, :NOK)
 
     @test get_rate(er, nok, nok) == 1.0
@@ -32,7 +32,7 @@ end
     using Test, Fastback
 
     er = ExchangeRates()
-    acc = Account(; broker=NoBrokerProfile(), base_currency=CashSpec(:USD), exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), base_currency=CashSpec(:USD), exchange_rates=er)
     usd = cash_asset(acc, :USD)
     eur = register_cash_asset!(acc, CashSpec(:EUR))
 

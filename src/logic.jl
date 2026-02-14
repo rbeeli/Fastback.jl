@@ -299,6 +299,72 @@ Commission is broker-driven by default via `acc.broker`.
 end
 
 """
+Roll an open position from one instrument into another at a shared timestamp.
+
+The helper closes the entire `from_inst` exposure first, then opens the same
+signed quantity in `to_inst`. Both fills are tagged with `TradeReason.Roll`
+and use explicit prices for each leg. Returns `(close_trade, open_trade)`, or
+`(nothing, nothing)` when `from_inst` is already flat.
+"""
+function roll_position!(
+    acc::Account{TTime,TBroker},
+    from_inst::Instrument{TTime},
+    to_inst::Instrument{TTime},
+    dt::TTime;
+    close_fill_price::Price,
+    open_fill_price::Price,
+    close_bid::Price=close_fill_price,
+    close_ask::Price=close_fill_price,
+    close_last::Price=close_fill_price,
+    open_bid::Price=open_fill_price,
+    open_ask::Price=open_fill_price,
+    open_last::Price=open_fill_price,
+    allow_inactive_close::Bool=false,
+    allow_inactive_open::Bool=false,
+)::Tuple{Union{Trade{TTime},Nothing},Union{Trade{TTime},Nothing}} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+    from_inst.index == to_inst.index &&
+        throw(ArgumentError("roll_position! requires distinct instruments, got $(from_inst.symbol)."))
+    from_inst.base_symbol == to_inst.base_symbol ||
+        throw(ArgumentError("roll_position! requires matching base_symbol, got $(from_inst.base_symbol) and $(to_inst.base_symbol)."))
+    from_inst.quote_symbol == to_inst.quote_symbol ||
+        throw(ArgumentError("roll_position! requires matching quote_symbol, got $(from_inst.quote_symbol) and $(to_inst.quote_symbol)."))
+    from_inst.multiplier == to_inst.multiplier ||
+        throw(ArgumentError("roll_position! requires matching multiplier, got $(from_inst.multiplier) and $(to_inst.multiplier)."))
+
+    pos = get_position(acc, from_inst)
+    qty = pos.quantity
+    qty == 0.0 && return nothing, nothing
+
+    close_order = Order(oid!(acc), from_inst, dt, close_fill_price, -qty)
+    close_trade = fill_order!(
+        acc,
+        close_order;
+        dt=dt,
+        fill_price=close_fill_price,
+        bid=close_bid,
+        ask=close_ask,
+        last=close_last,
+        allow_inactive=allow_inactive_close,
+        trade_reason=TradeReason.Roll,
+    )
+
+    open_order = Order(oid!(acc), to_inst, dt, open_fill_price, qty)
+    open_trade = fill_order!(
+        acc,
+        open_order;
+        dt=dt,
+        fill_price=open_fill_price,
+        bid=open_bid,
+        ask=open_ask,
+        last=open_last,
+        allow_inactive=allow_inactive_open,
+        trade_reason=TradeReason.Roll,
+    )
+
+    close_trade, open_trade
+end
+
+"""
 Force-settles an expired instrument by synthetically closing any open position.
 
 If the instrument is expired at `dt` and the position quantity is non-zero,

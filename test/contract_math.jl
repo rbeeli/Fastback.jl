@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.25))
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.25))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -48,7 +48,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -94,7 +94,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
@@ -191,7 +191,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc_margin = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc_margin = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc_margin, :USD, 0.0)
     inst_margin = register_instrument!(acc_margin, Instrument(
         Symbol("NEG/MARGIN"),
@@ -216,7 +216,7 @@ end
     @test margin_maint_margin_ccy(acc_margin, inst_margin, qty_short, mark) ≈ abs(qty_short) * abs(mark) * inst_margin.multiplier * inst_margin.margin_maint_short
 
     base_currency=CashSpec(:USD)
-    acc_cash = Account(; broker=NoBrokerProfile(), mode=AccountMode.Cash, base_currency=base_currency)
+    acc_cash = Account(; broker=NoOpBroker(), mode=AccountMode.Cash, base_currency=base_currency)
     deposit!(acc_cash, :USD, 0.0)
     inst_cash = register_instrument!(acc_cash, spot_instrument(
         Symbol("NEG/CASH"),
@@ -234,7 +234,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     inst = register_instrument!(acc, Instrument(
