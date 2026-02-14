@@ -24,7 +24,7 @@ using Fastback
 using Dates
 
 acc = Account(;
-    broker=FlatFeeBrokerProfile(pct=0.001),
+    broker=FlatFeeBroker(pct=0.001),
     mode=AccountMode.Cash,
     base_currency=CashSpec(:USD),
 )

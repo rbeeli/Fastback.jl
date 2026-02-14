@@ -10,7 +10,7 @@ using Dates
 
 er = ExchangeRates()
 acc = Account(;
-    broker=FlatFeeBrokerProfile(pct=0.001),
+    broker=FlatFeeBroker(pct=0.001),
     mode=AccountMode.Margin,
     base_currency=CashSpec(:USD),
     exchange_rates=er,
@@ -76,7 +76,7 @@ is_under_maintenance(acc) && liquidate_to_maintenance!(acc, dt)
 ```julia
 er = ExchangeRates()
 acc = Account(;
-    broker=FlatFeeBrokerProfile(pct=0.001),
+    broker=FlatFeeBroker(pct=0.001),
     mode=AccountMode.Margin,
     base_currency=CashSpec(:USD),
     exchange_rates=er,

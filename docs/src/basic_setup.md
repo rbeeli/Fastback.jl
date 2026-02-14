@@ -17,7 +17,7 @@ Create `Account` first, then register additional cash assets on the account:
 ```julia
 er = ExchangeRates()
 account = Account(;
-    broker=FlatFeeBrokerProfile(pct=0.001),
+    broker=FlatFeeBroker(pct=0.001),
     mode=AccountMode.Margin,
     base_currency=CashSpec(:USD),
     exchange_rates=er,

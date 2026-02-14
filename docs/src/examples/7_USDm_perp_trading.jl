@@ -34,7 +34,7 @@ first(df, 5)
 acc = Account(;
     mode=AccountMode.Margin,
     base_currency=CashSpec(:USDT),
-    broker=BinanceProfile(; maker_derivatives=0.0004, taker_derivatives=0.0004),
+    broker=BinanceBroker(; maker_derivatives=0.0004, taker_derivatives=0.0004),
 );
 usdt = cash_asset(acc, :USDT)
 deposit!(acc, :USDT, 10_000.0);

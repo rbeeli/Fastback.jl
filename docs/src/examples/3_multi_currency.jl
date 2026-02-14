@@ -29,7 +29,7 @@ acc = Account(;
     mode=AccountMode.Margin,
     base_currency=CashSpec(:USD),
     exchange_rates=er,
-    broker=FlatFeeBrokerProfile(; pct=0.001),
+    broker=FlatFeeBroker(; pct=0.001),
 );
 usd = cash_asset(acc, :USD)
 eur = register_cash_asset!(acc, CashSpec(:EUR; digits=2));

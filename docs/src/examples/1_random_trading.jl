@@ -28,7 +28,7 @@ dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N-1);
 acc = Account(;
     mode=AccountMode.Margin,
     base_currency=CashSpec(:USD),
-    broker=FlatFeeBrokerProfile(; pct=0.001), # 0.1% commission
+    broker=FlatFeeBroker(; pct=0.001), # 0.1% commission
 );
 usd = cash_asset(acc, :USD)
 deposit!(acc, :USD, 10_000.0);

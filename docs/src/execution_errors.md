@@ -10,7 +10,7 @@ Execution behavior (user-facing):
 using Fastback, Dates
 
 acc = Account(;
-    broker=FlatFeeBrokerProfile(pct=0.001),
+    broker=FlatFeeBroker(pct=0.001),
     base_currency=CashSpec(:USD),
 )
 deposit!(acc, :USD, 100.0)

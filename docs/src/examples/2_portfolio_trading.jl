@@ -44,7 +44,7 @@ describe(df)
 acc = Account(;
     mode=AccountMode.Margin,
     base_currency=CashSpec(:USD),
-    broker=FlatFeeBrokerProfile(; pct=0.001),
+    broker=FlatFeeBroker(; pct=0.001),
 );
 usd = cash_asset(acc, :USD)
 deposit!(acc, :USD, 10_000.0);

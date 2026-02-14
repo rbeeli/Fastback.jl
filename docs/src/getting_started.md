@@ -29,7 +29,7 @@ using Dates
 acc = Account(;
     mode=AccountMode.Cash,
     base_currency=CashSpec(:USD),
-    broker=FlatFeeBrokerProfile(pct=0.001),
+    broker=FlatFeeBroker(pct=0.001),
 )
 usd = cash_asset(acc, :USD)
 deposit!(acc, usd, 10_000.0)
