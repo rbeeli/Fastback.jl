@@ -41,20 +41,42 @@ end
 
 mkpath(GENERATED_EXAMPLES_ROOT)
 
-function gen_markdown(path)
-    Literate.markdown(
-        joinpath(EXAMPLES_ROOT, path),
-        GENERATED_EXAMPLES_ROOT;
+function gen_markdown(path; name=nothing)
+    kwargs = (
         postprocess=postprocess_md,
-        credit=false)
+        credit=false,
+    )
+    if name === nothing
+        Literate.markdown(
+            joinpath(EXAMPLES_ROOT, path),
+            GENERATED_EXAMPLES_ROOT;
+            kwargs...)
+    else
+        Literate.markdown(
+            joinpath(EXAMPLES_ROOT, path),
+            GENERATED_EXAMPLES_ROOT;
+            kwargs...,
+            name=name)
+    end
 end
 
-function gen_notebook(path)
-    Literate.notebook(
-        joinpath(EXAMPLES_ROOT, path),
-        GENERATED_EXAMPLES_ROOT;
+function gen_notebook(path; name=nothing)
+    kwargs = (
         postprocess=postprocess_nb,
-        credit=false)
+        credit=false,
+    )
+    if name === nothing
+        Literate.notebook(
+            joinpath(EXAMPLES_ROOT, path),
+            GENERATED_EXAMPLES_ROOT;
+            kwargs...)
+    else
+        Literate.notebook(
+            joinpath(EXAMPLES_ROOT, path),
+            GENERATED_EXAMPLES_ROOT;
+            kwargs...,
+            name=name)
+    end
 end
 
 # generate markdown files
@@ -66,7 +88,7 @@ gen_markdown("5_NanoDates_integration.jl");
 gen_markdown("6_Timestamps64_integration.jl");
 gen_markdown("7_USDm_perp_trading.jl");
 gen_markdown("8_plots_extension.jl");
-gen_markdown("9_VOO_vs_MES_comparison.jl");
+gen_markdown("9_VOO_vs_MES_comparison/main.jl"; name="9_VOO_vs_MES_comparison");
 
 # generate notebook files
 gen_notebook("1_random_trading.jl");
@@ -77,7 +99,7 @@ gen_notebook("5_NanoDates_integration.jl");
 gen_notebook("6_Timestamps64_integration.jl");
 gen_notebook("7_USDm_perp_trading.jl");
 gen_notebook("8_plots_extension.jl");
-gen_notebook("9_VOO_vs_MES_comparison.jl");
+gen_notebook("9_VOO_vs_MES_comparison/main.jl"; name="9_VOO_vs_MES_comparison");
 
 makedocs(
     sitename="Fastback.jl",
