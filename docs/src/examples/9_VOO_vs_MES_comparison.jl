@@ -76,10 +76,11 @@ const VOO_BROKER = make_ibkr_profile(
     credit_no_interest_balance=IBKR_USD_CREDIT_NO_INTEREST_BALANCE,
 )
 
-## Approximation: no credit interest on futures-segment idle cash.
+## Apply the same USD credit-interest floor for futures idle cash to keep
+## financing treatment comparable across vehicles in this example.
 const MES_BROKER = make_ibkr_profile(
     IBKR_USD_BENCHMARK_SCHEDULE;
-    credit_no_interest_balance=Inf,
+    credit_no_interest_balance=IBKR_USD_CREDIT_NO_INTEREST_BALANCE,
 )
 
 # ---------------------------------------------------------
