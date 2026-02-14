@@ -5,7 +5,11 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(;
+        mode=AccountMode.Margin,
+        base_currency=base_currency,
+        broker=FlatFeeBrokerProfile(fixed=0.5, pct=0.001),
+    )
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -45,7 +49,7 @@ using TestItemRunner
     @test plan.new_value_quote == order.quantity * price * inst.multiplier
     @test plan.new_pnl_quote == 0.0
 
-    trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission=commission, commission_pct=commission_pct)
+    trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
 
     @test trade.fill_qty == plan.fill_qty
     @test trade.remaining_qty == plan.remaining_qty
@@ -67,7 +71,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 100.0)
 
@@ -90,7 +94,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.75))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
@@ -141,7 +145,7 @@ end
     expected_cash_delta = abs(close_qty) * close_price - commission
     @test plan.cash_delta_settle ≈ expected_cash_delta atol=1e-12
 
-    trade = fill_order!(acc, close_order; dt=dt, fill_price=close_price, bid=close_price, ask=close_price, last=close_price, commission=commission)
+    trade = fill_order!(acc, close_order; dt=dt, fill_price=close_price, bid=close_price, ask=close_price, last=close_price)
 
     @test trade.cash_delta_settle ≈ expected_cash_delta atol=1e-12
     @test cash_balance(acc, usd) ≈ cash_before + expected_cash_delta atol=1e-12
@@ -151,7 +155,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.25))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
@@ -212,7 +216,7 @@ end
     @test plan.new_init_margin_settle == abs(plan.new_qty) * price_mark * inst.multiplier * 0.1
     @test plan.new_maint_margin_settle == abs(plan.new_qty) * price_mark * inst.multiplier * 0.05
 
-    trade_close = fill_order!(acc, order_close; dt=dt_mark, fill_price=price_mark, bid=price_mark, ask=price_mark, last=price_mark, commission=commission)
+    trade_close = fill_order!(acc, order_close; dt=dt_mark, fill_price=price_mark, bid=price_mark, ask=price_mark, last=price_mark)
 
     @test trade_close.fill_pnl_settle == plan.fill_pnl_settle
     @test trade_close.commission_settle == plan.commission_settle
@@ -233,7 +237,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
@@ -299,7 +303,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.5))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10.5)
 
@@ -355,7 +359,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.5))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
@@ -398,7 +402,7 @@ end
     )
 
     cash_before = cash_balance(acc, usd)
-    trade = fill_order!(acc, reduce_order; dt=dt_reduce, fill_price=reduce_order.price, bid=100.0, ask=100.0, last=100.0, commission=commission)
+    trade = fill_order!(acc, reduce_order; dt=dt_reduce, fill_price=reduce_order.price, bid=100.0, ask=100.0, last=100.0)
 
     @test trade isa Trade
     @test plan.fill_pnl_settle ≈ -4.0 atol=1e-12
@@ -417,7 +421,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(pct=0.01))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -462,7 +466,7 @@ end
     @test plan.cash_delta_settle ≈ -0.1 atol=1e-12
 
     cash_before = cash_balance(acc, usd)
-    trade = fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=fill_price, ask=fill_price, last=fill_price, commission_pct=commission_pct)
+    trade = fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=fill_price, ask=fill_price, last=fill_price)
 
     @test nominal_value(trade) ≈ 10.0 atol=1e-12
     @test trade.commission_settle ≈ 0.1 atol=1e-12
@@ -474,7 +478,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -510,7 +514,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 

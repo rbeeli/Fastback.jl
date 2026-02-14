@@ -5,7 +5,7 @@ using TestItemRunner
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er, broker=FlatFeeBrokerProfile(fixed=1.0))
 
     deposit!(acc, :USD, 50_000.0)
     register_cash_asset!(acc, CashSpec(:CHF))
@@ -60,7 +60,7 @@ using TestItemRunner
     @test plan.new_maint_margin_settle ≈ expected_maint_margin atol=1e-10
 
     bal_before_open = acc.ledger.balances[chf_idx]
-    trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission=commission)
+    trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
     @test trade isa Trade
     @test acc.ledger.balances[chf_idx] ≈ bal_before_open + expected_cash_delta atol=1e-10
     @test acc.ledger.init_margin_used[margin_idx] ≈ expected_init_margin atol=1e-10
@@ -114,7 +114,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
     deposit!(acc, :USD, 50_000.0)
     register_cash_asset!(acc, CashSpec(:CHF))

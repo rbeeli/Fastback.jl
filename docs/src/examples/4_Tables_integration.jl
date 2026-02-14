@@ -22,7 +22,11 @@ prices = 100.0 .+ cumsum(randn(N) .* 0.5 .+ 0.05);
 dts = map(x -> DateTime(2021, 1, 1) + Hour(x), 0:N-1);
 
 ## create trading account with $5'000 start capital (margin-enabled for shorting)
-acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD));
+acc = Account(;
+    mode=AccountMode.Margin,
+    base_currency=CashSpec(:USD),
+    broker=FlatFeeBrokerProfile(; pct=0.001),
+);
 usd = cash_asset(acc, :USD)
 deposit!(acc, :USD, 5_000.0);
 
@@ -46,12 +50,12 @@ for (i, (dt, price)) in enumerate(zip(dts, prices))
         if momentum > 0.02  # buy signal
             quantity = 10.0
             order = Order(oid!(acc), AAPL, dt, price, quantity)
-            fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission_pct=0.001)
+            fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
 
         elseif momentum < -0.02  # sell signal
             quantity = -8.0
             order = Order(oid!(acc), MSFT, dt, price, quantity)
-            fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission_pct=0.001)
+            fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
         end
 
         prev_price = price

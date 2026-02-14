@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -67,7 +67,7 @@ end
 
     # Long: bid/ask mark should not settle a spread loss
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -104,7 +104,7 @@ end
 
     # Short: same neutrality should hold
     base_currency=CashSpec(:USD)
-    acc2 = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc2 = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd2 = cash_asset(acc2.ledger, :USD)
     deposit!(acc2, :USD, 1_000.0)
 

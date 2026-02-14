@@ -45,24 +45,25 @@ Borrow-fee clocks are tracked per position and fills align accrual windows
 with actual short exposure.
 """
 function advance_time!(
-    acc::Account{TTime},
+    acc::Account{TTime,TBroker},
     dt::TTime;
     accrue_interest::Bool=true,
     accrue_borrow_fees::Bool=true,
-) where {TTime<:Dates.AbstractTime}
+) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     last_dt = acc.last_event_dt
     (last_dt != TTime(0) && dt < last_dt) &&
         throw(ArgumentError("Event datetime $(dt) precedes last event $(last_dt)."))
 
     accrue_interest && accrue_interest!(acc, dt)
     accrue_borrow_fees && accrue_borrow_fees!(acc, dt)
+    _sync_broker_state!(acc, dt)
 
     acc.last_event_dt = dt
     return acc
 end
 
 """
-    process_expiries!(acc, dt; commission=0.0, commission_pct=0.0)
+    process_expiries!(acc, dt)
 
 Settles expired futures deterministically at `dt` using the stored position mark.
 Requires positions to have finite marks.
@@ -70,11 +71,9 @@ Requires positions to have finite marks.
 Throws `OrderRejectError` if a synthetic expiry close is rejected by risk checks.
 """
 function process_expiries!(
-    acc::Account{TTime},
+    acc::Account{TTime,TBroker},
     dt::TTime;
-    commission::Price=0.0,
-    commission_pct::Price=0.0,
-) where {TTime<:Dates.AbstractTime}
+) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     trades = Trade{TTime}[]
 
     @inbounds for pos in acc.positions
@@ -87,8 +86,6 @@ function process_expiries!(
             inst,
             dt;
             settle_price=pos.mark_price,
-            commission=commission,
-            commission_pct=commission_pct,
         )
         trade === nothing && continue
         push!(trades, trade)
@@ -158,8 +155,6 @@ end
         funding=nothing,
         expiries=true,
         liquidate=false,
-        commission::Price=0.0,
-        commission_pct::Price=0.0,
         max_liq_steps::Int=10_000,
         accrue_interest::Bool=true,
         accrue_borrow_fees::Bool=true,
@@ -175,38 +170,39 @@ Timing convention:
 - Interest/borrow-fee accrual runs before new marks and before FX updates.
 - Therefore, accrual over `(t_prev, t]` uses the previously stored balances/prices/FX,
   and updates passed for `dt` apply to subsequent valuation windows.
+- Broker financing-rate sync runs automatically right after accrual.
 
 Ordering:
 1. Enforce non-decreasing time
 2. Accrue interest then borrow fees (`accrue_interest!`, `accrue_borrow_fees!`)
-3. Apply FX updates
-4. Revalue FX caches (`_revalue_fx_caches!`)
-5. Apply mark updates (`update_marks!`)
-6. Apply funding updates (`apply_funding!`)
-7. Process expiries (`process_expiries!`)
-8. Optional maintenance liquidation (runs after expiry/margin release)
-9. Stamp `last_event_dt`
+3. Sync broker state (internal, automatic)
+4. Apply FX updates
+5. Revalue FX caches (`_revalue_fx_caches!`)
+6. Apply mark updates (`update_marks!`)
+7. Apply funding updates (`apply_funding!`)
+8. Process expiries (`process_expiries!`)
+9. Optional maintenance liquidation (runs after expiry/margin release)
+10. Stamp `last_event_dt`
 """
 function process_step!(
-    acc::Account{TTime},
+    acc::Account{TTime,TBroker},
     dt::TTime;
     fx_updates::Union{Nothing,Vector{FXUpdate}}=nothing,
     marks::Union{Nothing,Vector{MarkUpdate}}=nothing,
     funding::Union{Nothing,Vector{FundingUpdate}}=nothing,
     expiries::Bool=true,
     liquidate::Bool=false,
-    commission::Price=0.0,
-    commission_pct::Price=0.0,
     max_liq_steps::Int=10_000,
     accrue_interest::Bool=true,
     accrue_borrow_fees::Bool=true,
-) where {TTime<:Dates.AbstractTime}
+) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     last_dt = acc.last_event_dt
     (last_dt != TTime(0) && dt < last_dt) &&
         throw(ArgumentError("Event datetime $(dt) precedes last event $(last_dt)."))
 
     accrue_interest && accrue_interest!(acc, dt)
     accrue_borrow_fees && accrue_borrow_fees!(acc, dt)
+    _sync_broker_state!(acc, dt)
 
     if fx_updates !== nothing
         er = acc.exchange_rates
@@ -230,15 +226,10 @@ function process_step!(
         end
     end
 
-    expiries && process_expiries!(
-        acc,
-        dt;
-        commission=commission,
-        commission_pct=commission_pct,
-    )
+    expiries && process_expiries!(acc, dt)
 
     if liquidate && is_under_maintenance(acc)
-        liquidate_to_maintenance!(acc, dt; commission=commission, commission_pct=commission_pct, max_steps=max_liq_steps)
+        liquidate_to_maintenance!(acc, dt; max_steps=max_liq_steps)
     end
 
     acc.last_event_dt = dt

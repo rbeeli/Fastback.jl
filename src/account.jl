@@ -1,9 +1,10 @@
-mutable struct Account{TTime<:Dates.AbstractTime}
+mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     const mode::AccountMode.T
     const margining_style::MarginingStyle.T
     const ledger::CashLedger
     const base_currency::Cash
     const exchange_rates::ExchangeRates
+    const broker::TBroker
     const positions::Vector{Position{TTime}}
     const trades::Vector{Trade{TTime}}
     const cashflows::Vector{Cashflow{TTime}}
@@ -21,22 +22,24 @@ mutable struct Account{TTime<:Dates.AbstractTime}
         time_type::Type{TTime}=DateTime,
         mode::AccountMode.T=AccountMode.Cash,
         margining_style::MarginingStyle.T=MarginingStyle.BaseCurrency,
+        broker::TBroker,
         date_format=dateformat"yyyy-mm-dd",
         datetime_format=dateformat"yyyy-mm-dd HH:MM:SS",
         order_sequence=0,
         trade_sequence=0,
         exchange_rates::ExchangeRates=ExchangeRates(),
-    ) where {TTime<:Dates.AbstractTime}
+    ) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
         ledger = CashLedger()
         base_cash = _register_cash_asset!(ledger, base_currency)
         _ensure_rates_size!(exchange_rates, base_cash.index)
 
-        acc = new{TTime}(
+        acc = new{TTime,TBroker}(
             mode,
             margining_style,
             ledger,
             base_cash,
             exchange_rates,
+            broker,
             Vector{Position{TTime}}(), # positions
             Vector{Trade{TTime}}(), # trades
             Vector{Cashflow{TTime}}(), # cashflows
@@ -229,6 +232,43 @@ function register_instrument!(
     push!(acc.positions, Position{TTime}(inst.index, inst))
 
     inst
+end
+
+"""
+Internal: synchronize broker-provided borrow/lend rates for all cash assets.
+"""
+function _sync_broker_interest_rates!(
+    acc::Account{TTime,NoOpBroker},
+    dt::TTime,
+) where {TTime<:Dates.AbstractTime}
+    acc
+end
+
+function _sync_broker_interest_rates!(
+    acc::Account{TTime,TBroker},
+    dt::TTime,
+) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+    ledger = acc.ledger
+    @inbounds for cash in ledger.cash
+        idx = cash.index
+        balance = ledger.balances[idx]
+        borrow_rate, lend_rate = broker_interest_rates(acc.broker, cash.symbol, dt, balance)
+        ledger.interest_borrow_rate[idx] = borrow_rate
+        ledger.interest_lend_rate[idx] = lend_rate
+    end
+
+    acc
+end
+
+"""
+Internal: synchronize broker-provided interest rates at `dt`.
+"""
+@inline function _sync_broker_state!(
+    acc::Account{TTime,TBroker},
+    dt::TTime,
+) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+    _sync_broker_interest_rates!(acc, dt)
+    acc
 end
 
 """

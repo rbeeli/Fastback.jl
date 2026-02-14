@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     inst = Instrument(Symbol("SPOT/VM"), :SPOT, :USD;
@@ -21,7 +21,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     no_margin = Instrument(Symbol("CASH/NOMRG"), :CASH, :USD;
@@ -35,7 +35,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     nonzero_margin = Instrument(Symbol("NOMRG/RATES"), :NOMRG, :USD;
@@ -54,7 +54,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     bad_missing = Instrument(Symbol("MISS/RATES"), :MISS, :USD;
@@ -137,7 +137,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     bad_settle = Instrument(Symbol("PERP/BADSETTLE"), :PERP, :USD;
@@ -185,7 +185,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     bad_settle = Instrument(Symbol("FUT/BADSETTLE"), :FUT, :USD;
@@ -235,7 +235,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     spot_margin = Instrument(Symbol("SPOT/MGN"), :SPOT, :USD;
@@ -255,7 +255,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     register_cash_asset!(acc, CashSpec(:EUR))
 
     inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
@@ -279,7 +279,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
 
     inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
         settle_symbol=:EUR,
@@ -297,7 +297,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     register_cash_asset!(acc, CashSpec(:EUR))
 
     inst = Instrument(Symbol("BTC/USD.GBP"), :BTC, :USD;

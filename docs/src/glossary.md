@@ -46,7 +46,7 @@ A fill is the execution of an order (whole or partial). `fill_order!` creates a 
 
 ## Commission
 
-Commission is specified in the quote currency, converted to the instrument settlement currency, and stored on the trade as `commission_settle`. `fill_order!` supports both fixed commissions and percentage-based fees (`commission_pct`), applying them to balances, equities, and realized P&L in settlement units.
+Commission is specified by the active broker profile and converted from quote to settlement currency on each fill, then stored on the trade as `commission_settle`. This amount is applied to balances, equities, and realized P&L in settlement units.
 
 ## Realized P&L
 

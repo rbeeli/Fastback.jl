@@ -25,7 +25,11 @@ prices = 1000.0 .+ cumsum(randn(N) .+ 0.1);
 dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N-1);
 
 ## create trading account with $10'000 start capital (margin-enabled for shorting)
-acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD));
+acc = Account(;
+    mode=AccountMode.Margin,
+    base_currency=CashSpec(:USD),
+    broker=FlatFeeBrokerProfile(; pct=0.001), # 0.1% commission
+);
 usd = cash_asset(acc, :USD)
 deposit!(acc, :USD, 10_000.0);
 
@@ -42,7 +46,7 @@ for (dt, price) in zip(dts, prices)
     if rand() < 0.01
         quantity = rand() > 0.4 ? 1.0 : -1.0
         order = Order(oid!(acc), DUMMY, dt, price, quantity)
-        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, fill_qty=0.75order.quantity, commission_pct=0.001)
+        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, fill_qty=0.75order.quantity)
     end
 
     ## update position and account P&L

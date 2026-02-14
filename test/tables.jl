@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates, Tables, DataFrames
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.5))
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -21,11 +21,11 @@ using TestItemRunner
 
     dt₁ = DateTime(2020, 1, 1, 9)
     order₁ = Order(oid!(acc), inst, dt₁, 10.0, 1.0)
-    fill_order!(acc, order₁; dt=dt₁, fill_price=10.0, bid=10.0, ask=10.0, last=10.0, commission=0.5)
+    fill_order!(acc, order₁; dt=dt₁, fill_price=10.0, bid=10.0, ask=10.0, last=10.0)
 
     dt₂ = DateTime(2020, 1, 2, 9)
     order₂ = Order(oid!(acc), inst, dt₂, 12.0, -2.0)
-    fill_order!(acc, order₂; dt=dt₂, fill_price=12.0, bid=12.0, ask=12.0, last=12.0, commission=0.25)
+    fill_order!(acc, order₂; dt=dt₂, fill_price=12.0, bid=12.0, ask=12.0, last=12.0)
 end
 
 @testitem "trades_table" setup=[TablesTestSetup] begin
@@ -57,7 +57,7 @@ end
     @test trade_rows[1].oid == order₁.oid
     @test trade_rows[end].fill_pnl_settle ≈ 2.0 atol = 1e-8
     @test trade_rows[1].cash_delta_settle ≈ -10.5
-    @test trade_rows[end].cash_delta_settle ≈ 23.75
+    @test trade_rows[end].cash_delta_settle ≈ 23.5
     @test trade_rows[end].settlement_style == SettlementStyle.Asset
     trade_cols = Tables.columntable(tbl)
     @test trade_cols.symbol == fill(inst.symbol, length(acc.trades))
@@ -70,7 +70,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er, broker=FlatFeeBrokerProfile(fixed=2.0))
     deposit!(acc, :USD, 5_000.0)
     register_cash_asset!(acc, CashSpec(:EUR))
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
@@ -96,7 +96,7 @@ end
     qty = 1.0
     commission_quote = 2.0
     order = Order(oid!(acc), inst, dt, fill_price, qty)
-    trade = fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=fill_price, ask=fill_price, last=fill_price, commission=commission_quote)
+    trade = fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=fill_price, ask=fill_price, last=fill_price)
 
     tbl = trades_table(acc)
     row = only(Tables.rows(tbl))

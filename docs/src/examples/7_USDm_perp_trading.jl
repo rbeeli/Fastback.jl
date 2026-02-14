@@ -31,7 +31,11 @@ first(df, 5)
 # ---------------------------------------------------------
 
 ## create margin account funded in USDT
-acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USDT));
+acc = Account(;
+    mode=AccountMode.Margin,
+    base_currency=CashSpec(:USDT),
+    broker=BinanceProfile(; maker_derivatives=0.0004, taker_derivatives=0.0004),
+);
 usdt = cash_asset(acc, :USDT)
 deposit!(acc, :USDT, 10_000.0);
 
@@ -89,7 +93,7 @@ for i in 1:nrow(df)
 
         if abs(delta_qty) > 1e-8
             order = Order(oid!(acc), perp, dt, last, delta_qty)
-            fill_order!(acc, order; dt=dt, fill_price=last, bid=bid, ask=ask, last=last, commission_pct=0.0004)
+            fill_order!(acc, order; dt=dt, fill_price=last, bid=bid, ask=ask, last=last)
         end
     end
 
@@ -106,7 +110,7 @@ row = df[end, :]
 pos = get_position(acc, perp)
 if pos.quantity != 0.0
     order = Order(oid!(acc), perp, row.dt, row.last, -pos.quantity)
-    fill_order!(acc, order; dt=row.dt, fill_price=row.last, bid=row.bid, ask=row.ask, last=row.last, commission_pct=0.0004)
+    fill_order!(acc, order; dt=row.dt, fill_price=row.last, bid=row.bid, ask=row.ask, last=row.last)
 end
 
 ## summarize funding P&L

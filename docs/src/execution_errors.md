@@ -9,7 +9,10 @@ Execution behavior (user-facing):
 ```@example
 using Fastback, Dates
 
-acc = Account(; base_currency=CashSpec(:USD))
+acc = Account(;
+    broker=FlatFeeBrokerProfile(pct=0.001),
+    base_currency=CashSpec(:USD),
+)
 deposit!(acc, :USD, 100.0)
 inst = register_instrument!(acc, spot_instrument(:ABC, :ABC, :USD))
 

@@ -12,7 +12,11 @@ using Statistics
 # ---------------------------------------------------------
 # Simple backtest to generate plot data
 
-acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USDT));
+acc = Account(;
+    mode=AccountMode.Margin,
+    base_currency=CashSpec(:USDT),
+    broker=BinanceProfile(; maker_derivatives=0.0004, taker_derivatives=0.0004),
+);
 usdt = cash_asset(acc, :USDT)
 deposit!(acc, :USDT, 10_000.0);
 perp = register_instrument!(acc, perpetual_instrument(
@@ -62,7 +66,7 @@ for i in 1:n_steps
 
         if abs(delta_qty) > 1e-8
             order = Order(oid!(acc), perp, dt, last, delta_qty)
-            fill_order!(acc, order; dt=dt, fill_price=last, bid=bid, ask=ask, last=last, commission_pct=0.0004)
+            fill_order!(acc, order; dt=dt, fill_price=last, bid=bid, ask=ask, last=last)
         end
     end
 
@@ -89,7 +93,7 @@ if pos.quantity != 0.0
     dt = dt0 + Hour(n_steps - 1)
     last = prices[end]
     order = Order(oid!(acc), perp, dt, last, -pos.quantity)
-    fill_order!(acc, order; dt=dt, fill_price=last, bid=last - 0.05, ask=last + 0.05, last=last, commission_pct=0.0004)
+    fill_order!(acc, order; dt=dt, fill_price=last, bid=last - 0.05, ask=last + 0.05, last=last)
 end
 
 # ---------------------------------------------------------

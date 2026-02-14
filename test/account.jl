@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=1.0))
     deposit!(acc, :USD, 0.0)
 
     @test isempty(acc.cashflows)
@@ -14,11 +14,21 @@ using TestItemRunner
     @test acc.cashflow_sequence == 1
 end
 
+@testitem "Account keeps broker as concrete type parameter" begin
+    using Test, Fastback
+
+    acc_default = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=CashSpec(:USD))
+    acc_flat = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), broker=FlatFeeBrokerProfile(pct=0.001))
+
+    @test typeof(acc_default).parameters[2] == NoBrokerProfile
+    @test typeof(acc_flat).parameters[2] == FlatFeeBrokerProfile
+end
+
 @testitem "Order creation uses only time type parameter" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=1.0))
     deposit!(acc, :USD, 1_000.0)
     inst = register_instrument!(acc, spot_instrument(Symbol("META/USD"), :META, :USD))
 
@@ -36,7 +46,7 @@ end
     using Test, Fastback
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
 
     # register a different cash asset to ensure missing quote currency is detected
     register_cash_asset!(acc, CashSpec(:EUR))
@@ -58,7 +68,7 @@ end
     using Test, Fastback, Dates
     # create trading account
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 100_000.0)
 
     @test cash_balance(acc, cash_asset(acc, :USD)) == 100_000.0
@@ -103,7 +113,7 @@ end
     using Test, Fastback
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
 
     deposit!(acc, :USD, 1_000.0)
@@ -120,7 +130,7 @@ end
     using Test, Fastback
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Cash, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Cash, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 100.0)
 
@@ -132,7 +142,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Cash, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Cash, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
@@ -153,7 +163,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 600.0)
 
@@ -183,7 +193,7 @@ end
     using Test, Fastback
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 200.0)
 
@@ -196,7 +206,7 @@ end
     using Test, Fastback, Dates
     # create trading account
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=1.0))
     deposit!(acc, :USD, 100_000.0)
 
     @test cash_balance(acc, cash_asset(acc, :USD)) == 100_000.0
@@ -212,7 +222,7 @@ end
     qty = 100.0
     order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
     commission = 1.0
-    exe1 = fill_order!(acc, order; dt=dates[1], fill_price=prices[1], bid=prices[1], ask=prices[1], last=prices[1], commission=commission)
+    exe1 = fill_order!(acc, order; dt=dates[1], fill_price=prices[1], bid=prices[1], ask=prices[1], last=prices[1])
     @test exe1 == acc.trades[end]
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.commission_settle == commission
@@ -229,12 +239,12 @@ end
     @test equity(acc, cash_asset(acc, :USD)) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - commission
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
-    exe2 = fill_order!(acc, order; dt=dates[3], fill_price=prices[3], bid=prices[3], ask=prices[3], last=prices[3], commission=0.5)
+    exe2 = fill_order!(acc, order; dt=dates[3], fill_price=prices[3], bid=prices[3], ask=prices[3], last=prices[3])
     # update position and account P&L
     update_marks!(acc, pos, dates[3], prices[3], prices[3], prices[3])
     @test pos.value_quote == pos.pnl_quote
     @test pos.pnl_quote ≈ 0
-    @test cash_balance(acc, cash_asset(acc, :USD)) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - commission - 0.5
+    @test cash_balance(acc, cash_asset(acc, :USD)) ≈ 100_000.0 + (prices[3] - prices[1]) * qty - commission - exe2.commission_settle
     @test equity(acc, cash_asset(acc, :USD)) ≈ cash_balance(acc, cash_asset(acc, :USD))
     show(acc)
 end
@@ -243,7 +253,7 @@ end
     using Test, Fastback, Dates
     # create trading account
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency);
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(pct=0.001));
     deposit!(acc, :USD, 100_000.0)
     @test cash_balance(acc, cash_asset(acc, :USD)) == 100_000.0
     @test equity(acc, cash_asset(acc, :USD)) == 100_000.0
@@ -258,7 +268,7 @@ end
     qty = 100.0
     order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
     commission_pct1 = 0.001
-    exe1 = fill_order!(acc, order; dt=dates[1], fill_price=prices[1], bid=prices[1], ask=prices[1], last=prices[1], commission_pct=commission_pct1)
+    exe1 = fill_order!(acc, order; dt=dates[1], fill_price=prices[1], bid=prices[1], ask=prices[1], last=prices[1])
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.commission_settle == commission_pct1*nominal_value(exe1)
     @test acc.trades[end].fill_pnl_settle == 0.0
@@ -274,7 +284,7 @@ end
     @test equity(acc, cash_asset(acc, :USD)) ≈ 100_000.0+ (prices[2] - prices[1]) * pos.quantity - exe1.commission_settle
     # close position
     order = Order(oid!(acc), DUMMY, dates[3], prices[3], -pos.quantity)
-    exe2 = fill_order!(acc, order; dt=dates[3], fill_price=prices[3], bid=prices[3], ask=prices[3], last=prices[3], commission_pct=0.0005)
+    exe2 = fill_order!(acc, order; dt=dates[3], fill_price=prices[3], bid=prices[3], ask=prices[3], last=prices[3])
     # update position and account P&L
     update_marks!(acc, pos, dates[3], prices[3], prices[3], prices[3])
     @test pos.value_quote == pos.pnl_quote
@@ -288,7 +298,8 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    commission_pct = 0.001
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(pct=commission_pct))
     deposit!(acc, :USD, 100_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("MULTI/USD"), :MULTI, :USD; multiplier=10.0))
@@ -297,8 +308,7 @@ end
     price = 100.0
     qty = 2.0
     order = Order(oid!(acc), inst, dates[1], price, qty)
-    commission_pct = 0.001
-    trade = fill_order!(acc, order; dt=dates[1], fill_price=price, bid=price, ask=price, last=price, commission_pct=commission_pct)
+    trade = fill_order!(acc, order; dt=dates[1], fill_price=price, bid=price, ask=price, last=price)
 
     expected_nominal = qty * price * inst.multiplier
     @test nominal_value(order) == expected_nominal
@@ -310,7 +320,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -345,7 +355,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -380,7 +390,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -438,7 +448,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -479,7 +489,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     start_dt = DateTime(2026, 1, 1)
@@ -519,7 +529,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), base_currency=base_currency)
     deposit!(acc, :USD, 100.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("CASH/USD"), :CASH, :USD))
@@ -544,7 +554,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), base_currency=base_currency)
     deposit!(acc, :USD, 1_000.0)
     inst = register_instrument!(acc, spot_instrument(Symbol("SHORT/USD"), :SHORT, :USD;
         margin_mode=MarginMode.PercentNotional,
@@ -572,7 +582,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), base_currency=base_currency)
     deposit!(acc, :USD, 1_000.0)
     inst = register_instrument!(acc, spot_instrument(Symbol("CASHSELL/USD"), :CASHSELL, :USD))
 
@@ -598,7 +608,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), base_currency=base_currency)
     deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -627,7 +637,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 100.0)
     inst = register_instrument!(acc, Instrument(
         Symbol("MARGINFAIL/USD"),
@@ -659,7 +669,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 20_000.0)
 
     start_dt = DateTime(2026, 1, 1)
@@ -708,7 +718,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 20_000.0)
 
@@ -760,7 +770,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -792,7 +802,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -830,7 +840,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     @test acc.mode == AccountMode.Margin
     deposit!(acc, :USD, 10_000.0)
 
@@ -868,7 +878,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -915,7 +925,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
 
     # Register margin (EUR) and base (USD)
     deposit!(acc, :USD, 10_000.0)
@@ -953,7 +963,7 @@ end
     using Test, Fastback, Dates, Tables
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, time_type=Date, date_format=dateformat"yyyy-mm-dd", base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, time_type=Date, date_format=dateformat"yyyy-mm-dd", base_currency=base_currency)
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, spot_instrument(Symbol("DATE/USD"), :DATE, :USD; time_type=Date))
@@ -981,7 +991,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)

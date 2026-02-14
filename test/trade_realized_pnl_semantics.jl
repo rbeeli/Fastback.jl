@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=2.5))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -21,7 +21,7 @@ using TestItemRunner
     dt = DateTime(2026, 1, 1)
     commission = 2.5
     order = Order(oid!(acc), inst, dt, 50.0, 10.0)
-    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price, commission=commission)
+    trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
 
     @test trade.realized_qty == 0.0
     @test trade.fill_pnl_settle == 0.0
@@ -35,7 +35,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.75))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
@@ -51,9 +51,9 @@ end
     dt_open = DateTime(2026, 1, 1)
     qty = 3.0
     price_open = 100.0
-    commission_open = 1.0
+    commission_open = 0.75
     open_order = Order(oid!(acc), inst, dt_open, price_open, qty)
-    fill_order!(acc, open_order; dt=dt_open, fill_price=price_open, bid=price_open, ask=price_open, last=price_open, commission=commission_open)
+    fill_order!(acc, open_order; dt=dt_open, fill_price=price_open, bid=price_open, ask=price_open, last=price_open)
 
     cash_after_open = cash_balance(acc, usd)
 
@@ -61,7 +61,7 @@ end
     price_close = 110.0
     commission_close = 0.75
     close_order = Order(oid!(acc), inst, dt_close, price_close, -qty)
-    close_trade = fill_order!(acc, close_order; dt=dt_close, fill_price=price_close, bid=price_close, ask=price_close, last=price_close, commission=commission_close)
+    close_trade = fill_order!(acc, close_order; dt=dt_close, fill_price=price_close, bid=price_close, ask=price_close, last=price_close)
 
     expected_gross = (price_close - price_open) * qty
 
@@ -77,7 +77,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=0.5))
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(
@@ -96,7 +96,7 @@ end
     dt2 = dt1 + Day(1)
     order2 = Order(oid!(acc), inst, dt2, 12.0, 2.0)
     commission = 0.5
-    trade2 = fill_order!(acc, order2; dt=dt2, fill_price=order2.price, bid=order2.price, ask=order2.price, last=order2.price, commission=commission)
+    trade2 = fill_order!(acc, order2; dt=dt2, fill_price=order2.price, bid=order2.price, ask=order2.price, last=order2.price)
 
     @test trade2.realized_qty == 0.0
     @test trade2.fill_pnl_settle == 0.0
@@ -108,7 +108,7 @@ end
 
     function setup_acc(sym::Symbol)
         base_currency=CashSpec(:USD)
-        acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+        acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
         deposit!(acc, :USD, 1_000.0)
         inst = register_instrument!(
             acc,
@@ -148,7 +148,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
     register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :USD, 0.0)
 
@@ -185,7 +185,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
     register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :USD, 0.0)
 

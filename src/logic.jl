@@ -185,21 +185,22 @@ Accrues borrow fees for any eligible asset-settled spot short exposure up to `dt
 restarts the borrow-fee clock based on the post-fill position.
 Throws `OrderRejectError` when the fill is rejected (inactive instrument or risk checks).
 Requires bid/ask/last to deterministically value positions and compute margin during fills.
+
+Commission is broker-driven by default via `acc.broker`.
 """
 @inline function fill_order!(
-    acc::Account{TTime},
+    acc::Account{TTime,TBroker},
     order::Order{TTime};
     dt::TTime,
     fill_price::Price,
     fill_qty::Quantity=0.0,      # fill quantity, if not provided, order quantity is used (complete fill)
-    commission::Price=0.0,       # fixed commission in quote (local) currency
-    commission_pct::Price=0.0,   # percentage commission of nominal order value, e.g. 0.001 = 0.1%
+    is_maker::Bool=false,
     allow_inactive::Bool=false,
     trade_reason::TradeReason.T=TradeReason.Normal,
     bid::Price,
     ask::Price,
     last::Price,
-)::Trade{TTime} where {TTime<:Dates.AbstractTime}
+)::Trade{TTime} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     inst = order.inst
     isfinite(fill_price) || throw(ArgumentError("fill_order! requires finite fill_price, got $(fill_price) at dt=$(dt)."))
     isfinite(bid) || throw(ArgumentError("fill_order! requires finite bid, got $(bid) at dt=$(dt)."))
@@ -219,6 +220,7 @@ Requires bid/ask/last to deterministically value positions and compute margin du
     _accrue_borrow_fee!(acc, pos, dt)
     pos_qty = pos.quantity
     pos_entry_price = pos.avg_entry_price
+    commission_quote = broker_commission(acc.broker, inst, dt, fill_qty, fill_price; is_maker=is_maker)
 
     plan = plan_fill(
         acc,
@@ -229,8 +231,8 @@ Requires bid/ask/last to deterministically value positions and compute margin du
         mark_for_valuation,
         margin_for_valuation,
         fill_qty,
-        commission,
-        commission_pct,
+        commission_quote.fixed,
+        commission_quote.pct,
     )
 
     rejection = check_fill_constraints(acc, pos, plan)
@@ -307,14 +309,12 @@ The caller must provide a finite settlement price (typically the stored mark).
 Throws `OrderRejectError` if the synthetic close is rejected by risk checks.
 """
 function settle_expiry!(
-    acc::Account{TTime},
+    acc::Account{TTime,TBroker},
     inst::Instrument{TTime},
     dt::TTime
     ;
     settle_price=get_position(acc, inst).mark_price,
-    commission::Price=0.0,
-    commission_pct::Price=0.0,
-)::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime}
+)::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     pos = get_position(acc, inst)
     (pos.quantity == 0.0 || !is_expired(inst, dt)) && return nothing
 
@@ -324,8 +324,6 @@ function settle_expiry!(
         bid=settle_price,
         ask=settle_price,
         last=settle_price,
-        commission=commission,
-        commission_pct=commission_pct,
         allow_inactive=true,
         trade_reason=TradeReason.Expiry)
 

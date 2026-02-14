@@ -1,15 +1,13 @@
 """
-    liquidate_all!(acc, dt; commission=0.0, commission_pct=0.0)
+    liquidate_all!(acc, dt)
 
 Liquidates all open positions at their current marks, returning the generated trades.
 Throws `OrderRejectError` if a liquidation fill is rejected by risk checks.
 """
 function liquidate_all!(
-    acc::Account{TTime},
-    dt::TTime;
-    commission::Price=0.0,
-    commission_pct::Price=0.0,
-)::Vector{Trade{TTime}} where {TTime<:Dates.AbstractTime}
+    acc::Account{TTime,TBroker},
+    dt::TTime,
+)::Vector{Trade{TTime}} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     trades = Trade{TTime}[]
     for pos in acc.positions
         qty = pos.quantity
@@ -23,8 +21,6 @@ function liquidate_all!(
             bid=pos.mark_price,
             ask=pos.mark_price,
             last=pos.last_price,
-            commission=commission,
-            commission_pct=commission_pct,
             allow_inactive=true,
             trade_reason=TradeReason.Liquidation,
         )
@@ -35,7 +31,7 @@ function liquidate_all!(
 end
 
 """
-    liquidate_to_maintenance!(acc, dt; commission=0.0, commission_pct=0.0, max_steps=10_000)
+    liquidate_to_maintenance!(acc, dt; max_steps=10_000)
 
 Liquidates positions until the account is above maintenance requirements.
 Throws `OrderRejectError` if a liquidation fill is rejected by risk checks.
@@ -84,17 +80,16 @@ end
 end
 
 @inline function _project_excess_after_full_close(
-    acc::Account{TTime},
+    acc::Account{TTime,TBroker},
     pos::Position{TTime},
     dt::TTime,
-    worst_idx::Int;
-    commission::Price,
-    commission_pct::Price,
-) where {TTime<:Dates.AbstractTime}
+    worst_idx::Int,
+) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     qty = pos.quantity
     close_qty = -qty
     fill_price = pos.mark_price
     margin_price = margin_reference_price(acc, fill_price, pos.last_price)
+    commission = broker_commission(acc.broker, pos.inst, dt, close_qty, fill_price)
     order = Order(0, pos.inst, dt, fill_price, close_qty)
     plan = plan_fill(
         acc,
@@ -105,8 +100,8 @@ end
         fill_price,
         margin_price,
         close_qty,
-        commission,
-        commission_pct,
+        commission.fixed,
+        commission.pct,
     )
 
     current_excess = @inbounds acc.ledger.equities[worst_idx] - acc.ledger.maint_margin_used[worst_idx]
@@ -116,13 +111,11 @@ end
 end
 
 @inline function _select_per_currency_liquidation_pos(
-    acc::Account{TTime},
+    acc::Account{TTime,TBroker},
     dt::TTime,
     worst_idx::Int,
-    worst_excess::Price;
-    commission::Price,
-    commission_pct::Price,
-) where {TTime<:Dates.AbstractTime}
+    worst_excess::Price,
+) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     best_pos = nothing
     best_improvement = -Inf
     best_margin_contrib = -Inf
@@ -136,9 +129,7 @@ end
             acc,
             pos,
             dt,
-            worst_idx;
-            commission=commission,
-            commission_pct=commission_pct,
+            worst_idx,
         )
         improvement = excess_after - worst_excess
         margin_contrib = pos.inst.margin_cash_index == worst_idx ? pos.maint_margin_settle : 0.0
@@ -162,12 +153,10 @@ end
 end
 
 function liquidate_to_maintenance!(
-    acc::Account{TTime},
+    acc::Account{TTime,TBroker},
     dt::TTime;
-    commission::Price=0.0,
-    commission_pct::Price=0.0,
     max_steps::Int=10_000,
-)::Vector{Trade{TTime}} where {TTime<:Dates.AbstractTime}
+)::Vector{Trade{TTime}} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     trades = Trade{TTime}[]
     steps = 0
 
@@ -187,9 +176,7 @@ function liquidate_to_maintenance!(
                 acc,
                 dt,
                 worst_idx,
-                worst_excess;
-                commission=commission,
-                commission_pct=commission_pct,
+                worst_excess,
             )
         end
 
@@ -204,8 +191,6 @@ function liquidate_to_maintenance!(
             bid=max_pos.mark_price,
             ask=max_pos.mark_price,
             last=max_pos.last_price,
-            commission=commission,
-            commission_pct=commission_pct,
             allow_inactive=true,
             trade_reason=TradeReason.Liquidation,
         )

@@ -4,7 +4,7 @@ using TestItemRunner
     using Test, Fastback
 
     base_currency=CashSpec(:USD)
-    acc = Account(; base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), base_currency=base_currency)
 
     deposit!(acc, :USD, 1.0)
 

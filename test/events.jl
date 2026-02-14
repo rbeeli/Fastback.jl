@@ -4,7 +4,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
     set_interest_rates!(acc, :USD; borrow=0.10, lend=0.05)
@@ -58,7 +58,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
     usd = cash_asset(acc, :USD)
     chf = register_cash_asset!(acc, CashSpec(:CHF))
@@ -188,7 +188,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
     set_interest_rates!(acc, :USD; borrow=0.0, lend=0.10)
@@ -241,7 +241,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
 
     usd = cash_asset(acc, :USD)
     chf = register_cash_asset!(acc, CashSpec(:CHF))
@@ -297,7 +297,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Cash, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Cash, base_currency=base_currency, exchange_rates=er)
 
     usd = cash_asset(acc, :USD)
     eur = register_cash_asset!(acc, CashSpec(:EUR))
@@ -362,7 +362,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 50_000.0)
 
@@ -413,7 +413,7 @@ end
     function setup_short_account()
         er = ExchangeRates()
         base_currency=CashSpec(:CHF)
-        acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+        acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
         register_cash_asset!(acc, CashSpec(:USD))
         deposit!(acc, :USD, 0.0)
         deposit!(acc, :CHF, 50_000.0)
@@ -473,7 +473,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
     set_interest_rates!(acc, :USD; borrow=0.05, lend=0.02)
@@ -485,11 +485,12 @@ end
     @test_throws ArgumentError process_step!(acc, dt0)
 end
 
-@testitem "process_expiries! forwards commission_pct to expiry fill" begin
+@testitem "process_expiries! uses broker commission for expiry fill" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    commission_pct = 0.01
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(pct=commission_pct))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
@@ -517,8 +518,7 @@ end
     fill_order!(acc, order; dt=dt_open, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     @test get_position(acc, inst).quantity == 1.0
 
-    commission_pct = 0.01
-    trades = process_expiries!(acc, dt_exp; commission_pct=commission_pct)
+    trades = process_expiries!(acc, dt_exp)
     trade = only(trades)
     @test trade.reason == TradeReason.Expiry
     @test trade.commission_settle ≈ 100.0 * 1.0 * commission_pct atol=1e-8
@@ -529,7 +529,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 20_000.0)
 

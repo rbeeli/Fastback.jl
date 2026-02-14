@@ -13,6 +13,10 @@ include("trade.jl")
 include("position.jl")
 include("exchange_rates.jl")
 include("cashflows.jl")
+include("broker/base.jl")
+include("broker/flat_fee.jl")
+include("broker/ibkr_pro_fixed.jl")
+include("broker/binance.jl")
 include("account.jl")
 include("contract_math.jl")
 include("interest.jl")
@@ -45,6 +49,14 @@ export Price,
     OrderRejectReason,
     OrderRejectError,
     TradeReason,
+    AbstractBroker,
+    NoOpBroker,
+    FlatFeeBroker,
+    IBKRProFixedBroker,
+    BinanceBroker,
+    StepSchedule,
+    value_at,
+    CommissionQuote,
     Cash,
     CashSpec,
     Instrument,
@@ -60,6 +72,10 @@ export trade_dir,
     is_long,
     is_short,
     opposite_dir
+
+# Broker hooks
+export broker_commission,
+    broker_interest_rates
 
 # Order and trade utilities
 export symbol,

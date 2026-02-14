@@ -4,7 +4,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 16_000.0)
 
     inst_big = register_instrument!(acc, Instrument(Symbol("BIG/USD"), :BIG, :USD;
@@ -28,7 +28,7 @@ using TestItemRunner
 
     @test is_under_maintenance(acc)
 
-    trades = liquidate_to_maintenance!(acc, dt2; commission=0.0)
+    trades = liquidate_to_maintenance!(acc, dt2)
 
     @test !is_under_maintenance(acc)
     @test length(trades) == 1
@@ -38,11 +38,11 @@ using TestItemRunner
     @test get_position(acc, inst_small).quantity == -10.0
 end
 
-@testitem "liquidate_to_maintenance! forwards commission_pct" begin
+@testitem "liquidate_to_maintenance! applies broker commission" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=1.0, pct=0.02))
     deposit!(acc, :USD, 1_500.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("RISK/USD"), :RISK, :USD;
@@ -59,7 +59,7 @@ end
     # Account is under maintenance after an adverse mark.
     @test is_under_maintenance(acc)
 
-    trades = liquidate_to_maintenance!(acc, dt2; commission=1.0, commission_pct=0.02)
+    trades = liquidate_to_maintenance!(acc, dt2)
 
     @test length(trades) == 1
     @test trades[1].commission_settle ≈ 181.0 # 1 fixed + 2% of 90*100
@@ -72,7 +72,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
 
     deposit!(acc, :USD, 10_000.0)
     register_cash_asset!(acc, CashSpec(:EUR))
@@ -103,7 +103,7 @@ end
     @test excess_liquidity(acc, cash_asset(acc, :EUR)) < 0 # only EUR leg is stressed
     @test is_under_maintenance(acc)
 
-    trades = liquidate_to_maintenance!(acc, dt2; commission=0.0)
+    trades = liquidate_to_maintenance!(acc, dt2)
 
     @test length(trades) == 1
     @test trades[1].order.inst === inst_eur
@@ -118,7 +118,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
     register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :USD, 0.0)
     deposit!(acc, :EUR, 1_000.0)
@@ -148,7 +148,7 @@ end
     @test is_under_maintenance(acc)
 
     err = try
-        liquidate_to_maintenance!(acc, dt2; commission=0.0)
+        liquidate_to_maintenance!(acc, dt2)
         nothing
     catch e
         e

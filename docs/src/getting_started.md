@@ -26,7 +26,11 @@ using Fastback
 using Dates
 
 # 1) Account and cash
-acc = Account(; mode=AccountMode.Cash, base_currency=CashSpec(:USD))
+acc = Account(;
+    mode=AccountMode.Cash,
+    base_currency=CashSpec(:USD),
+    broker=FlatFeeBrokerProfile(pct=0.001),
+)
 usd = cash_asset(acc, :USD)
 deposit!(acc, usd, 10_000.0)
 
@@ -45,11 +49,11 @@ for (dt, price) in zip(dts, prices)
 
     if dt == dts[2] # open
         order = Order(oid!(acc), ABC, dt, price, 10.0)
-        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission_pct=0.001)
+        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
     elseif dt == dts[5] # close
         pos = get_position(acc, ABC)
         order = Order(oid!(acc), ABC, dt, price, -pos.quantity)
-        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission_pct=0.001)
+        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
     end
 
     if should_collect(equity_data, dt)

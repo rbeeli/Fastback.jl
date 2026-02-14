@@ -25,7 +25,12 @@ df = DataFrame([
 
 ## create trading account with 10'000 USD, 5'000 EUR and 20'000 GBP cash (margin-enabled for shorting)
 er = ExchangeRates();
-acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), exchange_rates=er);
+acc = Account(;
+    mode=AccountMode.Margin,
+    base_currency=CashSpec(:USD),
+    exchange_rates=er,
+    broker=FlatFeeBrokerProfile(; pct=0.001),
+);
 usd = cash_asset(acc, :USD)
 eur = register_cash_asset!(acc, CashSpec(:EUR; digits=2));
 gbp = register_cash_asset!(acc, CashSpec(:GBP; digits=2));
@@ -60,7 +65,7 @@ for i in 1:N
         price = df[i, inst.symbol]
         quantity = rand() > 0.5 ? 10.0 : -10.0
         order = Order(oid!(acc), inst, dt, price, quantity)
-        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, commission_pct=0.001)
+        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
     end
 
     ## update position and account P&L

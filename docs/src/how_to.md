@@ -9,7 +9,12 @@ using Fastback
 using Dates
 
 er = ExchangeRates()
-acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), exchange_rates=er)
+acc = Account(;
+    broker=FlatFeeBrokerProfile(pct=0.001),
+    mode=AccountMode.Margin,
+    base_currency=CashSpec(:USD),
+    exchange_rates=er,
+)
 usd = cash_asset(acc, :USD)
 eur = register_cash_asset!(acc, CashSpec(:EUR))
 deposit!(acc, usd, 10_000.0)
@@ -70,7 +75,12 @@ is_under_maintenance(acc) && liquidate_to_maintenance!(acc, dt)
 
 ```julia
 er = ExchangeRates()
-acc = Account(; mode=AccountMode.Margin, base_currency=CashSpec(:USD), exchange_rates=er)
+acc = Account(;
+    broker=FlatFeeBrokerProfile(pct=0.001),
+    mode=AccountMode.Margin,
+    base_currency=CashSpec(:USD),
+    exchange_rates=er,
+)
 usd = cash_asset(acc, :USD)
 eur = register_cash_asset!(acc, CashSpec(:EUR))
 deposit!(acc, usd, 10_000.0)

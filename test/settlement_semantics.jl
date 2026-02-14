@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBrokerProfile(fixed=1.0))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
@@ -17,7 +17,7 @@ using TestItemRunner
     commission_open = 1.0
 
     order_open = Order(oid!(acc), inst, dt0, open_price, qty)
-    fill_order!(acc, order_open; dt=dt0, fill_price=open_price, bid=99.0, ask=101.0, last=100.0, commission=commission_open)
+    fill_order!(acc, order_open; dt=dt0, fill_price=open_price, bid=99.0, ask=101.0, last=100.0)
 
     cash_after_open = cash_balance(acc, usd)
     @test cash_after_open ≈ 8_989.0 atol=1e-12
@@ -29,9 +29,9 @@ using TestItemRunner
 
     dt1 = dt0 + Hour(1)
     close_price = 102.0
-    commission_close = 0.5
+    commission_close = 1.0
     order_close = Order(oid!(acc), inst, dt1, close_price, -qty)
-    fill_order!(acc, order_close; dt=dt1, fill_price=close_price, bid=close_price, ask=close_price, last=close_price, commission=commission_close)
+    fill_order!(acc, order_close; dt=dt1, fill_price=close_price, bid=close_price, ask=close_price, last=close_price)
 
     @test get_position(acc, inst).quantity == 0.0
     expected_cash = 8_989.0 + qty * close_price - commission_close
@@ -43,7 +43,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
@@ -76,7 +76,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency)
     deposit!(acc, :USD, 100.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("RISK/USD"), :RISK, :USD;
@@ -105,7 +105,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(; broker=NoBrokerProfile(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
 
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
