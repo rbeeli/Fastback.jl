@@ -1,5 +1,5 @@
 mutable struct Cash
-    const index::Int                # unique index starting from 1 (used for array indexing and hashing)
+    const index::Int                # unique index starting from 1 (used for array indexing)
     const symbol::Symbol
     const digits::Int
 
@@ -13,8 +13,6 @@ mutable struct Cash
         new(index, symbol, digits)
     end
 end
-
-@inline Base.hash(cash::Cash, h::UInt) = hash(cash.index, h)
 
 struct CashSpec
     symbol::Symbol

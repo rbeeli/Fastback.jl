@@ -11,7 +11,7 @@ Position state tracked per instrument (see currency/unit semantics note in `cont
 - `borrow_fee_dt`: last borrow-fee accrual timestamp for asset-settled spot shorts
 """
 mutable struct Position{TTime<:Dates.AbstractTime}
-    const index::Int                # unique index for each position starting from 1 (used for array indexing and hashing)
+    const index::Int                # unique index for each position starting from 1 (used for array indexing)
     const inst::Instrument{TTime}
     avg_entry_price::Price
     avg_entry_price_settle::Price
@@ -73,8 +73,6 @@ mutable struct Position{TTime<:Dates.AbstractTime}
         )
     end
 end
-
-@inline Base.hash(pos::Position, h::UInt) = hash(pos.index, h)
 
 @inline is_long(pos::Position) = pos.quantity > zero(Quantity)
 @inline is_short(pos::Position) = pos.quantity < zero(Quantity)
