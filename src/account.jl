@@ -235,43 +235,6 @@ function register_instrument!(
 end
 
 """
-Internal: synchronize broker-provided borrow/lend rates for all cash assets.
-"""
-function _sync_broker_interest_rates!(
-    acc::Account{TTime,NoOpBroker},
-    dt::TTime,
-) where {TTime<:Dates.AbstractTime}
-    acc
-end
-
-function _sync_broker_interest_rates!(
-    acc::Account{TTime,TBroker},
-    dt::TTime,
-) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    ledger = acc.ledger
-    @inbounds for cash in ledger.cash
-        idx = cash.index
-        balance = ledger.balances[idx]
-        borrow_rate, lend_rate = broker_interest_rates(acc.broker, cash.symbol, dt, balance)
-        ledger.interest_borrow_rate[idx] = borrow_rate
-        ledger.interest_lend_rate[idx] = lend_rate
-    end
-
-    acc
-end
-
-"""
-Internal: synchronize broker-provided interest rates at `dt`.
-"""
-@inline function _sync_broker_state!(
-    acc::Account{TTime,TBroker},
-    dt::TTime,
-) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    _sync_broker_interest_rates!(acc, dt)
-    acc
-end
-
-"""
 Returns the position object of the given instrument in the account.
 """
 @inline function get_position(acc::Account{TTime}, inst::Instrument{TTime}) where {TTime<:Dates.AbstractTime}

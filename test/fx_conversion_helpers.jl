@@ -114,7 +114,14 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(
+        ;
+        broker=FlatFeeBroker(; borrow_by_cash=Dict(:CHF=>0.05), lend_by_cash=Dict(:CHF=>0.02)),
+        mode=AccountMode.Margin,
+        base_currency=base_currency,
+        margining_style=MarginingStyle.BaseCurrency,
+        exchange_rates=er,
+    )
 
     deposit!(acc, :USD, 50_000.0)
     register_cash_asset!(acc, CashSpec(:CHF))
@@ -122,7 +129,6 @@ end
 
     usd_to_chf = 0.8
     update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), usd_to_chf)
-    set_interest_rates!(acc, :CHF; borrow=0.05, lend=0.02)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("SPOTFXI/USDCHF"),

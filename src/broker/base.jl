@@ -3,14 +3,6 @@ using Dates
 abstract type AbstractBroker end
 
 """
-No-op broker profile.
-
-Commission defaults to zero, financing rates are left unchanged by sync helpers,
-and no broker-specific financing schedules are required.
-"""
-struct NoOpBroker <: AbstractBroker end
-
-"""
 Commission quote produced by a broker profile.
 
 `fixed` is an additive fee in quote currency.
@@ -87,27 +79,4 @@ For `dt` before the first schedule timestamp, returns the first value.
     idx = searchsortedlast(schedule.starts, key)
     idx == 0 && return @inbounds schedule.values[1]
     @inbounds schedule.values[idx]
-end
-
-# -------------------------------------------------------------------------
-# Broker hooks (overload by profile)
-
-@inline function broker_commission(
-    ::AbstractBroker,
-    ::Instrument,
-    ::Dates.AbstractTime,
-    ::Quantity,
-    ::Price;
-    is_maker::Bool=false,
-)::CommissionQuote
-    CommissionQuote()
-end
-
-@inline function broker_interest_rates(
-    ::AbstractBroker,
-    ::Symbol,
-    ::Dates.AbstractTime,
-    ::Price,
-)::Tuple{Price,Price}
-    (0.0, 0.0)
 end

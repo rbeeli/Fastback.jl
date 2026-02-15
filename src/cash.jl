@@ -44,8 +44,6 @@ mutable struct CashLedger
     const by_symbol::Dict{Symbol,Int}
     const balances::Vector{Price}
     const equities::Vector{Price}
-    const interest_borrow_rate::Vector{Price}
-    const interest_lend_rate::Vector{Price}
     const init_margin_used::Vector{Price}
     const maint_margin_used::Vector{Price}
 
@@ -53,8 +51,6 @@ mutable struct CashLedger
         new(
             Vector{Cash}(),
             Dict{Symbol,Int}(),
-            Vector{Price}(),
-            Vector{Price}(),
             Vector{Price}(),
             Vector{Price}(),
             Vector{Price}(),
@@ -89,8 +85,6 @@ function _register_cash_asset!(
 
     push!(ledger.balances, zero(Price))
     push!(ledger.equities, zero(Price))
-    push!(ledger.interest_borrow_rate, zero(Price))
-    push!(ledger.interest_lend_rate, zero(Price))
     push!(ledger.init_margin_used, zero(Price))
     push!(ledger.maint_margin_used, zero(Price))
 

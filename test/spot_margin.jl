@@ -41,9 +41,13 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(
+        ;
+        broker=FlatFeeBroker(; borrow_by_cash=Dict(:USD=>0.10), lend_by_cash=Dict(:USD=>0.0)),
+        mode=AccountMode.Margin,
+        base_currency=base_currency,
+    )
     deposit!(acc, :USD, 10_000.0)
-    set_interest_rates!(acc, :USD; borrow=0.10, lend=0.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("SPOTML/USD"),
@@ -148,9 +152,13 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(
+        ;
+        broker=FlatFeeBroker(; borrow_by_cash=Dict(:USD=>0.05), lend_by_cash=Dict(:USD=>0.02)),
+        mode=AccountMode.Margin,
+        base_currency=base_currency,
+    )
     deposit!(acc, :USD, 10_000.0)
-    set_interest_rates!(acc, :USD; borrow=0.05, lend=0.02)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("SPOTMSI/USD"),

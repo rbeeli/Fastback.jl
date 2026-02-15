@@ -4,10 +4,14 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(
+        ;
+        broker=FlatFeeBroker(; borrow_by_cash=Dict(:USD=>0.10), lend_by_cash=Dict(:USD=>0.05)),
+        mode=AccountMode.Margin,
+        base_currency=base_currency,
+    )
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
-    set_interest_rates!(acc, :USD; borrow=0.10, lend=0.05)
 
     inst = register_instrument!(
         acc,
@@ -58,15 +62,24 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(
+        ;
+        broker=FlatFeeBroker(
+            ;
+            borrow_by_cash=Dict(:USD=>0.10, :CHF=>0.0),
+            lend_by_cash=Dict(:USD=>0.0, :CHF=>0.03),
+        ),
+        mode=AccountMode.Margin,
+        base_currency=base_currency,
+        margining_style=MarginingStyle.BaseCurrency,
+        exchange_rates=er,
+    )
 
     usd = cash_asset(acc, :USD)
     chf = register_cash_asset!(acc, CashSpec(:CHF))
     deposit!(acc, :USD, 1_000.0)
     deposit!(acc, :CHF, 1_000.0)
 
-    set_interest_rates!(acc, :USD; borrow=0.10, lend=0.0)
-    set_interest_rates!(acc, :CHF; borrow=0.0, lend=0.03)
     update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), 1.0)
 
     dt0 = DateTime(2026, 1, 1)
@@ -188,10 +201,14 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(
+        ;
+        broker=FlatFeeBroker(; borrow_by_cash=Dict(:USD=>0.0), lend_by_cash=Dict(:USD=>0.10)),
+        mode=AccountMode.Margin,
+        base_currency=base_currency,
+    )
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
-    set_interest_rates!(acc, :USD; borrow=0.0, lend=0.10)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("VMINT/USD"),
@@ -476,13 +493,80 @@ end
     acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
-    set_interest_rates!(acc, :USD; borrow=0.05, lend=0.02)
 
     dt1 = DateTime(2026, 1, 1)
     process_step!(acc, dt1)
 
     dt0 = dt1 - Day(1)
     @test_throws ArgumentError process_step!(acc, dt0)
+end
+
+@testitem "advance_time! uses FlatFeeBroker interest rates" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(
+        ;
+        broker=FlatFeeBroker(
+            ;
+            pct=0.001,
+            borrow_by_cash=Dict(:USD=>0.10),
+            lend_by_cash=Dict(:USD=>0.05),
+        ),
+        mode=AccountMode.Margin,
+        base_currency=base_currency,
+    )
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 10_000.0)
+
+    dt0 = DateTime(2026, 1, 1)
+    dt1 = dt0 + Day(1)
+
+    advance_time!(acc, dt0) # initialize accrual clocks
+
+    bal_before = cash_balance(acc, usd)
+    advance_time!(acc, dt1)
+
+    expected_interest = bal_before * 0.05 * (1 / 365)
+    @test cash_balance(acc, usd) ≈ bal_before + expected_interest atol=1e-8
+
+    interest_cfs = filter(cf -> cf.kind == CashflowKind.LendInterest, acc.cashflows)
+    @test length(interest_cfs) == 1
+    @test only(interest_cfs).amount ≈ expected_interest atol=1e-8
+end
+
+@testitem "process_step! uses FlatFeeBroker interest rates" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(
+        ;
+        broker=FlatFeeBroker(
+            ;
+            fixed=1.0,
+            borrow_by_cash=Dict(:USD=>0.10),
+            lend_by_cash=Dict(:USD=>0.05),
+        ),
+        mode=AccountMode.Margin,
+        base_currency=base_currency,
+    )
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 10_000.0)
+
+    dt0 = DateTime(2026, 1, 1)
+    dt1 = dt0 + Day(1)
+
+    process_step!(acc, dt0) # initialize accrual clocks
+
+    bal_before = cash_balance(acc, usd)
+    process_step!(acc, dt1)
+
+    expected_interest = bal_before * 0.05 * (1 / 365)
+    @test cash_balance(acc, usd) ≈ bal_before + expected_interest atol=1e-8
+
+    interest_cfs = filter(cf -> cf.kind == CashflowKind.LendInterest, acc.cashflows)
+    @test length(interest_cfs) == 1
+    @test only(interest_cfs).amount ≈ expected_interest atol=1e-8
 end
 
 @testitem "process_expiries! uses broker commission for expiry fill" begin

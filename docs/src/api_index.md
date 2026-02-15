@@ -32,7 +32,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 - `init_margin_used`, `init_margin_used_base_ccy`, `maint_margin_used`, `maint_margin_used_base_ccy`
 - `available_funds`, `available_funds_base_ccy`, `excess_liquidity`, `excess_liquidity_base_ccy`
 - `maint_deficit_base_ccy`, `init_deficit_base_ccy`, `is_under_maintenance`
-- `deposit!`, `withdraw!`, `set_interest_rates!`, `accrue_interest!`, `accrue_borrow_fees!`, `apply_funding!`
+- `deposit!`, `withdraw!`, `accrue_interest!`, `accrue_borrow_fees!`, `apply_funding!`
 - `register_instrument!`, `get_position`, `is_exposed_to`, `oid!`, `format_datetime`
 - `liquidate_all!`, `liquidate_to_maintenance!`
 

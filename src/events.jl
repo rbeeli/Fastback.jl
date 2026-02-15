@@ -56,7 +56,6 @@ function advance_time!(
 
     accrue_interest && accrue_interest!(acc, dt)
     accrue_borrow_fees && accrue_borrow_fees!(acc, dt)
-    _sync_broker_state!(acc, dt)
 
     acc.last_event_dt = dt
     return acc
@@ -170,19 +169,17 @@ Timing convention:
 - Interest/borrow-fee accrual runs before new marks and before FX updates.
 - Therefore, accrual over `(t_prev, t]` uses the previously stored balances/prices/FX,
   and updates passed for `dt` apply to subsequent valuation windows.
-- Broker financing-rate sync runs automatically right after accrual.
 
 Ordering:
 1. Enforce non-decreasing time
 2. Accrue interest then borrow fees (`accrue_interest!`, `accrue_borrow_fees!`)
-3. Sync broker state (internal, automatic)
-4. Apply FX updates
-5. Revalue FX caches (`_revalue_fx_caches!`)
-6. Apply mark updates (`update_marks!`)
-7. Apply funding updates (`apply_funding!`)
-8. Process expiries (`process_expiries!`)
-9. Optional maintenance liquidation (runs after expiry/margin release)
-10. Stamp `last_event_dt`
+3. Apply FX updates
+4. Revalue FX caches (`_revalue_fx_caches!`)
+5. Apply mark updates (`update_marks!`)
+6. Apply funding updates (`apply_funding!`)
+7. Process expiries (`process_expiries!`)
+8. Optional maintenance liquidation (runs after expiry/margin release)
+9. Stamp `last_event_dt`
 """
 function process_step!(
     acc::Account{TTime,TBroker},
@@ -202,7 +199,6 @@ function process_step!(
 
     accrue_interest && accrue_interest!(acc, dt)
     accrue_borrow_fees && accrue_borrow_fees!(acc, dt)
-    _sync_broker_state!(acc, dt)
 
     if fx_updates !== nothing
         er = acc.exchange_rates

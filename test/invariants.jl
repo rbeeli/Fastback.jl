@@ -6,16 +6,24 @@ using TestItemRunner
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(
+        ;
+        broker=FlatFeeBroker(
+            ;
+            borrow_by_cash=Dict(:USD=>0.0, :EUR=>0.0),
+            lend_by_cash=Dict(:USD=>0.05, :EUR=>0.02),
+        ),
+        mode=AccountMode.Margin,
+        base_currency=base_currency,
+        margining_style=MarginingStyle.BaseCurrency,
+        exchange_rates=er,
+    )
 
     deposit!(acc, :USD, 10_000.0)
     register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :EUR, 5_000.0)
 
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
-
-    set_interest_rates!(acc, :USD; borrow=0.0, lend=0.05)
-    set_interest_rates!(acc, :EUR; borrow=0.0, lend=0.02)
 
     @test Fastback.check_invariants(acc)
 

@@ -14,6 +14,7 @@ include("position.jl")
 include("exchange_rates.jl")
 include("cashflows.jl")
 include("broker/base.jl")
+include("broker/no_op.jl")
 include("broker/flat_fee.jl")
 include("broker/ibkr_pro_fixed.jl")
 include("broker/binance.jl")
@@ -117,7 +118,6 @@ export quote_cash,
     is_under_maintenance,
     deposit!,
     withdraw!,
-    set_interest_rates!,
     accrue_interest!,
     accrue_borrow_fees!,
     apply_funding!,

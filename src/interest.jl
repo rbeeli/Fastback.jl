@@ -1,38 +1,19 @@
 using Dates
 
 """
-    set_interest_rates!(acc, cash_symbol; borrow, lend)
-
-Registers annualized borrow/lend rates for the given cash symbol.
-Rates are expressed as decimals (e.g. 0.05 for 5%).
-"""
-function set_interest_rates!(
-    acc::Account{TTime},
-    cash_symbol::Symbol;
-    borrow::Real,
-    lend::Real,
-) where {TTime<:Dates.AbstractTime}
-    idx = cash_index(acc.ledger, cash_symbol)
-    @inbounds begin
-        acc.ledger.interest_borrow_rate[idx] = Price(borrow)
-        acc.ledger.interest_lend_rate[idx] = Price(lend)
-    end
-    acc
-end
-
-"""
     accrue_interest!(acc, dt; year_basis=365.0)
 
 Accrues interest on cash balances between the last accrual timestamp and `dt`.
-Positive balances earn `interest_lend_rate`, negative balances pay
-`interest_borrow_rate`. Interest is applied to both balances and equities and
-recorded as `CashflowKind.LendInterest` or `CashflowKind.BorrowInterest`.
+Positive balances earn broker lend rates, negative balances pay broker borrow
+rates. Rates are evaluated at the accrual window start (`last_interest_dt`).
+Interest is applied to both balances and equities and recorded as
+`CashflowKind.LendInterest` or `CashflowKind.BorrowInterest`.
 """
 function accrue_interest!(
-    acc::Account{TTime},
+    acc::Account{TTime,TBroker},
     dt::TTime;
     year_basis::Real=365.0,
-) where {TTime<:Dates.AbstractTime}
+) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     if acc.last_interest_dt == TTime(0)
         acc.last_interest_dt = dt
         return acc
@@ -46,13 +27,17 @@ function accrue_interest!(
     yearfrac = millis / (1000 * 60 * 60 * 24 * Price(year_basis))
 
     cfs = acc.cashflows
-    @inbounds for i in eachindex(acc.ledger.balances)
-        bal = acc.ledger.balances[i]
-        rate = bal >= 0 ? acc.ledger.interest_lend_rate[i] : acc.ledger.interest_borrow_rate[i]
+    rate_dt = acc.last_interest_dt
+    ledger = acc.ledger
+    @inbounds for i in eachindex(ledger.balances)
+        bal = ledger.balances[i]
+        cash_symbol = ledger.cash[i].symbol
+        borrow_rate, lend_rate = broker_interest_rates(acc.broker, cash_symbol, rate_dt, bal)
+        rate = bal >= 0 ? lend_rate : borrow_rate
         interest = bal * rate * yearfrac
         interest == 0.0 && continue
-        acc.ledger.balances[i] += interest
-        acc.ledger.equities[i] += interest
+        ledger.balances[i] += interest
+        ledger.equities[i] += interest
         kind = interest >= 0 ? CashflowKind.LendInterest : CashflowKind.BorrowInterest
         push!(cfs, Cashflow{TTime}(cfid!(acc), dt, kind, i, interest, 0))
     end
