@@ -66,8 +66,8 @@ end
 
 Settles expired futures deterministically at `dt` using the stored position mark.
 Requires positions to have finite marks.
-
-Throws `OrderRejectError` if a synthetic expiry close is rejected by risk checks.
+Expiry fills are close-only and run with `allow_inactive=true`, so they bypass
+incremental-margin rejection by design.
 """
 function process_expiries!(
     acc::Account{TTime,TBroker},
@@ -161,8 +161,8 @@ end
 
 Single-step event driver that advances time, updates FX, marks positions, applies funding,
 handles expiries, and optionally liquidates to maintenance if required.
-
-Throws `OrderRejectError` if expiry settlement or liquidation fills are rejected by risk checks.
+Expiry and liquidation routes issue close-only fills, so those paths do not raise
+`OrderRejectError` from incremental-margin checks.
 Borrow-fee accrual uses per-position clocks; fills also advance/reset those clocks.
 
 Timing convention:

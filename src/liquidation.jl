@@ -2,7 +2,8 @@
     liquidate_all!(acc, dt)
 
 Liquidates all open positions at their current marks, returning the generated trades.
-Throws `OrderRejectError` if a liquidation fill is rejected by risk checks.
+Liquidation fills are close-only and run with `allow_inactive=true`, so they bypass
+incremental-margin rejection by design.
 """
 function liquidate_all!(
     acc::Account{TTime,TBroker},
@@ -34,7 +35,8 @@ end
     liquidate_to_maintenance!(acc, dt; max_steps=10_000)
 
 Liquidates positions until the account is above maintenance requirements.
-Throws `OrderRejectError` if a liquidation fill is rejected by risk checks.
+Liquidation fills are close-only and run with `allow_inactive=true`, so they bypass
+incremental-margin rejection by design.
 
 Per-currency liquidation first targets the worst excess-liquidity currency by
 simulating full closes, then falls back to globally reducing maintenance if no

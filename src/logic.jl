@@ -186,6 +186,7 @@ Accrues borrow fees for any eligible principal-exchange spot short exposure up t
 restarts the borrow-fee clock based on the post-fill position.
 Throws `OrderRejectError` when the fill is rejected (inactive instrument or risk checks).
 Requires bid/ask/last to deterministically value positions and compute margin during fills.
+Risk checks only reject exposure-increasing fills (`inc_qty != 0`).
 
 Commission is broker-driven by default via `acc.broker`.
 """
@@ -372,8 +373,8 @@ If the instrument is expired at `dt` and the position quantity is non-zero,
 this generates a closing order with the provided settlement price and routes
 it through `fill_order!` to record a trade and release margin.
 The caller must provide a finite settlement price (typically the stored mark).
-
-Throws `OrderRejectError` if the synthetic close is rejected by risk checks.
+Expiry closes are close-only (`fill_qty = -pos.quantity`) and call `fill_order!`
+with `allow_inactive=true`, so they bypass incremental-margin rejection by design.
 """
 function settle_expiry!(
     acc::Account{TTime,TBroker},

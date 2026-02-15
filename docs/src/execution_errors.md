@@ -4,7 +4,8 @@ Execution behavior (user-facing):
 
 - `fill_order!` records a `Trade` when the fill is accepted.
 - When a fill is rejected, `fill_order!` throws `OrderRejectError`.
-- The same error can bubble up from expiry settlement or liquidation helpers.
+- `settle_expiry!`, `process_expiries!`, `liquidate_all!`, and `liquidate_to_maintenance!` send close-only synthetic fills (`fill_qty = -position_qty`) with `allow_inactive=true`, so they do not reject on incremental margin checks (`inc_qty == 0`).
+- Those helpers can still throw non-rejection errors (for example non-finite settlement marks or liquidation loop limits).
 
 ```@example
 using Fastback, Dates
