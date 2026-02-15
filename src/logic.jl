@@ -49,7 +49,7 @@
     value_delta_settle = new_value_settle - pos.value_settle
     @inbounds acc.ledger.equities[settle_cash_index] += value_delta_settle
     pos.pnl_quote = new_pnl
-    pos.pnl_settle = pnl_settle_asset(inst, qty, new_value_settle, pos.avg_entry_price_settle)
+    pos.pnl_settle = pnl_settle_principal_exchange(inst, qty, new_value_settle, pos.avg_entry_price_settle)
     pos.value_quote = new_value
     pos.value_settle = new_value_settle
     return
@@ -58,7 +58,7 @@ end
 """
 Updates position valuation and account equity using the latest mark price.
 
-For asset-settled instruments, value equals marked notional.
+For principal-exchange instruments, value equals marked notional.
 For variation-margin instruments, unrealized P&L is settled into cash at each update.
 """
 @inline function update_valuation!(
@@ -127,7 +127,7 @@ Updates valuation and margin for a position using the latest bid/ask/last.
 
 Valuation uses a liquidation-aware mark (bid/ask, mid when flat; mid for VM).
 Margin uses mark prices for variation-margin instruments; otherwise it uses
-liquidation marks in cash accounts and `last` in margin accounts.
+liquidation marks in fully funded accounts and `last` in margined accounts.
 """
 @inline function update_marks!(
     acc::Account,
@@ -182,7 +182,7 @@ end
 
 """
 Fills an order, applying cash/equity/margin deltas and returning the resulting `Trade`.
-Accrues borrow fees for any eligible asset-settled spot short exposure up to `dt` and
+Accrues borrow fees for any eligible principal-exchange spot short exposure up to `dt` and
 restarts the borrow-fee clock based on the post-fill position.
 Throws `OrderRejectError` when the fill is rejected (inactive instrument or risk checks).
 Requires bid/ask/last to deterministically value positions and compute margin during fills.
@@ -263,7 +263,7 @@ Commission is broker-driven by default via `acc.broker`.
     pos.mark_time = dt
     if pos.quantity < 0.0 &&
        inst.contract_kind == ContractKind.Spot &&
-       inst.settlement == SettlementStyle.Asset &&
+       inst.settlement == SettlementStyle.PrincipalExchange &&
        inst.short_borrow_rate > 0.0
         pos.borrow_fee_dt = dt
     else

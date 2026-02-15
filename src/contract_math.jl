@@ -24,7 +24,7 @@ Quote-currency position value contribution under the instrument settlement style
 """
 @inline function calc_value_quote(inst::Instrument, qty, price)::Price
     settlement = inst.settlement
-    if settlement == SettlementStyle.Asset
+    if settlement == SettlementStyle.PrincipalExchange
         return qty * price * inst.multiplier
     elseif settlement == SettlementStyle.VariationMargin
         return zero(Price)
@@ -34,12 +34,12 @@ Quote-currency position value contribution under the instrument settlement style
 end
 
 """
-Settlement-currency unrealized P&L for asset-settled exposure.
+Settlement-currency unrealized P&L for principal-exchange exposure.
 
 Uses settlement value minus the settlement-entry notional basis so FX translation
 of open principal is reflected in unrealized settlement P&L.
 """
-@inline function pnl_settle_asset(
+@inline function pnl_settle_principal_exchange(
     inst::Instrument,
     qty,
     value_settle::Price,
@@ -50,9 +50,9 @@ of open principal is reflected in unrealized settlement P&L.
 end
 
 """
-Quote-currency cash delta for an asset-settled fill.
+Quote-currency cash delta for a principal-exchange fill.
 """
-@inline function cash_delta_quote_asset(
+@inline function cash_delta_quote_principal_exchange(
     inst::Instrument,
     fill_qty::Quantity,
     fill_price::Price,
@@ -81,10 +81,10 @@ Return the reference price used for margin requirements.
 
 - `SettlementStyle.VariationMargin`: always uses the mark price so margin checks
   stay aligned with variation-margin settlement and valuation.
-- `AccountMode.Cash`: uses liquidation-aware marks so full-notional requirements
+- `AccountFunding.FullyFunded`: uses liquidation-aware marks so full-notional requirements
   stay aligned with equity under bid/ask spreads.
-- Other margin-account instruments: use last-traded prices to avoid
-  side-dependent bias for asset settlement.
+- Other margined-account instruments: use last-traded prices to avoid
+  side-dependent bias for principal-exchange settlement.
 """
 @inline function margin_reference_price(
     acc::Account,
@@ -95,57 +95,57 @@ Return the reference price used for margin requirements.
     if inst.settlement == SettlementStyle.VariationMargin
         return mark_price
     end
-    acc.mode == AccountMode.Cash ? mark_price : last_price
+    acc.funding == AccountFunding.FullyFunded ? mark_price : last_price
 end
 
 """
 Calculates the initial margin requirement in the instrument margin currency.
 
-`AccountMode.Cash` forces a fully funded requirement (full notional), evaluated
+`AccountFunding.FullyFunded` forces a fully funded requirement (full notional), evaluated
 at the caller-provided margin reference price.
 """
 @inline function margin_init_margin_ccy(acc::Account, inst::Instrument, qty, price)::Price
     qty == 0 && return zero(Price)
-    if acc.mode == AccountMode.Cash
+    if acc.funding == AccountFunding.FullyFunded
         quote_req = abs(qty) * abs(price) * inst.multiplier
         return to_margin(acc, inst, quote_req)
     end
-    mode = inst.margin_mode
-    if mode == MarginMode.None
+    requirement = inst.margin_requirement
+    if requirement == MarginRequirement.Disabled
         return zero(Price)
-    elseif mode == MarginMode.PercentNotional
+    elseif requirement == MarginRequirement.PercentNotional
         rate = qty > 0 ? inst.margin_init_long : inst.margin_init_short
         quote_req = abs(qty) * abs(price) * inst.multiplier * rate
         return to_margin(acc, inst, quote_req)
-    elseif mode == MarginMode.FixedPerContract
+    elseif requirement == MarginRequirement.FixedPerContract
         per_contract = qty > 0 ? inst.margin_init_long : inst.margin_init_short
         return abs(qty) * per_contract
     end
-    throw(ArgumentError("Unsupported margin_mode $(mode) for instrument $(inst.symbol)."))
+    throw(ArgumentError("Unsupported margin_requirement $(requirement) for instrument $(inst.symbol)."))
 end
 
 """
 Calculates the maintenance margin requirement in the instrument margin currency.
 
-`AccountMode.Cash` forces a fully funded requirement (full notional), evaluated
+`AccountFunding.FullyFunded` forces a fully funded requirement (full notional), evaluated
 at the caller-provided margin reference price.
 """
 @inline function margin_maint_margin_ccy(acc::Account, inst::Instrument, qty, price)::Price
     qty == 0 && return zero(Price)
-    if acc.mode == AccountMode.Cash
+    if acc.funding == AccountFunding.FullyFunded
         quote_req = abs(qty) * abs(price) * inst.multiplier
         return to_margin(acc, inst, quote_req)
     end
-    mode = inst.margin_mode
-    if mode == MarginMode.None
+    requirement = inst.margin_requirement
+    if requirement == MarginRequirement.Disabled
         return zero(Price)
-    elseif mode == MarginMode.PercentNotional
+    elseif requirement == MarginRequirement.PercentNotional
         rate = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
         quote_req = abs(qty) * abs(price) * inst.multiplier * rate
         return to_margin(acc, inst, quote_req)
-    elseif mode == MarginMode.FixedPerContract
+    elseif requirement == MarginRequirement.FixedPerContract
         per_contract = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
         return abs(qty) * per_contract
     end
-    throw(ArgumentError("Unsupported margin_mode $(mode) for instrument $(inst.symbol)."))
+    throw(ArgumentError("Unsupported margin_requirement $(requirement) for instrument $(inst.symbol)."))
 end

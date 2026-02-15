@@ -98,7 +98,7 @@ Revalue cached settlement and margin-currency amounts after FX updates without
 touching marks or balances.
 
 Adjusts position `value_settle`/`pnl_settle` for non-VM instruments and updates
-margin usage for FX-sensitive requirements (percent-notional, and all cash-mode
+margin usage for FX-sensitive requirements (percent-notional, and all fully-funded
 requirements) using settlement-aware margin reference prices.
 """
 @inline function _revalue_fx_caches!(acc::Account)
@@ -110,7 +110,7 @@ requirements) using settlement-aware margin reference prices.
         quote_settle_fx = quote_idx != settle_idx
         quote_margin_fx = quote_idx != margin_idx
         margin_fx_sensitive = quote_margin_fx && pos.quantity != 0.0 &&
-                              (acc.mode == AccountMode.Cash || inst.margin_mode == MarginMode.PercentNotional)
+                              (acc.funding == AccountFunding.FullyFunded || inst.margin_requirement == MarginRequirement.PercentNotional)
         quote_settle_fx || margin_fx_sensitive || continue
 
         if quote_settle_fx && inst.settlement != SettlementStyle.VariationMargin
@@ -122,7 +122,7 @@ requirements) using settlement-aware margin reference prices.
             end
             pos.value_settle = new_value_settle
 
-            pos.pnl_settle = pnl_settle_asset(inst, pos.quantity, new_value_settle, pos.avg_entry_price_settle)
+            pos.pnl_settle = pnl_settle_principal_exchange(inst, pos.quantity, new_value_settle, pos.avg_entry_price_settle)
         end
 
         if margin_fx_sensitive

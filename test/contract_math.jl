@@ -1,11 +1,11 @@
 using Dates
 using TestItemRunner
 
-@testitem "Asset settlement opens: equity hit is commission only" begin
+@testitem "Principal-exchange settlement opens: equity hit is commission only" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.25))
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.25))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -15,9 +15,9 @@ using TestItemRunner
             Symbol("AST/USD"),
             :AST,
             :USD;
-            settlement=SettlementStyle.Asset,
+            settlement=SettlementStyle.PrincipalExchange,
             contract_kind=ContractKind.Spot,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -44,11 +44,11 @@ using TestItemRunner
     @test pos.pnl_quote ≈ 0.0 atol=1e-12
 end
 
-@testitem "Asset-settled equity tracks marked notional" begin
+@testitem "Principal-exchange equity tracks marked notional" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -58,8 +58,8 @@ end
             Symbol("CSH/USD"),
             :CSH,
             :USD;
-            settlement=SettlementStyle.Asset,
-            margin_mode=MarginMode.PercentNotional,
+            settlement=SettlementStyle.PrincipalExchange,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -94,7 +94,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
@@ -106,7 +106,7 @@ end
             :USD;
             contract_kind=ContractKind.Perpetual,
             settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -139,16 +139,16 @@ end
     @test pos.avg_settle_price ≈ 105.0 atol=1e-12
 end
 
-@testitem "cash_delta_quote_asset uses principal plus commission" begin
+@testitem "cash_delta_quote_principal_exchange uses principal plus commission" begin
     using Test, Fastback
 
-    inst = Instrument(Symbol("A/USD"), :A, :USD; margin_mode=MarginMode.PercentNotional, multiplier=2.0)
+    inst = Instrument(Symbol("A/USD"), :A, :USD; margin_requirement=MarginRequirement.PercentNotional, multiplier=2.0)
     fill_qty = 3.0
     fill_price = 5.5
     commission = 1.2
 
     expected = -(fill_qty * fill_price * inst.multiplier) - commission
-    @test Fastback.cash_delta_quote_asset(inst, fill_qty, fill_price, commission) ≈ expected atol=1e-12
+    @test Fastback.cash_delta_quote_principal_exchange(inst, fill_qty, fill_price, commission) ≈ expected atol=1e-12
 end
 
 @testitem "cash_delta_quote_vm uses mark and exposure increase" begin
@@ -191,7 +191,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc_margin = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc_margin = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc_margin, :USD, 0.0)
     inst_margin = register_instrument!(acc_margin, Instrument(
         Symbol("NEG/MARGIN"),
@@ -199,7 +199,7 @@ end
         :USD;
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.2,
         margin_init_short=0.3,
         margin_maint_long=0.1,
@@ -216,7 +216,7 @@ end
     @test margin_maint_margin_ccy(acc_margin, inst_margin, qty_short, mark) ≈ abs(qty_short) * abs(mark) * inst_margin.multiplier * inst_margin.margin_maint_short
 
     base_currency=CashSpec(:USD)
-    acc_cash = Account(; broker=NoOpBroker(), mode=AccountMode.Cash, base_currency=base_currency)
+    acc_cash = Account(; broker=NoOpBroker(), funding=AccountFunding.FullyFunded, base_currency=base_currency)
     deposit!(acc_cash, :USD, 0.0)
     inst_cash = register_instrument!(acc_cash, spot_instrument(
         Symbol("NEG/CASH"),
@@ -234,7 +234,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     inst = register_instrument!(acc, Instrument(
@@ -243,7 +243,7 @@ end
         :USD;
         contract_kind=ContractKind.Future,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,

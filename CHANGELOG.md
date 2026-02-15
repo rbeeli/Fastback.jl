@@ -2,12 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.5.0] - 2026-01-31
+## [0.5.0] - 2026-02-15
 
 ### Breaking changes ⚠️
 
-- Complete rework of the API with lots of renamings and restructuring
-- Introduction of margin- and futures trading support as first-class concepts
+- Complete rework of the API with lots of renamings, restructuring and new features.
+- Introduction of margin- and futures trading support as first-class concepts.
+- Introduction of broker concept.
 
 ## [0.4.0] - 2025-09-26
 

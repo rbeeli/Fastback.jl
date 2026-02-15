@@ -4,7 +4,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 1_000.0)
     inst = register_instrument!(acc, spot_instrument(Symbol("ABC/USD"), :ABC, :USD))
 
@@ -18,13 +18,13 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 1_000.0)
     inst = register_instrument!(acc, Instrument(
         Symbol("EXP/USD"),
         :EXP,
         :USD;
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,

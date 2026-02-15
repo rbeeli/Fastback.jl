@@ -4,15 +4,15 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 500.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("SPOT/USD"),
         :SPOT,
         :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
         margin_maint_long=0.25,
@@ -38,7 +38,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency, margin_aggregation=MarginAggregation.PerCurrency, exchange_rates=er)
 
     deposit!(acc, :USD, 10_000.0)
     register_cash_asset!(acc, CashSpec(:EUR))
@@ -51,8 +51,8 @@ end
         :PER,
         :EUR;
         settle_symbol=:EUR,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.3,
         margin_init_short=0.3,
         margin_maint_long=0.2,

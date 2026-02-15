@@ -18,7 +18,7 @@ end
 
     ledger = Fastback.CashLedger()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(pct=0.001))
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(pct=0.001))
     deposit!(acc, :USD, 10_000.0)
     DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0
@@ -32,7 +32,7 @@ end
 
     ledger = Fastback.CashLedger()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
     DUMMY = register_instrument!(acc, spot_instrument(Symbol("DUMMY/USD"), :DUMMY, :USD))
     price = 1000.0
@@ -50,7 +50,7 @@ end
     er = ExchangeRates()
     ledger = Fastback.CashLedger()
     base_currency=CashSpec(:EUR)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er, broker=FlatFeeBroker(fixed=2.0))
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, exchange_rates=er, broker=FlatFeeBroker(fixed=2.0))
     register_cash_asset!(acc, CashSpec(:USD; digits=4))
     deposit!(acc, :USD, 5_000.0)
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
@@ -62,8 +62,8 @@ end
             :FX,
             :EUR;
             settle_symbol=:USD,
-            settlement=SettlementStyle.Asset,
-            margin_mode=MarginMode.PercentNotional,
+            settlement=SettlementStyle.PrincipalExchange,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.0,
             margin_init_short=0.0,
             margin_maint_long=0.0,

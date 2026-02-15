@@ -6,11 +6,11 @@ using InteractiveUtils
 function run_backtest()
     # create trading account
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 100_000.0)
 
     # define instrument
-    DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD; margin_mode=MarginMode.PercentNotional)
+    DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD; margin_requirement=MarginRequirement.PercentNotional)
     register_instrument!(acc, DUMMY)
 
     dt = DateTime(2018, 1, 2, 9, 30, 0)
@@ -35,11 +35,11 @@ ProfileView.@profview map(i -> run_backtest(), 1:10)
 
 # create trading account
 const base_currency=CashSpec(:USD)
-const acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+const acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
 deposit!(acc, :USD, 100_000.0)
 
 # define instrument
-const DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD; margin_mode=MarginMode.PercentNotional)
+const DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD; margin_requirement=MarginRequirement.PercentNotional)
 register_instrument!(acc, DUMMY)
 
 # get position for instrument

@@ -7,7 +7,7 @@ using TestItemRunner
     acc = Account(
         ;
         broker=FlatFeeBroker(; borrow_by_cash=Dict(:USD=>0.10), lend_by_cash=Dict(:USD=>0.05)),
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=base_currency,
     )
     usd = cash_asset(acc, :USD)
@@ -19,8 +19,8 @@ using TestItemRunner
             Symbol("SHRT/USD"),
             :SHRT,
             :USD;
-            settlement=SettlementStyle.Asset,
-            margin_mode=MarginMode.PercentNotional,
+            settlement=SettlementStyle.PrincipalExchange,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -69,9 +69,9 @@ end
             borrow_by_cash=Dict(:USD=>0.10, :CHF=>0.0),
             lend_by_cash=Dict(:USD=>0.0, :CHF=>0.03),
         ),
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=base_currency,
-        margining_style=MarginingStyle.BaseCurrency,
+        margin_aggregation=MarginAggregation.BaseCurrency,
         exchange_rates=er,
     )
 
@@ -90,9 +90,9 @@ end
         :SPOTORD,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.PrincipalExchange,
         contract_kind=ContractKind.Spot,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_maint_long=0.1,
         margin_init_short=0.1,
@@ -106,7 +106,7 @@ end
         :USD;
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_maint_long=0.1,
         margin_init_short=0.1,
@@ -120,7 +120,7 @@ end
         :USD;
         contract_kind=ContractKind.Future,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.5,
         margin_init_short=0.5,
@@ -204,7 +204,7 @@ end
     acc = Account(
         ;
         broker=FlatFeeBroker(; borrow_by_cash=Dict(:USD=>0.0), lend_by_cash=Dict(:USD=>0.10)),
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=base_currency,
     )
     usd = cash_asset(acc, :USD)
@@ -216,7 +216,7 @@ end
         :USD;
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_maint_long=0.1,
         margin_init_short=0.1,
@@ -258,7 +258,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency, exchange_rates=er)
 
     usd = cash_asset(acc, :USD)
     chf = register_cash_asset!(acc, CashSpec(:CHF))
@@ -271,9 +271,9 @@ end
         :FXREVAL,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.PrincipalExchange,
         contract_kind=ContractKind.Spot,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_maint_long=0.05,
         margin_init_short=0.1,
@@ -309,12 +309,12 @@ end
     @test init_margin_used(acc, chf) < init_before
 end
 
-@testitem "process_step! revalues cash-mode margin on FX updates using liquidation marks" begin
+@testitem "process_step! revalues fully-funded margin on FX updates using liquidation marks" begin
     using Test, Fastback, Dates
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Cash, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.FullyFunded, base_currency=base_currency, exchange_rates=er)
 
     usd = cash_asset(acc, :USD)
     eur = register_cash_asset!(acc, CashSpec(:EUR))
@@ -329,9 +329,9 @@ end
         :EUR;
         settle_symbol=:EUR,
         margin_symbol=:USD,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.PrincipalExchange,
         contract_kind=ContractKind.Spot,
-        margin_mode=MarginMode.FixedPerContract,
+        margin_requirement=MarginRequirement.FixedPerContract,
         margin_init_long=1.0,
         margin_init_short=1.0,
         margin_maint_long=1.0,
@@ -379,7 +379,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 50_000.0)
 
@@ -389,8 +389,8 @@ end
             Symbol("BORROW/USD"),
             :BORROW,
             :USD;
-            settlement=SettlementStyle.Asset,
-            margin_mode=MarginMode.PercentNotional,
+            settlement=SettlementStyle.PrincipalExchange,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.1,
@@ -430,7 +430,7 @@ end
     function setup_short_account()
         er = ExchangeRates()
         base_currency=CashSpec(:CHF)
-        acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+        acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency, exchange_rates=er)
         register_cash_asset!(acc, CashSpec(:USD))
         deposit!(acc, :USD, 0.0)
         deposit!(acc, :CHF, 50_000.0)
@@ -444,8 +444,8 @@ end
                 :BORROWFX,
                 :USD;
                 settle_symbol=:CHF,
-                settlement=SettlementStyle.Asset,
-                margin_mode=MarginMode.PercentNotional,
+                settlement=SettlementStyle.PrincipalExchange,
+                margin_requirement=MarginRequirement.PercentNotional,
                 margin_init_long=0.1,
                 margin_init_short=0.1,
                 margin_maint_long=0.1,
@@ -490,7 +490,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -513,7 +513,7 @@ end
             borrow_by_cash=Dict(:USD=>0.10),
             lend_by_cash=Dict(:USD=>0.05),
         ),
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=base_currency,
     )
     usd = cash_asset(acc, :USD)
@@ -547,7 +547,7 @@ end
             borrow_by_cash=Dict(:USD=>0.10),
             lend_by_cash=Dict(:USD=>0.05),
         ),
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=base_currency,
     )
     usd = cash_asset(acc, :USD)
@@ -574,7 +574,7 @@ end
 
     base_currency=CashSpec(:USD)
     commission_pct = 0.01
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(pct=commission_pct))
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(pct=commission_pct))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
@@ -589,7 +589,7 @@ end
             :USD;
             contract_kind=ContractKind.Future,
             settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -613,7 +613,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 20_000.0)
 
@@ -628,7 +628,7 @@ end
             :USD;
             contract_kind=ContractKind.Future,
             settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -669,7 +669,7 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10.0)
 
@@ -679,7 +679,7 @@ end
         :USD;
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,

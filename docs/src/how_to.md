@@ -11,7 +11,7 @@ using Dates
 er = ExchangeRates()
 acc = Account(;
     broker=FlatFeeBroker(pct=0.001),
-    mode=AccountMode.Margin,
+    funding=AccountFunding.Margined,
     base_currency=CashSpec(:USD),
     exchange_rates=er,
 )
@@ -22,7 +22,7 @@ deposit!(acc, eur, 5_000.0)
 
 inst = register_instrument!(acc, perpetual_instrument(
     :BTCUSD, :BTC, :USD;
-    margin_mode=MarginMode.PercentNotional,
+    margin_requirement=MarginRequirement.PercentNotional,
     margin_init_long=0.10,
     margin_init_short=0.10,
     margin_maint_long=0.05,
@@ -77,7 +77,7 @@ is_under_maintenance(acc) && liquidate_to_maintenance!(acc, dt)
 er = ExchangeRates()
 acc = Account(;
     broker=FlatFeeBroker(pct=0.001),
-    mode=AccountMode.Margin,
+    funding=AccountFunding.Margined,
     base_currency=CashSpec(:USD),
     exchange_rates=er,
 )

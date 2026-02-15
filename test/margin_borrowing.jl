@@ -1,19 +1,19 @@
 using Dates
 using TestItemRunner
 
-@testitem "margin account allows exposure on margin-enabled instrument" begin
+@testitem "margined account allows exposure on margin-enabled instrument" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 6_000.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("MARGINABLE/USD"),
         :MARGINABLE,
         :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
         margin_maint_long=0.25,
@@ -36,14 +36,14 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 6_000.0)
 
     inst = Instrument(
         Symbol("CASHONLY/USD"),
         :CASHONLY,
         :USD;
-        margin_mode=MarginMode.None,
+        margin_requirement=MarginRequirement.Disabled,
     )
 
     @test_throws ArgumentError register_instrument!(acc, inst)
@@ -53,15 +53,15 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("DERISK/USD"),
         :DERISK,
         :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
         margin_maint_long=0.5,

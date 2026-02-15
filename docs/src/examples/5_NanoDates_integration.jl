@@ -22,7 +22,7 @@ dts = [start_dt + Hour(i) for i in 0:N-1]
 ## create trading account with $10'000 start capital and NanoDate support (margin-enabled for shorting)
 acc = Account(;
     time_type=NanoDate,
-    mode=AccountMode.Margin,
+    funding=AccountFunding.Margined,
     base_currency=CashSpec(:USD),
     broker=FlatFeeBroker(; pct=0.001),
 )

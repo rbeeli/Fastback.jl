@@ -18,7 +18,7 @@ Create `Account` first, then register additional cash assets on the account:
 er = ExchangeRates()
 account = Account(;
     broker=FlatFeeBroker(pct=0.001),
-    mode=AccountMode.Margin,
+    funding=AccountFunding.Margined,
     base_currency=CashSpec(:USD),
     exchange_rates=er,
 )

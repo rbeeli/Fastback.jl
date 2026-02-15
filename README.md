@@ -24,9 +24,9 @@ using Fastback
 using Dates
 
 acc = Account(;
-    mode=AccountMode.Cash,
+    funding=AccountFunding.FullyFunded,
     base_currency=CashSpec(:USD),
-    broker=FlatFeeBrokerProfile(pct=0.001),
+    broker=FlatFeeBroker(pct=0.001),
 )
 usd = cash_asset(acc, :USD)
 deposit!(acc, usd, 10_000.0)
@@ -63,12 +63,12 @@ Fastback.plot_equity(equity_data)
 ## Features
 
 - Event-driven accounting engine with explicit event processing (`process_step!`) for marks, FX, funding, expiries, and optional liquidation
-- Instruments: spot (including spot-on-margin), perpetuals, and futures with lifecycle guards (start/expiry), optional contract multipliers, and settlement styles (Asset/Variation Margin)
-- Account modes: cash or margin; per-currency or base-currency margining; percent-notional or fixed-per-contract margin requirements
+- Instruments: spot (including spot-on-margin), perpetuals, and futures with lifecycle guards (start/expiry), optional contract multipliers, and settlement styles (`PrincipalExchange`/`VariationMargin`)
+- Funding policies: fully funded or margined; per-currency or base-currency margin aggregation; percent-notional or fixed-per-contract margin requirements
 - Broker profiles for commissions/financing (e.g. flat-fee, IBKR-style, Binance-style)
 - Multi-currency cash book with FX conversion helpers and base-currency metrics
 - Execution & risk: broker-driven commissions, partial fills, liquidation-aware marking (bid/ask/last), and initial/maintenance margin checks
-- Netted positions with weighted-average cost, realized/unrealized P&L, and a cashflow ledger + accrual helpers (lend/borrow interest, borrow fees on asset-settled spot shorts, funding, variation margin)
+- Netted positions with weighted-average cost, realized/unrealized P&L, and a cashflow ledger + accrual helpers (lend/borrow interest, borrow fees on principal-exchange spot shorts, funding, variation margin)
 - Expiry handling for futures (auto-close via synthetic close) plus deterministic liquidation helpers
 - Collectors (periodic, predicate, drawdown, min/max) and Tables.jl views for balances, equity, positions, trades, cashflows; pretty-print helpers
 - Batch backtesting and parameter sweeps with threaded runner and ETA logging

@@ -106,12 +106,12 @@ end
     @test Fastback.calc_exposure_increase_quantity(0, 0) == 0
 end
 
-@testitem "margin ccy rejects invalid margin mode" begin
+@testitem "margin ccy rejects invalid margin requirement" begin
     using Test, Fastback
 
-    bad_mode = Core.Intrinsics.bitcast(MarginMode.T, Int8(7))
+    bad_requirement = Core.Intrinsics.bitcast(MarginRequirement.T, Int8(7))
     inst = Instrument(Symbol("BAD/USD"), :BAD, :USD;
-        margin_mode=bad_mode,
+        margin_requirement=bad_requirement,
         margin_init_long=1.0,
         margin_init_short=1.0,
         margin_maint_long=1.0,
@@ -119,7 +119,7 @@ end
     )
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     register_instrument!(acc, inst)
 
     @test_throws ArgumentError margin_init_margin_ccy(acc, inst, 1.0, 10.0)
@@ -130,13 +130,13 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
     inst = register_instrument!(acc, Instrument(
         Symbol("MK/USD"),
         :MK,
         :USD;
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.0,
         margin_init_short=0.0,
         margin_maint_long=0.0,

@@ -3,12 +3,12 @@ using TestItemRunner
 @testitem "roll_position! closes old future and opens next with Roll reason" begin
     using Test, Fastback, Dates
 
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=CashSpec(:USD))
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
     deposit!(acc, :USD, 100_000.0)
 
     front = register_instrument!(acc, future_instrument(
         :MESH25, :MES, :USD;
-        margin_mode=MarginMode.FixedPerContract,
+        margin_requirement=MarginRequirement.FixedPerContract,
         margin_init_long=2_800.0,
         margin_init_short=2_800.0,
         margin_maint_long=2_421.0,
@@ -18,7 +18,7 @@ using TestItemRunner
     ))
     next = register_instrument!(acc, future_instrument(
         :MESM25, :MES, :USD;
-        margin_mode=MarginMode.FixedPerContract,
+        margin_requirement=MarginRequirement.FixedPerContract,
         margin_init_long=2_800.0,
         margin_init_short=2_800.0,
         margin_maint_long=2_421.0,
@@ -71,12 +71,12 @@ end
 @testitem "roll_position! is a no-op when source instrument is flat" begin
     using Test, Fastback, Dates
 
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=CashSpec(:USD))
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
     deposit!(acc, :USD, 10_000.0)
 
     front = register_instrument!(acc, future_instrument(
         :MESH25, :MES, :USD;
-        margin_mode=MarginMode.FixedPerContract,
+        margin_requirement=MarginRequirement.FixedPerContract,
         margin_init_long=2_800.0,
         margin_init_short=2_800.0,
         margin_maint_long=2_421.0,
@@ -86,7 +86,7 @@ end
     ))
     next = register_instrument!(acc, future_instrument(
         :MESM25, :MES, :USD;
-        margin_mode=MarginMode.FixedPerContract,
+        margin_requirement=MarginRequirement.FixedPerContract,
         margin_init_long=2_800.0,
         margin_init_short=2_800.0,
         margin_maint_long=2_421.0,

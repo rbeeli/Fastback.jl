@@ -42,7 +42,7 @@ describe(df)
 
 ## create trading account with $10'000 start capital
 acc = Account(;
-    mode=AccountMode.Margin,
+    funding=AccountFunding.Margined,
     base_currency=CashSpec(:USD),
     broker=FlatFeeBroker(; pct=0.001),
 );

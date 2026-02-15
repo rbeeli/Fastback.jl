@@ -5,13 +5,13 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     inst = Instrument(Symbol("SPOT/VM"), :SPOT, :USD;
         contract_kind=ContractKind.Spot,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
     )
 
     @test_throws ArgumentError register_instrument!(acc, inst)
@@ -21,26 +21,26 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     no_margin = Instrument(Symbol("CASH/NOMRG"), :CASH, :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.None,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.Disabled,
     )
     @test_throws ArgumentError register_instrument!(acc, no_margin)
 end
 
-@testitem "MarginMode.None is rejected for spot instruments" begin
+@testitem "MarginRequirement.Disabled is rejected for spot instruments" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     nonzero_margin = Instrument(Symbol("NOMRG/RATES"), :NOMRG, :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.None,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.Disabled,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -54,18 +54,18 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     bad_missing = Instrument(Symbol("MISS/RATES"), :MISS, :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
     )
     @test_throws ArgumentError register_instrument!(acc, bad_missing)
 
     bad_negative = Instrument(Symbol("NEG/RATES"), :NEG, :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=-0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -74,8 +74,8 @@ end
     @test_throws ArgumentError register_instrument!(acc, bad_negative)
 
     bad_non_finite = Instrument(Symbol("NAN/RATES"), :NAN, :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=NaN,
         margin_init_short=NaN,
         margin_maint_long=0.05,
@@ -84,8 +84,8 @@ end
     @test_throws ArgumentError register_instrument!(acc, bad_non_finite)
 
     bad_ordering = Instrument(Symbol("ORDER/RATES"), :ORDER, :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.2,
@@ -94,8 +94,8 @@ end
     @test_throws ArgumentError register_instrument!(acc, bad_ordering)
 
     bad_fixed_ordering = Instrument(Symbol("FIX/ORDER"), :FIX, :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.FixedPerContract,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.FixedPerContract,
         margin_init_long=20.0,
         margin_maint_long=21.0,
         margin_init_short=10.0,
@@ -104,15 +104,15 @@ end
     @test_throws ArgumentError register_instrument!(acc, bad_fixed_ordering)
 
     @test_throws ArgumentError Instrument(Symbol("SYM/BAD"), :SYM, :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.2,
         margin_maint_long=0.1,
     )
 
     good_fixed = Instrument(Symbol("FIX/OK"), :FIXOK, :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.FixedPerContract,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.FixedPerContract,
         margin_init_long=20.0,
         margin_maint_long=15.0,
         margin_init_short=10.0,
@@ -137,13 +137,13 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     bad_settle = Instrument(Symbol("PERP/BADSETTLE"), :PERP, :USD;
         contract_kind=ContractKind.Perpetual,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -154,7 +154,7 @@ end
     bad_expiry = Instrument(Symbol("PERP/EXPIRY"), :PERP, :USD;
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -172,7 +172,7 @@ end
     good = Instrument(Symbol("PERP/OK"), :PERP, :USD;
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -185,13 +185,13 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     bad_settle = Instrument(Symbol("FUT/BADSETTLE"), :FUT, :USD;
         contract_kind=ContractKind.Future,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -203,7 +203,7 @@ end
     bad_expiry = Instrument(Symbol("FUT/NOEXP"), :FUT, :USD;
         contract_kind=ContractKind.Future,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -221,7 +221,7 @@ end
     good = Instrument(Symbol("FUT/OK"), :FUT, :USD;
         contract_kind=ContractKind.Future,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -231,16 +231,16 @@ end
     register_instrument!(acc, good)
 end
 
-@testitem "is_margined_spot detects asset-settled spot" begin
+@testitem "is_margined_spot detects principal-exchange spot" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
     spot_margin = Instrument(Symbol("SPOT/MGN"), :SPOT, :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_maint_long=0.05,
         margin_init_short=0.1,
@@ -255,12 +255,12 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     register_cash_asset!(acc, CashSpec(:EUR))
 
     inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
         settle_symbol=:EUR,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -279,11 +279,11 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
 
     inst = Instrument(Symbol("BTC/USD.EUR"), :BTC, :USD;
         settle_symbol=:EUR,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -297,13 +297,13 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     register_cash_asset!(acc, CashSpec(:EUR))
 
     inst = Instrument(Symbol("BTC/USD.GBP"), :BTC, :USD;
         settle_symbol=:USD,
         margin_symbol=:GBP,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,

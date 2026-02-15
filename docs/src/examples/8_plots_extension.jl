@@ -13,7 +13,7 @@ using Statistics
 # Simple backtest to generate plot data
 
 acc = Account(;
-    mode=AccountMode.Margin,
+    funding=AccountFunding.Margined,
     base_currency=CashSpec(:USDT),
     broker=BinanceBroker(; maker_derivatives=0.0004, taker_derivatives=0.0004),
 );
@@ -21,7 +21,7 @@ usdt = cash_asset(acc, :USDT)
 deposit!(acc, :USDT, 10_000.0);
 perp = register_instrument!(acc, perpetual_instrument(
     Symbol("BTCUSDT-PERP"), :BTC, :USDT;
-    margin_mode=MarginMode.PercentNotional,
+    margin_requirement=MarginRequirement.PercentNotional,
     margin_init_long=0.10,
     margin_init_short=0.10,
     margin_maint_long=0.05,

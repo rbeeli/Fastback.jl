@@ -8,7 +8,7 @@ using TestItemRunner
     acc = Account(
         ;
         broker=FlatFeeBroker(; borrow_by_cash=Dict(:USD=>0.10), lend_by_cash=Dict(:USD=>0.05)),
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=base_currency,
     )
     usd = cash_asset(acc, :USD)
@@ -41,7 +41,7 @@ end
     acc = Account(
         ;
         broker=FlatFeeBroker(; borrow_by_cash=Dict(:USD=>0.10), lend_by_cash=Dict(:USD=>0.05)),
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=base_currency,
     )
     usd = cash_asset(acc, :USD)

@@ -30,9 +30,9 @@ first(df, 5)
 
 # ---------------------------------------------------------
 
-## create margin account funded in USDT
+## create a margined account funded in USDT
 acc = Account(;
-    mode=AccountMode.Margin,
+    funding=AccountFunding.Margined,
     base_currency=CashSpec(:USDT),
     broker=BinanceBroker(; maker_derivatives=0.0004, taker_derivatives=0.0004),
 );
@@ -42,7 +42,7 @@ deposit!(acc, :USDT, 10_000.0);
 ## register a USD-M perpetual (variation margin, cash-settled)
 perp = register_instrument!(acc, perpetual_instrument(
     Symbol("BTCUSDT-PERP"), :BTC, :USDT;
-    margin_mode=MarginMode.PercentNotional,
+    margin_requirement=MarginRequirement.PercentNotional,
     margin_init_long=0.10,
     margin_init_short=0.10,
     margin_maint_long=0.05,

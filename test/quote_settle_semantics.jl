@@ -5,7 +5,7 @@ using TestItemRunner
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency, margin_aggregation=MarginAggregation.BaseCurrency, exchange_rates=er)
 
     deposit!(acc, :USD, 10_000.0)
     register_cash_asset!(acc, CashSpec(:EUR))
@@ -19,8 +19,8 @@ using TestItemRunner
         :TEST,
         :EUR;
         settle_symbol=:USD,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.0,
         margin_init_short=0.0,
         margin_maint_long=0.0,
@@ -48,12 +48,12 @@ using TestItemRunner
     @test eq_after - eq_before ≈ expected_delta_settle atol = 1e-10
 end
 
-@testitem "Asset settlement pnl_settle reflects principal FX translation" begin
+@testitem "Principal-exchange settlement pnl_settle reflects principal FX translation" begin
     using Test, Fastback, Dates
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency, margin_aggregation=MarginAggregation.BaseCurrency, exchange_rates=er)
 
     register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :USD, 0.0)
@@ -65,8 +65,8 @@ end
         :PNLSET,
         :EUR;
         settle_symbol=:USD,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.0,
         margin_init_short=0.0,
         margin_maint_long=0.0,

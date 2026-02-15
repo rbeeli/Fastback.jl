@@ -2,13 +2,13 @@
 Position state tracked per instrument (see currency/unit semantics note in `contract_math.jl`).
 
 - `avg_entry_price` / `avg_settle_price`: `price` in quote currency
-- `avg_entry_price_settle`: `price` translated into settlement currency at fill-time FX (used for realized settle P&L on asset settlement)
+- `avg_entry_price_settle`: `price` translated into settlement currency at fill-time FX (used for realized settle P&L on principal-exchange settlement)
 - `quantity`: `qty`
-- `pnl_quote`, `pnl_settle`, `value_quote`, `value_settle`: cached valuation in quote/settlement currencies (`pnl_settle` for asset settlement includes FX translation versus `avg_entry_price_settle`)
+- `pnl_quote`, `pnl_settle`, `value_quote`, `value_settle`: cached valuation in quote/settlement currencies (`pnl_settle` for principal-exchange settlement includes FX translation versus `avg_entry_price_settle`)
 - `init_margin_settle`, `maint_margin_settle`: margin currency (defaults to settlement)
 - `mark_price`: last valuation (liquidation) price at `mark_time`
 - `last_price`: last traded price (used for non-VM margin calculations)
-- `borrow_fee_dt`: last borrow-fee accrual timestamp for asset-settled spot shorts
+- `borrow_fee_dt`: last borrow-fee accrual timestamp for principal-exchange spot shorts
 """
 mutable struct Position{TTime<:Dates.AbstractTime}
     const index::Int                # unique index for each position starting from 1 (used for array indexing)
@@ -104,7 +104,7 @@ Calculates position P&L in local currency on the **settlement basis**.
 
 - Uses `avg_settle_price` (not the entry basis) so that variation-margin positions
   compute P&L since the last settlement price.
-- For `SettlementStyle.Asset`, this is the usual unrealized P&L.
+- For `SettlementStyle.PrincipalExchange`, this is the usual unrealized P&L.
 - For `SettlementStyle.VariationMargin`, the caller settles this value into cash
   and then resets `avg_settle_price` to the mark, so subsequent calls reflect only
   moves after the last settlement.

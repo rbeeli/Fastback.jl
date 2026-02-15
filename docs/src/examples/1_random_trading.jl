@@ -26,7 +26,7 @@ dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N-1);
 
 ## create trading account with $10'000 start capital (margin-enabled for shorting)
 acc = Account(;
-    mode=AccountMode.Margin,
+    funding=AccountFunding.Margined,
     base_currency=CashSpec(:USD),
     broker=FlatFeeBroker(; pct=0.001), # 0.1% commission
 );

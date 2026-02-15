@@ -8,7 +8,7 @@
     margin_idx = inst.margin_cash_index
     inc_qty = calc_exposure_increase_quantity(pos.quantity, impact.fill_qty)
 
-    if acc.mode == AccountMode.Cash && inc_qty < 0
+    if acc.funding == AccountFunding.FullyFunded && inc_qty < 0
         return OrderRejectReason.ShortNotAllowed
     end
 
@@ -18,7 +18,7 @@
     # Compute equity and margin after the fill
     cash_effect = impact.cash_delta_settle + impact.value_delta_settle
 
-    if acc.margining_style == MarginingStyle.PerCurrency
+    if acc.margin_aggregation == MarginAggregation.PerCurrency
         if margin_idx == settle_idx
             equity_after = acc.ledger.equities[settle_idx] + cash_effect
             init_after = acc.ledger.init_margin_used[settle_idx] + impact.init_margin_delta

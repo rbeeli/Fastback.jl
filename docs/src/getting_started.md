@@ -27,14 +27,14 @@ using Dates
 
 # 1) Account and cash
 acc = Account(;
-    mode=AccountMode.Cash,
+    funding=AccountFunding.FullyFunded,
     base_currency=CashSpec(:USD),
     broker=FlatFeeBroker(pct=0.001),
 )
 usd = cash_asset(acc, :USD)
 deposit!(acc, usd, 10_000.0)
 
-# 2) Instrument (spot, cash-settled synthetic exposure)
+# 2) Instrument (spot, principal-exchange principal exchange)
 ABC = register_instrument!(acc, spot_instrument(:ABC, :ABC, :USD))
 
 # 3) Small price series

@@ -7,7 +7,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 ## Core types and enums
 
 - `Price`, `Quantity`
-- `TradeDir`, `SettlementStyle`, `MarginMode`, `MarginingStyle`, `ContractKind`, `AccountMode`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `TradeReason`
+- `TradeDir`, `SettlementStyle`, `MarginRequirement`, `MarginAggregation`, `ContractKind`, `AccountFunding`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `TradeReason`
 - `Cash`, `CashSpec`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
 - `ExchangeRates`
 

@@ -166,7 +166,7 @@ function liquidate_to_maintenance!(
 
         max_pos = nothing
 
-        if acc.margining_style == MarginingStyle.BaseCurrency
+        if acc.margin_aggregation == MarginAggregation.BaseCurrency
             max_pos = _largest_maint_contributor(acc)
         else
             worst_idx, worst_excess = _worst_excess_currency(acc)

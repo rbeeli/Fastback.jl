@@ -1,6 +1,6 @@
 mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    const mode::AccountMode.T
-    const margining_style::MarginingStyle.T
+    const funding::AccountFunding.T
+    const margin_aggregation::MarginAggregation.T
     const ledger::CashLedger
     const base_currency::Cash
     const exchange_rates::ExchangeRates
@@ -20,8 +20,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
         ;
         base_currency::CashSpec,
         time_type::Type{TTime}=DateTime,
-        mode::AccountMode.T=AccountMode.Cash,
-        margining_style::MarginingStyle.T=MarginingStyle.BaseCurrency,
+        funding::AccountFunding.T=AccountFunding.FullyFunded,
+        margin_aggregation::MarginAggregation.T=MarginAggregation.BaseCurrency,
         broker::TBroker,
         date_format=dateformat"yyyy-mm-dd",
         datetime_format=dateformat"yyyy-mm-dd HH:MM:SS",
@@ -34,8 +34,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
         _ensure_rates_size!(exchange_rates, base_cash.index)
 
         acc = new{TTime,TBroker}(
-            mode,
-            margining_style,
+            funding,
+            margin_aggregation,
             ledger,
             base_cash,
             exchange_rates,
@@ -135,10 +135,10 @@ Use `deposit!` to fund an account.
     symbol::Symbol,
     amount::Price,
 ) where {TTime<:Dates.AbstractTime}
-    if acc.mode == AccountMode.Cash
+    if acc.funding == AccountFunding.FullyFunded
         @inbounds post_balance = acc.ledger.balances[idx] - amount
         post_balance < 0 && throw(ArgumentError("Withdrawal would overdraw cash balance for $(symbol)."))
-        if acc.margining_style == MarginingStyle.PerCurrency
+        if acc.margin_aggregation == MarginAggregation.PerCurrency
             @inbounds post_available = acc.ledger.equities[idx] - acc.ledger.init_margin_used[idx] - amount
             post_available < 0 && throw(ArgumentError("Withdrawal exceeds available funds for $(symbol)."))
             _adjust_cash_idx!(acc.ledger, idx, -amount)
@@ -152,7 +152,7 @@ Use `deposit!` to fund an account.
         end
     end
 
-    if acc.margining_style == MarginingStyle.PerCurrency
+    if acc.margin_aggregation == MarginAggregation.PerCurrency
         @inbounds post_available = acc.ledger.equities[idx] - acc.ledger.init_margin_used[idx] - amount
         post_available < 0 && throw(ArgumentError("Withdrawal exceeds available funds for $(symbol)."))
         _adjust_cash_idx!(acc.ledger, idx, -amount)

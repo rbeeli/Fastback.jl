@@ -64,8 +64,8 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
 
     commission_settle = to_settle(acc, inst, commission_total_quote)
 
-    if inst.settlement == SettlementStyle.Asset
-        # Asset settlement exchanges full principal, so realized settle P&L must use
+    if inst.settlement == SettlementStyle.PrincipalExchange
+        # Principal-exchange settlement exchanges full principal, so realized settle P&L must use
         # settlement-entry basis (captures FX translation between entry and exit).
         fill_pnl_settle = realized_qty != 0.0 ?
             realized_qty * (fill_price_settle - pos_avg_entry_price_settle) * inst.multiplier :
@@ -92,7 +92,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
             commission_total_quote,
         )
     else
-        cash_delta_quote_asset(inst, fill_qty, fill_price, commission_total_quote)
+        cash_delta_quote_principal_exchange(inst, fill_qty, fill_price, commission_total_quote)
     end
 
     cash_delta_settle = to_settle(acc, inst, cash_delta_quote_val)
@@ -148,7 +148,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     new_pnl_settle = if inst.settlement == SettlementStyle.VariationMargin
         0.0
     else
-        pnl_settle_asset(inst, new_qty, new_value_settle, new_avg_entry_price_settle)
+        pnl_settle_principal_exchange(inst, new_qty, new_value_settle, new_avg_entry_price_settle)
     end
 
     new_init_margin_settle = margin_init_margin_ccy(acc, inst, new_qty, margin_price)

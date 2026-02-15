@@ -13,9 +13,9 @@ using TestItemRunner
             borrow_by_cash=Dict(:USD=>0.0, :EUR=>0.0),
             lend_by_cash=Dict(:USD=>0.05, :EUR=>0.02),
         ),
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=base_currency,
-        margining_style=MarginingStyle.BaseCurrency,
+        margin_aggregation=MarginAggregation.BaseCurrency,
         exchange_rates=er,
     )
 
@@ -32,8 +32,8 @@ using TestItemRunner
         :ASSET,
         :EUR;
         settle_symbol=:USD,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.2,
         margin_init_short=0.2,
         margin_maint_long=0.1,
@@ -44,7 +44,7 @@ using TestItemRunner
         Symbol("PERP/USD"),
         :PERP,
         :USD;
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,

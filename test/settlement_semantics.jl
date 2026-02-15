@@ -1,11 +1,11 @@
 using Dates
 using TestItemRunner
 
-@testitem "Spot asset-settled open/close updates cash and equity" begin
+@testitem "Spot principal-exchange open/close updates cash and equity" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=1.0))
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=1.0))
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
@@ -43,12 +43,12 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
     inst = register_instrument!(acc, perpetual_instrument(Symbol("PERP/USD"), :PERP, :USD;
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -76,12 +76,12 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 100.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("RISK/USD"), :RISK, :USD;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
         margin_maint_long=0.25,
@@ -108,9 +108,9 @@ end
     acc = Account(
         ;
         broker=FlatFeeBroker(; borrow_by_cash=Dict(:USD=>0.0), lend_by_cash=Dict(:USD=>0.01)),
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=base_currency,
-        margining_style=MarginingStyle.BaseCurrency,
+        margin_aggregation=MarginAggregation.BaseCurrency,
         exchange_rates=er,
     )
 
@@ -122,8 +122,8 @@ end
 
     spot = register_instrument!(acc, Instrument(Symbol("SPOT/EURUSD"), :SPOT, :EUR;
         settle_symbol=:USD,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -131,7 +131,7 @@ end
     ))
 
     perp = register_instrument!(acc, perpetual_instrument(Symbol("PERP/USD"), :PERP, :USD;
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,

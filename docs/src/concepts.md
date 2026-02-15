@@ -27,14 +27,16 @@ and it updates balances, equity, and margin deterministically.
 
 ## Settlement styles
 
-- Cash: cash-settled synthetic exposure. Position value is its P&L (no physical delivery).
-- VariationMargin: P&L is settled to cash at each mark; position value stays at zero.
+- PrincipalExchange: fills exchange principal; open position value is marked notional (`qty * price * multiplier`).
+- VariationMargin: mark-to-market P&L is settled into cash at each mark; open position value stays at zero.
 
-## Margin modes and styles
+`AccountFunding.FullyFunded` is a funding policy, not a settlement style.
 
-- Account modes: `AccountMode.Cash` enforces fully funded exposure (full notional margin), disallows short exposure, prices requirements from liquidation marks (bid for longs, ask for shorts), and requires withdrawals to respect available funds; `AccountMode.Margin` uses instrument margin settings, with margin priced from marks for `VariationMargin` instruments and from last-trade for other settlement styles.
-- Margin modes on instruments: `PercentNotional`, `FixedPerContract`.
-- Margining style: `PerCurrency` or `BaseCurrency`, controlling how margin totals are aggregated.
+## Margin requirements and styles
+
+- Funding policies: `AccountFunding.FullyFunded` enforces fully funded exposure (full notional margin), disallows short exposure, prices requirements from liquidation marks (bid for longs, ask for shorts), and requires withdrawals to respect available funds; `AccountFunding.Margined` uses instrument margin settings, with margin priced from marks for `VariationMargin` instruments and from last-trade for other settlement styles.
+- Margin requirements on instruments: `PercentNotional`, `FixedPerContract`.
+- Margin aggregation: `PerCurrency` or `BaseCurrency`, controlling how margin totals are aggregated.
 
 ## Event loop
 

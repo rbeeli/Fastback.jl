@@ -4,16 +4,16 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 16_000.0)
 
     inst_big = register_instrument!(acc, Instrument(Symbol("BIG/USD"), :BIG, :USD;
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.2, margin_init_short=0.2,
         margin_maint_long=0.1, margin_maint_short=0.1))
 
     inst_small = register_instrument!(acc, Instrument(Symbol("SML/USD"), :SML, :USD;
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.2, margin_init_short=0.2,
         margin_maint_long=0.1, margin_maint_short=0.1))
 
@@ -42,11 +42,11 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=1.0, pct=0.02))
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=1.0, pct=0.02))
     deposit!(acc, :USD, 1_500.0)
 
     inst = register_instrument!(acc, Instrument(Symbol("RISK/USD"), :RISK, :USD;
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
         margin_maint_long=0.1, margin_maint_short=0.1))
 
@@ -72,7 +72,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency, margin_aggregation=MarginAggregation.PerCurrency, exchange_rates=er)
 
     deposit!(acc, :USD, 10_000.0)
     register_cash_asset!(acc, CashSpec(:EUR))
@@ -81,15 +81,15 @@ end
 
     inst_eur = register_instrument!(acc, Instrument(Symbol("PER/EUR"), :PER, :EUR;
         settle_symbol=:EUR,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.3, margin_init_short=0.3,
         margin_maint_long=0.2, margin_maint_short=0.2))
 
     inst_usd = register_instrument!(acc, Instrument(Symbol("PER/USD"), :PER, :USD;
         settle_symbol=:USD,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.3, margin_init_short=0.3,
         margin_maint_long=0.2, margin_maint_short=0.2))
 
@@ -118,7 +118,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.PerCurrency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency, margin_aggregation=MarginAggregation.PerCurrency, exchange_rates=er)
     register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :USD, 0.0)
     deposit!(acc, :EUR, 1_000.0)
@@ -128,8 +128,8 @@ end
         settle_symbol=:USD,
         margin_symbol=:EUR,
         contract_kind=ContractKind.Spot,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=1.0,
         margin_init_short=1.0,
         margin_maint_long=0.5,

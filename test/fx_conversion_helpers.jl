@@ -5,7 +5,7 @@ using TestItemRunner
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, margining_style=MarginingStyle.BaseCurrency, exchange_rates=er, broker=FlatFeeBroker(fixed=1.0))
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, margin_aggregation=MarginAggregation.BaseCurrency, exchange_rates=er, broker=FlatFeeBroker(fixed=1.0))
 
     deposit!(acc, :USD, 50_000.0)
     register_cash_asset!(acc, CashSpec(:CHF))
@@ -19,8 +19,8 @@ using TestItemRunner
         :SPOT,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.2,
         margin_init_short=0.2,
         margin_maint_long=0.1,
@@ -85,7 +85,7 @@ using TestItemRunner
         settle_symbol=:CHF,
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -117,9 +117,9 @@ end
     acc = Account(
         ;
         broker=FlatFeeBroker(; borrow_by_cash=Dict(:CHF=>0.05), lend_by_cash=Dict(:CHF=>0.02)),
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=base_currency,
-        margining_style=MarginingStyle.BaseCurrency,
+        margin_aggregation=MarginAggregation.BaseCurrency,
         exchange_rates=er,
     )
 
@@ -135,9 +135,9 @@ end
         :SPOTFXI,
         :USD;
         settle_symbol=:CHF,
-        settlement=SettlementStyle.Asset,
+        settlement=SettlementStyle.PrincipalExchange,
         contract_kind=ContractKind.Spot,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.5,
         margin_maint_long=0.25,
         margin_init_short=0.5,

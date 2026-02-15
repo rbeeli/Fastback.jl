@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -17,7 +17,7 @@ using TestItemRunner
             :USD;
             contract_kind=ContractKind.Perpetual,
             settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -67,7 +67,7 @@ end
 
     # Long: bid/ask mark should not settle a spread loss
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
@@ -79,7 +79,7 @@ end
             :USD;
             contract_kind=ContractKind.Perpetual,
             settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -104,7 +104,7 @@ end
 
     # Short: same neutrality should hold
     base_currency=CashSpec(:USD)
-    acc2 = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc2 = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     usd2 = cash_asset(acc2.ledger, :USD)
     deposit!(acc2, :USD, 1_000.0)
 
@@ -116,7 +116,7 @@ end
             :USD;
             contract_kind=ContractKind.Perpetual,
             settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,

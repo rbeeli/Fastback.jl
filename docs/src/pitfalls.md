@@ -1,6 +1,6 @@
 # Pitfalls and gotchas
 
-- `AccountMode.Cash` forces full-notional margin (no leverage), disallows short exposure, and uses liquidation marks for margin checks so bid/ask spreads do not create synthetic deficits.
+- `AccountFunding.FullyFunded` forces full-notional margin (no leverage), disallows short exposure, and uses liquidation marks for margin checks so bid/ask spreads do not create synthetic deficits.
 - Use `update_marks!` to keep equity and margin in sync with prices.
 - Expiry settlement requires a finite `mark_price` on the position.
 - Multi-currency equity depends on `ExchangeRates` being updated.

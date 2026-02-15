@@ -1,11 +1,11 @@
 using TestItemRunner
 
-@testitem "Cross-currency margining allows USD-funded EUR position" begin
+@testitem "Cross-currency margin aggregation allows USD-funded EUR position" begin
     using Test, Fastback, Dates
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency, exchange_rates=er)
 
     deposit!(acc, :USD, 1_000.0)
     register_cash_asset!(acc, CashSpec(:EUR))
@@ -17,8 +17,8 @@ using TestItemRunner
         Symbol("EURSPOT/EUR"),
         :EURSPOT,
         :EUR;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
         margin_maint_long=0.25,
@@ -32,12 +32,12 @@ using TestItemRunner
     @test init_margin_used_base_ccy(acc) ≈ 500.0 * 1.07 atol = 1e-8
 end
 
-@testitem "Cross-currency margining rejects when base equity insufficient" begin
+@testitem "Cross-currency margin aggregation rejects when base equity insufficient" begin
     using Test, Fastback, Dates
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency, exchange_rates=er)
 
     deposit!(acc, :USD, 400.0)
     register_cash_asset!(acc, CashSpec(:EUR))
@@ -49,8 +49,8 @@ end
         Symbol("EURSPOT/EUR"),
         :EURSPOT,
         :EUR;
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.5,
         margin_init_short=0.5,
         margin_maint_long=0.25,

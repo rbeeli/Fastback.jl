@@ -10,8 +10,8 @@ using TestItemRunner
     valid_cases = [
         ("spot cash settlement", Instrument(Symbol("SPOT/CASH"), :SPOT, :USD;
             contract_kind=ContractKind.Spot,
-            settlement=SettlementStyle.Asset,
-            margin_mode=MarginMode.PercentNotional,
+            settlement=SettlementStyle.PrincipalExchange,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -21,7 +21,7 @@ using TestItemRunner
         ("perpetual variation margin", Instrument(Symbol("PERP/VM"), :PERP, :USD;
             contract_kind=ContractKind.Perpetual,
             settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -31,7 +31,7 @@ using TestItemRunner
         ("future with expiry", Instrument(Symbol("FUT/VM"), :FUT, :USD;
             contract_kind=ContractKind.Future,
             settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -50,7 +50,7 @@ using TestItemRunner
         ("spot variation margin disallowed", Instrument(Symbol("SPOT/VM"), :SPOT, :USD;
             contract_kind=ContractKind.Spot,
             settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -59,7 +59,7 @@ using TestItemRunner
         ("perpetual cannot expire", Instrument(Symbol("PERP/EXP"), :PERP, :USD;
             contract_kind=ContractKind.Perpetual,
             settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -68,8 +68,8 @@ using TestItemRunner
         )),
         ("perpetual requires variation margin", Instrument(Symbol("PERP/CASH"), :PERP, :USD;
             contract_kind=ContractKind.Perpetual,
-            settlement=SettlementStyle.Asset,
-            margin_mode=MarginMode.PercentNotional,
+            settlement=SettlementStyle.PrincipalExchange,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -78,7 +78,7 @@ using TestItemRunner
         ("future requires expiry", Instrument(Symbol("FUT/NOEXP"), :FUT, :USD;
             contract_kind=ContractKind.Future,
             settlement=SettlementStyle.VariationMargin,
-            margin_mode=MarginMode.PercentNotional,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -86,8 +86,8 @@ using TestItemRunner
         )),
         ("future requires variation margin", Instrument(Symbol("FUT/CASH"), :FUT, :USD;
             contract_kind=ContractKind.Future,
-            settlement=SettlementStyle.Asset,
-            margin_mode=MarginMode.PercentNotional,
+            settlement=SettlementStyle.PrincipalExchange,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.1,
             margin_init_short=0.1,
             margin_maint_long=0.05,
@@ -110,8 +110,8 @@ end
 
     spot = Instrument(Symbol("SPOT/LIFE"), :SPOT, :USD;
         contract_kind=ContractKind.Spot,
-        settlement=SettlementStyle.Asset,
-        margin_mode=MarginMode.PercentNotional,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -126,7 +126,7 @@ end
     perp = Instrument(Symbol("PERP/LIFE"), :PERP, :USD;
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
@@ -145,7 +145,7 @@ end
     future = Instrument(Symbol("FUT/LIFE"), :FUT, :USD;
         contract_kind=ContractKind.Future,
         settlement=SettlementStyle.VariationMargin,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,

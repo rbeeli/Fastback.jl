@@ -1,7 +1,7 @@
 # # S&P 500 exposure: VOO on Reg-T margin vs Micro E-mini futures (MES)
 #
 # This example compares two ways to express S&P 500 exposure:
-# 1) VOO ETF on Reg-T margin (asset-settled spot)
+# 1) VOO ETF on Reg-T margin (principal-exchange spot)
 # 2) Micro E-mini S&P 500 futures (MES) on variation margin
 #
 # It runs the same random trade schedule under two leverage factors (`1.0x` and
@@ -87,6 +87,7 @@ const IBKR_USD_BENCHMARK_SCHEDULE = StepSchedule([
 
 function make_ibkr_profile(usd_benchmark_schedule; credit_no_interest_balance, futures_per_contract)
     IBKRProFixedBroker(
+        time_type=Date,
         equity_per_share=0.005,
         equity_min=1.00,
         equity_max_pct=0.01,
@@ -265,7 +266,7 @@ end
 
 function build_voo_account(initial_cash, broker)
     acc = Account(;
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=CashSpec(:USD),
         time_type=Date,
         broker=broker,
@@ -279,7 +280,7 @@ function build_voo_account(initial_cash, broker)
         base_digits=0,
         quote_tick=0.01,
         quote_digits=2,
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=VOO_REGT_INIT_LONG,
         margin_init_short=1.35,
         margin_maint_long=0.25,
@@ -291,7 +292,7 @@ end
 
 function build_mes_account(initial_cash, broker, mes_specs)
     acc = Account(;
-        mode=AccountMode.Margin,
+        funding=AccountFunding.Margined,
         base_currency=CashSpec(:USD),
         time_type=Date,
         broker=broker,
@@ -309,7 +310,7 @@ function build_mes_account(initial_cash, broker, mes_specs)
             quote_tick=0.25,
             quote_digits=2,
             multiplier=5.0,
-            margin_mode=MarginMode.FixedPerContract,
+            margin_requirement=MarginRequirement.FixedPerContract,
             margin_init_long=MES_INIT_MARGIN,
             margin_init_short=MES_INIT_MARGIN,
             margin_maint_long=MES_MAINT_MARGIN,

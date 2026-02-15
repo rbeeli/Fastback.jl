@@ -5,14 +5,14 @@ using TestItemRunner
     using Test, Fastback, Dates, Tables, DataFrames
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.5))
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.5))
     deposit!(acc, :USD, 1_000.0)
 
     inst = register_instrument!(acc, Instrument(
         Symbol("ABC/USD"),
         :ABC,
         :USD;
-        margin_mode=MarginMode.PercentNotional,
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.0,
         margin_init_short=0.0,
         margin_maint_long=0.0,
@@ -58,7 +58,7 @@ end
     @test trade_rows[end].fill_pnl_settle ≈ 2.0 atol = 1e-8
     @test trade_rows[1].cash_delta_settle ≈ -10.5
     @test trade_rows[end].cash_delta_settle ≈ 23.5
-    @test trade_rows[end].settlement_style == SettlementStyle.Asset
+    @test trade_rows[end].settlement_style == SettlementStyle.PrincipalExchange
     trade_cols = Tables.columntable(tbl)
     @test trade_cols.symbol == fill(inst.symbol, length(acc.trades))
 
@@ -70,7 +70,7 @@ end
 
     er = ExchangeRates()
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, exchange_rates=er, broker=FlatFeeBroker(fixed=2.0))
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, exchange_rates=er, broker=FlatFeeBroker(fixed=2.0))
     deposit!(acc, :USD, 5_000.0)
     register_cash_asset!(acc, CashSpec(:EUR))
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
@@ -82,8 +82,8 @@ end
             :FX,
             :EUR;
             settle_symbol=:USD,
-            settlement=SettlementStyle.Asset,
-            margin_mode=MarginMode.PercentNotional,
+            settlement=SettlementStyle.PrincipalExchange,
+            margin_requirement=MarginRequirement.PercentNotional,
             margin_init_long=0.0,
             margin_init_short=0.0,
             margin_maint_long=0.0,

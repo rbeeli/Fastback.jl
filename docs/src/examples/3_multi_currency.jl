@@ -26,7 +26,7 @@ df = DataFrame([
 ## create trading account with 10'000 USD, 5'000 EUR and 20'000 GBP cash (margin-enabled for shorting)
 er = ExchangeRates();
 acc = Account(;
-    mode=AccountMode.Margin,
+    funding=AccountFunding.Margined,
     base_currency=CashSpec(:USD),
     exchange_rates=er,
     broker=FlatFeeBroker(; pct=0.001),

@@ -4,11 +4,11 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst1 = register_instrument!(acc, Instrument(Symbol("A/USD"), :A, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_init_short=0.1, margin_maint_long=0.05, margin_maint_short=0.05))
-    inst2 = register_instrument!(acc, Instrument(Symbol("B/USD"), :B, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_init_short=0.1, margin_maint_long=0.05, margin_maint_short=0.05))
+    inst1 = register_instrument!(acc, Instrument(Symbol("A/USD"), :A, :USD; margin_requirement=MarginRequirement.PercentNotional, margin_init_long=0.1, margin_init_short=0.1, margin_maint_long=0.05, margin_maint_short=0.05))
+    inst2 = register_instrument!(acc, Instrument(Symbol("B/USD"), :B, :USD; margin_requirement=MarginRequirement.PercentNotional, margin_init_long=0.1, margin_init_short=0.1, margin_maint_long=0.05, margin_maint_short=0.05))
 
     dt = DateTime(2024, 1, 1)
     fill_order!(acc, Order(oid!(acc), inst1, dt, 100.0, 10.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
@@ -26,10 +26,10 @@ end
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
-    acc = Account(; mode=AccountMode.Margin, base_currency=base_currency, broker=FlatFeeBroker(fixed=2.0, pct=0.01))
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=2.0, pct=0.01))
     deposit!(acc, :USD, 5_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("C/USD"), :C, :USD; margin_mode=MarginMode.PercentNotional, margin_init_long=0.1, margin_init_short=0.1, margin_maint_long=0.05, margin_maint_short=0.05))
+    inst = register_instrument!(acc, Instrument(Symbol("C/USD"), :C, :USD; margin_requirement=MarginRequirement.PercentNotional, margin_init_long=0.1, margin_init_short=0.1, margin_maint_long=0.05, margin_maint_short=0.05))
 
     dt = DateTime(2024, 1, 1)
     fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 10.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
