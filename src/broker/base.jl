@@ -63,9 +63,6 @@ end
     StepSchedule(starts, values)
 end
 
-@inline _schedule_time(::Type{TTime}, dt::TTime) where {TTime<:Dates.AbstractTime} = dt
-@inline _schedule_time(::Type{TTime}, dt::Dates.AbstractTime) where {TTime<:Dates.AbstractTime} = TTime(dt)
-
 """
 Return the active value at `dt`.
 
@@ -73,10 +70,9 @@ For `dt` before the first schedule timestamp, returns the first value.
 """
 @inline function value_at(
     schedule::StepSchedule{TTime,T},
-    dt::Dates.AbstractTime,
+    dt::TTime,
 )::T where {TTime<:Dates.AbstractTime,T}
-    key = _schedule_time(TTime, dt)
-    idx = searchsortedlast(schedule.starts, key)
+    idx = searchsortedlast(schedule.starts, dt)
     idx == 0 && return @inbounds schedule.values[1]
     @inbounds schedule.values[idx]
 end

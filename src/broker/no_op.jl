@@ -19,9 +19,17 @@ end
 
 @inline function broker_interest_rates(
     ::NoOpBroker,
-    ::Symbol,
-    ::Dates.AbstractTime,
+    ::Cash,
+    ::TTime,
     ::Price,
-)::Tuple{Price,Price}
+)::Tuple{Price,Price} where {TTime<:Dates.AbstractTime}
     (0.0, 0.0)
+end
+
+@inline function broker_short_proceeds_rates(
+    ::NoOpBroker,
+    ::Cash,
+    ::TTime,
+)::Tuple{Price,Price} where {TTime<:Dates.AbstractTime}
+    (1.0, 0.0)
 end
