@@ -30,9 +30,10 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
 
 ## Setup
 
-- Julia 1.6+ (per `Project.toml` compat).  
+- Julia 1.9+ (per `Project.toml` compat).  
 - Install deps: `julia --project -e 'using Pkg; Pkg.instantiate()'`.  
 - For docs: `just build-docs` (installs/uses docs environment), live preview `just serve-docs` (needs `npx live-server`).
+- Note that docs has its own project environment inside the `docs` folder.
 
 ## Testing
 
