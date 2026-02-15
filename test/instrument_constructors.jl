@@ -53,21 +53,21 @@ end
 @testitem "Instrument constructor helpers reject invalid combinations" begin
     using Test, Fastback, Dates
 
-    @test_throws ArgumentError spot_instrument(Symbol("SPOT/NONE"), :SPOT, :USD;
-        margin_requirement=MarginRequirement.Disabled,
+    @test_throws ArgumentError spot_instrument(Symbol("SPOT/BADRATES"), :SPOT, :USD;
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.2,
+        margin_maint_short=0.05,
+    )
+
+    @test_throws ArgumentError future_instrument(Symbol("FUT/NOEXP"), :FUT, :USD;
+        expiry=DateTime(0),
+        margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,
         margin_maint_long=0.05,
         margin_maint_short=0.05,
-    )
-
-    @test_throws ArgumentError future_instrument(Symbol("FUT/NOMRG"), :FUT, :USD;
-        expiry=DateTime(2026, 1, 1),
-        margin_requirement=MarginRequirement.Disabled,
-        margin_init_long=0.0,
-        margin_init_short=0.0,
-        margin_maint_long=0.0,
-        margin_maint_short=0.0,
     )
 
     # direct validation guards for legacy constructor usage

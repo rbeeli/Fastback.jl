@@ -17,7 +17,7 @@ using TestItemRunner
     @test_throws ArgumentError register_instrument!(acc, inst)
 end
 
-@testitem "Cash-settled instruments must be margined" begin
+@testitem "Cash-settled instruments require finite margin rates" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
@@ -26,28 +26,8 @@ end
 
     no_margin = Instrument(Symbol("CASH/NOMRG"), :CASH, :USD;
         settlement=SettlementStyle.PrincipalExchange,
-        margin_requirement=MarginRequirement.Disabled,
     )
     @test_throws ArgumentError register_instrument!(acc, no_margin)
-end
-
-@testitem "MarginRequirement.Disabled is rejected for spot instruments" begin
-    using Test, Fastback, Dates
-
-    base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
-    deposit!(acc, :USD, 0.0)
-
-    nonzero_margin = Instrument(Symbol("NOMRG/RATES"), :NOMRG, :USD;
-        settlement=SettlementStyle.PrincipalExchange,
-        margin_requirement=MarginRequirement.Disabled,
-        margin_init_long=0.1,
-        margin_init_short=0.1,
-        margin_maint_long=0.05,
-        margin_maint_short=0.05,
-    )
-
-    @test_throws ArgumentError register_instrument!(acc, nonzero_margin)
 end
 
 @testitem "Margin parameters must be finite, non-negative, and ordered" begin

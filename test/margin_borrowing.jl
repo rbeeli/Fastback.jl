@@ -32,7 +32,7 @@ using TestItemRunner
     @test init_margin_used(acc, cash_asset(acc, :USD)) ≈ 5_000.0
 end
 
-@testitem "non-marginable instruments are rejected" begin
+@testitem "instruments with missing margin rates are rejected" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
@@ -43,7 +43,7 @@ end
         Symbol("CASHONLY/USD"),
         :CASHONLY,
         :USD;
-        margin_requirement=MarginRequirement.Disabled,
+        margin_requirement=MarginRequirement.PercentNotional,
     )
 
     @test_throws ArgumentError register_instrument!(acc, inst)

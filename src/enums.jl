@@ -3,7 +3,7 @@ using EnumX
 
 @enumx TradeDir::Int8 Null = 0 Buy = 1 Sell = -1
 @enumx SettlementStyle::Int8 PrincipalExchange = 1 VariationMargin = 2
-@enumx MarginRequirement::Int8 Disabled = 0 PercentNotional = 1 FixedPerContract = 2
+@enumx MarginRequirement::Int8 PercentNotional = 1 FixedPerContract = 2
 @enumx MarginAggregation::Int8 PerCurrency = 1 BaseCurrency = 2
 @enumx ContractKind::Int8 Spot = 1 Perpetual = 2 Future = 3
 @enumx AccountFunding::Int8 FullyFunded = 1 Margined = 2

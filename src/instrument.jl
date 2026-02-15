@@ -49,7 +49,7 @@ mutable struct Instrument{TTime<:Dates.AbstractTime}
         settle_symbol::Symbol=quote_symbol,
         margin_symbol::Symbol=settle_symbol,
         settlement::SettlementStyle.T=SettlementStyle.PrincipalExchange,
-        margin_requirement::MarginRequirement.T=MarginRequirement.Disabled,
+        margin_requirement::MarginRequirement.T=MarginRequirement.PercentNotional,
         margin_init_long::Price=Price(NaN),
         margin_init_short::Price=Price(NaN),
         margin_maint_long::Price=Price(NaN),
@@ -224,9 +224,6 @@ function perpetual_instrument(
     time_type::Type{TTime}=DateTime,
     start_time::TTime=time_type(0),
 )::Instrument{TTime} where {TTime<:Dates.AbstractTime}
-    margin_requirement == MarginRequirement.Disabled &&
-        throw(ArgumentError("perpetual_instrument requires a margin_requirement other than MarginRequirement.Disabled."))
-
     inst = Instrument(
         symbol, base_symbol, quote_symbol;
         base_tick=base_tick,
@@ -258,8 +255,7 @@ end
     future_instrument(symbol, base_symbol, quote_symbol; expiry, kwargs...)
 
 Future constructor using variation margin settlement. Requires a
-non-zero `expiry`, a `margin_requirement` other than `MarginRequirement.Disabled`, and
-explicit margin parameters.
+non-zero `expiry` and explicit margin parameters.
 """
 function future_instrument(
     symbol::Symbol,
@@ -284,9 +280,6 @@ function future_instrument(
     time_type::Type{TTime}=DateTime,
     start_time::TTime=time_type(0),
 )::Instrument{TTime} where {TTime<:Dates.AbstractTime}
-    margin_requirement == MarginRequirement.Disabled &&
-        throw(ArgumentError("future_instrument requires a margin_requirement other than MarginRequirement.Disabled."))
-
     inst = Instrument(
         symbol, base_symbol, quote_symbol;
         base_tick=base_tick,
@@ -360,11 +353,6 @@ Throws an `ArgumentError` when mandatory invariants are violated.
 function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.AbstractTime}
     kind = inst.contract_kind
     settlement = inst.settlement
-    margin_requirement = inst.margin_requirement
-
-    if margin_requirement == MarginRequirement.Disabled
-        throw(ArgumentError("Instrument $(inst.symbol) must set margin_requirement."))
-    end
 
     for (name, value) in (
         ("margin_init_long", inst.margin_init_long),
@@ -383,15 +371,12 @@ function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.Abstra
 
     if kind == ContractKind.Spot
         settlement == SettlementStyle.PrincipalExchange || throw(ArgumentError("Spot instrument $(inst.symbol) must use Principal-exchange settlement."))
-        inst.margin_requirement != MarginRequirement.Disabled || throw(ArgumentError("Spot instrument $(inst.symbol) must set margin_requirement."))
     elseif kind == ContractKind.Perpetual
         settlement == SettlementStyle.VariationMargin || throw(ArgumentError("Perpetual instrument $(inst.symbol) must use VariationMargin settlement."))
         inst.expiry == TTime(0) || throw(ArgumentError("Perpetual instrument $(inst.symbol) must not define an expiry."))
-        inst.margin_requirement != MarginRequirement.Disabled || throw(ArgumentError("Perpetual instrument $(inst.symbol) must set margin_requirement."))
     elseif kind == ContractKind.Future
         settlement == SettlementStyle.VariationMargin || throw(ArgumentError("Future instrument $(inst.symbol) must use VariationMargin settlement."))
         has_expiry(inst) || throw(ArgumentError("Future instrument $(inst.symbol) must define an expiry."))
-        inst.margin_requirement != MarginRequirement.Disabled || throw(ArgumentError("Future instrument $(inst.symbol) must set margin_requirement."))
     end
 
     nothing

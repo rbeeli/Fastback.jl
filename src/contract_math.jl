@@ -111,9 +111,7 @@ at the caller-provided margin reference price.
         return to_margin(acc, inst, quote_req)
     end
     requirement = inst.margin_requirement
-    if requirement == MarginRequirement.Disabled
-        return zero(Price)
-    elseif requirement == MarginRequirement.PercentNotional
+    if requirement == MarginRequirement.PercentNotional
         rate = qty > 0 ? inst.margin_init_long : inst.margin_init_short
         quote_req = abs(qty) * abs(price) * inst.multiplier * rate
         return to_margin(acc, inst, quote_req)
@@ -137,9 +135,7 @@ at the caller-provided margin reference price.
         return to_margin(acc, inst, quote_req)
     end
     requirement = inst.margin_requirement
-    if requirement == MarginRequirement.Disabled
-        return zero(Price)
-    elseif requirement == MarginRequirement.PercentNotional
+    if requirement == MarginRequirement.PercentNotional
         rate = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
         quote_req = abs(qty) * abs(price) * inst.multiplier * rate
         return to_margin(acc, inst, quote_req)
