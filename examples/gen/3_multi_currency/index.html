@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Multi-Currency trading · Fastback.jl</title><meta name="title" content="Multi-Currency trading · Fastback.jl"/><meta property="og:title" content="Multi-Currency trading · Fastback.jl"/><meta property="twitter:title" content="Multi-Currency trading · Fastback.jl"/><meta name="description" content="Documentation for Fastback.jl."/><meta property="og:description" content="Documentation for Fastback.jl."/><meta property="twitter:description" content="Documentation for Fastback.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><script type="module" defer>
+    import { codeToHtml } from 'https://esm.sh/shiki@1.3.0'
+
+    async function highlightCode(lang, el) {
+        const code = el.textContent
+        if (lang == "julia-repl")
+            lang = "julia"
+        try {
+            el.outerHTML = await codeToHtml(code, {
+                lang: lang,
+                theme: 'monokai',
+                //theme: 'github-light-default',
+                //theme: 'github-dark-dimmed',
+                //theme: 'dark-plus',
+                //themes: {
+                //    light: 'github-dark-dimmed',
+                //    dark: 'github-dark',
+                //}
+            })
+        } catch (e) {
+            console.error(`Failed to highlight code on element with class="${el.classList}" using shiki: `, e)
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('run code highlighting using shiki')
+        const els = document.querySelectorAll("code[class^='language-']")
+        const promises = []
+        for (const el of els) {
+            const cls = Array.from(el.classList).filter(x => x.startsWith("language-"))
+            if (!cls.length)
+                continue
+            const lang = cls[0].substring(9)
+            el.classList.add('shiki-highlighted')
+            
+            promises.push(highlightCode(lang, el))
+        }
+        await Promise.all(promises)
+    })
+</script>
+<link href="../../../assets/styles.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img class="docs-light-only" src="../../../assets/logo.png" alt="Fastback.jl logo"/><img class="docs-dark-only" src="../../../assets/logo-dark.png" alt="Fastback.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../getting_started/">Getting started</a></li><li><a class="tocitem" href="../../../basic_setup/">Basic setup</a></li><li><a class="tocitem" href="../../../concepts/">Accounting model and event loop</a></li><li><a class="tocitem" href="../../../execution_errors/">Execution and errors</a></li><li><a class="tocitem" href="../../../pitfalls/">Pitfalls and gotchas</a></li><li><a class="tocitem" href="../../../how_to/">How-to</a></li><li><span class="tocitem">Examples</span><ul><li><input class="collapse-toggle" id="menuitem-8-1" type="checkbox" checked/><label class="tocitem" for="menuitem-8-1"><span class="docs-label">Walkthroughs</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../1_random_trading/">Random trading</a></li><li><a class="tocitem" href="../2_portfolio_trading/">Portfolio trading</a></li><li class="is-active"><a class="tocitem" href>Multi-Currency trading</a></li><li><a class="tocitem" href="../7_USDm_perp_trading/">USD-M perpetual trading</a></li><li><a class="tocitem" href="../9_VOO_vs_MES_comparison/">VOO vs MES cost comparison</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2" type="checkbox"/><label class="tocitem" for="menuitem-8-2"><span class="docs-label">Integrations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../4_Tables_integration/">Tables.jl</a></li><li><a class="tocitem" href="../5_NanoDates_integration/">NanoDates.jl</a></li><li><a class="tocitem" href="../6_Timestamps64_integration/">Timestamps64.jl</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-3" type="checkbox"/><label class="tocitem" for="menuitem-8-3"><span class="docs-label">Plotting</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../8_plots_extension/">Plots extensions</a></li></ul></li></ul></li><li><a class="tocitem" href="../../../integrations/">Integrations</a></li><li><a class="tocitem" href="../../../api_index/">API index</a></li><li><a class="tocitem" href="../../../glossary/">Glossary</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li><a class="is-disabled">Walkthroughs</a></li><li class="is-active"><a href>Multi-Currency trading</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Multi-Currency trading</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl/blob/main/docs/src/examples/3_multi_currency.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Multi-currency-trading-example"><a class="docs-heading-anchor" href="#Multi-currency-trading-example">Multi-currency trading example</a><a id="Multi-currency-trading-example-1"></a><a class="docs-heading-anchor-permalink" href="#Multi-currency-trading-example" title="Permalink"></a></h1><p>This example demonstrates how to trade assets quoted in different currencies. The account has balances in USD, EUR and GBP, and trades stocks denoted in those currencies. The total equity is calculated in USD. A spot exchange rate helper is used to convert between different currencies.</p><pre><code class="language-julia hljs">using Fastback
+using Dates
+using Random
+using DataFrames
+
+# set RNG seed for reproducibility
+Random.seed!(42);
+
+# generate synthetic price series for Tesla (USD), Porsche (EUR) and Tesco (GBP)
+N = 2_000;
+df = DataFrame([
+    :date =&gt; map(x -&gt; DateTime(2020, 1, 1) + Hour(x), 0:N-1),
+    :TSLA =&gt; 170 .+ cumsum(randn(N) .+ 0.12),
+    :POAHY =&gt; 4.5 .+ cumsum(randn(N) .+ 0.02),
+    :TSCO_L =&gt; 307 .+ cumsum(randn(N) .+ 0.08)
+]);
+
+# create trading account with 10&#39;000 USD, 5&#39;000 EUR and 20&#39;000 GBP cash (margin-enabled for shorting)
+er = ExchangeRates();
+acc = Account(;
+    funding=AccountFunding.Margined,
+    base_currency=CashSpec(:USD),
+    exchange_rates=er,
+    broker=FlatFeeBroker(; pct=0.001),
+);
+usd = cash_asset(acc, :USD)
+eur = register_cash_asset!(acc, CashSpec(:EUR; digits=2));
+gbp = register_cash_asset!(acc, CashSpec(:GBP; digits=2));
+deposit!(acc, usd, 10_000);
+deposit!(acc, eur, 5_000);
+deposit!(acc, gbp, 20_000);
+
+# set spot exchange rates once
+update_rate!(er, eur, usd, 1.07);
+update_rate!(er, gbp, usd, 1.27);
+
+show(er)
+
+# register stock instruments
+instruments = [
+    register_instrument!(acc, spot_instrument(:TSLA, :TSLA, :USD)), # Tesla (USD denominated)
+    register_instrument!(acc, spot_instrument(:POAHY, :POAHY, :EUR)), # Porsche (EUR denominated)
+    register_instrument!(acc, spot_instrument(:TSCO_L, :TSCO_L, :GBP)), # Tesco (GBP denominated)
+];
+
+# data collector for account equity and drawdowns (sampling every hour)
+collect_equity, equity_data = periodic_collector(Float64, Hour(1));
+collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Hour(1));
+
+# loop over price series
+for i in 1:N
+    dt = df.date[i]
+
+    # randomly trade with 1% probability
+    if rand() &lt; 0.01
+        inst = rand(instruments)
+        price = df[i, inst.symbol]
+        quantity = rand() &gt; 0.5 ? 10.0 : -10.0
+        order = Order(oid!(acc), inst, dt, price, quantity)
+        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+    end
+
+    # update position and account P&amp;L
+    for inst in instruments
+        price = df[i, inst.symbol]
+        update_marks!(acc, inst, dt, price, price, price)
+    end
+
+    # collect data for plotting
+    if should_collect(equity_data, dt)
+        total_equity = (
+            equity(acc, usd) +
+            equity(acc, eur) * get_rate(er, eur, usd) +
+            equity(acc, gbp) * get_rate(er, gbp, usd)
+        )
+        collect_equity(dt, total_equity)
+        collect_drawdown(dt, total_equity)
+    end
+end
+
+# print account summary
+show(acc)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌───┬──────┬──────────┬──────────┐
+│   │    1 │        2 │        3 │
+├───┼──────┼──────────┼──────────┤
+│ 1 │  1.0 │ 0.934579 │ 0.787402 │
+│ 2 │ 1.07 │      1.0 │      NaN │
+│ 3 │ 1.27 │      NaN │      1.0 │
+└───┴──────┴──────────┴──────────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ACCOUNT SUMMARY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<span class="sgr1">Cash balances</span> (3)
+┌─────┬──────────┐
+│     │    Value │
+├─────┼──────────┤
+│ USD │  2349.08 │
+│ EUR │  6354.08 │
+│ GBP │ 10962.21 │
+└─────┴──────────┘
+
+<span class="sgr1">Equity balances</span> (3)
+┌─────┬──────────┐
+│     │    Value │
+├─────┼──────────┤
+│ USD │ 12367.50 │
+│ EUR │  5188.53 │
+│ GBP │ 20564.77 │
+└─────┴──────────┘
+
+<span class="sgr1">Positions</span> (3)
+┌────────┬────────┬──────────┬─────┬─────────┐
+│ Symbol │    Qty │ Entry px │ Ccy │     P&amp;L │
+├────────┼────────┼──────────┼─────┼─────────┤
+│   TSLA │  30.00 │   285.02 │ USD │ 1467.82 │
+│  POAHY │ -20.00 │    36.40 │ EUR │ -437.48 │
+│ TSCO_L │  20.00 │   456.99 │ GBP │  462.71 │
+└────────┴────────┴──────────┴─────┴─────────┘
+
+<span class="sgr1">Trades</span> (23)
+┌────┬────────┬─────────────────────┬────────┬────────┬────────┬────┬────┬──────
+│ ID │ Symbol │                Date │    Qty │ Filled │  Price │ TP │ SL │ Ccy ⋯
+├────┼────────┼─────────────────────┼────────┼────────┼────────┼────┼────┼──────
+│  1 │   TSLA │ 2020-01-03 07:00:00 │  10.00 │  10.00 │ 180.11 │  — │  — │ USD ⋯
+│  2 │  POAHY │ 2020-01-07 07:00:00 │  10.00 │  10.00 │ -17.23 │  — │  — │ EUR ⋯
+│  3 │   TSLA │ 2020-01-09 06:00:00 │  10.00 │  10.00 │ 187.53 │  — │  — │ USD ⋯
+│  4 │ TSCO_L │ 2020-01-09 18:00:00 │ -10.00 │ -10.00 │ 327.77 │  — │  — │ GBP ⋯
+│  5 │  POAHY │ 2020-01-11 02:00:00 │  10.00 │  10.00 │  -7.86 │  — │  — │ EUR ⋯
+│  6 │   TSLA │ 2020-01-11 08:00:00 │ -10.00 │ -10.00 │ 183.61 │  — │  — │ USD ⋯
+│  7 │  POAHY │ 2020-01-11 23:00:00 │ -10.00 │ -10.00 │  -4.30 │  — │  — │ EUR ⋯
+│  8 │ TSCO_L │ 2020-01-22 22:00:00 │  10.00 │  10.00 │ 348.16 │  — │  — │ GBP ⋯
+│  9 │ TSCO_L │ 2020-01-27 09:00:00 │  10.00 │  10.00 │ 353.38 │  — │  — │ GBP ⋯
+│ 10 │  POAHY │ 2020-02-03 10:00:00 │  10.00 │  10.00 │   3.74 │  — │  — │ EUR ⋯
+│ 11 │ TSCO_L │ 2020-02-05 13:00:00 │ -10.00 │ -10.00 │ 386.32 │  — │  — │ GBP ⋯
+│ 12 │  POAHY │ 2020-02-20 09:00:00 │ -10.00 │ -10.00 │  11.03 │  — │  — │ EUR ⋯
+│ 13 │   TSLA │ 2020-02-20 14:00:00 │ -10.00 │ -10.00 │ 244.12 │  — │  — │ USD ⋯
+│ 14 │   TSLA │ 2020-02-26 11:00:00 │  10.00 │  10.00 │ 243.44 │  — │  — │ USD ⋯
+│ 15 │   TSLA │ 2020-02-29 06:00:00 │  10.00 │  10.00 │ 254.44 │  — │  — │ USD ⋯
+│ 16 │ TSCO_L │ 2020-03-02 14:00:00 │  10.00 │  10.00 │ 440.88 │  — │  — │ GBP ⋯
+│ 17 │  POAHY │ 2020-03-10 15:00:00 │ -10.00 │ -10.00 │  34.67 │  — │  — │ EUR ⋯
+│ 18 │  POAHY │ 2020-03-11 09:00:00 │ -10.00 │ -10.00 │  27.33 │  — │  — │ EUR ⋯
+│ 19 │  POAHY │ 2020-03-15 02:00:00 │ -10.00 │ -10.00 │  45.48 │  — │  — │ EUR ⋯
+│ 20 │   TSLA │ 2020-03-15 08:00:00 │  10.00 │  10.00 │ 323.92 │  — │  — │ USD ⋯
+│ 21 │ TSCO_L │ 2020-03-20 13:00:00 │  10.00 │  10.00 │ 473.10 │  — │  — │ GBP ⋯
+│ 22 │   TSLA │ 2020-03-20 19:00:00 │  10.00 │  10.00 │ 318.28 │  — │  — │ USD ⋯
+│ 23 │   TSLA │ 2020-03-20 20:00:00 │ -10.00 │ -10.00 │ 317.15 │  — │  — │ USD ⋯
+└────┴────────┴─────────────────────┴────────┴────────┴────────┴────┴────┴──────
+                                                               4 columns omitted
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</code></pre><h3 id="Plot-account-equity-curve"><a class="docs-heading-anchor" href="#Plot-account-equity-curve">Plot account equity curve</a><a id="Plot-account-equity-curve-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-account-equity-curve" title="Permalink"></a></h3><pre><code class="language-julia hljs">using Plots
+
+theme(:juno)
+
+# plot equity curve
+Fastback.plot_equity(equity_data; size=(800, 400))</code></pre><img src="66757ac3.svg" alt="Example block output"/><h3 id="Plot-account-equity-drawdown-curve"><a class="docs-heading-anchor" href="#Plot-account-equity-drawdown-curve">Plot account equity drawdown curve</a><a id="Plot-account-equity-drawdown-curve-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-account-equity-drawdown-curve" title="Permalink"></a></h3><pre><code class="language-julia hljs"># plot drawdown curve
+Fastback.plot_drawdown(drawdown_data; size=(800, 200))</code></pre><img src="be31ecbf.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../2_portfolio_trading/">« Portfolio trading</a><a class="docs-footer-nextpage" href="../7_USDm_perp_trading/">USD-M perpetual trading »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Sunday 15 February 2026 19:28">Sunday 15 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
