@@ -22,24 +22,24 @@ function FlatFeeBroker(
 end
 
 @inline function broker_commission(
-    profile::FlatFeeBroker,
+    broker::FlatFeeBroker,
     ::Instrument,
     ::Dates.AbstractTime,
     ::Quantity,
     ::Price;
     is_maker::Bool=false,
 )::CommissionQuote
-    profile.commission
+    broker.commission
 end
 
 @inline function broker_interest_rates(
-    profile::FlatFeeBroker,
+    broker::FlatFeeBroker,
     cash_symbol::Symbol,
     ::Dates.AbstractTime,
     ::Price,
 )::Tuple{Price,Price}
     (
-        get(profile.borrow_by_cash, cash_symbol, 0.0),
-        get(profile.lend_by_cash, cash_symbol, 0.0),
+        get(broker.borrow_by_cash, cash_symbol, 0.0),
+        get(broker.lend_by_cash, cash_symbol, 0.0),
     )
 end

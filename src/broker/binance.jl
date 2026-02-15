@@ -1,5 +1,5 @@
 """
-Simplified Binance fee/financing profile for spot and derivatives.
+Simplified Binance fee/financing broker for spot and derivatives.
 """
 struct BinanceBroker{TTime<:Dates.AbstractTime} <: AbstractBroker
     maker_spot::Price
@@ -13,13 +13,14 @@ end
 
 function BinanceBroker(
     ;
+    time_type::Type{TTime}=DateTime,
     maker_spot::Real=0.001,
     taker_spot::Real=0.001,
     maker_derivatives::Real=0.0002,
     taker_derivatives::Real=0.0005,
     fee_discount::Real=1.0,
-    borrow_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}=Dict{Symbol,StepSchedule{Date,Price}}(),
-    lend_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}=Dict{Symbol,StepSchedule{Date,Price}}(),
+    borrow_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}=Dict{Symbol,StepSchedule{time_type,Price}}(),
+    lend_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}=Dict{Symbol,StepSchedule{time_type,Price}}(),
 ) where {TTime<:Dates.AbstractTime}
     maker_spot_p = Price(maker_spot)
     taker_spot_p = Price(taker_spot)
@@ -45,7 +46,7 @@ function BinanceBroker(
 end
 
 @inline function broker_commission(
-    profile::BinanceBroker,
+    broker::BinanceBroker,
     inst::Instrument,
     ::Dates.AbstractTime,
     ::Quantity,
@@ -53,23 +54,23 @@ end
     is_maker::Bool=false,
 )::CommissionQuote
     rate = if inst.contract_kind == ContractKind.Spot
-        is_maker ? profile.maker_spot : profile.taker_spot
+        is_maker ? broker.maker_spot : broker.taker_spot
     else
-        is_maker ? profile.maker_derivatives : profile.taker_derivatives
+        is_maker ? broker.maker_derivatives : broker.taker_derivatives
     end
-    CommissionQuote(; fixed=0.0, pct=rate * profile.fee_discount)
+    CommissionQuote(; fixed=0.0, pct=rate * broker.fee_discount)
 end
 
 @inline function broker_interest_rates(
-    profile::BinanceBroker{TTime},
+    broker::BinanceBroker{TTime},
     cash_symbol::Symbol,
     dt::Dates.AbstractTime,
     ::Price,
 )::Tuple{Price,Price} where {TTime<:Dates.AbstractTime}
-    borrow = let sched = get(profile.borrow_by_cash, cash_symbol, nothing)
+    borrow = let sched = get(broker.borrow_by_cash, cash_symbol, nothing)
         sched === nothing ? 0.0 : value_at(sched, dt)
     end
-    lend = let sched = get(profile.lend_by_cash, cash_symbol, nothing)
+    lend = let sched = get(broker.lend_by_cash, cash_symbol, nothing)
         sched === nothing ? 0.0 : value_at(sched, dt)
     end
     (borrow, lend)

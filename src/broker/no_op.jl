@@ -1,5 +1,5 @@
 """
-No-op broker profile.
+No-op broker.
 
 Commission defaults to zero, financing defaults to zero rates,
 and no broker-specific financing schedules are required.

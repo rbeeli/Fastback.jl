@@ -3,7 +3,7 @@ using Dates
 abstract type AbstractBroker end
 
 """
-Commission quote produced by a broker profile.
+Commission quote produced by a broker.
 
 `fixed` is an additive fee in quote currency.
 `pct` is a percentage of traded notional (e.g. `0.001` = 10 bps).
