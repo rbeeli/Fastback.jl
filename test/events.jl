@@ -162,7 +162,7 @@ end
     expected_spot_value = to_settle(
         acc,
         spot_inst,
-        value_quote(spot_inst, spot_pos.quantity, 110.0),
+        calc_value_quote(spot_inst, spot_pos.quantity, 110.0),
     )
     expected_spot_mark = expected_spot_value - spot_value_before
     expected_funding = -60.0 * 0.01

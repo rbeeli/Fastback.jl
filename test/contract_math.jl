@@ -170,9 +170,9 @@ end
     commission = 1.0
 
     realized_qty = Fastback.calc_realized_qty(pos_qty, fill_qty)
-    realized_pnl = Fastback.pnl_quote(inst, realized_qty, fill_price, pos_avg_settle_price)
+    realized_pnl = Fastback.calc_pnl_quote(inst, realized_qty, fill_price, pos_avg_settle_price)
     inc_qty = Fastback.calc_exposure_increase_quantity(pos_qty, fill_qty)
-    open_settle = Fastback.pnl_quote(inst, inc_qty, mark_price, fill_price)
+    open_settle = Fastback.calc_pnl_quote(inst, inc_qty, mark_price, fill_price)
     expected = open_settle + realized_pnl - commission
 
     got = Fastback.cash_delta_quote_vm(

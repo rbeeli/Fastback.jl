@@ -15,14 +15,14 @@ Currency and unit semantics used throughout contract math:
 """
 Quote-currency P&L for a position at `price` relative to `basis_price`.
 """
-@inline function pnl_quote(inst::Instrument, qty, price, basis_price)::Price
+@inline function calc_pnl_quote(inst::Instrument, qty, price, basis_price)::Price
     qty * (price - basis_price) * inst.multiplier
 end
 
 """
 Quote-currency position value contribution under the instrument settlement style.
 """
-@inline function value_quote(inst::Instrument, qty, price)::Price
+@inline function calc_value_quote(inst::Instrument, qty, price)::Price
     settlement = inst.settlement
     if settlement == SettlementStyle.Asset
         return qty * price * inst.multiplier
@@ -72,7 +72,7 @@ Quote-currency cash delta for a variation-margin fill.
     fill_price::Price,
     commission_total_quote::Price,
 )::Price
-    open_settle_quote = pnl_quote(inst, inc_qty, mark_price, fill_price)
+    open_settle_quote = calc_pnl_quote(inst, inc_qty, mark_price, fill_price)
     open_settle_quote + realized_pnl_reduce_quote - commission_total_quote
 end
 

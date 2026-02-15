@@ -59,7 +59,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
 
     realized_qty = calc_realized_qty(pos_qty, fill_qty)
     realized_pnl_reduce_quote = realized_qty != 0.0 ?
-        pnl_quote(inst, realized_qty, fill_price, pos_avg_settle_price) :
+        calc_pnl_quote(inst, realized_qty, fill_price, pos_avg_settle_price) :
         0.0
 
     commission_settle = to_settle(acc, inst, commission_total_quote)
@@ -139,8 +139,8 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
         new_value_quote = 0.0
     else
         basis_after = new_avg_entry_price_quote
-        new_pnl_quote = pnl_quote(inst, new_qty, mark_price, basis_after)
-        new_value_quote = value_quote(inst, new_qty, mark_price)
+        new_pnl_quote = calc_pnl_quote(inst, new_qty, mark_price, basis_after)
+        new_value_quote = calc_value_quote(inst, new_qty, mark_price)
     end
     new_value_settle = inst.settlement == SettlementStyle.VariationMargin ? 0.0 : to_settle(acc, inst, new_value_quote)
     value_delta_settle = new_value_settle - pos_value_settle

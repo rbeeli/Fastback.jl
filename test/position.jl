@@ -48,6 +48,18 @@ end
     @test Fastback.calc_return_quote(pos_short, close) ≈ -0.5
 end
 
+@testitem "Position cached quote accessors" begin
+    using Test, Fastback, Dates
+    base_currency=CashSpec(:USD)
+    acc = Account(; broker=NoOpBroker(), base_currency=base_currency);
+    deposit!(acc, :USD, 100_000.0)
+    TEST = register_instrument!(acc, spot_instrument(Symbol("CACHE/USD"), :CACHE, :USD))
+
+    pos = Position{DateTime}(1, TEST; pnl_quote=12.5, value_quote=120.0)
+    @test Fastback.pnl_quote(pos) == 12.5
+    @test Fastback.value_quote(pos) == 120.0
+end
+
 @testitem "calc_realized_qty" begin
     using Test, Fastback
     # Test 1: long position, sell order more than position

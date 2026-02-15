@@ -13,7 +13,7 @@
     qty = pos.quantity
     basis_price = pos.avg_settle_price
 
-    new_pnl = pnl_quote(inst, qty, close_price, basis_price)
+    new_pnl = calc_pnl_quote(inst, qty, close_price, basis_price)
 
     if settlement == SettlementStyle.VariationMargin
         if pos.value_settle != 0.0
@@ -44,7 +44,7 @@
         return
     end
 
-    new_value = value_quote(inst, qty, close_price)
+    new_value = calc_value_quote(inst, qty, close_price)
     new_value_settle = to_settle(acc, inst, new_value)
     value_delta_settle = new_value_settle - pos.value_settle
     @inbounds acc.ledger.equities[settle_cash_index] += value_delta_settle

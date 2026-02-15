@@ -90,6 +90,16 @@ Return `true` if the position has non-zero exposure.
 @inline has_exposure(pos::Position) = pos.quantity != zero(Quantity)
 
 """
+Return cached quote-currency unrealized P&L for `pos`.
+"""
+@inline pnl_quote(pos::Position)::Price = pos.pnl_quote
+
+"""
+Return cached quote-currency value contribution for `pos`.
+"""
+@inline value_quote(pos::Position)::Price = pos.value_quote
+
+"""
 Calculates position P&L in local currency on the **settlement basis**.
 
 - Uses `avg_settle_price` (not the entry basis) so that variation-margin positions

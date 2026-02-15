@@ -39,6 +39,10 @@ For details, open the REPL and type `?symbol` to view docstrings.
 ## Position analytics
 
 - `has_exposure`, `value_quote`, `pnl_quote`
+
+## Contract math
+
+- `calc_value_quote`, `calc_pnl_quote`
 - `margin_init_margin_ccy`, `margin_maint_margin_ccy`
 
 ## Exchange rate utilities
