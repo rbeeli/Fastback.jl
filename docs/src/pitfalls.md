@@ -2,6 +2,7 @@
 
 - `AccountFunding.FullyFunded` forces full-notional margin (no leverage), disallows short exposure, and uses liquidation marks for margin checks so bid/ask spreads do not create synthetic deficits.
 - For `MarginRequirement.PercentNotional`, margin rates are equity fractions (IMR/MMR style), not collateral-inclusive ratios: configure a "150% short collateral" rule as `0.50`, not `1.50`.
+- Principal-exchange spot short-sale proceeds are not automatically lend-eligible: `accrue_interest!` applies broker-defined short-proceeds rules (`broker_short_proceeds_rates`) to exclude proceeds from lend base and optionally apply a separate rebate.
 - Use `update_marks!` to keep equity and margin in sync with prices.
 - Expiry/liquidation helpers use stored side-aware quotes (`last_bid`/`last_ask`); keep marks updated with `update_marks!`.
 - Multi-currency equity depends on `ExchangeRates` being updated.

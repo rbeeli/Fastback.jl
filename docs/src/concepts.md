@@ -18,6 +18,7 @@ and it updates balances, equity, and margin deterministically.
 - Equity is balance plus unrealized P&L for open positions in that currency.
 - `update_marks!` recalculates unrealized P&L and updates equity.
 - For variation-margin instruments, unrealized P&L is settled into cash on each mark, so balances move as well.
+- Principal-exchange spot shorts increase cash balance by short-sale proceeds. Interest accrual can exclude those proceeds from the regular lend base and optionally apply a separate short-proceeds rebate rate via broker configuration.
 
 ## Realized vs unrealized P&L
 

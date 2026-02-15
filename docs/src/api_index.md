@@ -15,6 +15,10 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 - `trade_dir`, `is_long`, `is_short`, `opposite_dir`
 
+## Broker hooks
+
+- `broker_commission`, `broker_interest_rates`, `broker_short_proceeds_rates`
+
 ## Order and trade utilities
 
 - `symbol`, `nominal_value`, `fill_order!`
