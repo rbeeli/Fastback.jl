@@ -7,6 +7,8 @@
 using Fastback
 using Dates
 using Plots
+using CSV
+using DataFrames
 using Statistics
 
 # ---------------------------------------------------------
@@ -37,27 +39,35 @@ collect_net, net_exposure = periodic_collector(Float64, Hour(1));
 collect_long, long_exposure = periodic_collector(Float64, Hour(1));
 collect_short, short_exposure = periodic_collector(Float64, Hour(1));
 
-dt0 = DateTime(2020, 1, 1);
-n_steps = 120;
-prices = [100.0 + 0.05 * (i - 1) + 5.0 * sin(2pi * (i - 1) / 24) for i in 1:n_steps];
+## load synthetic USD-M perp data
+## columns: dt, bid, ask, last, funding_rate
+data_path = "data/usdm_perp_1h.csv";
+
+## if data path doesn't exist, try to change working directory
+isfile(data_path) || cd("src/examples")
+
+## parse CSV (hourly rows)
+df = DataFrame(CSV.File(data_path; dateformat="yyyy-mm-dd HH:MM:SS"));
+sort!(df, :dt);
+n_steps = nrow(df);
 
 window = 24;
 deadband = 0.002;
 leverage_target = 2.0;
 
 for i in 1:n_steps
-    dt = dt0 + Hour(i - 1)
-    last = prices[i]
-    bid = last - 0.05
-    ask = last + 0.05
-
-    funding_rate = i % 8 == 0 ? (isodd(div(i, 8)) ? 0.0005 : -0.0005) : 0.0
+    row = df[i, :]
+    dt = row.dt
+    bid = row.bid
+    ask = row.ask
+    last = row.last
+    funding_rate = row.funding_rate
     marks = [MarkUpdate(perp.index, bid, ask, last)]
     funding = funding_rate == 0.0 ? nothing : [FundingUpdate(perp.index, funding_rate)]
     process_step!(acc, dt; marks=marks, funding=funding, liquidate=true)
 
     if i >= window
-        ma = mean(@view prices[i-window+1:i])
+        ma = mean(@view df.last[i-window+1:i])
         signal = last > (1 + deadband) * ma ? 1.0 : (last < (1 - deadband) * ma ? -1.0 : 0.0)
 
         pos = get_position(acc, perp)
@@ -90,10 +100,9 @@ end
 
 pos = get_position(acc, perp)
 if pos.quantity != 0.0
-    dt = dt0 + Hour(n_steps - 1)
-    last = prices[end]
-    order = Order(oid!(acc), perp, dt, last, -pos.quantity)
-    fill_order!(acc, order; dt=dt, fill_price=last, bid=last - 0.05, ask=last + 0.05, last=last)
+    row = df[end, :]
+    order = Order(oid!(acc), perp, row.dt, row.last, -pos.quantity)
+    fill_order!(acc, order; dt=row.dt, fill_price=row.last, bid=row.bid, ask=row.ask, last=row.last)
 end
 
 # ---------------------------------------------------------
