@@ -514,7 +514,6 @@ function Fastback.plot_cashflows(acc::Account{TTime}; kwargs...) where {TTime<:D
     end
 
     kinds = sort!(collect(keys(cf_by_kind)); by=Int)
-    y_label = string(acc.base_currency)
     plot_kwargs = _merge_kwargs((;
             layout=(length(kinds), 1),
             size=(800, 180 * length(kinds)),
@@ -531,7 +530,7 @@ function Fastback.plot_cashflows(acc::Account{TTime}; kwargs...) where {TTime<:D
                 markersize=2,
                 title=string(k),
                 xlabel="Date",
-                ylabel=y_label,
+                ylabel=acc.base_currency.symbol,
             )
             Plots.hline!(p[i], [0.0]; color=:black, alpha=0.2)
         end

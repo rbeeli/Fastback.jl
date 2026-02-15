@@ -69,6 +69,8 @@ window = 24;
 deadband = 0.002;
 leverage_target = 3.0;
 
+@inline fill_price_for_qty(qty, bid, ask) = qty > 0.0 ? ask : bid
+
 for i in 1:nrow(df)
     row = df[i, :]
     dt = row.dt
@@ -88,12 +90,14 @@ for i in 1:nrow(df)
         signal = last > (1 + deadband) * ma ? 1.0 : (last < (1 - deadband) * ma ? -1.0 : 0.0)
 
         pos = get_position(acc, perp)
-        target_qty = signal == 0.0 ? 0.0 : signal * leverage_target * equity(acc, usdt) / last
+        target_notional = signal == 0.0 ? 0.0 : signal * leverage_target * equity(acc, usdt)
+        target_qty = calc_base_qty_for_notional(perp, last, target_notional)
         delta_qty = target_qty - pos.quantity
 
-        if abs(delta_qty) > 1e-8
-            order = Order(oid!(acc), perp, dt, last, delta_qty)
-            fill_order!(acc, order; dt=dt, fill_price=last, bid=bid, ask=ask, last=last)
+        if abs(delta_qty) >= (perp.base_tick / 2)
+            fill_price = fill_price_for_qty(delta_qty, bid, ask)
+            order = Order(oid!(acc), perp, dt, fill_price, delta_qty)
+            fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=bid, ask=ask, last=last)
         end
     end
 
@@ -109,8 +113,10 @@ end
 row = df[end, :]
 pos = get_position(acc, perp)
 if pos.quantity != 0.0
-    order = Order(oid!(acc), perp, row.dt, row.last, -pos.quantity)
-    fill_order!(acc, order; dt=row.dt, fill_price=row.last, bid=row.bid, ask=row.ask, last=row.last)
+    close_qty = -pos.quantity
+    close_fill_price = fill_price_for_qty(close_qty, row.bid, row.ask)
+    order = Order(oid!(acc), perp, row.dt, close_fill_price, close_qty)
+    fill_order!(acc, order; dt=row.dt, fill_price=close_fill_price, bid=row.bid, ask=row.ask, last=row.last)
 end
 
 ## summarize funding P&L
