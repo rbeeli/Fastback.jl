@@ -64,8 +64,8 @@ end
 """
     process_expiries!(acc, dt)
 
-Settles expired futures deterministically at `dt` using the stored position mark.
-Requires positions to have finite marks.
+Settles expired futures at `dt` using stored position bid/ask/last quotes.
+Requires positions to have finite mark and quote fields.
 Expiry fills are close-only and run with `allow_inactive=true`, so they bypass
 incremental-margin rejection by design.
 """
@@ -83,8 +83,7 @@ function process_expiries!(
         trade = settle_expiry!(
             acc,
             inst,
-            dt;
-            settle_price=pos.mark_price,
+            dt,
         )
         trade === nothing && continue
         push!(trades, trade)

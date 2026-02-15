@@ -108,6 +108,8 @@ end
     pos::Position{TTime},
     dt::TTime,
     close_price::Price,
+    bid::Price,
+    ask::Price,
     last_price::Price,
 ) where {TTime<:Dates.AbstractTime}
     _update_valuation!(acc, pos, dt, close_price)
@@ -117,6 +119,8 @@ end
     margin_price = margin_reference_price(acc, pos.inst, close_price, last_price)
     _update_margin!(acc, pos, margin_price)
     pos.mark_price = close_price
+    pos.last_bid = bid
+    pos.last_ask = ask
     pos.last_price = last_price
     pos.mark_time = dt
     return
@@ -141,7 +145,7 @@ liquidation marks in fully funded accounts and `last` in margined accounts.
     isfinite(ask) || throw(ArgumentError("update_marks! requires finite ask, got $(ask) at dt=$(dt)."))
     isfinite(last) || throw(ArgumentError("update_marks! requires finite last, got $(last) at dt=$(dt)."))
     close_price = _calc_mark_price(pos.inst, pos.quantity, bid, ask)
-    _update_marks!(acc, pos, dt, close_price, last)
+    _update_marks!(acc, pos, dt, close_price, bid, ask, last)
 end
 
 @inline function _calc_mark_price(inst::Instrument, qty, bid, ask)
@@ -156,6 +160,15 @@ end
     else
         return (bid + ask) / 2
     end
+end
+
+@inline function _forced_close_quotes(pos::Position)
+    isfinite(pos.last_bid) || throw(ArgumentError("Forced close for $(pos.inst.symbol) requires finite last_bid; call update_marks! before expiry/liquidation."))
+    isfinite(pos.last_ask) || throw(ArgumentError("Forced close for $(pos.inst.symbol) requires finite last_ask; call update_marks! before expiry/liquidation."))
+    bid = pos.last_bid
+    ask = pos.last_ask
+    fill_price = pos.quantity > 0.0 ? bid : ask
+    fill_price, bid, ask
 end
 
 """
@@ -177,7 +190,7 @@ then applies settlement-aware margin reference pricing.
     isfinite(last) || throw(ArgumentError("update_marks! requires finite last, got $(last) at dt=$(dt)."))
     pos = get_position(acc, inst)
     close_price = _calc_mark_price(inst, pos.quantity, bid, ask)
-    _update_marks!(acc, pos, dt, close_price, last)
+    _update_marks!(acc, pos, dt, close_price, bid, ask, last)
 end
 
 """
@@ -216,8 +229,9 @@ Commission is broker-driven by default via `acc.broker`.
     mark_for_position = _calc_mark_price(inst, pos.quantity, bid, ask)
     mark_for_valuation = _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
     margin_for_valuation = margin_reference_price(acc, inst, mark_for_valuation, last)
-    needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_position || pos.last_price != last || pos.mark_time != dt
-    needs_mark_update && _update_marks!(acc, pos, dt, mark_for_position, last)
+    needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_position ||
+        pos.last_bid != bid || pos.last_ask != ask || pos.last_price != last || pos.mark_time != dt
+    needs_mark_update && _update_marks!(acc, pos, dt, mark_for_position, bid, ask, last)
 
     _accrue_borrow_fee!(acc, pos, dt)
     pos_qty = pos.quantity
@@ -260,6 +274,8 @@ Commission is broker-driven by default via `acc.broker`.
     pos.init_margin_settle = plan.new_init_margin_settle
     pos.maint_margin_settle = plan.new_maint_margin_settle
     pos.mark_price = mark_for_valuation
+    pos.last_bid = bid
+    pos.last_ask = ask
     pos.last_price = last
     pos.mark_time = dt
     if pos.quantity < 0.0 &&
@@ -382,9 +398,9 @@ end
 Force-settles an expired instrument by synthetically closing any open position.
 
 If the instrument is expired at `dt` and the position quantity is non-zero,
-this generates a closing order with the provided settlement price and routes
-it through `fill_order!` to record a trade and release margin.
-The caller must provide a finite settlement price (typically the stored mark).
+this generates a close-only order and routes it through `fill_order!` to
+record a trade and release margin. Forced close execution is side-aware:
+longs close at the stored bid and shorts close at the stored ask.
 Expiry closes are close-only (`fill_qty = -pos.quantity`) and call `fill_order!`
 with `allow_inactive=true`, so they bypass incremental-margin rejection by design.
 """
@@ -392,18 +408,17 @@ function settle_expiry!(
     acc::Account{TTime,TBroker},
     inst::Instrument{TTime},
     dt::TTime
-    ;
-    settle_price=get_position(acc, inst).mark_price,
 )::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     pos = get_position(acc, inst)
     (pos.quantity == 0.0 || !is_expired(inst, dt)) && return nothing
 
+    fill_price, bid, ask = _forced_close_quotes(pos)
     qty = -pos.quantity
-    order = Order(oid!(acc), inst, dt, settle_price, qty)
-    trade = fill_order!(acc, order; dt=dt, fill_price=settle_price,
-        bid=settle_price,
-        ask=settle_price,
-        last=settle_price,
+    order = Order(oid!(acc), inst, dt, fill_price, qty)
+    trade = fill_order!(acc, order; dt=dt, fill_price=fill_price,
+        bid=bid,
+        ask=ask,
+        last=pos.last_price,
         allow_inactive=true,
         trade_reason=TradeReason.Expiry)
 

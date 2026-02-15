@@ -1,7 +1,7 @@
 """
     liquidate_all!(acc, dt)
 
-Liquidates all open positions at their current marks, returning the generated trades.
+Liquidates all open positions using stored side-aware quotes, returning the generated trades.
 Liquidation fills are close-only and run with `allow_inactive=true`, so they bypass
 incremental-margin rejection by design.
 """
@@ -13,14 +13,15 @@ function liquidate_all!(
     for pos in acc.positions
         qty = pos.quantity
         qty == 0.0 && continue
-        order = Order(oid!(acc), pos.inst, dt, pos.mark_price, -qty)
+        fill_price, bid, ask = _forced_close_quotes(pos)
+        order = Order(oid!(acc), pos.inst, dt, fill_price, -qty)
         trade = fill_order!(
             acc,
             order;
             dt=dt,
-            fill_price=pos.mark_price,
-            bid=pos.mark_price,
-            ask=pos.mark_price,
+            fill_price=fill_price,
+            bid=bid,
+            ask=ask,
             last=pos.last_price,
             allow_inactive=true,
             trade_reason=TradeReason.Liquidation,
@@ -89,8 +90,9 @@ end
 ) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     qty = pos.quantity
     close_qty = -qty
-    fill_price = pos.mark_price
-    margin_price = margin_reference_price(acc, pos.inst, fill_price, pos.last_price)
+    fill_price, bid, ask = _forced_close_quotes(pos)
+    mark_for_valuation = _calc_mark_price(pos.inst, qty + close_qty, bid, ask)
+    margin_price = margin_reference_price(acc, pos.inst, mark_for_valuation, pos.last_price)
     commission = broker_commission(acc.broker, pos.inst, dt, close_qty, fill_price)
     order = Order(0, pos.inst, dt, fill_price, close_qty)
     plan = plan_fill(
@@ -99,7 +101,7 @@ end
         order,
         dt,
         fill_price,
-        fill_price,
+        mark_for_valuation,
         margin_price,
         close_qty,
         commission.fixed,
@@ -184,14 +186,15 @@ function liquidate_to_maintenance!(
 
         max_pos === nothing && throw(ArgumentError("Account under maintenance but has no open positions to liquidate."))
         qty = max_pos.quantity
-        order = Order(oid!(acc), max_pos.inst, dt, max_pos.mark_price, -qty)
+        fill_price, bid, ask = _forced_close_quotes(max_pos)
+        order = Order(oid!(acc), max_pos.inst, dt, fill_price, -qty)
         trade = fill_order!(
             acc,
             order;
             dt=dt,
-            fill_price=max_pos.mark_price,
-            bid=max_pos.mark_price,
-            ask=max_pos.mark_price,
+            fill_price=fill_price,
+            bid=bid,
+            ask=ask,
             last=max_pos.last_price,
             allow_inactive=true,
             trade_reason=TradeReason.Liquidation,

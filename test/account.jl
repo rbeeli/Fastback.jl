@@ -665,7 +665,7 @@ end
     @test pos.quantity == 0.0
 end
 
-@testitem "settle_expiry! closes positions and releases margin" begin
+@testitem "settle_expiry! closes positions and releases margin with side-aware execution" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
@@ -695,17 +695,18 @@ end
     open_price = 100.0
     open_order = Order(oid!(acc), inst, open_dt, open_price, qty)
     fill_order!(acc, open_order; dt=open_dt, fill_price=open_price, bid=open_price, ask=open_price, last=open_price)
+    update_marks!(acc, inst, expiry_dt, 104.0, 106.0, 105.0)
 
     usd_index = cash_asset(acc, :USD).index
     @test pos.quantity == qty
     @test pos.init_margin_settle > 0.0
     @test acc.ledger.init_margin_used[usd_index] > 0.0
 
-    settle_price = 105.0
-    trade = settle_expiry!(acc, inst, expiry_dt; settle_price=settle_price)
+    trade = settle_expiry!(acc, inst, expiry_dt)
 
     @test trade isa Trade
     @test acc.trades[end] === trade
+    @test trade.fill_price ≈ 104.0 atol=1e-12
     @test trade.fill_qty ≈ -qty
     @test pos.quantity == 0.0
     @test pos.init_margin_settle == 0.0
@@ -714,12 +715,11 @@ end
     @test acc.ledger.maint_margin_used[usd_index] == 0.0
 end
 
-@testitem "settle_expiry! rejects non-finite settle price" begin
+@testitem "settle_expiry! closes short exposure at stored ask" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
-    usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 20_000.0)
 
     start_dt = DateTime(2026, 1, 1)
@@ -738,32 +738,16 @@ end
         start_time=start_dt,
         expiry=expiry_dt,
     ))
-    pos = get_position(acc, inst)
-
     open_dt = start_dt + Day(10)
-    fill_order!(acc, Order(oid!(acc), inst, open_dt, 100.0, 2.0); dt=open_dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    fill_order!(acc, Order(oid!(acc), inst, open_dt, 100.0, -2.0); dt=open_dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    update_marks!(acc, inst, expiry_dt, 105.0, 107.0, 106.0)
 
-    usd_index = cash_asset(acc, :USD).index
-    bal_before = acc.ledger.balances[usd_index]
-    eq_before = acc.ledger.equities[usd_index]
-    init_before = acc.ledger.init_margin_used[usd_index]
-    maint_before = acc.ledger.maint_margin_used[usd_index]
-    trade_count_before = length(acc.trades)
+    trade = settle_expiry!(acc, inst, expiry_dt)
 
-    err = try
-        settle_expiry!(acc, inst, expiry_dt; settle_price=NaN)
-        nothing
-    catch e
-        e
-    end
-
-    @test err isa ArgumentError
-    @test pos.quantity == 2.0
-    @test acc.ledger.balances[usd_index] == bal_before
-    @test acc.ledger.equities[usd_index] == eq_before
-    @test acc.ledger.init_margin_used[usd_index] == init_before
-    @test acc.ledger.maint_margin_used[usd_index] == maint_before
-    @test length(acc.trades) == trade_count_before
+    @test trade isa Trade
+    @test trade.fill_price ≈ 107.0 atol=1e-12
+    @test trade.fill_pnl_settle ≈ -2.0 atol=1e-12
+    @test get_position(acc, inst).quantity == 0.0
 end
 
 @testitem "Zero margin rates keep margin usage at zero" begin

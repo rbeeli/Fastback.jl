@@ -7,6 +7,7 @@ Position state tracked per instrument (see currency/unit semantics note in `cont
 - `pnl_quote`, `pnl_settle`, `value_quote`, `value_settle`: cached valuation in quote/settlement currencies (`pnl_settle` for principal-exchange settlement includes FX translation versus `avg_entry_price_settle`)
 - `init_margin_settle`, `maint_margin_settle`: margin currency (defaults to settlement)
 - `mark_price`: last valuation (liquidation) price at `mark_time`
+- `last_bid` / `last_ask`: last observed top-of-book quotes used for side-aware forced closes
 - `last_price`: last traded price (used for non-VM margin calculations)
 - `borrow_fee_dt`: last borrow-fee accrual timestamp for principal-exchange spot shorts
 """
@@ -24,6 +25,8 @@ mutable struct Position{TTime<:Dates.AbstractTime}
     init_margin_settle::Price       # initial margin used in margin currency (defaults to settlement)
     maint_margin_settle::Price      # maintenance margin used in margin currency (defaults to settlement)
     mark_price::Price               # last valuation price
+    last_bid::Price                 # last observed bid
+    last_ask::Price                 # last observed ask
     last_price::Price               # last traded price (non-VM margin reference)
     mark_time::TTime                # timestamp of last valuation price
     borrow_fee_dt::TTime            # timestamp of last borrow-fee accrual
@@ -45,6 +48,8 @@ mutable struct Position{TTime<:Dates.AbstractTime}
         init_margin_settle::Price=0.0,
         maint_margin_settle::Price=0.0,
         mark_price::Price=Price(NaN),
+        last_bid::Price=Price(NaN),
+        last_ask::Price=Price(NaN),
         last_price::Price=Price(NaN),
         mark_time::TTime=TTime(0),
         borrow_fee_dt::TTime=TTime(0),
@@ -65,6 +70,8 @@ mutable struct Position{TTime<:Dates.AbstractTime}
             init_margin_settle,
             maint_margin_settle,
             mark_price,
+            last_bid,
+            last_ask,
             last_price,
             mark_time,
             borrow_fee_dt,

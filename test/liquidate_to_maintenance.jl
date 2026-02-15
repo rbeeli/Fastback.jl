@@ -67,6 +67,40 @@ end
     @test get_position(acc, inst).quantity == 0.0
 end
 
+@testitem "liquidate_to_maintenance! uses side-aware forced-close prices for variation margin" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 25.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("VMMAINT/USD"), :VMMAINT, :USD;
+        contract_kind=ContractKind.Perpetual,
+        settlement=SettlementStyle.VariationMargin,
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.1, margin_init_short=0.1,
+        margin_maint_long=0.1, margin_maint_short=0.1))
+
+    dt0 = DateTime(2026, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt0, 101.0, 1.0); dt=dt0, fill_price=101.0, bid=99.0, ask=101.0, last=100.0)
+
+    dt1 = dt0 + Hour(1)
+    update_marks!(acc, inst, dt1, 79.0, 81.0, 80.0)
+    @test is_under_maintenance(acc)
+
+    trades = liquidate_to_maintenance!(acc, dt1)
+    trade = only(trades)
+
+    @test trade.fill_price ≈ 79.0 atol=1e-12
+    @test trade.fill_pnl_settle ≈ -1.0 atol=1e-12
+    @test trade.cash_delta_settle ≈ -1.0 atol=1e-12
+    @test get_position(acc, inst).quantity == 0.0
+    @test !is_under_maintenance(acc)
+    @test Fastback.check_invariants(acc)
+    @test maint_margin_used(acc, usd) ≈ 0.0 atol=1e-12
+end
+
 @testitem "per-currency liquidation targets offending currency" begin
     using Test, Fastback, Dates
 
