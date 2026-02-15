@@ -6,7 +6,6 @@ function load_voo_total_return_df(ohlcv_path, dividends_path, splits_path; start
     dividends = DataFrame(CSV.File(dividends_path; dateformat="yyyy-mm-dd"))
     splits = DataFrame(CSV.File(splits_path; dateformat="yyyy-mm-dd"))
 
-    sort!(ohlcv, :date)
     ohlcv = ohlcv[(start_dt .<= Date.(ohlcv.date) .<= end_dt), :]
 
     div_by_dt = Dict{Date,Float64}()
@@ -157,7 +156,7 @@ end
 Load example 9 USD benchmark schedule from the local data folder.
 """
 function load_usd_benchmark_schedule(data_dir)
-    path = joinpath(data_dir, "ibkr_usd_benchmark_schedule_2025.csv")
+    path = joinpath(data_dir, "IBKR_USD_benchmark.csv")
     StepSchedule([
         (Date(row.start_dt), Float64(row.usd_benchmark))
         for row in CSV.File(path; dateformat="yyyy-mm-dd")
