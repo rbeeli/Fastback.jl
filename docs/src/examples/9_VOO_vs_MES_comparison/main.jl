@@ -34,6 +34,8 @@ const MES_INIT_MARGIN = 2_800.0
 const MES_MAINT_MARGIN = 2_421.0
 const MES_PER_CONTRACT_FEE = 1.22  # 0.85 + 0.35 + 0.02
 const VOO_REGT_INIT_LONG = 0.50
+const VOO_REGT_INIT_SHORT = 0.35  # equals 135% collateral-style notion
+const VOO_REGT_MAINT_SHORT = 0.20  # equals 120% collateral-style notion
 
 const BACKTEST_START = Date(2020, 1, 1)
 const BACKTEST_END = Date(2024, 12, 31)
@@ -267,9 +269,9 @@ function build_voo_account(initial_cash, broker)
         quote_digits=2,
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=VOO_REGT_INIT_LONG,
-        margin_init_short=1.35,
+        margin_init_short=VOO_REGT_INIT_SHORT,
         margin_maint_long=0.25,
-        margin_maint_short=1.20,
+        margin_maint_short=VOO_REGT_MAINT_SHORT,
     ))
 
     acc, voo

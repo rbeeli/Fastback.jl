@@ -23,6 +23,7 @@ A `Position` maintains the net exposure for an instrument using a weighted-avera
 ### Spot on Margin
 
 A principal-exchange spot instrument with an explicit margin requirement (percent-notional or fixed-per-contract) represents "spot on margin". Leveraged longs/shorts post margin, and shorts can accrue borrow fees via `short_borrow_rate` (borrow-fee clocks are tracked per position and aligned to fills).
+For `PercentNotional`, margin parameters are equity fractions of notional (IMR/MMR-style), not collateral-inclusive ratios.
 
 ## Base Asset
 

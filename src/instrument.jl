@@ -146,6 +146,9 @@ end
 Convenience constructor for principal-exchange spot exposure.
 Defaults to percent-notional margin set to 100% (fully funded) and validates
 the resulting instrument before returning it.
+
+For `margin_requirement=MarginRequirement.PercentNotional`, margin parameters are
+equity fractions of notional (IMR/MMR-style), e.g. `0.10` for 10%.
 """
 function spot_instrument(
     symbol::Symbol,
@@ -201,6 +204,9 @@ end
 
 Perpetual swap constructor. Uses variation margin settlement and requires
 explicit margin parameters. `expiry` is fixed to zero by construction.
+
+For `margin_requirement=MarginRequirement.PercentNotional`, margin parameters are
+equity fractions of notional (IMR/MMR-style), e.g. `0.10` for 10%.
 """
 function perpetual_instrument(
     symbol::Symbol,
@@ -256,6 +262,9 @@ end
 
 Future constructor using variation margin settlement. Requires a
 non-zero `expiry` and explicit margin parameters.
+
+For `margin_requirement=MarginRequirement.PercentNotional`, margin parameters are
+equity fractions of notional (IMR/MMR-style), e.g. `0.10` for 10%.
 """
 function future_instrument(
     symbol::Symbol,
@@ -368,6 +377,12 @@ function validate_instrument(inst::Instrument{TTime}) where {TTime<:Dates.Abstra
         throw(ArgumentError("Instrument $(inst.symbol) must satisfy margin_maint_long <= margin_init_long."))
     inst.margin_maint_short <= inst.margin_init_short ||
         throw(ArgumentError("Instrument $(inst.symbol) must satisfy margin_maint_short <= margin_init_short."))
+
+    if inst.margin_requirement == MarginRequirement.PercentNotional
+        if inst.margin_init_long > 1.0 || inst.margin_init_short > 1.0 || inst.margin_maint_long > 1.0 || inst.margin_maint_short > 1.0
+            @warn "Instrument $(inst.symbol) uses PercentNotional margin rates above 1.0. Fastback interprets these rates as equity fractions of notional (IMR/MMR-style), not total collateral ratios. Example: broker short requirement 150% collateral (proceeds + 50% equity) should be configured as 0.50, not 1.50."
+        end
+    end
 
     if kind == ContractKind.Spot
         settlement == SettlementStyle.PrincipalExchange || throw(ArgumentError("Spot instrument $(inst.symbol) must use Principal-exchange settlement."))

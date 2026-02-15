@@ -101,6 +101,25 @@ end
     register_instrument!(acc, good_fixed)
 end
 
+@testitem "Percent-notional rates above 1.0 emit a clarity warning" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
+    deposit!(acc, :USD, 0.0)
+
+    inst = Instrument(Symbol("WARN/PCT"), :WARN, :USD;
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.5,
+        margin_init_short=1.5,
+        margin_maint_long=0.25,
+        margin_maint_short=1.2,
+    )
+
+    @test_logs (:warn, r"equity fractions of notional") register_instrument!(acc, inst)
+end
+
 @testitem "Multiplier must be finite and positive at instrument creation" begin
     using Test, Fastback
 

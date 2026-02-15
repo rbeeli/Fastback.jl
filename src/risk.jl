@@ -1,3 +1,10 @@
+"""
+Return the rejection reason for a proposed fill impact.
+
+Initial-margin checks enforce `equity_after >= init_margin_after`.
+For `MarginRequirement.PercentNotional`, this is an IMR/MMR-style equity-fraction
+model (required margin is `rate * abs(notional)`).
+"""
 @inline function check_fill_constraints(
     acc::Account{TTime},
     pos::Position{TTime},

@@ -103,6 +103,11 @@ Calculates the initial margin requirement in the instrument margin currency.
 
 `AccountFunding.FullyFunded` forces a fully funded requirement (full notional), evaluated
 at the caller-provided margin reference price.
+
+For `MarginRequirement.PercentNotional`, rates are interpreted as equity fractions
+of notional (IMR/MMR-style):
+`abs(qty) * abs(price) * multiplier * rate`.
+Example: a 10% initial margin is `0.10`.
 """
 @inline function margin_init_margin_ccy(acc::Account, inst::Instrument, qty, price)::Price
     qty == 0 && return zero(Price)
@@ -127,6 +132,11 @@ Calculates the maintenance margin requirement in the instrument margin currency.
 
 `AccountFunding.FullyFunded` forces a fully funded requirement (full notional), evaluated
 at the caller-provided margin reference price.
+
+For `MarginRequirement.PercentNotional`, rates are interpreted as equity fractions
+of notional (IMR/MMR-style):
+`abs(qty) * abs(price) * multiplier * rate`.
+Example: a 5% maintenance margin is `0.05`.
 """
 @inline function margin_maint_margin_ccy(acc::Account, inst::Instrument, qty, price)::Price
     qty == 0 && return zero(Price)

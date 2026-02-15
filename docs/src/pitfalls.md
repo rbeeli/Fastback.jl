@@ -1,6 +1,7 @@
 # Pitfalls and gotchas
 
 - `AccountFunding.FullyFunded` forces full-notional margin (no leverage), disallows short exposure, and uses liquidation marks for margin checks so bid/ask spreads do not create synthetic deficits.
+- For `MarginRequirement.PercentNotional`, margin rates are equity fractions (IMR/MMR style), not collateral-inclusive ratios: configure a "150% short collateral" rule as `0.50`, not `1.50`.
 - Use `update_marks!` to keep equity and margin in sync with prices.
 - Expiry settlement requires a finite `mark_price` on the position.
 - Multi-currency equity depends on `ExchangeRates` being updated.

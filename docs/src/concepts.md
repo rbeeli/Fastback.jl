@@ -36,6 +36,8 @@ and it updates balances, equity, and margin deterministically.
 
 - Funding policies: `AccountFunding.FullyFunded` enforces fully funded exposure (full notional margin), disallows short exposure, prices requirements from liquidation marks (bid for longs, ask for shorts), and requires withdrawals to respect available funds; `AccountFunding.Margined` uses instrument margin settings, with margin priced from marks for `VariationMargin` instruments and from last-trade for other settlement styles.
 - Margin requirements on instruments: `PercentNotional`, `FixedPerContract`.
+- `PercentNotional` uses IMR/MMR-style equity fractions of notional: `required_margin = rate * abs(qty) * abs(price) * multiplier`.
+- For short rules expressed as total collateral (for example "150% of short notional"), convert to equity fraction before configuring Fastback: `150% -> 0.50`.
 - Margin aggregation: `PerCurrency` or `BaseCurrency`, controlling how margin totals are aggregated.
 
 ## Event loop
