@@ -67,3 +67,4 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
 - Avoid shared mutable state in threaded workflows (`batch_backtest`, collectors).  
 - If touching accounting internals, sanity-check with `check_invariants(acc)` in tests.
 - For releases: bump `Project.toml` version, update `CHANGELOG.md` (YYYY-MM-DD), and note breaking changes explicitly.
+- Hot-path code of the backtesting loop must be type stable, and is ideally allocation free. Avoid costly loops if possible.
