@@ -26,14 +26,14 @@ using Random
 
 # ---------------------------------------------------------
 
-## Broker assumptions (compact, not statement-perfect)
+## Broker simplified assumptions
 const IBKR_BORROW_SPREAD = 0.015
 const IBKR_LEND_SPREAD = 0.005
 const IBKR_USD_CREDIT_NO_INTEREST_BALANCE = 10_000.0
 const MES_INIT_MARGIN = 2_800.0
 const MES_MAINT_MARGIN = 2_421.0
-const VOO_REGT_INIT_LONG = 0.50
 const MES_PER_CONTRACT_FEE = 1.22  # 0.85 + 0.35 + 0.02
+const VOO_REGT_INIT_LONG = 0.50
 
 const BACKTEST_START = Date(2020, 1, 1)
 const BACKTEST_END = Date(2024, 12, 31)
