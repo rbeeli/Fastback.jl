@@ -79,7 +79,7 @@ end
     @test symbol(order) == Symbol("BTC/USD")
 end
 
-@testitem "calc_qty_for_notional rounds to base_tick and clamps to base bounds" begin
+@testitem "calc_base_qty_for_notional rounds to base_tick and clamps to base bounds" begin
     using Test, Fastback
 
     inst = Instrument(
@@ -92,10 +92,10 @@ end
         multiplier=5.0,
     )
 
-    @test calc_qty_for_notional(inst, 100.0, 2_499.0) == 4.0
-    @test calc_qty_for_notional(inst, 100.0, 2_500.0) == 5.0
-    @test calc_qty_for_notional(inst, 100.0, 999_999.0) == 10.0
-    @test calc_qty_for_notional(inst, 100.0, -500.0) == 0.0
+    @test calc_base_qty_for_notional(inst, 100.0, 2_499.0) == 4.0
+    @test calc_base_qty_for_notional(inst, 100.0, 2_500.0) == 5.0
+    @test calc_base_qty_for_notional(inst, 100.0, 999_999.0) == 10.0
+    @test calc_base_qty_for_notional(inst, 100.0, -500.0) == 0.0
 
     inst_signed = Instrument(
         Symbol("QTYSGN/USD"),
@@ -107,8 +107,8 @@ end
         multiplier=5.0,
     )
 
-    @test calc_qty_for_notional(inst_signed, 100.0, -2_550.0) == -5.0
-    @test calc_qty_for_notional(inst_signed, -100.0, 2_550.0) == 5.0
+    @test calc_base_qty_for_notional(inst_signed, 100.0, -2_550.0) == -5.0
+    @test calc_base_qty_for_notional(inst_signed, -100.0, 2_550.0) == 5.0
 
     inst_fractional = Instrument(
         Symbol("QTYFRAC/USD"),
@@ -117,5 +117,5 @@ end
         base_tick=0.25,
         multiplier=1.0,
     )
-    @test calc_qty_for_notional(inst_fractional, 10.0, 37.0) ≈ 3.5
+    @test calc_base_qty_for_notional(inst_fractional, 10.0, 37.0) ≈ 3.5
 end
