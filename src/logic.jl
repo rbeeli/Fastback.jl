@@ -200,6 +200,8 @@ restarts the borrow-fee clock based on the post-fill position.
 Throws `OrderRejectError` when the fill is rejected (inactive instrument or risk checks).
 Requires bid/ask/last to deterministically value positions and compute margin during fills.
 Risk checks only reject exposure-increasing fills (`inc_qty != 0`).
+For variation-margin instruments, fills immediately settle execution-to-mark into cash and reset
+the settlement basis (`avg_settle_price`) to the current mark.
 
 Commission is broker-driven by default via `acc.broker`.
 """

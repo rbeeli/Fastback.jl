@@ -51,10 +51,10 @@ Commission is specified by the active broker profile and converted from quote to
 
 ## Realized P&L
 
-Realized P&L is produced when exposure decreases (`realized_qty`) and is recorded gross of commissions as `fill_pnl_settle`.
+`fill_pnl_settle` is gross fill-settled P&L (commissions excluded).
 
-For principal-exchange settlement, `fill_pnl_settle` equals closed-position realized P&L.
-For variation-margin settlement, it includes both open mark-to-fill settlement and reduce-basis settlement.
+For principal-exchange settlement, `fill_pnl_settle` equals closed-position realized P&L when exposure decreases (`realized_qty`).
+For variation-margin settlement, it includes both open mark-to-fill settlement and reduce-basis settlement, and fills reset `avg_settle_price` to the current mark.
 
 Commissions are separate via `commission_settle`. The actual fill cash movement is always `cash_delta_settle`; for variation margin, `cash_delta_settle = fill_pnl_settle - commission_settle`.
 
