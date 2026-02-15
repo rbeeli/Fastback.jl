@@ -551,3 +551,75 @@ end
     @test pos.last_price == last_before
     @test pos.mark_time == time_before
 end
+
+@testitem "variation-margin margin checks ignore isolated last-price spikes" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 10.0)
+
+    inst = register_instrument!(acc, perpetual_instrument(Symbol("VMMARG/USD"), :VMMARG, :USD;
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+
+    dt1 = dt0 + Hour(1)
+    update_marks!(acc, inst, dt1, 99.0, 101.0, 250.0) # VM mark(mid)=100, last spike=250
+
+    pos = get_position(acc, inst)
+    expected_init = margin_init_margin_ccy(acc, inst, pos.quantity, pos.mark_price)
+    expected_maint = margin_maint_margin_ccy(acc, inst, pos.quantity, pos.mark_price)
+    expected_init_last = margin_init_margin_ccy(acc, inst, pos.quantity, pos.last_price)
+    expected_maint_last = margin_maint_margin_ccy(acc, inst, pos.quantity, pos.last_price)
+
+    @test pos.mark_price ≈ 100.0 atol=1e-12
+    @test pos.last_price ≈ 250.0 atol=1e-12
+    @test init_margin_used(acc, usd) ≈ expected_init atol=1e-12
+    @test maint_margin_used(acc, usd) ≈ expected_maint atol=1e-12
+    @test !isapprox(init_margin_used(acc, usd), expected_init_last; atol=1e-12, rtol=1e-12)
+    @test !isapprox(maint_margin_used(acc, usd), expected_maint_last; atol=1e-12, rtol=1e-12)
+    @test !is_under_maintenance(acc)
+end
+
+@testitem "asset-settled margin mode still uses last as margin reference" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 1_000.0)
+
+    inst = register_instrument!(acc, Instrument(Symbol("ASTLAST/USD"), :ASTLAST, :USD;
+        settlement=SettlementStyle.Asset,
+        contract_kind=ContractKind.Spot,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.2,
+        margin_init_short=0.2,
+        margin_maint_long=0.1,
+        margin_maint_short=0.1,
+    ))
+
+    dt = DateTime(2026, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 1.0); dt=dt, fill_price=100.0, bid=99.0, ask=100.0, last=100.0)
+
+    pos = get_position(acc, inst)
+    expected_init_last = margin_init_margin_ccy(acc, inst, pos.quantity, pos.last_price)
+    expected_maint_last = margin_maint_margin_ccy(acc, inst, pos.quantity, pos.last_price)
+    expected_init_mark = margin_init_margin_ccy(acc, inst, pos.quantity, pos.mark_price)
+    expected_maint_mark = margin_maint_margin_ccy(acc, inst, pos.quantity, pos.mark_price)
+
+    @test pos.mark_price ≈ 99.0 atol=1e-12
+    @test pos.last_price ≈ 100.0 atol=1e-12
+    @test init_margin_used(acc, usd) ≈ expected_init_last atol=1e-12
+    @test maint_margin_used(acc, usd) ≈ expected_maint_last atol=1e-12
+    @test !isapprox(init_margin_used(acc, usd), expected_init_mark; atol=1e-12, rtol=1e-12)
+    @test !isapprox(maint_margin_used(acc, usd), expected_maint_mark; atol=1e-12, rtol=1e-12)
+end

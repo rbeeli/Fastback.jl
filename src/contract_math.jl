@@ -79,15 +79,22 @@ end
 """
 Return the reference price used for margin requirements.
 
+- `SettlementStyle.VariationMargin`: always uses the mark price so margin checks
+  stay aligned with variation-margin settlement and valuation.
 - `AccountMode.Cash`: uses liquidation-aware marks so full-notional requirements
   stay aligned with equity under bid/ask spreads.
-- `AccountMode.Margin`: uses last-traded prices to avoid side-dependent bias.
+- Other margin-account instruments: use last-traded prices to avoid
+  side-dependent bias for asset settlement.
 """
 @inline function margin_reference_price(
     acc::Account,
+    inst::Instrument,
     mark_price::Price,
     last_price::Price,
 )::Price
+    if inst.settlement == SettlementStyle.VariationMargin
+        return mark_price
+    end
     acc.mode == AccountMode.Cash ? mark_price : last_price
 end
 

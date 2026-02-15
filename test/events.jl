@@ -580,3 +580,41 @@ end
     @test equity(acc, usd) ≈ eq_before atol=1e-10
     @test cash_balance(acc, usd) ≈ cash_before atol=1e-10
 end
+
+@testitem "process_step! does not liquidate VM exposure on isolated last-price spikes" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(; broker=NoOpBroker(), mode=AccountMode.Margin, base_currency=base_currency)
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 10.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("VMNOLIQ/USD"),
+        :VMNOLIQ,
+        :USD;
+        contract_kind=ContractKind.Perpetual,
+        settlement=SettlementStyle.VariationMargin,
+        margin_mode=MarginMode.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    process_step!(acc, dt0)
+
+    trades_before = length(acc.trades)
+    dt1 = dt0 + Hour(1)
+    marks = [MarkUpdate(inst.index, 99.0, 101.0, 250.0)] # VM mark(mid)=100, last spike=250
+    process_step!(acc, dt1; marks=marks, liquidate=true, accrue_interest=false, accrue_borrow_fees=false)
+
+    pos = get_position(acc, inst)
+    @test pos.quantity == 1.0
+    @test length(acc.trades) == trades_before
+    @test !any(t -> t.reason == TradeReason.Liquidation, acc.trades)
+    @test !is_under_maintenance(acc)
+    @test maint_margin_used(acc, usd) ≈ margin_maint_margin_ccy(acc, inst, pos.quantity, pos.mark_price) atol=1e-12
+end

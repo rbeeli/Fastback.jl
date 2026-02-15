@@ -88,7 +88,7 @@ end
     qty = pos.quantity
     close_qty = -qty
     fill_price = pos.mark_price
-    margin_price = margin_reference_price(acc, fill_price, pos.last_price)
+    margin_price = margin_reference_price(acc, pos.inst, fill_price, pos.last_price)
     commission = broker_commission(acc.broker, pos.inst, dt, close_qty, fill_price)
     order = Order(0, pos.inst, dt, fill_price, close_qty)
     plan = plan_fill(

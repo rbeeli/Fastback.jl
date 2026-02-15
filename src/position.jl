@@ -7,7 +7,7 @@ Position state tracked per instrument (see currency/unit semantics note in `cont
 - `pnl_quote`, `pnl_settle`, `value_quote`, `value_settle`: cached valuation in quote/settlement currencies (`pnl_settle` for asset settlement includes FX translation versus `avg_entry_price_settle`)
 - `init_margin_settle`, `maint_margin_settle`: margin currency (defaults to settlement)
 - `mark_price`: last valuation (liquidation) price at `mark_time`
-- `last_price`: last traded price used for margin calculations
+- `last_price`: last traded price (used for non-VM margin calculations)
 - `borrow_fee_dt`: last borrow-fee accrual timestamp for asset-settled spot shorts
 """
 mutable struct Position{TTime<:Dates.AbstractTime}
@@ -24,7 +24,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
     init_margin_settle::Price       # initial margin used in margin currency (defaults to settlement)
     maint_margin_settle::Price      # maintenance margin used in margin currency (defaults to settlement)
     mark_price::Price               # last valuation price
-    last_price::Price               # last traded price
+    last_price::Price               # last traded price (non-VM margin reference)
     mark_time::TTime                # timestamp of last valuation price
     borrow_fee_dt::TTime            # timestamp of last borrow-fee accrual
     last_order::Union{Nothing,Order{TTime}}
