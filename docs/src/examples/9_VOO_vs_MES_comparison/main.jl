@@ -322,7 +322,6 @@ function summarize(acc, label, initial_cash, leverage_factor)
     borrow_interest = -sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowInterest, init=0.0)
     net_interest = lend_interest - borrow_interest
     borrow_fees = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowFee, init=0.0)
-    interest_cost = max(0.0, -net_interest)
 
     (
         leverage=leverage_factor,
@@ -336,7 +335,6 @@ function summarize(acc, label, initial_cash, leverage_factor)
         lend_interest=round(lend_interest, digits=2),
         borrow_interest=round(borrow_interest, digits=2),
         net_interest=round(net_interest, digits=2),
-        interest_cost=round(interest_cost, digits=2),
         borrow_fees=round(borrow_fees, digits=2),
     )
 end
