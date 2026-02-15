@@ -116,6 +116,31 @@ Format a quote-currency value using the instrument's display precision.
 @inline format_quote(inst::Instrument, value) = Printf.format(Printf.Format("%.$(inst.quote_digits)f"), value)
 
 """
+    calc_base_qty_for_notional(inst, price, target_notional)
+
+Convert a target quote-currency notional into a base quantity for `inst`.
+The returned quantity is rounded down to the instrument's `base_tick` (toward
+zero in absolute terms) and clamped to `[base_min, base_max]`.
+
+- `price` is interpreted in quote currency per base unit.
+- `target_notional` is interpreted in quote currency and may be signed.
+- Uses `abs(price)` so negative-price contracts remain well-defined.
+- Assumes valid inputs (finite non-zero `price`, finite `target_notional`,
+  and positive `base_tick`).
+"""
+@inline function calc_base_qty_for_notional(
+    inst::Instrument,
+    price::Price,
+    target_notional::Price,
+)::Quantity
+    step = inst.base_tick
+    raw_qty = target_notional / (abs(price) * inst.multiplier)
+    qty_abs = floor(abs(raw_qty) / step) * step
+    qty = copysign(qty_abs, raw_qty)
+    Quantity(clamp(qty, inst.base_min, inst.base_max))
+end
+
+"""
     spot_instrument(symbol, base_symbol, quote_symbol; kwargs...)
 
 Convenience constructor for principal-exchange spot exposure.

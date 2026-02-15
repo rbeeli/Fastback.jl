@@ -189,6 +189,7 @@ export performance_summary_table
 export format_cash,
     format_base,
     format_quote,
+    calc_base_qty_for_notional,
     has_expiry,
     is_expired,
     is_active,

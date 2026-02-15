@@ -78,3 +78,44 @@ end
     @test symbol(inst) == Symbol("BTC/USD")
     @test symbol(order) == Symbol("BTC/USD")
 end
+
+@testitem "calc_qty_for_notional rounds to base_tick and clamps to base bounds" begin
+    using Test, Fastback
+
+    inst = Instrument(
+        Symbol("QTY/USD"),
+        :QTY,
+        :USD;
+        base_tick=1.0,
+        base_min=0.0,
+        base_max=10.0,
+        multiplier=5.0,
+    )
+
+    @test calc_qty_for_notional(inst, 100.0, 2_499.0) == 4.0
+    @test calc_qty_for_notional(inst, 100.0, 2_500.0) == 5.0
+    @test calc_qty_for_notional(inst, 100.0, 999_999.0) == 10.0
+    @test calc_qty_for_notional(inst, 100.0, -500.0) == 0.0
+
+    inst_signed = Instrument(
+        Symbol("QTYSGN/USD"),
+        :QTYSGN,
+        :USD;
+        base_tick=1.0,
+        base_min=-10.0,
+        base_max=10.0,
+        multiplier=5.0,
+    )
+
+    @test calc_qty_for_notional(inst_signed, 100.0, -2_550.0) == -5.0
+    @test calc_qty_for_notional(inst_signed, -100.0, 2_550.0) == 5.0
+
+    inst_fractional = Instrument(
+        Symbol("QTYFRAC/USD"),
+        :QTYFRAC,
+        :USD;
+        base_tick=0.25,
+        multiplier=1.0,
+    )
+    @test calc_qty_for_notional(inst_fractional, 10.0, 37.0) ≈ 3.5
+end

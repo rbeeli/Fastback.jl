@@ -104,12 +104,6 @@ mes_broker = make_ibkr_profile(
 
 # ---------------------------------------------------------
 
-## helper: discrete quantity for a target notional
-function qty_for_notional(inst, price, notional)
-    raw = notional / (price * inst.multiplier)
-    Float64(max(0, floor(Int, raw)))
-end
-
 ## helper: shared backtest loop
 function run_backtest!(
     acc,
@@ -129,7 +123,7 @@ function run_backtest!(
 
         event_no = get(trade_lookup, i, 0)
         if event_no != 0
-            target_qty = isodd(event_no) ? qty_for_notional(inst, last, target_notional) : 0.0
+            target_qty = isodd(event_no) ? calc_base_qty_for_notional(inst, last, target_notional) : 0.0
             pos = get_position(acc, inst)
             delta_qty = target_qty - pos.quantity
 
@@ -210,7 +204,7 @@ function run_mes_chain_backtest!(
 
         event_no = get(trade_lookup, i, 0)
         if event_no != 0
-            target_qty = isodd(event_no) ? qty_for_notional(active_inst, last, target_notional) : 0.0
+            target_qty = isodd(event_no) ? calc_base_qty_for_notional(active_inst, last, target_notional) : 0.0
             pos = get_position(acc, active_inst)
             delta_qty = target_qty - pos.quantity
 
