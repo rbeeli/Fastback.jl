@@ -49,7 +49,7 @@ data_dir = joinpath(example_dir, "data")
 voo_ohlcv_path = joinpath(data_dir, "VOO_ohlcv_daily.csv")
 voo_dividends_path = joinpath(data_dir, "VOO_dividends.csv")
 voo_splits_path = joinpath(data_dir, "VOO_splits.csv")
-mes_contracts_path = joinpath(data_dir, "MES_futures_contracts.csv")
+mes_contracts_path = joinpath(data_dir, "MES_contracts.csv")
 ibkr_usd_benchmark_schedule_path = joinpath(data_dir, "ibkr_usd_benchmark_schedule_2025.csv")
 
 include(joinpath(example_dir, "data_prep.jl"))
