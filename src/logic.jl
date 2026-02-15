@@ -307,6 +307,10 @@ The helper closes the entire `from_inst` exposure first, then opens the same
 signed quantity in `to_inst`. Both fills are tagged with `TradeReason.Roll`
 and use explicit prices for each leg. Returns `(close_trade, open_trade)`, or
 `(nothing, nothing)` when `from_inst` is already flat.
+
+The roll requires matching settlement/margin accounting profile
+(`settle_symbol`, `margin_symbol`, `settlement`, `margin_requirement`) so
+cashflow and margin regimes remain continuous.
 """
 function roll_position!(
     acc::Account{TTime,TBroker},
@@ -332,6 +336,14 @@ function roll_position!(
         throw(ArgumentError("roll_position! requires matching quote_symbol, got $(from_inst.quote_symbol) and $(to_inst.quote_symbol)."))
     from_inst.multiplier == to_inst.multiplier ||
         throw(ArgumentError("roll_position! requires matching multiplier, got $(from_inst.multiplier) and $(to_inst.multiplier)."))
+    from_inst.settle_symbol == to_inst.settle_symbol ||
+        throw(ArgumentError("roll_position! requires matching settle_symbol, got $(from_inst.settle_symbol) and $(to_inst.settle_symbol)."))
+    from_inst.margin_symbol == to_inst.margin_symbol ||
+        throw(ArgumentError("roll_position! requires matching margin_symbol, got $(from_inst.margin_symbol) and $(to_inst.margin_symbol)."))
+    from_inst.settlement == to_inst.settlement ||
+        throw(ArgumentError("roll_position! requires matching settlement style, got $(from_inst.settlement) and $(to_inst.settlement)."))
+    from_inst.margin_requirement == to_inst.margin_requirement ||
+        throw(ArgumentError("roll_position! requires matching margin_requirement, got $(from_inst.margin_requirement) and $(to_inst.margin_requirement)."))
 
     pos = get_position(acc, from_inst)
     qty = pos.quantity

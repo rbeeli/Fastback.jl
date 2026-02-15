@@ -109,3 +109,113 @@ end
     @test open_trade === nothing
     @test isempty(acc.trades)
 end
+
+@testitem "roll_position! enforces settlement and margin profile match" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
+    register_cash_asset!(acc, CashSpec(:USDT))
+    deposit!(acc, :USD, 100_000.0)
+
+    front = register_instrument!(acc, future_instrument(
+        :MESH25, :MES, :USD;
+        margin_requirement=MarginRequirement.FixedPerContract,
+        margin_init_long=2_800.0,
+        margin_init_short=2_800.0,
+        margin_maint_long=2_421.0,
+        margin_maint_short=2_421.0,
+        multiplier=5.0,
+        expiry=DateTime(2025, 3, 21),
+    ))
+
+    mismatched_settle = register_instrument!(acc, future_instrument(
+        :MESM25_SETTLE, :MES, :USD;
+        margin_requirement=MarginRequirement.FixedPerContract,
+        margin_init_long=2_800.0,
+        margin_init_short=2_800.0,
+        margin_maint_long=2_421.0,
+        margin_maint_short=2_421.0,
+        settle_symbol=:USDT,
+        margin_symbol=:USDT,
+        multiplier=5.0,
+        expiry=DateTime(2025, 6, 20),
+    ))
+
+    mismatched_margin = register_instrument!(acc, future_instrument(
+        :MESM25_MARGIN, :MES, :USD;
+        margin_requirement=MarginRequirement.FixedPerContract,
+        margin_init_long=2_800.0,
+        margin_init_short=2_800.0,
+        margin_maint_long=2_421.0,
+        margin_maint_short=2_421.0,
+        margin_symbol=:USDT,
+        multiplier=5.0,
+        expiry=DateTime(2025, 6, 20),
+    ))
+
+    mismatched_settlement = register_instrument!(acc, spot_instrument(
+        :MES_SPOT, :MES, :USD;
+        margin_requirement=MarginRequirement.FixedPerContract,
+        margin_init_long=2_800.0,
+        margin_init_short=2_800.0,
+        margin_maint_long=2_421.0,
+        margin_maint_short=2_421.0,
+        multiplier=5.0,
+    ))
+
+    mismatched_margin_requirement = register_instrument!(acc, future_instrument(
+        :MESM25_IMR, :MES, :USD;
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.10,
+        margin_init_short=0.10,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+        multiplier=5.0,
+        expiry=DateTime(2025, 6, 20),
+    ))
+
+    dt_open = DateTime(2025, 3, 3)
+    fill_order!(
+        acc,
+        Order(oid!(acc), front, dt_open, 5_000.25, 1.0);
+        dt=dt_open,
+        fill_price=5_000.25,
+        bid=5_000.0,
+        ask=5_000.25,
+        last=5_000.125,
+    )
+
+    dt_roll = DateTime(2025, 3, 13)
+    @test_throws ArgumentError roll_position!(
+        acc,
+        front,
+        mismatched_settle,
+        dt_roll;
+        close_fill_price=4_998.75,
+        open_fill_price=5_003.00,
+    )
+    @test_throws ArgumentError roll_position!(
+        acc,
+        front,
+        mismatched_margin,
+        dt_roll;
+        close_fill_price=4_998.75,
+        open_fill_price=5_003.00,
+    )
+    @test_throws ArgumentError roll_position!(
+        acc,
+        front,
+        mismatched_settlement,
+        dt_roll;
+        close_fill_price=4_998.75,
+        open_fill_price=5_003.00,
+    )
+    @test_throws ArgumentError roll_position!(
+        acc,
+        front,
+        mismatched_margin_requirement,
+        dt_roll;
+        close_fill_price=4_998.75,
+        open_fill_price=5_003.00,
+    )
+end
