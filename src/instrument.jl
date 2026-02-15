@@ -354,19 +354,6 @@ Throw an `ArgumentError` if the instrument is not active at `dt`.
 end
 
 """
-    is_margined_spot(inst)
-
-Returns `true` when the instrument is a principal-exchange spot contract with
-an explicit margin requirement (percent-notional or fixed-per-contract). This is
-the canonical representation of “spot on margin”.
-"""
-@inline function is_margined_spot(inst::Instrument)::Bool
-    inst.contract_kind == ContractKind.Spot &&
-    inst.settlement == SettlementStyle.PrincipalExchange &&
-    inst.margin_requirement != MarginRequirement.Disabled
-end
-
-"""
 Validates instrument configuration for common contract kinds.
 Throws an `ArgumentError` when mandatory invariants are violated.
 """

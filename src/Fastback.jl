@@ -194,7 +194,6 @@ export format_cash,
     is_expired,
     is_active,
     ensure_active,
-    is_margined_spot,
     spot_instrument,
     perpetual_instrument,
     future_instrument

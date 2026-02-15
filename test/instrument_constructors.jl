@@ -23,7 +23,6 @@ using TestItemRunner
         margin_maint_short=0.05,
     )
     @test Fastback.validate_instrument(mspot) === nothing
-    @test is_margined_spot(mspot)
 
     perp = perpetual_instrument(Symbol("PERP/VM"), :PERP, :USD;
         margin_requirement=MarginRequirement.PercentNotional,

@@ -22,7 +22,7 @@ A `Position` maintains the net exposure for an instrument using a weighted-avera
 
 ### Spot on Margin
 
-An principal-exchange spot instrument with an explicit margin requirement (percent-notional or fixed-per-contract) represents "spot on margin". Use `is_margined_spot` to detect this case; leveraged longs/shorts post margin, and shorts can accrue borrow fees via `short_borrow_rate` (borrow-fee clocks are tracked per position and aligned to fills).
+A principal-exchange spot instrument with an explicit margin requirement (percent-notional or fixed-per-contract) represents "spot on margin". Leveraged longs/shorts post margin, and shorts can accrue borrow fees via `short_borrow_rate` (borrow-fee clocks are tracked per position and aligned to fills).
 
 ## Base Asset
 

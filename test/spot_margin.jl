@@ -19,7 +19,6 @@ using TestItemRunner
         margin_init_short=0.5,
         margin_maint_short=0.25,
     ))
-    @test is_margined_spot(inst)
 
     dt = DateTime(2025, 1, 1)
     price = 100.0

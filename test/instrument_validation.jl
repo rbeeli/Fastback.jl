@@ -231,26 +231,6 @@ end
     register_instrument!(acc, good)
 end
 
-@testitem "is_margined_spot detects principal-exchange spot" begin
-    using Test, Fastback, Dates
-
-    base_currency=CashSpec(:USD)
-    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
-    deposit!(acc, :USD, 0.0)
-
-    spot_margin = Instrument(Symbol("SPOT/MGN"), :SPOT, :USD;
-        settlement=SettlementStyle.PrincipalExchange,
-        margin_requirement=MarginRequirement.PercentNotional,
-        margin_init_long=0.1,
-        margin_maint_long=0.05,
-        margin_init_short=0.1,
-        margin_maint_short=0.05,
-    )
-
-    register_instrument!(acc, spot_margin)
-    @test is_margined_spot(spot_margin)
-end
-
 @testitem "Instrument can have settle_symbol != quote_symbol when cash assets exist" begin
     using Test, Fastback, Dates
 
