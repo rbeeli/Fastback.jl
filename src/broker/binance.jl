@@ -9,6 +9,8 @@ struct BinanceBroker{TTime<:Dates.AbstractTime} <: AbstractBroker
     fee_discount::Price
     borrow_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}
     lend_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}
+    short_proceeds_exclusion::Price
+    short_proceeds_rebate::Price
 end
 
 function BinanceBroker(
@@ -21,18 +23,25 @@ function BinanceBroker(
     fee_discount::Real=1.0,
     borrow_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}=Dict{Symbol,StepSchedule{time_type,Price}}(),
     lend_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}=Dict{Symbol,StepSchedule{time_type,Price}}(),
+    short_proceeds_exclusion::Real=1.0,
+    short_proceeds_rebate::Real=0.0,
 ) where {TTime<:Dates.AbstractTime}
     maker_spot_p = Price(maker_spot)
     taker_spot_p = Price(taker_spot)
     maker_deriv_p = Price(maker_derivatives)
     taker_deriv_p = Price(taker_derivatives)
     fee_discount_p = Price(fee_discount)
+    short_exclusion_p = Price(short_proceeds_exclusion)
+    short_rebate_p = Price(short_proceeds_rebate)
 
     maker_spot_p >= 0.0 || throw(ArgumentError("maker_spot must be non-negative."))
     taker_spot_p >= 0.0 || throw(ArgumentError("taker_spot must be non-negative."))
     maker_deriv_p >= 0.0 || throw(ArgumentError("maker_derivatives must be non-negative."))
     taker_deriv_p >= 0.0 || throw(ArgumentError("taker_derivatives must be non-negative."))
     fee_discount_p > 0.0 || throw(ArgumentError("fee_discount must be positive."))
+    isfinite(short_exclusion_p) || throw(ArgumentError("short_proceeds_exclusion must be finite."))
+    0.0 <= short_exclusion_p <= 1.0 || throw(ArgumentError("short_proceeds_exclusion must be in [0, 1]."))
+    isfinite(short_rebate_p) || throw(ArgumentError("short_proceeds_rebate must be finite."))
 
     BinanceBroker{TTime}(
         maker_spot_p,
@@ -42,6 +51,8 @@ function BinanceBroker(
         fee_discount_p,
         borrow_by_cash,
         lend_by_cash,
+        short_exclusion_p,
+        short_rebate_p,
     )
 end
 
@@ -63,15 +74,23 @@ end
 
 @inline function broker_interest_rates(
     broker::BinanceBroker{TTime},
-    cash_symbol::Symbol,
-    dt::Dates.AbstractTime,
+    cash::Cash,
+    dt::TTime,
     ::Price,
 )::Tuple{Price,Price} where {TTime<:Dates.AbstractTime}
-    borrow = let sched = get(broker.borrow_by_cash, cash_symbol, nothing)
+    borrow = let sched = get(broker.borrow_by_cash, cash.symbol, nothing)
         sched === nothing ? 0.0 : value_at(sched, dt)
     end
-    lend = let sched = get(broker.lend_by_cash, cash_symbol, nothing)
+    lend = let sched = get(broker.lend_by_cash, cash.symbol, nothing)
         sched === nothing ? 0.0 : value_at(sched, dt)
     end
     (borrow, lend)
+end
+
+@inline function broker_short_proceeds_rates(
+    broker::BinanceBroker{TTime},
+    ::Cash,
+    ::TTime,
+)::Tuple{Price,Price} where {TTime<:Dates.AbstractTime}
+    (broker.short_proceeds_exclusion, broker.short_proceeds_rebate)
 end

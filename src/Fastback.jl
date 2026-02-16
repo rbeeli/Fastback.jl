@@ -76,7 +76,8 @@ export trade_dir,
 
 # Broker hooks
 export broker_commission,
-    broker_interest_rates
+    broker_interest_rates,
+    broker_short_proceeds_rates
 
 # Order and trade utilities
 export symbol,

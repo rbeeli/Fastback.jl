@@ -10,6 +10,8 @@ struct IBKRProFixedBroker{TTime<:Dates.AbstractTime} <: AbstractBroker
     borrow_spread::Price
     lend_spread::Price
     credit_no_interest_balance::Price
+    short_proceeds_exclusion::Price
+    short_proceeds_rebate_spread::Price
 end
 
 function IBKRProFixedBroker(
@@ -23,6 +25,8 @@ function IBKRProFixedBroker(
     borrow_spread::Real=0.015,
     lend_spread::Real=0.005,
     credit_no_interest_balance::Real=10_000.0,
+    short_proceeds_exclusion::Real=1.0,
+    short_proceeds_rebate_spread::Real=lend_spread,
 ) where {TTime<:Dates.AbstractTime}
     equity_per_share_p = Price(equity_per_share)
     equity_min_p = Price(equity_min)
@@ -30,12 +34,17 @@ function IBKRProFixedBroker(
     borrow_spread_p = Price(borrow_spread)
     lend_spread_p = Price(lend_spread)
     credit_floor_p = Price(credit_no_interest_balance)
+    short_exclusion_p = Price(short_proceeds_exclusion)
+    short_rebate_spread_p = Price(short_proceeds_rebate_spread)
     equity_per_share_p >= 0.0 || throw(ArgumentError("equity_per_share must be non-negative."))
     equity_min_p >= 0.0 || throw(ArgumentError("equity_min must be non-negative."))
     equity_max_pct_p >= 0.0 || throw(ArgumentError("equity_max_pct must be non-negative."))
     borrow_spread_p >= 0.0 || throw(ArgumentError("borrow_spread must be non-negative."))
     lend_spread_p >= 0.0 || throw(ArgumentError("lend_spread must be non-negative."))
     credit_floor_p >= 0.0 || throw(ArgumentError("credit_no_interest_balance must be non-negative."))
+    isfinite(short_exclusion_p) || throw(ArgumentError("short_proceeds_exclusion must be finite."))
+    0.0 <= short_exclusion_p <= 1.0 || throw(ArgumentError("short_proceeds_exclusion must be in [0, 1]."))
+    short_rebate_spread_p >= 0.0 || throw(ArgumentError("short_proceeds_rebate_spread must be non-negative."))
 
     IBKRProFixedBroker{TTime}(
         equity_per_share_p,
@@ -46,6 +55,8 @@ function IBKRProFixedBroker(
         borrow_spread_p,
         lend_spread_p,
         credit_floor_p,
+        short_exclusion_p,
+        short_rebate_spread_p,
     )
 end
 
@@ -75,11 +86,11 @@ end
 
 @inline function broker_interest_rates(
     broker::IBKRProFixedBroker{TTime},
-    cash_symbol::Symbol,
-    dt::Dates.AbstractTime,
+    cash::Cash,
+    dt::TTime,
     balance::Price,
 )::Tuple{Price,Price} where {TTime<:Dates.AbstractTime}
-    benchmark_schedule = get(broker.benchmark_by_cash, cash_symbol, nothing)
+    benchmark_schedule = get(broker.benchmark_by_cash, cash.symbol, nothing)
     benchmark_schedule === nothing && return (0.0, 0.0)
 
     benchmark = value_at(benchmark_schedule, dt)
@@ -92,4 +103,17 @@ end
     end
 
     (borrow, lend)
+end
+
+@inline function broker_short_proceeds_rates(
+    broker::IBKRProFixedBroker{TTime},
+    cash::Cash,
+    dt::TTime,
+)::Tuple{Price,Price} where {TTime<:Dates.AbstractTime}
+    benchmark_schedule = get(broker.benchmark_by_cash, cash.symbol, nothing)
+    benchmark_schedule === nothing && return (broker.short_proceeds_exclusion, 0.0)
+
+    benchmark = value_at(benchmark_schedule, dt)
+    rebate = max(0.0, benchmark - broker.short_proceeds_rebate_spread)
+    (broker.short_proceeds_exclusion, rebate)
 end

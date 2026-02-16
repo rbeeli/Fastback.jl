@@ -46,11 +46,13 @@ mutable struct CashLedger
     const equities::Vector{Price}
     const init_margin_used::Vector{Price}
     const maint_margin_used::Vector{Price}
+    const short_proceeds_by_cash_buffer::Vector{Price}
 
     function CashLedger()
         new(
             Vector{Cash}(),
             Dict{Symbol,Int}(),
+            Vector{Price}(),
             Vector{Price}(),
             Vector{Price}(),
             Vector{Price}(),
@@ -87,6 +89,7 @@ function _register_cash_asset!(
     push!(ledger.equities, zero(Price))
     push!(ledger.init_margin_used, zero(Price))
     push!(ledger.maint_margin_used, zero(Price))
+    push!(ledger.short_proceeds_by_cash_buffer, zero(Price))
 
     cash
 end
