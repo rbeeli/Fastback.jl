@@ -232,7 +232,7 @@ Commission is broker-driven by default via `acc.broker`.
     mark_for_valuation = _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
     margin_for_valuation = margin_reference_price(acc, inst, mark_for_valuation, last)
     needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_position ||
-        pos.last_bid != bid || pos.last_ask != ask || pos.last_price != last || pos.mark_time != dt
+                        pos.last_bid != bid || pos.last_ask != ask || pos.last_price != last || pos.mark_time != dt
     needs_mark_update && _update_marks!(acc, pos, dt, mark_for_position, bid, ask, last)
 
     _accrue_borrow_fee!(acc, pos, dt)
@@ -281,9 +281,9 @@ Commission is broker-driven by default via `acc.broker`.
     pos.last_price = last
     pos.mark_time = dt
     if pos.quantity < 0.0 &&
-       inst.contract_kind == ContractKind.Spot &&
-       inst.settlement == SettlementStyle.PrincipalExchange &&
-       inst.short_borrow_rate > 0.0
+        inst.contract_kind == ContractKind.Spot &&
+        inst.settlement == SettlementStyle.PrincipalExchange &&
+        inst.short_borrow_rate > 0.0
         pos.borrow_fee_dt = dt
     else
         pos.borrow_fee_dt = TTime(0)
