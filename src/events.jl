@@ -68,12 +68,14 @@ Settles expired futures at `dt` using stored position bid/ask/last quotes.
 Requires positions to have finite mark and quote fields.
 Expiry fills are close-only and run with `allow_inactive=true`, so they bypass
 incremental-margin rejection by design.
+Returns a reusable internal buffer cleared and refilled on each call.
 """
 function process_expiries!(
     acc::Account{TTime,TBroker},
     dt::TTime;
 ) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    trades = Trade{TTime}[]
+    trades = acc._expiry_trades_buffer
+    empty!(trades)
 
     @inbounds for pos in acc.positions
         inst = pos.inst

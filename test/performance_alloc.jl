@@ -81,3 +81,24 @@ end
     end
     @test alloc == 0  # deterministic zero after warmup
 end
+
+@testitem "process_step! with expiries=true avoids empty expiry allocations after warmup" begin
+    using Test, Fastback, Dates
+
+    alloc = let
+        base_currency=CashSpec(:USD)
+        acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
+        deposit!(acc, :USD, 10_000.0)
+        inst = register_instrument!(acc, spot_instrument(Symbol("PERFEXP/USD"), :PERFEXP, :USD))
+        pos = get_position(acc, inst)
+
+        dt0 = DateTime(2026, 1, 1)
+        update_marks!(acc, pos, dt0, 100.0, 100.0, 100.0)
+
+        # warm twice to eliminate first-call cache touch
+        process_step!(acc, dt0; marks=nothing, fx_updates=nothing, funding=nothing, accrue_interest=false, accrue_borrow_fees=false, expiries=true, liquidate=false)
+        process_step!(acc, dt0; marks=nothing, fx_updates=nothing, funding=nothing, accrue_interest=false, accrue_borrow_fees=false, expiries=true, liquidate=false)
+        @allocated process_step!(acc, dt0; marks=nothing, fx_updates=nothing, funding=nothing, accrue_interest=false, accrue_borrow_fees=false, expiries=true, liquidate=false)
+    end
+    @test alloc == 0
+end

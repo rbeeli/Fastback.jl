@@ -8,6 +8,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     const positions::Vector{Position{TTime}}
     const trades::Vector{Trade{TTime}}
     const cashflows::Vector{Cashflow{TTime}}
+    const _expiry_trades_buffer::Vector{Trade{TTime}}
     order_sequence::Int
     trade_sequence::Int
     cashflow_sequence::Int
@@ -43,6 +44,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
             Vector{Position{TTime}}(), # positions
             Vector{Trade{TTime}}(), # trades
             Vector{Cashflow{TTime}}(), # cashflows
+            Vector{Trade{TTime}}(), # reusable expiry buffer
             order_sequence,
             trade_sequence,
             0, # cashflow_sequence
