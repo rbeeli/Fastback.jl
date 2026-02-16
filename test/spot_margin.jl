@@ -147,7 +147,7 @@ end
     @test cf.amount ≈ -expected_fee atol=1e-6
 end
 
-@testitem "Margin spot short accrues borrow fee and interest" begin
+@testitem "Margin spot short accrues borrow fee and lend on free cash only" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
@@ -195,7 +195,8 @@ end
     advance_time!(acc, dt1; accrue_interest=true, accrue_borrow_fees=true)
 
     yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
-    expected_interest = bal_before * 0.02 * yearfrac
+    short_proceeds = abs(qty) * price * inst.multiplier
+    expected_interest = (bal_before - short_proceeds) * 0.02 * yearfrac
     expected_fee = abs(qty) * price * inst.multiplier * inst.short_borrow_rate * yearfrac
     expected_delta = expected_interest - expected_fee
 
@@ -214,6 +215,124 @@ end
     @test fee_cf.cash_index == cash_asset(acc, :USD).index
     @test fee_cf.inst_index == inst.index
     @test fee_cf.amount ≈ -expected_fee atol=1e-8
+end
+
+@testitem "IBKR short excludes proceeds from lend base and applies rebate" begin
+    using Test, Fastback, Dates
+
+    benchmark_by_cash = Dict(:USD=>StepSchedule([(DateTime(2026, 1, 1), 0.03)]))
+    base_currency=CashSpec(:USD)
+    acc = Account(
+        ;
+        broker=IBKRProFixedBroker(
+            benchmark_by_cash=benchmark_by_cash,
+            borrow_spread=0.015,
+            lend_spread=0.005,
+            credit_no_interest_balance=0.0,
+            short_proceeds_exclusion=1.0,
+            short_proceeds_rebate_spread=0.01,
+        ),
+        funding=AccountFunding.Margined,
+        base_currency=base_currency,
+    )
+    deposit!(acc, :USD, 10_100.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("SPOTIBKR/USD"),
+        :SPOTIBKR,
+        :USD;
+        contract_kind=ContractKind.Spot,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.5,
+        margin_maint_long=0.25,
+        margin_init_short=0.5,
+        margin_maint_short=0.25,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    price = 100.0
+    qty = -200.0
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price, bid=price, ask=price, last=price)
+    @test trade isa Trade
+
+    usd = cash_asset(acc, :USD)
+    bal_before = cash_balance(acc, usd)
+    eq_before = equity(acc, usd)
+    @test bal_before ≈ 30_099.0 atol=1e-8
+    @test eq_before ≈ 10_099.0 atol=1e-8
+
+    accrue_interest!(acc, dt0)
+    @test isempty(acc.cashflows)
+
+    dt1 = dt0 + Day(1)
+    accrue_interest!(acc, dt1)
+
+    yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
+    short_proceeds = abs(qty) * price * inst.multiplier
+    free_cash = bal_before - short_proceeds
+    expected_lend = free_cash * (0.03 - 0.005) * yearfrac
+    expected_rebate = short_proceeds * (0.03 - 0.01) * yearfrac
+    expected_interest = expected_lend + expected_rebate
+
+    @test cash_balance(acc, usd) ≈ bal_before + expected_interest atol=1e-8
+    @test equity(acc, usd) ≈ eq_before + expected_interest atol=1e-8
+    @test length(acc.cashflows) == 1
+    cf = only(acc.cashflows)
+    @test cf.kind == CashflowKind.LendInterest
+    @test cf.cash_index == usd.index
+    @test cf.amount ≈ expected_interest atol=1e-8
+end
+
+@testitem "Flat fee broker can include short proceeds in lend base" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(
+        ;
+        broker=FlatFeeBroker(
+            lend_by_cash=Dict(:USD=>0.02),
+            short_proceeds_exclusion_by_cash=Dict(:USD=>0.0),
+        ),
+        funding=AccountFunding.Margined,
+        base_currency=base_currency,
+    )
+    deposit!(acc, :USD, 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("SPOTINCL/USD"),
+        :SPOTINCL,
+        :USD;
+        contract_kind=ContractKind.Spot,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.5,
+        margin_maint_long=0.25,
+        margin_init_short=0.5,
+        margin_maint_short=0.25,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    price = 100.0
+    qty = -200.0
+    trade = fill_order!(acc, Order(oid!(acc), inst, dt0, price, qty); dt=dt0, fill_price=price, bid=price, ask=price, last=price)
+    @test trade isa Trade
+
+    usd = cash_asset(acc, :USD)
+    bal_before = cash_balance(acc, usd)
+    @test bal_before ≈ 30_000.0 atol=1e-8
+
+    accrue_interest!(acc, dt0)
+    dt1 = dt0 + Day(1)
+    accrue_interest!(acc, dt1)
+
+    yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
+    expected_interest = bal_before * 0.02 * yearfrac
+
+    @test cash_balance(acc, usd) ≈ bal_before + expected_interest atol=1e-8
+    @test equity(acc, usd) ≈ 10_000.0 + expected_interest atol=1e-8
+    @test length(acc.cashflows) == 1
+    @test only(acc.cashflows).amount ≈ expected_interest atol=1e-8
 end
 
 @testitem "Fully funded account applies margin checks to spot" begin

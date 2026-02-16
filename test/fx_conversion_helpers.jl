@@ -165,8 +165,9 @@ end
     advance_time!(acc, dt1; accrue_interest=true, accrue_borrow_fees=true)
 
     yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
-    expected_interest = bal_before * 0.02 * yearfrac
-    expected_fee_settle = abs(qty) * price * inst.multiplier * inst.short_borrow_rate * yearfrac * usd_to_chf
+    short_proceeds_settle = abs(qty) * price * inst.multiplier * usd_to_chf
+    expected_interest = (bal_before - short_proceeds_settle) * 0.02 * yearfrac
+    expected_fee_settle = short_proceeds_settle * inst.short_borrow_rate * yearfrac
     expected_net = expected_interest - expected_fee_settle
 
     @test acc.ledger.balances[chf_idx] ≈ bal_before + expected_net atol=1e-8

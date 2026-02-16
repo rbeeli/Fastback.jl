@@ -45,9 +45,9 @@ using TestItemRunner
     cf_count = length(acc.cashflows)
 
     yearfrac = 1 / 365
-    rate = bal_before >= 0 ? 0.05 : 0.10
-    expected_interest = bal_before * rate * yearfrac
     pos = get_position(acc, inst)
+    short_proceeds = abs(pos.quantity) * pos.avg_entry_price_settle * inst.multiplier
+    expected_interest = (bal_before - short_proceeds) * 0.05 * yearfrac
     expected_borrow = abs(pos.quantity) * pos.mark_price * inst.multiplier * 0.20 * yearfrac
     @test bal_after_first - bal_before ≈ (expected_interest - expected_borrow) atol=1e-8
 
