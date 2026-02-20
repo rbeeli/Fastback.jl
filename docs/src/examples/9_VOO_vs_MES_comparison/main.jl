@@ -40,7 +40,7 @@ const VOO_REGT_MAINT_SHORT = 0.20  # equals 120% collateral-style notion
 const BACKTEST_START = Date(2020, 1, 1)
 const BACKTEST_END = Date(2024, 12, 31)
 const VOO_HALF_SPREAD = 0.01
-const MES_HALF_SPREAD = 0.125
+const MES_HALF_SPREAD = 0.125;
 
 # ---------------------------------------------------------
 
@@ -74,7 +74,7 @@ mes_contract_specs = load_mes_contract_specs(
 mes_per_contract_fees = Dict(spec.symbol => MES_PER_CONTRACT_FEE for spec in mes_contract_specs)
 
 ## load USD benchmark schedule
-const IBKR_USD_BENCHMARK = load_usd_benchmark_schedule(data_dir)
+const IBKR_USD_BENCHMARK = load_usd_benchmark_schedule(data_dir);
 
 # ---------------------------------------------------------
 
@@ -102,7 +102,7 @@ mes_broker = make_ibkr_profile(
     IBKR_USD_BENCHMARK;
     credit_no_interest_balance=IBKR_USD_CREDIT_NO_INTEREST_BALANCE,
     futures_per_contract=mes_per_contract_fees,
-)
+);
 
 # ---------------------------------------------------------
 
@@ -116,8 +116,7 @@ function run_backtest!(
 )
     for (i, row) in enumerate(eachrow(df))
         dt = row.dt
-        bid = row.bid
-        ask = row.ask
+        bid, ask = row.bid, row.ask
         last = row.last
 
         marks = [MarkUpdate(inst.index, bid, ask, last)]
@@ -130,26 +129,20 @@ function run_backtest!(
             delta_qty = target_qty - pos.quantity
 
             if delta_qty != 0.0
-                fill_price = delta_qty > 0 ? ask : bid
-                order = Order(oid!(acc), inst, dt, fill_price, delta_qty)
-                fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=bid, ask=ask, last=last)
+                fill_px = delta_qty > 0 ? ask : bid
+                order = Order(oid!(acc), inst, dt, fill_px, delta_qty)
+                fill_order!(acc, order, dt=dt, fill_price=fill_px, bid=bid, ask=ask, last=last)
             end
         end
     end
 
     ## close any remaining position at the end
-    last_row = df[end, :]
     pos = get_position(acc, inst)
-    if pos.quantity != 0.0
-        fill_price = pos.quantity > 0 ? last_row.bid : last_row.ask
-        order = Order(oid!(acc), inst, last_row.dt, fill_price, -pos.quantity)
-        fill_order!(acc, order;
-            dt=last_row.dt,
-            fill_price=fill_price,
-            bid=last_row.bid,
-            ask=last_row.ask,
-            last=last_row.last,
-        )
+    if has_exposure(pos)
+        row = df[end, :]
+        fill_px = pos.quantity > 0 ? row.bid : row.ask
+        order = Order(oid!(acc), inst, row.dt, fill_px, -pos.quantity)
+        fill_order!(acc, order, dt=row.dt, fill_price=fill_px, bid=row.bid, ask=row.ask, last=row.last)
     end
 
     acc
@@ -168,8 +161,7 @@ function run_mes_chain_backtest!(
 
     for (i, row) in enumerate(eachrow(df))
         dt = row.dt
-        bid = row.bid
-        ask = row.ask
+        bid, ask = row.bid, row.ask
         last = row.last
 
         active_inst = mes_chain[active_idx]
@@ -179,9 +171,9 @@ function run_mes_chain_backtest!(
             roll_dt = mes_roll_dates[active_idx]
             dt < roll_dt && break
 
-            next_inst = mes_chain[active_idx + 1]
+            next_inst = mes_chain[active_idx+1]
             pos = get_position(acc, active_inst)
-            if pos.quantity != 0.0
+            if has_exposure(pos)
                 close_px = pos.quantity > 0 ? bid : ask
                 open_px = pos.quantity > 0 ? ask : bid
                 roll_position!(
@@ -219,18 +211,18 @@ function run_mes_chain_backtest!(
     end
 
     ## close any remaining positions at the end
-    last_row = df[end, :]
     for inst in mes_chain
         pos = get_position(acc, inst)
-        if pos.quantity != 0.0
-            fill_price = pos.quantity > 0 ? last_row.bid : last_row.ask
-            order = Order(oid!(acc), inst, last_row.dt, fill_price, -pos.quantity)
+        if has_exposure(pos)
+            row = df[end, :]
+            fill_price = pos.quantity > 0 ? row.bid : row.ask
+            order = Order(oid!(acc), inst, row.dt, fill_price, -pos.quantity)
             fill_order!(acc, order;
-                dt=last_row.dt,
+                dt=row.dt,
                 fill_price=fill_price,
-                bid=last_row.bid,
-                ask=last_row.ask,
-                last=last_row.last,
+                bid=row.bid,
+                ask=row.ask,
+                last=row.last,
                 allow_inactive=true,
             )
         end
@@ -242,12 +234,10 @@ end
 ## helper: deterministic random trade schedule (~20 toggles in/out)
 function make_trade_lookup(n_rows; n_events=20, seed=2020)
     rng = MersenneTwister(seed)
-    pool = collect(15:(n_rows - 15))
+    pool = collect(15:(n_rows-15))
     trade_indices = sort(pool[randperm(rng, length(pool))[1:n_events]])
     Dict(idx => i for (i, idx) in enumerate(trade_indices))
 end
-
-# ---------------------------------------------------------
 
 ## account + instrument builders
 
@@ -260,25 +250,30 @@ function build_voo_account(initial_cash, broker)
     )
     deposit!(acc, :USD, initial_cash)
 
-    voo = register_instrument!(acc, spot_instrument(
-        :VOO, :VOO, :USD;
-        time_type=Date,
-        base_tick=1.0,
-        base_digits=0,
-        quote_tick=0.01,
-        quote_digits=2,
-        margin_requirement=MarginRequirement.PercentNotional,
-        margin_init_long=VOO_REGT_INIT_LONG,
-        margin_init_short=VOO_REGT_INIT_SHORT,
-        margin_maint_long=0.25,
-        margin_maint_short=VOO_REGT_MAINT_SHORT,
-    ))
+    voo = register_instrument!(
+        acc,
+        spot_instrument(
+            :VOO,
+            :VOO,
+            :USD;
+            time_type=Date,
+            base_tick=1.0,
+            base_digits=0,
+            quote_tick=0.01,
+            quote_digits=2,
+            margin_requirement=MarginRequirement.PercentNotional,
+            margin_init_long=VOO_REGT_INIT_LONG,
+            margin_init_short=VOO_REGT_INIT_SHORT,
+            margin_maint_long=0.25,
+            margin_maint_short=VOO_REGT_MAINT_SHORT,
+        ),
+    )
 
     acc, voo
 end
 
 function build_mes_account(initial_cash, broker, mes_specs)
-    acc = Account(;
+    acc = Account(
         funding=AccountFunding.Margined,
         base_currency=CashSpec(:USD),
         time_type=Date,
@@ -289,21 +284,26 @@ function build_mes_account(initial_cash, broker, mes_specs)
     mes_chain = Instrument{Date}[]
     mes_roll_dates = Date[]
     for spec in mes_specs
-        inst = register_instrument!(acc, future_instrument(
-            spec.symbol, :MES, :USD;
-            time_type=Date,
-            base_tick=1.0,
-            base_digits=0,
-            quote_tick=0.25,
-            quote_digits=2,
-            multiplier=5.0,
-            margin_requirement=MarginRequirement.FixedPerContract,
-            margin_init_long=MES_INIT_MARGIN,
-            margin_init_short=MES_INIT_MARGIN,
-            margin_maint_long=MES_MAINT_MARGIN,
-            margin_maint_short=MES_MAINT_MARGIN,
-            expiry=spec.expiry,
-        ))
+        inst = register_instrument!(
+            acc,
+            future_instrument(
+                spec.symbol,
+                :MES,
+                :USD;
+                time_type=Date,
+                base_tick=1.0,
+                base_digits=0,
+                quote_tick=0.25,
+                quote_digits=2,
+                multiplier=5.0,
+                margin_requirement=MarginRequirement.FixedPerContract,
+                margin_init_long=MES_INIT_MARGIN,
+                margin_init_short=MES_INIT_MARGIN,
+                margin_maint_long=MES_MAINT_MARGIN,
+                margin_maint_short=MES_MAINT_MARGIN,
+                expiry=spec.expiry,
+            ),
+        )
         push!(mes_chain, inst)
         push!(mes_roll_dates, spec.roll_date)
     end
@@ -311,14 +311,12 @@ function build_mes_account(initial_cash, broker, mes_specs)
     acc, mes_chain, mes_roll_dates
 end
 
-# ---------------------------------------------------------
-
 ## summarize results (costs + net equity)
 
 function summarize(acc, label, initial_cash, leverage_factor)
     end_equity = equity(acc, cash_asset(acc, :USD))
     pnl = end_equity - initial_cash
-    commissions = sum(t.commission_settle for t in acc.trades, init=0.0)
+    commissions = sum(t.commission_settle for t in acc.trades, init = 0.0)
     roll_trades = count(t -> t.reason == TradeReason.Roll, acc.trades)
     lend_interest = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.LendInterest, init=0.0)
     borrow_interest = -sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowInterest, init=0.0)
@@ -377,8 +375,8 @@ summary
 
 ## compact view: leverage effect within each instrument
 leverage_effect_wide = combine(groupby(summary, :instrument)) do sdf
-    s1 = sdf[sdf.leverage .== 1.0, :]
-    s2 = sdf[sdf.leverage .== 2.0, :]
+    s1 = sdf[sdf.leverage.==1.0, :]
+    s2 = sdf[sdf.leverage.==2.0, :]
     @assert nrow(s1) == 1 && nrow(s2) == 1
 
     (
