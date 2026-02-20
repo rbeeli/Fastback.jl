@@ -26,24 +26,6 @@ using Random
 
 # ---------------------------------------------------------
 
-## Broker simplified assumptions
-const IBKR_BORROW_SPREAD = 0.015
-const IBKR_LEND_SPREAD = 0.005
-const IBKR_USD_CREDIT_NO_INTEREST_BALANCE = 10_000.0
-const MES_INIT_MARGIN = 2_800.0
-const MES_MAINT_MARGIN = 2_421.0
-const MES_PER_CONTRACT_FEE = 1.22  # 0.85 + 0.35 + 0.02
-const VOO_REGT_INIT_LONG = 0.50
-const VOO_REGT_INIT_SHORT = 0.35  # equals 135% collateral-style notion
-const VOO_REGT_MAINT_SHORT = 0.20  # equals 120% collateral-style notion
-
-const BACKTEST_START = Date(2020, 1, 1)
-const BACKTEST_END = Date(2024, 12, 31)
-const VOO_HALF_SPREAD = 0.01
-const MES_HALF_SPREAD = 0.125;
-
-# ---------------------------------------------------------
-
 example_dir = normpath(joinpath(@__DIR__, "..", "..", "..", "src", "examples", "9_VOO_vs_MES_comparison"))
 isdir(example_dir) || (example_dir = @__DIR__)
 data_dir = joinpath(example_dir, "data")
@@ -51,17 +33,19 @@ data_dir = joinpath(example_dir, "data")
 include(joinpath(example_dir, "data.jl"))
 
 ## load daily data and align to shared calendar
+const BACKTEST_START = Date(2020, 1, 1)
+const BACKTEST_END = Date(2024, 12, 31)
 voo_df = load_voo_df(
     data_dir;
     start_dt=BACKTEST_START,
     end_dt=BACKTEST_END,
-    half_spread=VOO_HALF_SPREAD,
+    half_spread=0.01,
 )
 mes_front_df = load_mes_front_data_df(
     data_dir;
     start_dt=BACKTEST_START,
     end_dt=BACKTEST_END,
-    half_spread=MES_HALF_SPREAD,
+    half_spread=0.125,
 )
 voo_df, mes_front_df = align_on_common_dates(voo_df, mes_front_df)
 
@@ -71,7 +55,10 @@ mes_contract_specs = load_mes_contract_specs(
     start_dt=first(mes_front_df.dt),
     end_dt=last(mes_front_df.dt),
 )
-mes_per_contract_fees = Dict(spec.symbol => MES_PER_CONTRACT_FEE for spec in mes_contract_specs)
+mes_per_contract_fees = Dict(
+    spec.symbol => 1.22  # 0.85 + 0.35 + 0.02
+    for spec in mes_contract_specs
+)
 
 ## load USD benchmark schedule
 const IBKR_USD_BENCHMARK = load_usd_benchmark_schedule(data_dir);
@@ -86,27 +73,27 @@ function make_ibkr_profile(usd_benchmark_schedule; credit_no_interest_balance, f
         equity_max_pct=0.01,
         futures_per_contract=futures_per_contract,
         benchmark_by_cash=Dict(:USD => usd_benchmark_schedule),
-        borrow_spread=IBKR_BORROW_SPREAD,
-        lend_spread=IBKR_LEND_SPREAD,
+        borrow_spread=0.015,
+        lend_spread=0.005,
         credit_no_interest_balance=credit_no_interest_balance,
     )
 end
 
 voo_broker = make_ibkr_profile(
     IBKR_USD_BENCHMARK;
-    credit_no_interest_balance=IBKR_USD_CREDIT_NO_INTEREST_BALANCE,
+    credit_no_interest_balance=10_000,
     futures_per_contract=Dict{Symbol,Price}(),
 )
 
 mes_broker = make_ibkr_profile(
     IBKR_USD_BENCHMARK;
-    credit_no_interest_balance=IBKR_USD_CREDIT_NO_INTEREST_BALANCE,
+    credit_no_interest_balance=10_000,
     futures_per_contract=mes_per_contract_fees,
 );
 
 # ---------------------------------------------------------
 
-## helper: shared backtest loop
+## shared backtest loop
 function run_backtest!(
     acc,
     inst,
@@ -148,7 +135,7 @@ function run_backtest!(
     acc
 end
 
-## helper: MES chain backtest with explicit rolls
+## MES futures backtest with explicit rolls
 function run_mes_chain_backtest!(
     acc,
     mes_chain,
@@ -262,10 +249,10 @@ function build_voo_account(initial_cash, broker)
             quote_tick=0.01,
             quote_digits=2,
             margin_requirement=MarginRequirement.PercentNotional,
-            margin_init_long=VOO_REGT_INIT_LONG,
-            margin_init_short=VOO_REGT_INIT_SHORT,
+            margin_init_long=0.50,
+            margin_init_short=0.35,  # equals 135% collateral-style notion
             margin_maint_long=0.25,
-            margin_maint_short=VOO_REGT_MAINT_SHORT,
+            margin_maint_short=0.20,  # equals 120% collateral-style notion
         ),
     )
 
@@ -297,10 +284,10 @@ function build_mes_account(initial_cash, broker, mes_specs)
                 quote_digits=2,
                 multiplier=5.0,
                 margin_requirement=MarginRequirement.FixedPerContract,
-                margin_init_long=MES_INIT_MARGIN,
-                margin_init_short=MES_INIT_MARGIN,
-                margin_maint_long=MES_MAINT_MARGIN,
-                margin_maint_short=MES_MAINT_MARGIN,
+                margin_init_long=2_800.0,
+                margin_init_short=2_800.0,
+                margin_maint_long=2_421.0,
+                margin_maint_short=2_421.0,
                 expiry=spec.expiry,
             ),
         )
