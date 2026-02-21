@@ -27,3 +27,5 @@ docs/src/plotting/gen/
 Manifest.toml
 
 .vscode/
+
+.DS_Store
