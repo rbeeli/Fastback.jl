@@ -69,7 +69,7 @@ function gen_markdown(path;
         data_dir::String="../data/")
     kwargs = (
         postprocess=(md -> postprocess_md(md, data_dir)),
-        credit=false,
+        credit=true,
     )
     if name === nothing
         Literate.markdown(
@@ -92,7 +92,7 @@ function gen_notebook(path;
         data_dir::String="../data/")
     kwargs = (
         postprocess=(nb -> postprocess_nb(nb, data_dir)),
-        credit=false,
+        credit=true,
     )
     if name === nothing
         Literate.notebook(
