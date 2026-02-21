@@ -179,7 +179,7 @@ p5 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
 
 plot(p1, p2, p3, p4, p5;
     layout=@layout[a{0.3h}; b{0.12h}; c{0.22h}; d{0.2h}; e{0.16h}],
-    size=(850, 920), margin=0mm, left_margin=5mm);
+    size=(850, 920), margin=0mm, left_margin=5mm)
 
 #---------------------------------------------------------
 
