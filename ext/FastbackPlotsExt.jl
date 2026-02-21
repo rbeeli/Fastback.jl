@@ -427,7 +427,11 @@ function Fastback.plot_equity_drawdown!(
     eq_vals = values(equity_pv)
     isempty(eq_vals) && return plt
 
-    Fastback.plot_equity!(plt, equity_pv; kwargs...)
+    eq_kwargs = _merge_kwargs((;
+            ylabel="Equity",
+            z_order=:front,
+        ), kwargs)
+    Fastback.plot_equity!(plt, equity_pv; eq_kwargs...)
 
     dd_vals = values(drawdown_pv)
     dd_plot = nothing
@@ -436,6 +440,8 @@ function Fastback.plot_equity_drawdown!(
         dd_kwargs = _merge_kwargs(_drawdown_kwargs(drawdown_pv), (;
             ylabel=_drawdown_axis_label(drawdown_pv),
             legend=legend_val,
+            linealpha=0.45,
+            z_order=:back,
         ))
         dd_plot = _with_theme() do
             ax = Plots.twinx(plt)
