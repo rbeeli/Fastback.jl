@@ -150,7 +150,8 @@ p3 = plot(
     yformatter=y -> @sprintf("%.1f", y),
     label=names(df)[2],
     linetype=:steppost,
-    color=:green);
+    color=:green,
+);
 for i in 3:ncol(df)
     plot!(p3,
         df.dt_close, df[!, i] ./ df[1, i];
