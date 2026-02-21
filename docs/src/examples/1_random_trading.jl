@@ -44,7 +44,7 @@ collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Ho
 for (dt, price) in zip(dts, prices)
     ## randomly trade with 1% probability
     if rand() < 0.01
-        quantity = rand() > 0.4 ? 4.0 : -4.0
+        quantity = rand() > 0.4 ? 1.0 : -1.0
         order = Order(oid!(acc), DUMMY, dt, price, quantity)
         fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, fill_qty=0.75order.quantity)
     end
