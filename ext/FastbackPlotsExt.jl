@@ -33,9 +33,6 @@ const _COLOR_EXPOSURE_SHORT = "#CC4444"
     end
 end
 
-@inline function _merge_kwargs(defaults::NamedTuple, kwargs)
-    merge(defaults, (; kwargs...))
-end
 @inline function _with_theme(f::Function)
     Plots.with(; _THEME_KW...) do
         f()
@@ -44,44 +41,9 @@ end
 
 @inline function _empty_plot(title_text; kwargs...)
     _with_theme() do
-        plot_kwargs = _merge_kwargs((; title=title_text), kwargs)
+        plot_kwargs = merge((; title=title_text), kwargs)
         Plots.plot(; plot_kwargs...)
     end
-end
-
-@inline function _balance_kwargs()
-    (;
-        label="Cash balance",
-        linecolor=_COLOR_BALANCE,
-        linetype=:steppost,
-        yformatter=y -> @sprintf("%.0f", y),
-        w=1,
-    )
-end
-
-@inline function _equity_kwargs()
-    (;
-        label="Equity",
-        linecolor=_COLOR_EQUITY,
-        linetype=:steppost,
-        yformatter=y -> @sprintf("%.0f", y),
-        w=1,
-    )
-end
-
-@inline function _open_orders_count_kwargs(vals)
-    max_open = maximum(vals)
-    max_tick = max(0, floor(Int, max_open))
-    y_ticks = 0:max_tick
-    y_ticks_str = map(x -> @sprintf("%.0f", x), y_ticks)
-    base = (;
-        label="# open orders",
-        linecolor=_COLOR_OPEN_ORDERS,
-        linetype=:steppost,
-        yticks=(y_ticks, y_ticks_str),
-        legend=false,
-    )
-    base, max_open
 end
 
 @inline function _drawdown_kwargs(pv::DrawdownValues)
@@ -108,16 +70,6 @@ end
     )
 end
 
-@inline function _exposure_kwargs(label::AbstractString, color)
-    (;
-        label=label,
-        linecolor=color,
-        linetype=:steppost,
-        yformatter=y -> @sprintf("%.0f", y),
-        w=1,
-    )
-end
-
 @inline function _has_values(pv)
     pv !== nothing && !isempty(values(pv))
 end
@@ -130,7 +82,13 @@ end
     kwargs...
 )
     _has_values(pv) || return plt
-    plot_kwargs = _merge_kwargs(_exposure_kwargs(label, color), kwargs)
+    plot_kwargs = merge((;
+            label=label,
+            linecolor=color,
+            linetype=:steppost,
+            yformatter=y -> @sprintf("%.0f", y),
+            w=1,
+        ), kwargs)
     Plots.plot!(plt, dates(pv), values(pv); plot_kwargs...)
     plt
 end
@@ -223,7 +181,7 @@ end
 Render a title-only plot panel.
 """
 function Fastback.plot_title(title_text; kwargs...)
-    plot_kwargs = _merge_kwargs((;
+    plot_kwargs = merge((;
             marker=0,
             markeralpha=0,
             annotations=(1.5, 1.5, title_text),
@@ -255,7 +213,13 @@ Add cash balance series to an existing plot.
 function Fastback.plot_balance!(plt, pv::PeriodicValues; kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
-    plot_kwargs = _merge_kwargs(_balance_kwargs(), kwargs)
+    plot_kwargs = merge((;
+            label="Cash balance",
+            linecolor=_COLOR_BALANCE,
+            linetype=:steppost,
+            yformatter=y -> @sprintf("%.0f", y),
+            w=1,
+        ), kwargs)
     _with_theme() do
         Plots.plot!(plt, dts, vals; plot_kwargs...)
     end
@@ -279,7 +243,13 @@ Add equity series to an existing plot.
 function Fastback.plot_equity!(plt, pv::PeriodicValues; kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
-    plot_kwargs = _merge_kwargs(_equity_kwargs(), kwargs)
+    plot_kwargs = merge((;
+            label="Equity",
+            linecolor=_COLOR_EQUITY,
+            linetype=:steppost,
+            yformatter=y -> @sprintf("%.0f", y),
+            w=1,
+        ), kwargs)
     _with_theme() do
         Plots.plot!(plt, dts, vals; plot_kwargs...)
     end
@@ -293,7 +263,7 @@ function Fastback.plot_equity_seq(pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No equity data"; kwargs...)
     x = collect(1:length(vals))
-    plot_kwargs = _merge_kwargs((;
+    plot_kwargs = merge((;
             title="Equity",
             linecolor=_COLOR_EQUITY,
             linetype=:steppost,
@@ -323,8 +293,17 @@ Add open orders series to an existing plot.
 function Fastback.plot_open_orders_count!(plt, pv::PeriodicValues; kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
-    plot_kwargs, max_open = _open_orders_count_kwargs(vals)
-    plot_kwargs = _merge_kwargs(plot_kwargs, kwargs)
+    max_open = maximum(vals)
+    max_tick = max(0, floor(Int, max_open))
+    y_ticks = 0:max_tick
+    y_ticks_str = map(x -> @sprintf("%.0f", x), y_ticks)
+    plot_kwargs = merge((;
+            label="# open orders",
+            linecolor=_COLOR_OPEN_ORDERS,
+            linetype=:steppost,
+            yticks=(y_ticks, y_ticks_str),
+            legend=false,
+        ), kwargs)
     _with_theme() do
         Plots.plot!(plt, dts, vals; plot_kwargs...)
         Plots.ylims!(plt, (0, max(0, max_open)))
@@ -344,7 +323,7 @@ function Fastback.plot_open_orders_count_seq(pv::PeriodicValues; kwargs...)
     y_ticks = 0:max_tick
     y_ticks_str = map(x -> @sprintf("%.0f", x), y_ticks)
 
-    plot_kwargs = _merge_kwargs((;
+    plot_kwargs = merge((;
             title="# open orders",
             linecolor=_COLOR_OPEN_ORDERS,
             linetype=:steppost,
@@ -376,7 +355,7 @@ Add drawdown series to an existing plot.
 function Fastback.plot_drawdown!(plt, pv::DrawdownValues; kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
-    plot_kwargs = _merge_kwargs(_drawdown_kwargs(pv), kwargs)
+    plot_kwargs = merge(_drawdown_kwargs(pv), kwargs)
     _with_theme() do
         Plots.plot!(plt, dts, vals; plot_kwargs...)
     end
@@ -412,7 +391,7 @@ function Fastback.plot_drawdown_seq(pv::DrawdownValues; kwargs...)
             legend=false,
         )
     end
-    plot_kwargs = _merge_kwargs(default_kwargs, kwargs)
+    plot_kwargs = merge(default_kwargs, kwargs)
     _with_theme() do
         Plots.plot(x, vals; plot_kwargs...)
     end
@@ -453,7 +432,7 @@ function Fastback.plot_equity_drawdown!(
     eq_vals = values(equity_pv)
     isempty(eq_vals) && return plt
 
-    eq_kwargs = _merge_kwargs((;
+    eq_kwargs = merge((;
             ylabel="Equity",
             z_order=:front,
         ), kwargs)
@@ -463,7 +442,7 @@ function Fastback.plot_equity_drawdown!(
     dd_plot = nothing
     if !isempty(dd_vals)
         legend_val = haskey(kwargs, :legend) ? kwargs[:legend] : :topleft
-        dd_kwargs = _merge_kwargs(_drawdown_kwargs(drawdown_pv), (;
+        dd_kwargs = merge(_drawdown_kwargs(drawdown_pv), (;
             ylabel=_drawdown_axis_label(drawdown_pv),
             legend=legend_val,
             linealpha=0.45,
@@ -561,7 +540,7 @@ function Fastback.plot_portfolio_weights_over_time(
     labels = permutedims(string.(symbols))
     weights_matrix = Matrix{Float64}(weights)
     legend_cols = max(1, min(n_symbols, 6))
-    plot_kwargs = _merge_kwargs((;
+    plot_kwargs = merge((;
             title="Portfolio weights over time",
             ylabel="Weight",
             yformatter=y -> @sprintf("%.0f%%", 100y),
@@ -620,7 +599,7 @@ function Fastback.plot_cashflows(acc::Account{TTime}; kwargs...) where {TTime<:D
     end
 
     kinds = sort!(collect(keys(cf_by_kind)); by=Int)
-    plot_kwargs = _merge_kwargs((;
+    plot_kwargs = merge((;
             layout=(length(kinds), 1),
             size=(800, 180 * length(kinds)),
             legend=false,
@@ -662,7 +641,7 @@ function Fastback.plot_violin_realized_returns_by_day(trades::AbstractVector{<:T
     y = [map(t -> realized_return(t), group) for (_, group) in groups]
     x_lbls = [Dates.dayname(day) for (day, _) in groups]
 
-    plot_kwargs = _merge_kwargs((;
+    plot_kwargs = merge((;
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
@@ -689,7 +668,7 @@ function Fastback.plot_violin_realized_returns_by_day(events::AbstractVector{<:P
     y = [map(e -> e.ret, group) for (_, group) in groups]
     x_lbls = [Dates.dayname(day) for (day, _) in groups]
 
-    plot_kwargs = _merge_kwargs((;
+    plot_kwargs = merge((;
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
@@ -720,7 +699,7 @@ function Fastback.plot_violin_realized_returns_by_hour(trades::AbstractVector{<:
     y = [map(t -> realized_return(t), group) for (_, group) in groups]
     x_lbls = [string(hour) for (hour, _) in groups]
 
-    plot_kwargs = _merge_kwargs((;
+    plot_kwargs = merge((;
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
@@ -747,7 +726,7 @@ function Fastback.plot_violin_realized_returns_by_hour(events::AbstractVector{<:
     y = [map(e -> e.ret, group) for (_, group) in groups]
     x_lbls = [string(hour) for (hour, _) in groups]
 
-    plot_kwargs = _merge_kwargs((;
+    plot_kwargs = merge((;
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
@@ -787,14 +766,14 @@ function Fastback.plot_realized_cum_returns_by_hour(
             cum_rets = cumsum(rets)
             lbl = "$(hour):00+"
             if i == 1
-                plot_kwargs = _merge_kwargs((;
+                plot_kwargs = merge((;
                         legend=:topleft,
                         label=lbl,
                         title="Realized returns by hour",
                     ), kwargs)
                 plt = Plots.plot(dts, cum_rets; plot_kwargs...)
             else
-                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                series_kwargs = merge((; label=lbl), kwargs)
                 Plots.plot!(plt, dts, cum_rets; series_kwargs...)
             end
             if !isempty(dts)
@@ -830,14 +809,14 @@ function Fastback.plot_realized_cum_returns_by_hour(
             cum_rets = cumsum(rets)
             lbl = "$(hour):00+"
             if i == 1
-                plot_kwargs = _merge_kwargs((;
+                plot_kwargs = merge((;
                         legend=:topleft,
                         label=lbl,
                         title="Realized returns by hour",
                     ), kwargs)
                 plt = Plots.plot(dts, cum_rets; plot_kwargs...)
             else
-                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                series_kwargs = merge((; label=lbl), kwargs)
                 Plots.plot!(plt, dts, cum_rets; series_kwargs...)
             end
             if !isempty(dts)
@@ -854,7 +833,7 @@ end
 Plot cumulative realized returns by hour using sequence index (net, realizing trades only).
 """
 function Fastback.plot_realized_cum_returns_by_hour_seq_net(trades::AbstractVector{<:Trade}; kwargs...)
-    plot_kwargs = _merge_kwargs((; legend=false), kwargs)
+    plot_kwargs = merge((; legend=false), kwargs)
     Fastback.plot_realized_cum_returns_by_hour_seq(
         trades,
         t -> realized_return(t),
@@ -863,7 +842,7 @@ function Fastback.plot_realized_cum_returns_by_hour_seq_net(trades::AbstractVect
 end
 
 function Fastback.plot_realized_cum_returns_by_hour_seq_net(events::AbstractVector{<:PlotEvent}; kwargs...)
-    plot_kwargs = _merge_kwargs((; legend=false), kwargs)
+    plot_kwargs = merge((; legend=false), kwargs)
     Fastback.plot_realized_cum_returns_by_hour_seq(
         events,
         e -> e.ret,
@@ -923,7 +902,7 @@ function Fastback.plot_realized_cum_returns_by_hour_seq(
             cum_rets = 1.0 .+ cumsum(rets)
             lbl = "$(hour):00"
             if i == 1
-                plot_kwargs = _merge_kwargs((;
+                plot_kwargs = merge((;
                         xticks=((1, max_n), (min_date_str, max_date_str)),
                         legendfontsize=9,
                         yformatter=y -> @sprintf("%.1f", y),
@@ -939,7 +918,7 @@ function Fastback.plot_realized_cum_returns_by_hour_seq(
                 plt = Plots.plot(x, cum_rets; plot_kwargs...)
                 Plots.xlims!(plt, (1, floor(Int, 1.1 * max_n)))
             else
-                series_kwargs = _merge_kwargs((; label=lbl, w=0.5), kwargs)
+                series_kwargs = merge((; label=lbl, w=0.5), kwargs)
                 Plots.plot!(plt, x, cum_rets; series_kwargs...)
             end
             if n_pos > 0
@@ -982,7 +961,7 @@ function Fastback.plot_realized_cum_returns_by_hour_seq(
             cum_rets = 1.0 .+ cumsum(rets)
             lbl = "$(hour):00"
             if i == 1
-                plot_kwargs = _merge_kwargs((;
+                plot_kwargs = merge((;
                         xticks=((1, max_n), (min_date_str, max_date_str)),
                         legendfontsize=9,
                         yformatter=y -> @sprintf("%.1f", y),
@@ -998,7 +977,7 @@ function Fastback.plot_realized_cum_returns_by_hour_seq(
                 plt = Plots.plot(x, cum_rets; plot_kwargs...)
                 Plots.xlims!(plt, (1, floor(Int, 1.1 * max_n)))
             else
-                series_kwargs = _merge_kwargs((; label=lbl, w=0.5), kwargs)
+                series_kwargs = merge((; label=lbl, w=0.5), kwargs)
                 Plots.plot!(plt, x, cum_rets; series_kwargs...)
             end
             if n_pos > 0
@@ -1030,7 +1009,6 @@ function Fastback.plot_realized_cum_returns_by_weekday(
              collect
     isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
 
-    max_date = maximum(map(t -> t.date, trades))
     _with_theme() do
         plt = nothing
         for (i, (weekday, group)) in enumerate(groups)
@@ -1040,19 +1018,19 @@ function Fastback.plot_realized_cum_returns_by_weekday(
             cum_rets = cumsum(rets)
             lbl = Dates.dayname(weekday)[1:3]
             if i == 1
-                plot_kwargs = _merge_kwargs((;
+                plot_kwargs = merge((;
                         legend=:topleft,
                         label=lbl,
                         title="Realized returns by weekday",
                     ), kwargs)
                 plt = Plots.plot(dts, cum_rets; plot_kwargs...)
             else
-                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                series_kwargs = merge((; label=lbl), kwargs)
                 Plots.plot!(plt, dts, cum_rets; series_kwargs...)
             end
             if !isempty(dts)
                 lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
-                Plots.annotate!(plt, max_date, cum_rets[end],
+                Plots.annotate!(plt, dts[end], cum_rets[end],
                     Plots.text(lbl, :left, 8, lbl_color))
             end
         end
@@ -1074,7 +1052,6 @@ function Fastback.plot_realized_cum_returns_by_weekday(
              collect
     isempty(groups) && return _empty_plot("No positions"; kwargs...)
 
-    max_date = maximum(map(e -> e.last_dt, events))
     _with_theme() do
         plt = nothing
         for (i, (weekday, group)) in enumerate(groups)
@@ -1084,19 +1061,19 @@ function Fastback.plot_realized_cum_returns_by_weekday(
             cum_rets = cumsum(rets)
             lbl = Dates.dayname(weekday)[1:3]
             if i == 1
-                plot_kwargs = _merge_kwargs((;
+                plot_kwargs = merge((;
                         legend=:topleft,
                         label=lbl,
                         title="Realized returns by weekday",
                     ), kwargs)
                 plt = Plots.plot(dts, cum_rets; plot_kwargs...)
             else
-                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                series_kwargs = merge((; label=lbl), kwargs)
                 Plots.plot!(plt, dts, cum_rets; series_kwargs...)
             end
             if !isempty(dts)
                 lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
-                Plots.annotate!(plt, max_date, cum_rets[end],
+                Plots.annotate!(plt, dts[end], cum_rets[end],
                     Plots.text(lbl, :left, 8, lbl_color))
             end
         end
@@ -1132,14 +1109,14 @@ function Fastback.plot_realized_cum_returns_by_weekday_seq(
             cum_rets = cumsum(rets)
             lbl = Dates.dayname(weekday)[1:3]
             if i == 1
-                plot_kwargs = _merge_kwargs((;
+                plot_kwargs = merge((;
                         legend=:bottomleft,
                         label=lbl,
                         title="Realized returns by weekday",
                     ), kwargs)
                 plt = Plots.plot(x, cum_rets; plot_kwargs...)
             else
-                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                series_kwargs = merge((; label=lbl), kwargs)
                 Plots.plot!(plt, x, cum_rets; series_kwargs...)
             end
             if n_pos > 0
@@ -1176,14 +1153,14 @@ function Fastback.plot_realized_cum_returns_by_weekday_seq(
             cum_rets = cumsum(rets)
             lbl = Dates.dayname(weekday)[1:3]
             if i == 1
-                plot_kwargs = _merge_kwargs((;
+                plot_kwargs = merge((;
                         legend=:bottomleft,
                         label=lbl,
                         title="Realized returns by weekday",
                     ), kwargs)
                 plt = Plots.plot(x, cum_rets; plot_kwargs...)
             else
-                series_kwargs = _merge_kwargs((; label=lbl), kwargs)
+                series_kwargs = merge((; label=lbl), kwargs)
                 Plots.plot!(plt, x, cum_rets; series_kwargs...)
             end
             if n_pos > 0
