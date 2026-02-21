@@ -41,7 +41,7 @@ using TestItemRunner
 
     @test pos.quantity == pos_qty_before
     @test plan.fill_qty == order.quantity
-    @test plan.commission_settle == commission + commission_pct * nominal_value(order)
+    @test plan.commission_settle == commission + commission_pct * notional_value(order)
     @test plan.cash_delta_settle == -(order.quantity * price * inst.multiplier + plan.commission_settle)
     @test plan.fill_pnl_settle == 0.0
     @test plan.new_qty == order.quantity
@@ -461,14 +461,14 @@ end
         commission_pct,
     )
 
-    @test nominal_value(order) ≈ 10.0 atol=1e-12
+    @test notional_value(order) ≈ 10.0 atol=1e-12
     @test plan.commission_settle ≈ 0.1 atol=1e-12
     @test plan.cash_delta_settle ≈ -0.1 atol=1e-12
 
     cash_before = cash_balance(acc, usd)
     trade = fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=fill_price, ask=fill_price, last=fill_price)
 
-    @test nominal_value(trade) ≈ 10.0 atol=1e-12
+    @test notional_value(trade) ≈ 10.0 atol=1e-12
     @test trade.commission_settle ≈ 0.1 atol=1e-12
     @test trade.cash_delta_settle ≈ -0.1 atol=1e-12
     @test cash_balance(acc, usd) ≈ cash_before - 0.1 atol=1e-12

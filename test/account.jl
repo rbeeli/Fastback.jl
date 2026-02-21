@@ -86,7 +86,7 @@ end
     exe1 = fill_order!(acc, order; dt=dates[1], fill_price=prices[1], bid=prices[1], ask=prices[1], last=prices[1])
     @test exe1 == acc.trades[end]
     @test exe1.commission_settle == 0.0
-    @test nominal_value(exe1) == qty * prices[1]
+    @test notional_value(exe1) == qty * prices[1]
     @test exe1.fill_pnl_settle == 0.0
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
@@ -223,7 +223,7 @@ end
     commission = 1.0
     exe1 = fill_order!(acc, order; dt=dates[1], fill_price=prices[1], bid=prices[1], ask=prices[1], last=prices[1])
     @test exe1 == acc.trades[end]
-    @test nominal_value(exe1) == qty * prices[1]
+    @test notional_value(exe1) == qty * prices[1]
     @test exe1.commission_settle == commission
     @test exe1.fill_pnl_settle == 0.0
     @test pos.avg_entry_price == 100.0
@@ -267,8 +267,8 @@ end
     order = Order(oid!(acc), DUMMY, dates[1], prices[1], qty)
     commission_pct1 = 0.001
     exe1 = fill_order!(acc, order; dt=dates[1], fill_price=prices[1], bid=prices[1], ask=prices[1], last=prices[1])
-    @test nominal_value(exe1) == qty * prices[1]
-    @test exe1.commission_settle == commission_pct1*nominal_value(exe1)
+    @test notional_value(exe1) == qty * prices[1]
+    @test exe1.commission_settle == commission_pct1*notional_value(exe1)
     @test acc.trades[end].fill_pnl_settle == 0.0
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
@@ -307,10 +307,10 @@ end
     order = Order(oid!(acc), inst, dates[1], price, qty)
     trade = fill_order!(acc, order; dt=dates[1], fill_price=price, bid=price, ask=price, last=price)
 
-    expected_nominal = qty * price * inst.multiplier
-    @test nominal_value(order) == expected_nominal
-    @test nominal_value(trade) == expected_nominal
-    @test trade.commission_settle == commission_pct * expected_nominal
+    expected_notional = qty * price * inst.multiplier
+    @test notional_value(order) == expected_notional
+    @test notional_value(trade) == expected_notional
+    @test trade.commission_settle == commission_pct * expected_notional
 end
 
 @testitem "Spot long principal-exchange valuation" begin

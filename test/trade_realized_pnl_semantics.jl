@@ -108,6 +108,55 @@ end
     @test isnan(realized_return_net(trade2))
 end
 
+@testitem "realized_notional_quote uses closed-position basis" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
+    deposit!(acc, :USD, 10_000.0)
+
+    inst = register_instrument!(acc, Instrument(
+        Symbol("RETNOT/USD"),
+        :RETNOT,
+        :USD;
+        contract_kind=ContractKind.Spot,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.0,
+        margin_init_short=0.0,
+        margin_maint_long=0.0,
+        margin_maint_short=0.0,
+        multiplier=5.0,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    open_trade = fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0, -10.0, 2.0);
+        dt=dt0,
+        fill_price=-10.0,
+        bid=-10.0,
+        ask=-10.0,
+        last=-10.0,
+    )
+    @test open_trade.realized_qty == 0.0
+    @test realized_notional_quote(open_trade) == 0.0
+
+    dt1 = dt0 + Day(1)
+    close_trade = fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt1, -8.0, -1.0);
+        dt=dt1,
+        fill_price=-8.0,
+        bid=-8.0,
+        ask=-8.0,
+        last=-8.0,
+    )
+    @test close_trade.realized_qty == 1.0
+    @test close_trade.pos_price == -10.0
+    @test realized_notional_quote(close_trade) ≈ 50.0 atol=1e-12
+end
+
 @testitem "realized_return_gross/net remain sign-consistent at negative prices" begin
     using Test, Fastback, Dates
 

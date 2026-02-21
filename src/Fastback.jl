@@ -85,7 +85,8 @@ export broker_commission,
 
 # Order and trade utilities
 export symbol,
-    nominal_value,
+    notional_value,
+    realized_notional_quote,
     fill_order!,
     roll_position!,
     is_realizing,

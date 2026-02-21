@@ -7,7 +7,7 @@ using Plots
 using Query
 
 const _HAS_STATSPLOTS = Ref(false)
-const _THEME_KW = (titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false, size=(800, 450))
+const _THEME_KW = (titlelocation=:left, titlefontsize=10, widen=true, fg_legend=:false, size=(800, 450))
 const _COLOR_BALANCE = "#0088DD"
 const _COLOR_EQUITY = "#BBBB00"
 const _COLOR_OPEN_ORDERS = "#00B8D9"
@@ -666,6 +666,9 @@ Plot cumulative realized returns grouped by hour (realizing trades only).
 Use `return_basis=:gross` (default) or `return_basis=:net`.
 Use `xaxis_mode=:date` (default) or `xaxis_mode=:index`.
 `NaN` return values are ignored.
+
+Returns are aggregated per timestamp using realized-notional weights, then
+compounded over time (`cumprod(1 + r) - 1`).
 """
 function Fastback.plot_realized_cum_returns_by_hour(
     trades::AbstractVector{<:Trade};
@@ -681,11 +684,7 @@ function Fastback.plot_realized_cum_returns_by_hour(
     else
         throw(ArgumentError("xaxis_mode must be :date or :index, got $(repr(xaxis_mode))."))
     end
-    title_str = if index_axis
-        "$(basis_label) realized cumulative returns by hour"
-    else
-        "$(basis_label) realized returns by hour"
-    end
+    title_str = "$(basis_label) realized cumulative returns by hour"
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
@@ -700,21 +699,31 @@ function Fastback.plot_realized_cum_returns_by_hour(
     min_date_str = ""
     max_date_str = ""
     if index_axis
-        max_n = maximum(map(x -> length(x[2]), groups))
-        min_date_str = Dates.format(minimum(map(t -> t.date, trades)), "yyyy/mm/dd")
-        max_date_str = Dates.format(maximum(map(t -> t.date, trades)), "yyyy/mm/dd")
+        min_dt = nothing
+        max_dt = nothing
+        for (_, group) in groups
+            sort!(group, by=t -> t.date)
+            dts, rets = _collect_weighted_dts_rets(group, t -> t.date, ret_func)
+            isempty(rets) && continue
+            max_n = max(max_n, length(rets))
+            min_dt = isnothing(min_dt) ? dts[1] : min(min_dt, dts[1])
+            max_dt = isnothing(max_dt) ? dts[end] : max(max_dt, dts[end])
+        end
+        max_n == 0 && return _empty_plot("No realizing trades"; kwargs...)
+        min_date_str = Dates.format(min_dt, "yyyy/mm/dd")
+        max_date_str = Dates.format(max_dt, "yyyy/mm/dd")
     end
 
     _with_theme() do
         plt = nothing
         for (hour, group) in groups
             sort!(group, by=t -> t.date)
+            dts, rets = _collect_weighted_dts_rets(group, t -> t.date, ret_func)
+            isempty(rets) && continue
+            cum_rets = _compounded_cum_returns(rets)
             if index_axis
-                rets = _collect_non_nan_rets(group, ret_func)
-                isempty(rets) && continue
                 n_pos = length(rets)
                 x = collect(1:n_pos)
-                cum_rets = 1.0 .+ cumsum(rets)
                 lbl = "$(hour):00"
                 if plt === nothing
                     plot_kwargs = merge((;
@@ -743,9 +752,6 @@ function Fastback.plot_realized_cum_returns_by_hour(
                         Plots.text(lbl, :left, 8, lbl_color))
                 end
             else
-                dts, rets = _collect_non_nan_dts_rets(group, t -> t.date, ret_func)
-                isempty(rets) && continue
-                cum_rets = cumsum(rets)
                 lbl = "$(hour):00+"
                 if plt === nothing
                     plot_kwargs = merge((;
@@ -778,16 +784,57 @@ end
     throw(ArgumentError("return_basis must be :gross or :net, got $(repr(return_basis))."))
 end
 
-@inline function _collect_non_nan_dts_rets(group, dt_func::Function, ret_func::Function)
+@inline function _collect_weighted_dts_rets(group, dt_func::Function, ret_func::Function)
     dts = typeof(dt_func(first(group)))[]
     rets = Float64[]
+    num = 0.0
+    den = 0.0
+    have_bucket = false
+    bucket_dt = dt_func(first(group))
+
     for item in group
         ret = ret_func(item)
         isnan(ret) && continue
-        push!(dts, dt_func(item))
-        push!(rets, Float64(ret))
+
+        realized_notional = realized_notional_quote(item)
+        (!isfinite(realized_notional) || realized_notional <= 0.0) && continue
+
+        dt = dt_func(item)
+        if !have_bucket
+            bucket_dt = dt
+            have_bucket = true
+        elseif dt != bucket_dt
+            if den > 0.0
+                push!(dts, bucket_dt)
+                push!(rets, num / den)
+            end
+            bucket_dt = dt
+            num = 0.0
+            den = 0.0
+        end
+
+        num += Float64(ret) * realized_notional
+        den += realized_notional
     end
+
+    if have_bucket && den > 0.0
+        push!(dts, bucket_dt)
+        push!(rets, num / den)
+    end
+
     dts, rets
+end
+
+@inline function _compounded_cum_returns(rets::AbstractVector{<:Real})
+    n = length(rets)
+    n == 0 && return Float64[]
+    out = Vector{Float64}(undef, n)
+    growth = 1.0
+    @inbounds for i in eachindex(rets)
+        growth *= 1.0 + Float64(rets[i])
+        out[i] = growth - 1.0
+    end
+    out
 end
 
 @inline function _collect_non_nan_rets(group, ret_func::Function)
@@ -806,6 +853,9 @@ Plot cumulative realized returns grouped by weekday (realizing trades only).
 Use `return_basis=:gross` (default) or `return_basis=:net`.
 Use `xaxis_mode=:date` (default) or `xaxis_mode=:index`.
 `NaN` return values are ignored.
+
+Returns are aggregated per timestamp using realized-notional weights, then
+compounded over time (`cumprod(1 + r) - 1`).
 """
 function Fastback.plot_realized_cum_returns_by_weekday(
     trades::AbstractVector{<:Trade},
@@ -822,7 +872,7 @@ function Fastback.plot_realized_cum_returns_by_weekday(
     else
         throw(ArgumentError("xaxis_mode must be :date or :index, got $(repr(xaxis_mode))."))
     end
-    title_str = "$(basis_label) realized returns by weekday"
+    title_str = "$(basis_label) realized cumulative returns by weekday"
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
@@ -837,13 +887,13 @@ function Fastback.plot_realized_cum_returns_by_weekday(
         plt = nothing
         for (weekday, group) in groups
             sort!(group, by=t -> t.date)
+            dts, rets = _collect_weighted_dts_rets(group, t -> t.date, ret_func)
+            isempty(rets) && continue
+            cum_rets = _compounded_cum_returns(rets)
             lbl = Dates.dayname(weekday)[1:3]
             if index_axis
-                rets = _collect_non_nan_rets(group, ret_func)
-                isempty(rets) && continue
                 n_pos = length(rets)
                 x = collect(1:n_pos)
-                cum_rets = cumsum(rets)
                 if plt === nothing
                     plot_kwargs = merge((;
                             legend=:bottomleft,
@@ -861,9 +911,6 @@ function Fastback.plot_realized_cum_returns_by_weekday(
                         Plots.text(lbl, :left, 8, lbl_color))
                 end
             else
-                dts, rets = _collect_non_nan_dts_rets(group, t -> t.date, ret_func)
-                isempty(rets) && continue
-                cum_rets = cumsum(rets)
                 if plt === nothing
                     plot_kwargs = merge((;
                             legend=:topleft,

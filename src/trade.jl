@@ -18,9 +18,18 @@ mutable struct Trade{TTime<:Dates.AbstractTime}
 end
 
 """
-Nominal trade value in quote currency (abs qty × abs price × multiplier).
+Notional trade value in quote currency (`abs(qty) * abs(price) * multiplier`).
 """
-@inline nominal_value(t::Trade) = abs(t.fill_price) * abs(t.fill_qty) * t.order.inst.multiplier
+@inline notional_value(t::Trade) = abs(t.fill_price) * abs(t.fill_qty) * t.order.inst.multiplier
+
+"""
+Realized notional of the closed portion in quote currency.
+
+Computed on the pre-fill position basis as:
+`abs(pos_price) * abs(realized_qty) * abs(multiplier)`.
+Returns `0.0` for non-realizing fills.
+"""
+@inline realized_notional_quote(t::Trade) = abs(t.pos_price) * abs(t.realized_qty) * abs(t.order.inst.multiplier)
 
 """
 Return `true` if the trade realizes any P&L.
@@ -65,7 +74,7 @@ Returns `NaN` when the return base is undefined (e.g. non-realizing trades,
     end
 
     gross_ret = sign(t.pos_qty) * ((t.fill_price - t.pos_price) / abs(t.pos_price))
-    realized_notional = abs(t.pos_price) * abs(t.realized_qty) * abs(t.order.inst.multiplier)
+    realized_notional = realized_notional_quote(t)
     if realized_notional == 0
         return NaN
     end

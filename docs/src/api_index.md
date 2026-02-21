@@ -21,8 +21,8 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Order and trade utilities
 
-- `symbol`, `nominal_value`, `fill_order!`
-- `is_realizing`, `realized_return_gross`, `realized_return_net`
+- `symbol`, `notional_value`, `fill_order!`
+- `realized_notional_quote`, `is_realizing`, `realized_return_gross`, `realized_return_net`
 
 ## Cash ledger operations
 
