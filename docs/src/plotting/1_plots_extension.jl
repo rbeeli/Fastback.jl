@@ -119,20 +119,20 @@ Fastback.plot_balance(balance_data)
 # Equity plot
 Fastback.plot_equity(equity_data)
 
-# Equity plot (sequence index)
-Fastback.plot_equity_seq(equity_data)
+# Equity plot (index x-axis)
+Fastback.plot_equity(equity_data; xaxis_mode=:index)
 
 # Open orders plot
 Fastback.plot_open_orders_count(open_orders_data)
 
-# Open orders plot (sequence index)
-Fastback.plot_open_orders_count_seq(open_orders_data)
+# Open orders plot (index x-axis)
+Fastback.plot_open_orders_count(open_orders_data; xaxis_mode=:index)
 
 # Drawdown plot
 Fastback.plot_drawdown(drawdown_data)
 
-# Drawdown plot (sequence index)
-Fastback.plot_drawdown_seq(drawdown_data)
+# Drawdown plot (index x-axis)
+Fastback.plot_drawdown(drawdown_data; xaxis_mode=:index)
 
 # Exposure plot (gross, net, long, short)
 Fastback.plot_exposure(;
@@ -174,10 +174,10 @@ Fastback.plot_violin_realized_returns_by_hour(acc.trades; return_basis=:net)
 Fastback.plot_realized_cum_returns_by_hour(acc.trades; return_basis=:net)
 
 # Cumulative net returns by hour (index x-axis)
-Fastback.plot_realized_cum_returns_by_hour_seq(acc.trades; return_basis=:net)
+Fastback.plot_realized_cum_returns_by_hour(acc.trades; return_basis=:net, xaxis_mode=:index)
 
 # Cumulative gross returns by weekday
 Fastback.plot_realized_cum_returns_by_weekday(acc.trades; return_basis=:gross)
 
 # Cumulative gross returns by weekday (index x-axis)
-Fastback.plot_realized_cum_returns_by_weekday_seq(acc.trades; return_basis=:gross)
+Fastback.plot_realized_cum_returns_by_weekday(acc.trades; return_basis=:gross, xaxis_mode=:index)

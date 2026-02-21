@@ -147,6 +147,19 @@ function _add_max_drawdown_markers!(
     plt
 end
 
+@inline function _resolve_xaxis_mode(
+    dts::AbstractVector,
+    vals::AbstractVector,
+    xaxis_mode::Symbol,
+)
+    if xaxis_mode === :date
+        return dts
+    elseif xaxis_mode === :index
+        return collect(1:length(vals))
+    end
+    throw(ArgumentError("xaxis_mode must be :date or :index, got $(repr(xaxis_mode))."))
+end
+
 """
 Render a title-only plot panel.
 """
@@ -198,24 +211,27 @@ function Fastback.plot_balance!(plt, pv::PeriodicValues; kwargs...)
 end
 
 """
-Plot equity over time from `PeriodicValues`.
+Plot equity from `PeriodicValues`.
+
+Use `xaxis_mode=:date` (default) or `xaxis_mode=:index`.
 """
-function Fastback.plot_equity(pv::PeriodicValues; kwargs...)
+function Fastback.plot_equity(pv::PeriodicValues; xaxis_mode::Symbol=:date, kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No equity data"; kwargs...)
     plt = _with_theme() do
         Plots.plot()
     end
-    Fastback.plot_equity!(plt, pv; title="Equity", legend=false, kwargs...)
+    Fastback.plot_equity!(plt, pv; xaxis_mode=xaxis_mode, title="Equity", legend=false, kwargs...)
     plt
 end
 
 """
 Add equity series to an existing plot.
 """
-function Fastback.plot_equity!(plt, pv::PeriodicValues; kwargs...)
+function Fastback.plot_equity!(plt, pv::PeriodicValues; xaxis_mode::Symbol=:date, kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
+    x = _resolve_xaxis_mode(dts, vals, xaxis_mode)
     plot_kwargs = merge((;
             label="Equity",
             linecolor=_COLOR_EQUITY,
@@ -224,50 +240,33 @@ function Fastback.plot_equity!(plt, pv::PeriodicValues; kwargs...)
             w=1,
         ), kwargs)
     _with_theme() do
-        Plots.plot!(plt, dts, vals; plot_kwargs...)
+        Plots.plot!(plt, x, vals; plot_kwargs...)
     end
     plt
 end
 
 """
-Plot equity by sequence index (no datetime axis).
-"""
-function Fastback.plot_equity_seq(pv::PeriodicValues; kwargs...)
-    vals = values(pv)
-    isempty(vals) && return _empty_plot("No equity data"; kwargs...)
-    x = collect(1:length(vals))
-    plot_kwargs = merge((;
-            title="Equity",
-            linecolor=_COLOR_EQUITY,
-            linetype=:steppost,
-            yformatter=y -> @sprintf("%.0f", y),
-            w=1,
-            legend=false,
-        ), kwargs)
-    _with_theme() do
-        Plots.plot(x, vals; plot_kwargs...)
-    end
-end
+Plot open orders from `PeriodicValues`.
 
+Use `xaxis_mode=:date` (default) or `xaxis_mode=:index`.
 """
-Plot open orders over time from `PeriodicValues`.
-"""
-function Fastback.plot_open_orders_count(pv::PeriodicValues; kwargs...)
+function Fastback.plot_open_orders_count(pv::PeriodicValues; xaxis_mode::Symbol=:date, kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No open orders data"; kwargs...)
     plt = _with_theme() do
         Plots.plot()
     end
-    Fastback.plot_open_orders_count!(plt, pv; title="# open orders", legend=false, kwargs...)
+    Fastback.plot_open_orders_count!(plt, pv; xaxis_mode=xaxis_mode, title="# open orders", legend=false, kwargs...)
     plt
 end
 
 """
 Add open orders series to an existing plot.
 """
-function Fastback.plot_open_orders_count!(plt, pv::PeriodicValues; kwargs...)
+function Fastback.plot_open_orders_count!(plt, pv::PeriodicValues; xaxis_mode::Symbol=:date, kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
+    x = _resolve_xaxis_mode(dts, vals, xaxis_mode)
     max_open = maximum(vals)
     max_tick = max(0, floor(Int, max_open))
     y_ticks = 0:max_tick
@@ -280,36 +279,10 @@ function Fastback.plot_open_orders_count!(plt, pv::PeriodicValues; kwargs...)
             legend=false,
         ), kwargs)
     _with_theme() do
-        Plots.plot!(plt, dts, vals; plot_kwargs...)
+        Plots.plot!(plt, x, vals; plot_kwargs...)
         Plots.ylims!(plt, (0, max(0, max_open)))
     end
     plt
-end
-
-"""
-Plot open orders by sequence index (no datetime axis).
-"""
-function Fastback.plot_open_orders_count_seq(pv::PeriodicValues; kwargs...)
-    vals = values(pv)
-    isempty(vals) && return _empty_plot("No open orders data"; kwargs...)
-    x = collect(1:length(vals))
-    max_open = maximum(vals)
-    max_tick = max(0, floor(Int, max_open))
-    y_ticks = 0:max_tick
-    y_ticks_str = map(x -> @sprintf("%.0f", x), y_ticks)
-
-    plot_kwargs = merge((;
-            title="# open orders",
-            linecolor=_COLOR_OPEN_ORDERS,
-            linetype=:steppost,
-            yticks=(y_ticks, y_ticks_str),
-            legend=false,
-        ), kwargs)
-    _with_theme() do
-        plt = Plots.plot(x, vals; plot_kwargs...)
-        Plots.ylims!(plt, (0, max(0, max_open)))
-        plt
-    end
 end
 
 @inline function _drawdown_kwargs(pv::DrawdownValues)
@@ -339,63 +312,29 @@ end
 """
 Plot drawdown series from `DrawdownValues`.
 """
-function Fastback.plot_drawdown(pv::DrawdownValues; kwargs...)
+function Fastback.plot_drawdown(pv::DrawdownValues; xaxis_mode::Symbol=:date, kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No drawdown data"; kwargs...)
     title = (pv.mode == DrawdownMode.Percentage ? "Equity drawdowns [%]" : "Equity drawdowns")
     plt = _with_theme() do
         Plots.plot()
     end
-    Fastback.plot_drawdown!(plt, pv; title=title, legend=false, kwargs...)
+    Fastback.plot_drawdown!(plt, pv; xaxis_mode=xaxis_mode, title=title, legend=false, kwargs...)
     plt
 end
 
 """
 Add drawdown series to an existing plot.
 """
-function Fastback.plot_drawdown!(plt, pv::DrawdownValues; kwargs...)
+function Fastback.plot_drawdown!(plt, pv::DrawdownValues; xaxis_mode::Symbol=:date, kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
+    x = _resolve_xaxis_mode(dts, vals, xaxis_mode)
     plot_kwargs = merge(_drawdown_kwargs(pv), kwargs)
     _with_theme() do
-        Plots.plot!(plt, dts, vals; plot_kwargs...)
+        Plots.plot!(plt, x, vals; plot_kwargs...)
     end
     plt
-end
-
-"""
-Plot drawdown by sequence index (no datetime axis).
-"""
-function Fastback.plot_drawdown_seq(pv::DrawdownValues; kwargs...)
-    vals = values(pv)
-    isempty(vals) && return _empty_plot("No drawdown data"; kwargs...)
-    x = collect(1:length(vals))
-    default_kwargs = if pv.mode == DrawdownMode.Percentage
-        (;
-            title="Equity drawdowns [%]",
-            fill=(0, _FILL_DRAWDOWN),
-            linecolor=_COLOR_DRAWDOWN,
-            linetype=:steppost,
-            yformatter=y -> @sprintf("%.1f%%", 100y),
-            ylims=(-1.0, 0.0),
-            w=1,
-            legend=false,
-        )
-    else
-        (;
-            title="Equity drawdowns",
-            fill=(0, _FILL_DRAWDOWN),
-            linecolor=_COLOR_DRAWDOWN,
-            linetype=:steppost,
-            yformatter=y -> @sprintf("%.0f", y),
-            w=1,
-            legend=false,
-        )
-    end
-    plot_kwargs = merge(default_kwargs, kwargs)
-    _with_theme() do
-        Plots.plot(x, vals; plot_kwargs...)
-    end
 end
 
 # -----------------------------------------------------------------------------
@@ -725,15 +664,28 @@ end
 Plot cumulative realized returns grouped by hour (realizing trades only).
 
 Use `return_basis=:gross` (default) or `return_basis=:net`.
+Use `xaxis_mode=:date` (default) or `xaxis_mode=:index`.
 `NaN` return values are ignored.
 """
 function Fastback.plot_realized_cum_returns_by_hour(
     trades::AbstractVector{<:Trade};
     return_basis::Symbol=:gross,
+    xaxis_mode::Symbol=:date,
     kwargs...
 )
     ret_func, basis_label = _resolve_return_basis(return_basis)
-    title_str = "$(basis_label) realized returns by hour"
+    index_axis = if xaxis_mode === :date
+        false
+    elseif xaxis_mode === :index
+        true
+    else
+        throw(ArgumentError("xaxis_mode must be :date or :index, got $(repr(xaxis_mode))."))
+    end
+    title_str = if index_axis
+        "$(basis_label) realized cumulative returns by hour"
+    else
+        "$(basis_label) realized returns by hour"
+    end
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
@@ -744,29 +696,73 @@ function Fastback.plot_realized_cum_returns_by_hour(
              collect
     isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
 
+    max_n = 0
+    min_date_str = ""
+    max_date_str = ""
+    if index_axis
+        max_n = maximum(map(x -> length(x[2]), groups))
+        min_date_str = Dates.format(minimum(map(t -> t.date, trades)), "yyyy/mm/dd")
+        max_date_str = Dates.format(maximum(map(t -> t.date, trades)), "yyyy/mm/dd")
+    end
+
     _with_theme() do
         plt = nothing
         for (hour, group) in groups
             sort!(group, by=t -> t.date)
-            dts, rets = _collect_non_nan_dts_rets(group, t -> t.date, ret_func)
-            isempty(rets) && continue
-            cum_rets = cumsum(rets)
-            lbl = "$(hour):00+"
-            if plt === nothing
-                plot_kwargs = merge((;
-                        legend=:topleft,
-                        label=lbl,
-                        title=title_str,
-                    ), kwargs)
-                plt = Plots.plot(dts, cum_rets; plot_kwargs...)
+            if index_axis
+                rets = _collect_non_nan_rets(group, ret_func)
+                isempty(rets) && continue
+                n_pos = length(rets)
+                x = collect(1:n_pos)
+                cum_rets = 1.0 .+ cumsum(rets)
+                lbl = "$(hour):00"
+                if plt === nothing
+                    plot_kwargs = merge((;
+                            xticks=((1, max_n), (min_date_str, max_date_str)),
+                            legendfontsize=9,
+                            yformatter=y -> @sprintf("%.1f", y),
+                            fontsize=9,
+                            w=0.5,
+                            foreground_color_legend=nothing,
+                            background_color_legend=nothing,
+                            tickfontsize=9,
+                            legend=:outertopright,
+                            label=lbl,
+                            title=title_str,
+                        ), kwargs)
+                    plt = Plots.plot(x, cum_rets; plot_kwargs...)
+                    Plots.xlims!(plt, (1, floor(Int, 1.1 * max_n)))
+                else
+                    series_kwargs = merge((; label=lbl, w=0.5), kwargs)
+                    Plots.plot!(plt, x, cum_rets; series_kwargs...)
+                end
+                if n_pos > 0
+                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
+                    Plots.annotate!(plt, n_pos + floor(Int, 0.03 * n_pos),
+                        cum_rets[end],
+                        Plots.text(lbl, :left, 8, lbl_color))
+                end
             else
-                series_kwargs = merge((; label=lbl), kwargs)
-                Plots.plot!(plt, dts, cum_rets; series_kwargs...)
-            end
-            if !isempty(dts)
-                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
-                Plots.annotate!(plt, dts[end], cum_rets[end],
-                    Plots.text(lbl, :left, 9, lbl_color))
+                dts, rets = _collect_non_nan_dts_rets(group, t -> t.date, ret_func)
+                isempty(rets) && continue
+                cum_rets = cumsum(rets)
+                lbl = "$(hour):00+"
+                if plt === nothing
+                    plot_kwargs = merge((;
+                            legend=:topleft,
+                            label=lbl,
+                            title=title_str,
+                        ), kwargs)
+                    plt = Plots.plot(dts, cum_rets; plot_kwargs...)
+                else
+                    series_kwargs = merge((; label=lbl), kwargs)
+                    Plots.plot!(plt, dts, cum_rets; series_kwargs...)
+                end
+                if !isempty(dts)
+                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
+                    Plots.annotate!(plt, dts[end], cum_rets[end],
+                        Plots.text(lbl, :left, 9, lbl_color))
+                end
             end
         end
         plt === nothing ? _empty_plot("No realizing trades"; kwargs...) : plt
@@ -805,139 +801,27 @@ end
 end
 
 """
-Plot cumulative realized returns by hour using sequence index (realizing trades only).
-
-Use `return_basis=:gross` (default) or `return_basis=:net`.
-`NaN` return values are ignored.
-"""
-function Fastback.plot_realized_cum_returns_by_hour_seq(
-    trades::AbstractVector{<:Trade};
-    return_basis::Symbol=:gross,
-    kwargs...
-)
-    ret_func, basis_label = _resolve_return_basis(return_basis)
-    title_str = "$(basis_label) realized cumulative returns by hour"
-    trades = filter(is_realizing, trades)
-    isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
-
-    groups = trades |>
-             @groupby(Dates.hour(_.date)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
-
-    max_n = maximum(map(x -> length(x[2]), groups))
-    min_date_str = Dates.format(minimum(map(t -> t.date, trades)), "yyyy/mm/dd")
-    max_date_str = Dates.format(maximum(map(t -> t.date, trades)), "yyyy/mm/dd")
-
-    _with_theme() do
-        plt = nothing
-        for (hour, group) in groups
-            sort!(group, by=t -> t.date)
-            rets = _collect_non_nan_rets(group, ret_func)
-            isempty(rets) && continue
-            n_pos = length(rets)
-            x = collect(1:n_pos)
-            cum_rets = 1.0 .+ cumsum(rets)
-            lbl = "$(hour):00"
-            if plt === nothing
-                plot_kwargs = merge((;
-                        xticks=((1, max_n), (min_date_str, max_date_str)),
-                        legendfontsize=9,
-                        yformatter=y -> @sprintf("%.1f", y),
-                        fontsize=9,
-                        w=0.5,
-                        foreground_color_legend=nothing,
-                        background_color_legend=nothing,
-                        tickfontsize=9,
-                        legend=:outertopright,
-                        label=lbl,
-                        title=title_str,
-                    ), kwargs)
-                plt = Plots.plot(x, cum_rets; plot_kwargs...)
-                Plots.xlims!(plt, (1, floor(Int, 1.1 * max_n)))
-            else
-                series_kwargs = merge((; label=lbl, w=0.5), kwargs)
-                Plots.plot!(plt, x, cum_rets; series_kwargs...)
-            end
-            if n_pos > 0
-                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
-                Plots.annotate!(plt, n_pos + floor(Int, 0.03 * n_pos),
-                    cum_rets[end],
-                    Plots.text(lbl, :left, 8, lbl_color))
-            end
-        end
-        plt === nothing ? _empty_plot("No realizing trades"; kwargs...) : plt
-    end
-end
-
-"""
 Plot cumulative realized returns grouped by weekday (realizing trades only).
 
 Use `return_basis=:gross` (default) or `return_basis=:net`.
+Use `xaxis_mode=:date` (default) or `xaxis_mode=:index`.
 `NaN` return values are ignored.
 """
 function Fastback.plot_realized_cum_returns_by_weekday(
     trades::AbstractVector{<:Trade},
     ;
     return_basis::Symbol=:gross,
+    xaxis_mode::Symbol=:date,
     kwargs...
 )
     ret_func, basis_label = _resolve_return_basis(return_basis)
-    title_str = "$(basis_label) realized returns by weekday"
-    trades = filter(is_realizing, trades)
-    isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
-
-    groups = trades |>
-             @groupby(Dates.dayofweek(_.date)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
-
-    _with_theme() do
-        plt = nothing
-        for (weekday, group) in groups
-            sort!(group, by=t -> t.date)
-            dts, rets = _collect_non_nan_dts_rets(group, t -> t.date, ret_func)
-            isempty(rets) && continue
-            cum_rets = cumsum(rets)
-            lbl = Dates.dayname(weekday)[1:3]
-            if plt === nothing
-                plot_kwargs = merge((;
-                        legend=:topleft,
-                        label=lbl,
-                        title=title_str,
-                    ), kwargs)
-                plt = Plots.plot(dts, cum_rets; plot_kwargs...)
-            else
-                series_kwargs = merge((; label=lbl), kwargs)
-                Plots.plot!(plt, dts, cum_rets; series_kwargs...)
-            end
-            if !isempty(dts)
-                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
-                Plots.annotate!(plt, dts[end], cum_rets[end],
-                    Plots.text(lbl, :left, 8, lbl_color))
-            end
-        end
-        plt === nothing ? _empty_plot("No realizing trades"; kwargs...) : plt
+    index_axis = if xaxis_mode === :date
+        false
+    elseif xaxis_mode === :index
+        true
+    else
+        throw(ArgumentError("xaxis_mode must be :date or :index, got $(repr(xaxis_mode))."))
     end
-end
-
-"""
-Plot cumulative realized returns by weekday using sequence index (realizing trades only).
-
-Use `return_basis=:gross` (default) or `return_basis=:net`.
-`NaN` return values are ignored.
-"""
-function Fastback.plot_realized_cum_returns_by_weekday_seq(
-    trades::AbstractVector{<:Trade},
-    ;
-    return_basis::Symbol=:gross,
-    kwargs...
-)
-    ret_func, basis_label = _resolve_return_basis(return_basis)
     title_str = "$(basis_label) realized returns by weekday"
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
@@ -953,27 +837,49 @@ function Fastback.plot_realized_cum_returns_by_weekday_seq(
         plt = nothing
         for (weekday, group) in groups
             sort!(group, by=t -> t.date)
-            rets = _collect_non_nan_rets(group, ret_func)
-            isempty(rets) && continue
-            n_pos = length(rets)
-            x = collect(1:n_pos)
-            cum_rets = cumsum(rets)
             lbl = Dates.dayname(weekday)[1:3]
-            if plt === nothing
-                plot_kwargs = merge((;
-                        legend=:bottomleft,
-                        label=lbl,
-                        title=title_str,
-                    ), kwargs)
-                plt = Plots.plot(x, cum_rets; plot_kwargs...)
+            if index_axis
+                rets = _collect_non_nan_rets(group, ret_func)
+                isempty(rets) && continue
+                n_pos = length(rets)
+                x = collect(1:n_pos)
+                cum_rets = cumsum(rets)
+                if plt === nothing
+                    plot_kwargs = merge((;
+                            legend=:bottomleft,
+                            label=lbl,
+                            title=title_str,
+                        ), kwargs)
+                    plt = Plots.plot(x, cum_rets; plot_kwargs...)
+                else
+                    series_kwargs = merge((; label=lbl), kwargs)
+                    Plots.plot!(plt, x, cum_rets; series_kwargs...)
+                end
+                if n_pos > 0
+                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
+                    Plots.annotate!(plt, n_pos + 1, cum_rets[end],
+                        Plots.text(lbl, :left, 8, lbl_color))
+                end
             else
-                series_kwargs = merge((; label=lbl), kwargs)
-                Plots.plot!(plt, x, cum_rets; series_kwargs...)
-            end
-            if n_pos > 0
-                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
-                Plots.annotate!(plt, n_pos + 1, cum_rets[end],
-                    Plots.text(lbl, :left, 8, lbl_color))
+                dts, rets = _collect_non_nan_dts_rets(group, t -> t.date, ret_func)
+                isempty(rets) && continue
+                cum_rets = cumsum(rets)
+                if plt === nothing
+                    plot_kwargs = merge((;
+                            legend=:topleft,
+                            label=lbl,
+                            title=title_str,
+                        ), kwargs)
+                    plt = Plots.plot(dts, cum_rets; plot_kwargs...)
+                else
+                    series_kwargs = merge((; label=lbl), kwargs)
+                    Plots.plot!(plt, dts, cum_rets; series_kwargs...)
+                end
+                if !isempty(dts)
+                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
+                    Plots.annotate!(plt, dts[end], cum_rets[end],
+                        Plots.text(lbl, :left, 8, lbl_color))
+                end
             end
         end
         plt === nothing ? _empty_plot("No realizing trades"; kwargs...) : plt

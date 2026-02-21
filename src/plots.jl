@@ -4,13 +4,10 @@ function plot_balance end
 function plot_balance! end
 function plot_equity end
 function plot_equity! end
-function plot_equity_seq end
 function plot_open_orders_count end
 function plot_open_orders_count! end
-function plot_open_orders_count_seq end
 function plot_drawdown end
 function plot_drawdown! end
-function plot_drawdown_seq end
 function plot_equity_drawdown end
 function plot_equity_drawdown! end
 function plot_exposure end
@@ -20,6 +17,4 @@ function plot_cashflows end
 function plot_violin_realized_returns_by_day end
 function plot_violin_realized_returns_by_hour end
 function plot_realized_cum_returns_by_hour end
-function plot_realized_cum_returns_by_hour_seq end
 function plot_realized_cum_returns_by_weekday end
-function plot_realized_cum_returns_by_weekday_seq end
