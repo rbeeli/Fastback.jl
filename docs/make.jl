@@ -171,13 +171,11 @@ makedocs(
         "Pitfalls and gotchas" => "pitfalls.md",
         "How-to" => "how_to.md",
         "Examples" => [
-            "Walkthroughs" => [
-                "Random trading" => "examples/gen/1_random_trading.md",
-                "Portfolio trading" => "examples/gen/2_portfolio_trading.md",
-                "Multi-Currency trading" => "examples/gen/3_multi_currency.md",
-                "USD-M perpetual trading" => "examples/gen/4_USDm_perp_trading.md",
-                "VOO vs MES cost comparison" => "examples/gen/5_VOO_vs_MES_comparison.md",
-            ],
+            "Random trading" => "examples/gen/1_random_trading.md",
+            "Portfolio trading" => "examples/gen/2_portfolio_trading.md",
+            "Multi-Currency trading" => "examples/gen/3_multi_currency.md",
+            "USD-M perpetual trading" => "examples/gen/4_USDm_perp_trading.md",
+            "VOO vs MES cost comparison" => "examples/gen/5_VOO_vs_MES_comparison.md",
         ],
         "Plotting" => [
             "Plots extensions" => "plotting/gen/1_plots_extension.md",
