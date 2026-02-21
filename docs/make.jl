@@ -18,18 +18,18 @@ using Documenter
 using Literate
 using Fastback
 
-function postprocess_md(md)
+function postprocess_md(md, data_dir)
     # fix data folder path
-    md = replace(md, "\"data/" => "\"../data/")
+    md = replace(md, "\"data/" => "\"$(data_dir)")
     md
 end
 
-function postprocess_nb(nb)
+function postprocess_nb(nb, data_dir)
     for cell in nb["cells"]
         if cell["cell_type"] == "code"
             for (i, line) in enumerate(cell["source"])
                 # fix data folder path
-                line = replace(line, "\"data/" => "\"../data/")
+                line = replace(line, "\"data/" => "\"$(data_dir)")
                 cell["source"][i] = line
             end
         end
@@ -38,7 +38,11 @@ function postprocess_nb(nb)
 end
 
 const EXAMPLES_ROOT = joinpath(DOCS_ROOT, "src", "examples")
+const INTEGRATIONS_ROOT = joinpath(DOCS_ROOT, "src", "integrations")
+const PLOTTING_ROOT = joinpath(DOCS_ROOT, "src", "plotting")
 const GENERATED_EXAMPLES_ROOT = joinpath(EXAMPLES_ROOT, "gen")
+const GENERATED_INTEGRATIONS_ROOT = joinpath(INTEGRATIONS_ROOT, "gen")
+const GENERATED_PLOTTING_ROOT = joinpath(PLOTTING_ROOT, "gen")
 
 if isdir(GENERATED_EXAMPLES_ROOT)
     rm(GENERATED_EXAMPLES_ROOT; recursive=true)
@@ -46,39 +50,59 @@ end
 
 mkpath(GENERATED_EXAMPLES_ROOT)
 
-function gen_markdown(path; name=nothing)
+if isdir(GENERATED_INTEGRATIONS_ROOT)
+    rm(GENERATED_INTEGRATIONS_ROOT; recursive=true)
+end
+
+mkpath(GENERATED_INTEGRATIONS_ROOT)
+
+if isdir(GENERATED_PLOTTING_ROOT)
+    rm(GENERATED_PLOTTING_ROOT; recursive=true)
+end
+
+mkpath(GENERATED_PLOTTING_ROOT)
+
+function gen_markdown(path;
+        name=nothing,
+        source_root::String=EXAMPLES_ROOT,
+        generated_root::String=GENERATED_EXAMPLES_ROOT,
+        data_dir::String="../data/")
     kwargs = (
-        postprocess=postprocess_md,
+        postprocess=(md -> postprocess_md(md, data_dir)),
         credit=false,
     )
     if name === nothing
         Literate.markdown(
-            joinpath(EXAMPLES_ROOT, path),
-            GENERATED_EXAMPLES_ROOT;
+            joinpath(source_root, path),
+            generated_root;
             kwargs...)
     else
         Literate.markdown(
-            joinpath(EXAMPLES_ROOT, path),
-            GENERATED_EXAMPLES_ROOT;
+            joinpath(source_root, path),
+            generated_root;
             kwargs...,
             name=name)
     end
 end
 
-function gen_notebook(path; name=nothing)
+function gen_notebook(path;
+        name=nothing,
+        source_root::String=EXAMPLES_ROOT,
+        generated_root::String=GENERATED_EXAMPLES_ROOT,
+        data_dir::String="../data/")
     kwargs = (
-        postprocess=postprocess_nb,
+        postprocess=(nb -> postprocess_nb(nb, data_dir)),
         credit=false,
     )
     if name === nothing
         Literate.notebook(
-            joinpath(EXAMPLES_ROOT, path),
-            GENERATED_EXAMPLES_ROOT;
+            joinpath(source_root, path),
+            generated_root;
             kwargs...)
     else
         Literate.notebook(
-            joinpath(EXAMPLES_ROOT, path),
-            GENERATED_EXAMPLES_ROOT;
+            joinpath(source_root, path),
+            generated_root;
             kwargs...,
             name=name)
     end
@@ -88,23 +112,47 @@ end
 gen_markdown("1_random_trading.jl");
 gen_markdown("2_portfolio_trading.jl");
 gen_markdown("3_multi_currency.jl");
-gen_markdown("4_Tables_integration.jl");
-gen_markdown("5_NanoDates_integration.jl");
-gen_markdown("6_Timestamps64_integration.jl");
-gen_markdown("7_USDm_perp_trading.jl");
-gen_markdown("8_plots_extension.jl");
-gen_markdown("9_VOO_vs_MES_comparison/main.jl"; name="9_VOO_vs_MES_comparison");
+gen_markdown("4_USDm_perp_trading.jl");
+gen_markdown("5_VOO_vs_MES_comparison/main.jl"; name="5_VOO_vs_MES_comparison");
+gen_markdown(
+    "1_Tables_integration.jl";
+    source_root=INTEGRATIONS_ROOT,
+    generated_root=GENERATED_INTEGRATIONS_ROOT);
+gen_markdown(
+    "2_NanoDates_integration.jl";
+    source_root=INTEGRATIONS_ROOT,
+    generated_root=GENERATED_INTEGRATIONS_ROOT);
+gen_markdown(
+    "3_Timestamps64_integration.jl";
+    source_root=INTEGRATIONS_ROOT,
+    generated_root=GENERATED_INTEGRATIONS_ROOT);
+gen_markdown(
+    "1_plots_extension.jl";
+    source_root=PLOTTING_ROOT,
+    generated_root=GENERATED_PLOTTING_ROOT);
 
 # generate notebook files
 gen_notebook("1_random_trading.jl");
 gen_notebook("2_portfolio_trading.jl");
 gen_notebook("3_multi_currency.jl");
-gen_notebook("4_Tables_integration.jl");
-gen_notebook("5_NanoDates_integration.jl");
-gen_notebook("6_Timestamps64_integration.jl");
-gen_notebook("7_USDm_perp_trading.jl");
-gen_notebook("8_plots_extension.jl");
-gen_notebook("9_VOO_vs_MES_comparison/main.jl"; name="9_VOO_vs_MES_comparison");
+gen_notebook("4_USDm_perp_trading.jl");
+gen_notebook("5_VOO_vs_MES_comparison/main.jl"; name="5_VOO_vs_MES_comparison");
+gen_notebook(
+    "1_Tables_integration.jl";
+    source_root=INTEGRATIONS_ROOT,
+    generated_root=GENERATED_INTEGRATIONS_ROOT);
+gen_notebook(
+    "2_NanoDates_integration.jl";
+    source_root=INTEGRATIONS_ROOT,
+    generated_root=GENERATED_INTEGRATIONS_ROOT);
+gen_notebook(
+    "3_Timestamps64_integration.jl";
+    source_root=INTEGRATIONS_ROOT,
+    generated_root=GENERATED_INTEGRATIONS_ROOT);
+gen_notebook(
+    "1_plots_extension.jl";
+    source_root=PLOTTING_ROOT,
+    generated_root=GENERATED_PLOTTING_ROOT);
 
 makedocs(
     sitename="Fastback.jl",
@@ -127,19 +175,19 @@ makedocs(
                 "Random trading" => "examples/gen/1_random_trading.md",
                 "Portfolio trading" => "examples/gen/2_portfolio_trading.md",
                 "Multi-Currency trading" => "examples/gen/3_multi_currency.md",
-                "USD-M perpetual trading" => "examples/gen/7_USDm_perp_trading.md",
-                "VOO vs MES cost comparison" => "examples/gen/9_VOO_vs_MES_comparison.md",
+                "USD-M perpetual trading" => "examples/gen/4_USDm_perp_trading.md",
+                "VOO vs MES cost comparison" => "examples/gen/5_VOO_vs_MES_comparison.md",
             ],
             "Integrations" => [
-                "Tables.jl" => "examples/gen/4_Tables_integration.md",
-                "NanoDates.jl" => "examples/gen/5_NanoDates_integration.md",
-                "Timestamps64.jl" => "examples/gen/6_Timestamps64_integration.md",
+                "Tables.jl" => "integrations/gen/1_Tables_integration.md",
+                "NanoDates.jl" => "integrations/gen/2_NanoDates_integration.md",
+                "Timestamps64.jl" => "integrations/gen/3_Timestamps64_integration.md",
             ],
             "Plotting" => [
-                "Plots extensions" => "examples/gen/8_plots_extension.md",
+                "Plots extensions" => "plotting/gen/1_plots_extension.md",
             ],
         ],
-        "Integrations" => "integrations.md",
+        "Integrations" => "integrations/index.md",
         "API index" => "api_index.md",
         "Glossary" => "glossary.md",
     ]

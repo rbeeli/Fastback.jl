@@ -26,7 +26,7 @@ using Random
 
 # ---------------------------------------------------------
 
-example_dir = normpath(joinpath(@__DIR__, "..", "..", "..", "src", "examples", "9_VOO_vs_MES_comparison"))
+example_dir = normpath(joinpath(@__DIR__, "..", "..", "..", "src", "examples", "5_VOO_vs_MES_comparison"))
 isdir(example_dir) || (example_dir = @__DIR__)
 data_dir = joinpath(example_dir, "data")
 

@@ -44,7 +44,7 @@ collect_short, short_exposure = periodic_collector(Float64, Hour(1));
 data_path = "data/usdm_perp_1h.csv";
 
 ## if data path doesn't exist, try to change working directory
-isfile(data_path) || cd("src/examples")
+isfile(data_path) || cd("src/plotting")
 
 ## parse CSV (hourly rows)
 df = DataFrame(CSV.File(data_path; dateformat="yyyy-mm-dd HH:MM:SS"));

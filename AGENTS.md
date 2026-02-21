@@ -27,7 +27,7 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
   - `backtest_runner.jl`, `utils.jl`: threaded batch runner (`Threads.@threads`) and utility helpers.
 - `test/`: uses TestItemRunner and `@testitem` blocks; reconciliation data lives in `test/data/`.  
 - `ext/`: optional package extension(s), currently `FastbackPlotsExt.jl` for Plots/StatsPlots-backed plotting methods.  
-- `docs/`: Documenter + Literate; examples in `docs/src/examples` (including nested example folders) are rendered to `docs/src/examples/gen` by `docs/make.jl`.  
+- `docs/`: Documenter + Literate; walkthroughs in `docs/src/examples` are rendered to `docs/src/examples/gen`, integration examples in `docs/src/integrations` are rendered to `docs/src/integrations/gen`, and plotting examples in `docs/src/plotting` are rendered to `docs/src/plotting/gen` by `docs/make.jl`.  
 - `justfile`: shortcuts for docs (`just build-docs`, `just serve-docs`).  
 - `CHANGELOG.md`: release history; update alongside version bumps in `Project.toml`.
 
@@ -56,7 +56,7 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
 
 ## Docs workflow
 
-- Add/modify examples in `docs/src/examples` (flat `.jl` files or nested `*/main.jl` entrypoints); register them in `docs/make.jl` so both markdown and notebooks regenerate.  
+- Add/modify walkthrough examples in `docs/src/examples`, integration examples in `docs/src/integrations`, and plotting examples in `docs/src/plotting`; register them in `docs/make.jl` so both markdown and notebooks regenerate.  
 - Regenerate docs after user-facing changes; assets/styles live under `docs/src/assets/`.  
 - Keep README badge/version in sync when releasing.
 
