@@ -23,7 +23,7 @@ function postprocess_md(md, data_dir, notebook_name)
     md = replace(md, "\"data/" => "\"$(data_dir)")
 
     # add a direct link to the generated notebook near the top of the page
-    notebook_link = "**Jyuper Notebook:** [`$(notebook_name).ipynb`]($(notebook_name).ipynb)\n\n"
+    notebook_link = "**Jupyter Notebook:** [`$(notebook_name).ipynb`]($(notebook_name).ipynb)\n\n"
     if startswith(md, "```@meta\n")
         new_md = replace(md, "```\n\n" => "```\n\n$(notebook_link)", count=1)
         md = new_md == md ? notebook_link * md : new_md

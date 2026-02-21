@@ -85,12 +85,24 @@ end
 end
 
 @inline function _drawdown_kwargs(pv::DrawdownValues)
+    if pv.mode == DrawdownMode.Percentage
+        return (;
+            label="Drawdown",
+            fill=(0, _FILL_DRAWDOWN),
+            linecolor=_COLOR_DRAWDOWN,
+            linetype=:steppost,
+            yformatter=y -> @sprintf("%.1f%%", 100y),
+            ylims=(-1.0, 0.0),
+            w=1,
+            legend=false,
+        )
+    end
     (;
         label="Drawdown",
         fill=(0, _FILL_DRAWDOWN),
         linecolor=_COLOR_DRAWDOWN,
         linetype=:steppost,
-        yformatter=(pv.mode == DrawdownMode.Percentage ? (y -> @sprintf("%.1f%%", 100y)) : (y -> @sprintf("%.0f", y))),
+        yformatter=y -> @sprintf("%.0f", y),
         w=1,
         legend=false,
     )
@@ -378,15 +390,29 @@ function Fastback.plot_drawdown_seq(pv::DrawdownValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No drawdown data"; kwargs...)
     x = collect(1:length(vals))
-    plot_kwargs = _merge_kwargs((;
-            title=(pv.mode == DrawdownMode.Percentage ? "Equity drawdowns [%]" : "Equity drawdowns"),
+    default_kwargs = if pv.mode == DrawdownMode.Percentage
+        (;
+            title="Equity drawdowns [%]",
             fill=(0, _FILL_DRAWDOWN),
             linecolor=_COLOR_DRAWDOWN,
             linetype=:steppost,
-            yformatter=(pv.mode == DrawdownMode.Percentage ? (y -> @sprintf("%.1f%%", 100y)) : (y -> @sprintf("%.0f", y))),
+            yformatter=y -> @sprintf("%.1f%%", 100y),
+            ylims=(-1.0, 0.0),
             w=1,
             legend=false,
-        ), kwargs)
+        )
+    else
+        (;
+            title="Equity drawdowns",
+            fill=(0, _FILL_DRAWDOWN),
+            linecolor=_COLOR_DRAWDOWN,
+            linetype=:steppost,
+            yformatter=y -> @sprintf("%.0f", y),
+            w=1,
+            legend=false,
+        )
+    end
+    plot_kwargs = _merge_kwargs(default_kwargs, kwargs)
     _with_theme() do
         Plots.plot(x, vals; plot_kwargs...)
     end
@@ -772,8 +798,9 @@ function Fastback.plot_realized_cum_returns_by_hour(
                 Plots.plot!(plt, dts, cum_rets; series_kwargs...)
             end
             if !isempty(dts)
+                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
                 Plots.annotate!(plt, dts[end], cum_rets[end],
-                    Plots.text(lbl, :left, 9))
+                    Plots.text(lbl, :left, 9, lbl_color))
             end
         end
         plt
@@ -814,8 +841,9 @@ function Fastback.plot_realized_cum_returns_by_hour(
                 Plots.plot!(plt, dts, cum_rets; series_kwargs...)
             end
             if !isempty(dts)
+                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
                 Plots.annotate!(plt, dts[end], cum_rets[end],
-                    Plots.text(lbl, :left, 9))
+                    Plots.text(lbl, :left, 9, lbl_color))
             end
         end
         plt
@@ -826,19 +854,21 @@ end
 Plot cumulative realized returns by hour using sequence index (net, realizing trades only).
 """
 function Fastback.plot_realized_cum_returns_by_hour_seq_net(trades::AbstractVector{<:Trade}; kwargs...)
+    plot_kwargs = _merge_kwargs((; legend=false), kwargs)
     Fastback.plot_realized_cum_returns_by_hour_seq(
         trades,
         t -> realized_return(t),
         "Net realized cumulative returns by hour";
-        kwargs...)
+        plot_kwargs...)
 end
 
 function Fastback.plot_realized_cum_returns_by_hour_seq_net(events::AbstractVector{<:PlotEvent}; kwargs...)
+    plot_kwargs = _merge_kwargs((; legend=false), kwargs)
     Fastback.plot_realized_cum_returns_by_hour_seq(
         events,
         e -> e.ret,
         "Net realized cumulative returns by hour";
-        kwargs...)
+        plot_kwargs...)
 end
 
 """
@@ -913,9 +943,10 @@ function Fastback.plot_realized_cum_returns_by_hour_seq(
                 Plots.plot!(plt, x, cum_rets; series_kwargs...)
             end
             if n_pos > 0
+                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
                 Plots.annotate!(plt, n_pos + floor(Int, 0.03 * n_pos),
                     cum_rets[end],
-                    Plots.text(lbl, :left, 8))
+                    Plots.text(lbl, :left, 8, lbl_color))
             end
         end
         plt
@@ -971,9 +1002,10 @@ function Fastback.plot_realized_cum_returns_by_hour_seq(
                 Plots.plot!(plt, x, cum_rets; series_kwargs...)
             end
             if n_pos > 0
+                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
                 Plots.annotate!(plt, n_pos + floor(Int, 0.03 * n_pos),
                     cum_rets[end],
-                    Plots.text(lbl, :left, 8))
+                    Plots.text(lbl, :left, 8, lbl_color))
             end
         end
         plt
@@ -1019,8 +1051,9 @@ function Fastback.plot_realized_cum_returns_by_weekday(
                 Plots.plot!(plt, dts, cum_rets; series_kwargs...)
             end
             if !isempty(dts)
+                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
                 Plots.annotate!(plt, max_date, cum_rets[end],
-                    Plots.text(lbl, :left, 8))
+                    Plots.text(lbl, :left, 8, lbl_color))
             end
         end
         plt
@@ -1062,8 +1095,9 @@ function Fastback.plot_realized_cum_returns_by_weekday(
                 Plots.plot!(plt, dts, cum_rets; series_kwargs...)
             end
             if !isempty(dts)
+                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
                 Plots.annotate!(plt, max_date, cum_rets[end],
-                    Plots.text(lbl, :left, 8))
+                    Plots.text(lbl, :left, 8, lbl_color))
             end
         end
         plt
@@ -1109,8 +1143,9 @@ function Fastback.plot_realized_cum_returns_by_weekday_seq(
                 Plots.plot!(plt, x, cum_rets; series_kwargs...)
             end
             if n_pos > 0
+                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
                 Plots.annotate!(plt, n_pos + 1, cum_rets[end],
-                    Plots.text(lbl, :left, 8))
+                    Plots.text(lbl, :left, 8, lbl_color))
             end
         end
         plt
@@ -1152,8 +1187,9 @@ function Fastback.plot_realized_cum_returns_by_weekday_seq(
                 Plots.plot!(plt, x, cum_rets; series_kwargs...)
             end
             if n_pos > 0
+                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
                 Plots.annotate!(plt, n_pos + 1, cum_rets[end],
-                    Plots.text(lbl, :left, 8))
+                    Plots.text(lbl, :left, 8, lbl_color))
             end
         end
         plt
