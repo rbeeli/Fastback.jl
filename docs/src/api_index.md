@@ -100,7 +100,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 - `plot_title`
 - `plot_balance`, `plot_balance!`
 - `plot_equity`, `plot_equity!`, `plot_equity_seq`
-- `plot_open_orders`, `plot_open_orders!`, `plot_open_orders_seq`
+- `plot_open_orders_count`, `plot_open_orders_count!`, `plot_open_orders_count_seq`
 - `plot_drawdown`, `plot_drawdown!`, `plot_drawdown_seq`
 - `plot_equity_drawdown`, `plot_equity_drawdown!`
 - `plot_exposure`, `plot_exposure!`

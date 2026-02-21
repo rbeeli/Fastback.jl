@@ -118,10 +118,10 @@ Fastback.plot_equity(equity_data)
 Fastback.plot_equity_seq(equity_data)
 
 # Open orders plot
-Fastback.plot_open_orders(open_orders_data)
+Fastback.plot_open_orders_count(open_orders_data)
 
 # Open orders plot (sequence index)
-Fastback.plot_open_orders_seq(open_orders_data)
+Fastback.plot_open_orders_count_seq(open_orders_data)
 
 # Drawdown plot
 Fastback.plot_drawdown(drawdown_data)

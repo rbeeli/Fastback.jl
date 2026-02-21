@@ -67,7 +67,7 @@ end
     )
 end
 
-@inline function _open_orders_kwargs(vals)
+@inline function _open_orders_count_kwargs(vals)
     max_open = maximum(vals)
     max_tick = max(0, floor(Int, max_open))
     y_ticks = 0:max_tick
@@ -295,21 +295,21 @@ end
 """
 Plot open orders over time from `PeriodicValues`.
 """
-function Fastback.plot_open_orders(pv::PeriodicValues; kwargs...)
+function Fastback.plot_open_orders_count(pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No open orders data"; kwargs...)
     plt = Plots.plot()
-    Fastback.plot_open_orders!(plt, pv; title="# open orders", legend=false, kwargs...)
+    Fastback.plot_open_orders_count!(plt, pv; title="# open orders", legend=false, kwargs...)
     plt
 end
 
 """
 Add open orders series to an existing plot.
 """
-function Fastback.plot_open_orders!(plt, pv::PeriodicValues; kwargs...)
+function Fastback.plot_open_orders_count!(plt, pv::PeriodicValues; kwargs...)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
-    plot_kwargs, max_open = _open_orders_kwargs(vals)
+    plot_kwargs, max_open = _open_orders_count_kwargs(vals)
     plot_kwargs = _merge_kwargs(plot_kwargs, kwargs)
     _with_theme() do
         Plots.plot!(plt, dts, vals; plot_kwargs...)
@@ -321,7 +321,7 @@ end
 """
 Plot open orders by sequence index (no datetime axis).
 """
-function Fastback.plot_open_orders_seq(pv::PeriodicValues; kwargs...)
+function Fastback.plot_open_orders_count_seq(pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No open orders data"; kwargs...)
     x = collect(1:length(vals))
