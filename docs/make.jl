@@ -178,16 +178,16 @@ makedocs(
                 "USD-M perpetual trading" => "examples/gen/4_USDm_perp_trading.md",
                 "VOO vs MES cost comparison" => "examples/gen/5_VOO_vs_MES_comparison.md",
             ],
-            "Integrations" => [
-                "Tables.jl" => "integrations/gen/1_Tables_integration.md",
-                "NanoDates.jl" => "integrations/gen/2_NanoDates_integration.md",
-                "Timestamps64.jl" => "integrations/gen/3_Timestamps64_integration.md",
-            ],
-            "Plotting" => [
-                "Plots extensions" => "plotting/gen/1_plots_extension.md",
-            ],
         ],
-        "Integrations" => "integrations/index.md",
+        "Plotting" => [
+            "Plots extensions" => "plotting/gen/1_plots_extension.md",
+        ],
+        "Integrations" => [
+            "Overview" => "integrations/index.md",
+            "Tables.jl" => "integrations/gen/1_Tables_integration.md",
+            "NanoDates.jl" => "integrations/gen/2_NanoDates_integration.md",
+            "Timestamps64.jl" => "integrations/gen/3_Timestamps64_integration.md",
+        ],
         "API index" => "api_index.md",
         "Glossary" => "glossary.md",
     ]
