@@ -1,6 +1,7 @@
 struct FillPlan
     fill_qty::Quantity
     remaining_qty::Quantity
+    commission_quote::Price
     commission_settle::Price
     cash_delta_settle::Price
     fill_pnl_settle::Price            # gross additive fill P&L in settlement ccy (excludes commissions)
@@ -159,6 +160,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     FillPlan(
         fill_qty,
         remaining_qty,
+        commission_total_quote,
         commission_settle,
         cash_delta_settle,
         fill_pnl_settle,

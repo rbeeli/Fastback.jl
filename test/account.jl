@@ -88,7 +88,7 @@ end
     @test exe1.commission_settle == 0.0
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.fill_pnl_settle == 0.0
-    # @test realized_return(exe1) == 0.0
+    # @test realized_return_gross(exe1) == 0.0
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
     # update position and account P&L
@@ -227,7 +227,7 @@ end
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.commission_settle == commission
     @test exe1.fill_pnl_settle == 0.0
-    # @test realized_return(exe1) == 0.0
+    # @test realized_return_gross(exe1) == 0.0
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
     # update position and account P&L
@@ -272,7 +272,7 @@ end
     @test nominal_value(exe1) == qty * prices[1]
     @test exe1.commission_settle == commission_pct1*nominal_value(exe1)
     @test acc.trades[end].fill_pnl_settle == 0.0
-    # @test realized_return(acc.trades[end]) == 0.0
+    # @test realized_return_gross(acc.trades[end]) == 0.0
     @test pos.avg_entry_price == 100.0
     @test pos.avg_settle_price == 100.0
     # update position and account P&L
@@ -1068,7 +1068,7 @@ end
 #     execute_order!(acc, book, Order(inst, 200.0, prices[3].dt))
 
 #     @test acc.positions[inst.index].avg_price == book.bba.ask
-#     @test realized_return(acc.trades[end].execution) ≈ (100.0 - 103.0) / 100.0
+#     @test realized_return_gross(acc.trades[end].execution) ≈ (100.0 - 103.0) / 100.0
 #     @test realized_pnl(acc.trades[end].execution) ≈ -300.0
 #     # @test calc_realized_return(acc.trades[end].execution) ≈ (100.0 - 103.0) / 100.0
 #     @test acc.trades[end].execution.realized_pnl ≈ -300.0

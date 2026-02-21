@@ -40,8 +40,8 @@ end
 
     trade_alloc = let
         o = Order(0, inst_kw, dt0_kw, 0.0, 0.0)
-        Trade(o, 0, dt0_kw, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, TradeReason.Normal)
-        @allocated Trade(o, 1, dt0_kw, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, TradeReason.Normal)
+        Trade(o, 0, dt0_kw, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, TradeReason.Normal)
+        @allocated Trade(o, 1, dt0_kw, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, TradeReason.Normal)
     end
 
     order_kw1 = Order(oid!(acc_kw), inst_kw, dt0_kw + Day(2), 101.0, -0.25)
@@ -53,7 +53,7 @@ end
     kw_alloc = @allocated fill_order!(acc_kw, order_kw3; dt=dt0_kw + Day(4), fill_price=101.0, bid=101.0, ask=101.0, last=101.0)
 
     # Bound the kw path after warmup; allow small overhead above Trade allocation.
-    @test trade_alloc == 112
+    @test trade_alloc == 128
     @test kw_alloc <= trade_alloc + 256
 end
 

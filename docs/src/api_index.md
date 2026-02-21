@@ -22,7 +22,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 ## Order and trade utilities
 
 - `symbol`, `nominal_value`, `fill_order!`
-- `is_realizing`, `realized_return`
+- `is_realizing`, `realized_return_gross`, `realized_return_net`
 
 ## Cash ledger operations
 
@@ -107,5 +107,5 @@ For details, open the REPL and type `?symbol` to view docstrings.
 - `plot_portfolio_weights_over_time`
 - `plot_violin_realized_returns_by_day`, `plot_violin_realized_returns_by_hour`
 - `plot_realized_cum_returns_by_hour`
-- `plot_realized_cum_returns_by_hour_seq_net`, `plot_realized_cum_returns_by_hour_seq_gross`, `plot_realized_cum_returns_by_hour_seq`
+- `plot_realized_cum_returns_by_hour_seq`
 - `plot_realized_cum_returns_by_weekday`, `plot_realized_cum_returns_by_weekday_seq`

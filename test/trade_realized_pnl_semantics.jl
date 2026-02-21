@@ -64,16 +64,20 @@ end
     close_trade = fill_order!(acc, close_order; dt=dt_close, fill_price=price_close, bid=price_close, ask=price_close, last=price_close)
 
     expected_gross = (price_close - price_open) * qty
+    expected_gross_ret = (price_close - price_open) / abs(price_open)
+    expected_net_ret = expected_gross_ret - (commission_close / (abs(price_open) * qty))
 
     @test close_trade.realized_qty == qty
     @test close_trade.fill_pnl_settle ≈ expected_gross atol=1e-12
     @test close_trade.commission_settle ≈ commission_close atol=1e-12
     @test close_trade.cash_delta_settle ≈ qty * price_close - commission_close atol=1e-12
+    @test realized_return_gross(close_trade) ≈ expected_gross_ret atol=1e-12
+    @test realized_return_net(close_trade) ≈ expected_net_ret atol=1e-12
     @test cash_balance(acc, usd) ≈ cash_after_open + qty * price_close - commission_close atol=1e-12
     @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-12
 end
 
-@testitem "realized_return gated by realized quantity" begin
+@testitem "realized_return_gross/net are NaN for non-realizing fills" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
@@ -100,10 +104,11 @@ end
 
     @test trade2.realized_qty == 0.0
     @test trade2.fill_pnl_settle == 0.0
-    @test realized_return(trade2) == 0.0
+    @test isnan(realized_return_gross(trade2))
+    @test isnan(realized_return_net(trade2))
 end
 
-@testitem "realized_return remains sign-consistent at negative prices" begin
+@testitem "realized_return_gross/net remain sign-consistent at negative prices" begin
     using Test, Fastback, Dates
 
     function setup_acc(sym::Symbol)
@@ -134,13 +139,51 @@ end
     fill_order!(acc_long, Order(oid!(acc_long), inst_long, dt, -10.0, 1.0); dt=dt, fill_price=-10.0, bid=-10.0, ask=-10.0, last=-10.0)
     trade_long = fill_order!(acc_long, Order(oid!(acc_long), inst_long, dt + Day(1), -5.0, -1.0); dt=dt + Day(1), fill_price=-5.0, bid=-5.0, ask=-5.0, last=-5.0)
     @test trade_long.fill_pnl_settle > 0.0
-    @test realized_return(trade_long) ≈ 0.5 atol=1e-12
+    @test realized_return_gross(trade_long) ≈ 0.5 atol=1e-12
+    @test realized_return_net(trade_long) ≈ 0.5 atol=1e-12
 
     acc_short, inst_short = setup_acc(Symbol("RETNEG_SHRT/USD"))
     fill_order!(acc_short, Order(oid!(acc_short), inst_short, dt, -10.0, -1.0); dt=dt, fill_price=-10.0, bid=-10.0, ask=-10.0, last=-10.0)
     trade_short = fill_order!(acc_short, Order(oid!(acc_short), inst_short, dt + Day(1), -5.0, 1.0); dt=dt + Day(1), fill_price=-5.0, bid=-5.0, ask=-5.0, last=-5.0)
     @test trade_short.fill_pnl_settle < 0.0
-    @test realized_return(trade_short) ≈ -0.5 atol=1e-12
+    @test realized_return_gross(trade_short) ≈ -0.5 atol=1e-12
+    @test realized_return_net(trade_short) ≈ -0.5 atol=1e-12
+end
+
+@testitem "realized_return_net uses quote commission basis when settle != quote" begin
+    using Test, Fastback, Dates
+
+    er = ExchangeRates()
+    base_currency=CashSpec(:USD)
+    acc = Account(; broker=FlatFeeBroker(fixed=1.0), funding=AccountFunding.Margined, base_currency=base_currency, exchange_rates=er)
+    register_cash_asset!(acc, CashSpec(:EUR))
+    deposit!(acc, :USD, 10_000.0)
+
+    update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
+    inst = register_instrument!(acc, Instrument(
+        Symbol("RETNET/EURUSD"),
+        :RETNET,
+        :EUR;
+        settle_symbol=:USD,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.0,
+        margin_init_short=0.0,
+        margin_maint_long=0.0,
+        margin_maint_short=0.0,
+    ))
+
+    dt0 = DateTime(2026, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    dt1 = dt0 + Day(1)
+    close_trade = fill_order!(acc, Order(oid!(acc), inst, dt1, 110.0, -1.0); dt=dt1, fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
+
+    expected_gross_ret = (110.0 - 100.0) / 100.0
+    expected_net_ret = expected_gross_ret - (close_trade.commission_quote / (100.0 * 1.0))
+    @test close_trade.commission_settle != 0.0
+    @test close_trade.commission_quote != 0.0
+    @test realized_return_gross(close_trade) ≈ expected_gross_ret atol=1e-12
+    @test realized_return_net(close_trade) ≈ expected_net_ret atol=1e-12
 end
 
 @testitem "cross-currency asset realized settle P&L captures principal FX translation" begin

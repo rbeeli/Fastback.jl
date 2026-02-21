@@ -89,7 +89,8 @@ export symbol,
     fill_order!,
     roll_position!,
     is_realizing,
-    realized_return
+    realized_return_gross,
+    realized_return_net
 
 # Cash ledger operations
 export cash_asset,
@@ -234,8 +235,6 @@ export plot_title,
     plot_violin_realized_returns_by_day,
     plot_violin_realized_returns_by_hour,
     plot_realized_cum_returns_by_hour,
-    plot_realized_cum_returns_by_hour_seq_net,
-    plot_realized_cum_returns_by_hour_seq_gross,
     plot_realized_cum_returns_by_hour_seq,
     plot_realized_cum_returns_by_weekday,
     plot_realized_cum_returns_by_weekday_seq

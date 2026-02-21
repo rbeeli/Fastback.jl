@@ -164,20 +164,20 @@ Fastback.plot_cashflows(acc)
 # ---------------------------------------------------------
 # Return-based plots
 
-# Returns by day (violin)
-Fastback.plot_violin_realized_returns_by_day(acc.trades)
+# Gross returns by day (violin plot)
+Fastback.plot_violin_realized_returns_by_day(acc.trades; return_basis=:gross)
 
-# Returns by hour (violin)
-Fastback.plot_violin_realized_returns_by_hour(acc.trades)
+# Net returns by hour (violin plot)
+Fastback.plot_violin_realized_returns_by_hour(acc.trades; return_basis=:net)
 
-# Cumulative returns by hour
-Fastback.plot_realized_cum_returns_by_hour(acc.trades)
+# Cumulative net returns by hour
+Fastback.plot_realized_cum_returns_by_hour(acc.trades; return_basis=:net)
 
-# Cumulative returns by hour (sequence index)
-Fastback.plot_realized_cum_returns_by_hour_seq_net(acc.trades)
+# Cumulative net returns by hour (index x-axis)
+Fastback.plot_realized_cum_returns_by_hour_seq(acc.trades; return_basis=:net)
 
-# Cumulative returns by weekday
-Fastback.plot_realized_cum_returns_by_weekday(acc.trades, t -> realized_return(t))
+# Cumulative gross returns by weekday
+Fastback.plot_realized_cum_returns_by_weekday(acc.trades; return_basis=:gross)
 
-# Cumulative returns by weekday (sequence index)
-Fastback.plot_realized_cum_returns_by_weekday_seq(acc.trades, t -> realized_return(t))
+# Cumulative gross returns by weekday (index x-axis)
+Fastback.plot_realized_cum_returns_by_weekday_seq(acc.trades; return_basis=:gross)

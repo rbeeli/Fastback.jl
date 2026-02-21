@@ -37,7 +37,8 @@ function print_trades(
             cash = acc.ledger.cash[t.order.inst.settle_cash_index]
             format_cash(cash, v)
         end),
-        Dict(:name => "Return", :val => t -> realized_return(t), :fmt => (t, v) -> @sprintf("%.2f%%", 100v)),
+        Dict(:name => "Return (gross)", :val => t -> realized_return_gross(t), :fmt => (t, v) -> isnan(v) ? "—" : @sprintf("%.2f%%", 100v)),
+        Dict(:name => "Return (net)", :val => t -> realized_return_net(t), :fmt => (t, v) -> isnan(v) ? "—" : @sprintf("%.2f%%", 100v)),
         Dict(:name => "Comm.", :val => t -> t.commission_settle, :fmt => (t, v) -> begin
             cash = acc.ledger.cash[t.order.inst.settle_cash_index]
             format_cash(cash, v)
@@ -57,15 +58,17 @@ function print_trades(
     h_pnl_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Fill P&L" && data_columns[j][i] < 0, crayon"#DD0000")
     h_qty_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] > 0, crayon"#DD00DD")
     h_qty_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] < 0, crayon"#DDDD00")
-    h_ret_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Return" && data_columns[j][i] > 0, crayon"#11BF11")
-    h_ret_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Return" && data_columns[j][i] < 0, crayon"#DD0000")
+    h_ret_gross_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Return (gross)" && data_columns[j][i] > 0, crayon"#11BF11")
+    h_ret_gross_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Return (gross)" && data_columns[j][i] < 0, crayon"#DD0000")
+    h_ret_net_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Return (net)" && data_columns[j][i] > 0, crayon"#11BF11")
+    h_ret_net_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Return (net)" && data_columns[j][i] < 0, crayon"#DD0000")
 
     pretty_table(
         io,
         data_matrix
         ;
         column_labels=column_labels,
-        highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_pos, h_ret_neg],
+        highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_gross_pos, h_ret_gross_neg, h_ret_net_pos, h_ret_net_neg],
         formatters=[formatter],
         compact_printing=true,
         vertical_crop_mode=:middle,

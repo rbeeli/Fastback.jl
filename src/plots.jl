@@ -20,8 +20,6 @@ function plot_cashflows end
 function plot_violin_realized_returns_by_day end
 function plot_violin_realized_returns_by_hour end
 function plot_realized_cum_returns_by_hour end
-function plot_realized_cum_returns_by_hour_seq_net end
-function plot_realized_cum_returns_by_hour_seq_gross end
 function plot_realized_cum_returns_by_hour_seq end
 function plot_realized_cum_returns_by_weekday end
 function plot_realized_cum_returns_by_weekday_seq end

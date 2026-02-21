@@ -302,6 +302,7 @@ Commission is broker-driven by default via `acc.broker`.
         plan.remaining_qty,
         plan.fill_pnl_settle,
         plan.realized_qty,
+        plan.commission_quote,
         plan.commission_settle,
         plan.cash_delta_settle,
         pos_qty,
