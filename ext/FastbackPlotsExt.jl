@@ -10,6 +10,7 @@ const _HAS_STATSPLOTS = Ref(false)
 const _THEME_KW = (titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false)
 const _COLOR_BALANCE = "#0088DD"
 const _COLOR_EQUITY = "#BBBB00"
+const _COLOR_OPEN_ORDERS = "#00B8D9"
 const _COLOR_DRAWDOWN = "#BB0000"
 const _FILL_DRAWDOWN = "#BB000033"
 const _COLOR_EXPOSURE_GROSS = "#444444"
@@ -73,7 +74,7 @@ end
     y_ticks_str = map(x -> @sprintf("%.0f", x), y_ticks)
     base = (;
         label="# open orders",
-        color="black",
+        linecolor=_COLOR_OPEN_ORDERS,
         linetype=:steppost,
         yticks=(y_ticks, y_ticks_str),
         legend=false,
@@ -162,6 +163,7 @@ function _add_max_drawdown_markers!(
     vals::AbstractVector{<:Real},
     mode::DrawdownMode.T;
     drawdown_axis::Bool=true,
+    drawdown_plot=nothing,
 )
     peak_idx, trough_idx, max_dd = _max_drawdown_indices(vals)
     max_dd < 0 || return plt
@@ -180,8 +182,8 @@ function _add_max_drawdown_markers!(
             label=false)
         if drawdown_axis
             dd_val = _drawdown_value(peak_val, trough_val, mode)
-            Plots.scatter!(plt, [trough_dt], [dd_val];
-                yaxis=:right,
+            target = isnothing(drawdown_plot) ? plt : drawdown_plot
+            Plots.scatter!(target, [trough_dt], [dd_val];
                 marker=:circle,
                 markersize=4,
                 color=_COLOR_DRAWDOWN,
@@ -330,7 +332,7 @@ function Fastback.plot_open_orders_seq(pv::PeriodicValues; kwargs...)
 
     plot_kwargs = _merge_kwargs((;
             title="# open orders",
-            color="black",
+            linecolor=_COLOR_OPEN_ORDERS,
             linetype=:steppost,
             yticks=(y_ticks, y_ticks_str),
             legend=false,
@@ -426,15 +428,17 @@ function Fastback.plot_equity_drawdown!(
     Fastback.plot_equity!(plt, equity_pv; kwargs...)
 
     dd_vals = values(drawdown_pv)
+    dd_plot = nothing
     if !isempty(dd_vals)
         legend_val = haskey(kwargs, :legend) ? kwargs[:legend] : :topleft
         dd_kwargs = _merge_kwargs(_drawdown_kwargs(drawdown_pv), (;
-            yaxis=:right,
             ylabel=_drawdown_axis_label(drawdown_pv),
             legend=legend_val,
         ))
-        _with_theme() do
-            Plots.plot!(plt, dates(drawdown_pv), dd_vals; dd_kwargs...)
+        dd_plot = _with_theme() do
+            ax = Plots.twinx(plt)
+            Plots.plot!(ax, dates(drawdown_pv), dd_vals; dd_kwargs...)
+            ax
         end
     end
 
@@ -445,6 +449,7 @@ function Fastback.plot_equity_drawdown!(
             eq_vals,
             drawdown_pv.mode;
             drawdown_axis=!isempty(dd_vals),
+            drawdown_plot=dd_plot,
         )
     end
     plt
