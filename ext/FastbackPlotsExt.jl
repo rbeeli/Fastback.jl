@@ -20,14 +20,15 @@ const _COLOR_EXPOSURE_SHORT = "#CC4444"
 
 @inline function _ensure_statsplots()
     if _HAS_STATSPLOTS[]
-        return true
+        return
     end
     try
         @eval import StatsPlots
         _HAS_STATSPLOTS[] = true
-        return true
-    catch
-        return false
+        return
+    catch err
+        err_msg = sprint(showerror, err)
+        throw(ArgumentError("StatsPlots is required for violin plots. Install it with `import Pkg; Pkg.add(\"StatsPlots\")`. Import error: $(err_msg)"))
     end
 end
 
@@ -614,11 +615,9 @@ end
 Violin plot of realized returns grouped by day of week (realizing trades only).
 """
 function Fastback.plot_violin_realized_returns_by_day(trades::AbstractVector{<:Trade}; kwargs...)
+    _ensure_statsplots()
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
-    if !_ensure_statsplots()
-        return _empty_plot("Install StatsPlots for violin plots"; kwargs...)
-    end
 
     groups = trades |>
              @groupby(Dates.dayofweek(_.date)) |>
@@ -643,10 +642,8 @@ function Fastback.plot_violin_realized_returns_by_day(trades::AbstractVector{<:T
 end
 
 function Fastback.plot_violin_realized_returns_by_day(events::AbstractVector{<:PlotEvent}; kwargs...)
+    _ensure_statsplots()
     isempty(events) && return _empty_plot("No positions"; kwargs...)
-    if !_ensure_statsplots()
-        return _empty_plot("Install StatsPlots for violin plots"; kwargs...)
-    end
 
     groups = events |>
              @groupby(Dates.dayofweek(_.open_dt)) |>
@@ -674,11 +671,9 @@ end
 Violin plot of realized returns grouped by hour (realizing trades only).
 """
 function Fastback.plot_violin_realized_returns_by_hour(trades::AbstractVector{<:Trade}; kwargs...)
+    _ensure_statsplots()
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
-    if !_ensure_statsplots()
-        return _empty_plot("Install StatsPlots for violin plots"; kwargs...)
-    end
 
     groups = trades |>
              @groupby(Dates.hour(_.date)) |>
@@ -703,10 +698,8 @@ function Fastback.plot_violin_realized_returns_by_hour(trades::AbstractVector{<:
 end
 
 function Fastback.plot_violin_realized_returns_by_hour(events::AbstractVector{<:PlotEvent}; kwargs...)
+    _ensure_statsplots()
     isempty(events) && return _empty_plot("No positions"; kwargs...)
-    if !_ensure_statsplots()
-        return _empty_plot("Install StatsPlots for violin plots"; kwargs...)
-    end
 
     groups = events |>
              @groupby(Dates.hour(_.open_dt)) |>
