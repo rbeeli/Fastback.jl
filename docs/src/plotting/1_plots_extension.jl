@@ -20,15 +20,20 @@ acc = Account(;
     broker=BinanceBroker(; maker_derivatives=0.0004, taker_derivatives=0.0004),
 );
 usdt = cash_asset(acc, :USDT)
-deposit!(acc, :USDT, 10_000.0);
-perp = register_instrument!(acc, perpetual_instrument(
-    Symbol("BTCUSDT-PERP"), :BTC, :USDT;
-    margin_requirement=MarginRequirement.PercentNotional,
-    margin_init_long=0.10,
-    margin_init_short=0.10,
-    margin_maint_long=0.05,
-    margin_maint_short=0.05,
-))
+deposit!(acc, :USDT, 10_000.0)
+perp = register_instrument!(
+    acc,
+    perpetual_instrument(
+        Symbol("BTCUSDT-PERP"),
+        :BTC,
+        :USDT;
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.10,
+        margin_init_short=0.10,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+    ),
+)
 
 collect_balance, balance_data = periodic_collector(Float64, Hour(1));
 collect_equity, equity_data = periodic_collector(Float64, Hour(1));
