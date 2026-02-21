@@ -4,6 +4,11 @@ const PROJECT_ROOT = normpath(joinpath(DOCS_ROOT, ".."))
 # GR render offscreen (avoid window popups during docs build)
 ENV["GKS_WSTYPE"] = "100"
 
+# Use a wider virtual terminal for @example/@repl output so wide tables
+# (DataFrames/PrettyTables) are not horizontally cropped in rendered docs.
+ENV["COLUMNS"] = "220"
+ENV["LINES"] = "80"
+
 using Pkg
 Pkg.activate(DOCS_ROOT)
 Pkg.develop(path=PROJECT_ROOT)
