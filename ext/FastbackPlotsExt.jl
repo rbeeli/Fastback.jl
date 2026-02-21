@@ -118,40 +118,34 @@ function _add_max_drawdown_markers!(
     peak_dt, trough_dt = dts[peak_idx], dts[trough_idx]
     peak_val, trough_val = vals[peak_idx], vals[trough_idx]
     _with_theme() do
-        Plots.scatter!(plt, [peak_dt], [peak_val];
+        Plots.scatter!(
+            plt, [peak_dt], [peak_val];
             marker=:utriangle,
             markersize=4,
             color=_COLOR_DRAWDOWN,
-            label=false)
-        Plots.scatter!(plt, [trough_dt], [trough_val];
+            label=false,
+        )
+        Plots.scatter!(
+            plt, [trough_dt], [trough_val];
             marker=:dtriangle,
             markersize=4,
             color=_COLOR_DRAWDOWN,
-            label=false)
+            label=false,
+        )
         if drawdown_axis
             dd_val = _drawdown_value(peak_val, trough_val, mode)
             target = isnothing(drawdown_plot) ? plt : drawdown_plot
-            Plots.scatter!(target, [trough_dt], [dd_val];
+            Plots.scatter!(
+                target, [trough_dt], [dd_val];
                 marker=:circle,
                 markersize=4,
                 color=_COLOR_DRAWDOWN,
-                label="Max drawdown")
+                label="Max drawdown",
+            )
         end
     end
     plt
 end
-
-struct PlotEvent{TTime<:Dates.AbstractTime}
-    open_dt::TTime
-    last_dt::TTime
-    ret::Float64
-end
-
-@inline PlotEvent(open_dt::TTime, last_dt::TTime, ret::Real) where {TTime<:Dates.AbstractTime} =
-    PlotEvent{TTime}(open_dt, last_dt, Float64(ret))
-
-@inline PlotEvent(t::Trade{T}) where {T<:Dates.AbstractTime} =
-    PlotEvent{T}(t.date, t.date, realized_return(t))
 
 """
 Render a title-only plot panel.
@@ -181,7 +175,6 @@ function Fastback.plot_balance(pv::PeriodicValues; kwargs...)
         Plots.plot()
     end
     Fastback.plot_balance!(plt, pv; title="Balance", legend=false, kwargs...)
-    Plots.ylims!(plt, (0, maximum(vals)))
     plt
 end
 
@@ -611,9 +604,10 @@ function Fastback.plot_cashflows(acc::Account{TTime}; kwargs...) where {TTime<:D
     end
 
     kinds = sort!(collect(keys(cf_by_kind)); by=Int)
+    theme_width, theme_height = _THEME_KW.size
     plot_kwargs = merge((;
             layout=(length(kinds), 1),
-            size=(800, 180 * length(kinds)),
+            size=(theme_width, theme_height * length(kinds)),
             legend=false,
         ), kwargs)
 
@@ -637,9 +631,17 @@ end
 
 """
 Violin plot of realized returns grouped by day of week (realizing trades only).
+
+Use `return_basis=:gross` (default) or `return_basis=:net`.
+`NaN` return values are ignored.
 """
-function Fastback.plot_violin_realized_returns_by_day(trades::AbstractVector{<:Trade}; kwargs...)
+function Fastback.plot_violin_realized_returns_by_day(
+    trades::AbstractVector{<:Trade};
+    return_basis::Symbol=:gross,
+    kwargs...
+)
     _ensure_statsplots()
+    ret_func, basis_label = _resolve_return_basis(return_basis)
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
@@ -650,41 +652,21 @@ function Fastback.plot_violin_realized_returns_by_day(trades::AbstractVector{<:T
              collect
     isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
 
-    y = [map(t -> realized_return(t), group) for (_, group) in groups]
-    x_lbls = [Dates.dayname(day) for (day, _) in groups]
-
-    plot_kwargs = merge((;
-            xticks=(1:length(y), x_lbls),
-            fill="green",
-            linewidth=0,
-            title="Realized returns by day (trade date)",
-            legend=false,
-        ), kwargs)
-    _with_theme() do
-        sp = Base.invokelatest(getfield, Main, :StatsPlots)
-        Base.invokelatest(sp.violin, y; plot_kwargs...)
+    y = Vector{Vector{Float64}}()
+    x_lbls = String[]
+    for (day, group) in groups
+        vals = _collect_non_nan_rets(group, ret_func)
+        isempty(vals) && continue
+        push!(y, vals)
+        push!(x_lbls, Dates.dayname(day))
     end
-end
-
-function Fastback.plot_violin_realized_returns_by_day(events::AbstractVector{<:PlotEvent}; kwargs...)
-    _ensure_statsplots()
-    isempty(events) && return _empty_plot("No positions"; kwargs...)
-
-    groups = events |>
-             @groupby(Dates.dayofweek(_.open_dt)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
-
-    y = [map(e -> e.ret, group) for (_, group) in groups]
-    x_lbls = [Dates.dayname(day) for (day, _) in groups]
+    isempty(y) && return _empty_plot("No realizing trades"; kwargs...)
 
     plot_kwargs = merge((;
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
-            title="Realized returns by day (event date)",
+            title="$(basis_label) realized returns by day (trade date)",
             legend=false,
         ), kwargs)
     _with_theme() do
@@ -695,9 +677,17 @@ end
 
 """
 Violin plot of realized returns grouped by hour (realizing trades only).
+
+Use `return_basis=:gross` (default) or `return_basis=:net`.
+`NaN` return values are ignored.
 """
-function Fastback.plot_violin_realized_returns_by_hour(trades::AbstractVector{<:Trade}; kwargs...)
+function Fastback.plot_violin_realized_returns_by_hour(
+    trades::AbstractVector{<:Trade};
+    return_basis::Symbol=:gross,
+    kwargs...
+)
     _ensure_statsplots()
+    ret_func, basis_label = _resolve_return_basis(return_basis)
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
@@ -708,41 +698,21 @@ function Fastback.plot_violin_realized_returns_by_hour(trades::AbstractVector{<:
              collect
     isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
 
-    y = [map(t -> realized_return(t), group) for (_, group) in groups]
-    x_lbls = [string(hour) for (hour, _) in groups]
-
-    plot_kwargs = merge((;
-            xticks=(1:length(y), x_lbls),
-            fill="green",
-            linewidth=0,
-            title="Realized returns by hour (trade time)",
-            legend=false,
-        ), kwargs)
-    _with_theme() do
-        sp = Base.invokelatest(getfield, Main, :StatsPlots)
-        Base.invokelatest(sp.violin, y; plot_kwargs...)
+    y = Vector{Vector{Float64}}()
+    x_lbls = String[]
+    for (hour, group) in groups
+        vals = _collect_non_nan_rets(group, ret_func)
+        isempty(vals) && continue
+        push!(y, vals)
+        push!(x_lbls, string(hour))
     end
-end
-
-function Fastback.plot_violin_realized_returns_by_hour(events::AbstractVector{<:PlotEvent}; kwargs...)
-    _ensure_statsplots()
-    isempty(events) && return _empty_plot("No positions"; kwargs...)
-
-    groups = events |>
-             @groupby(Dates.hour(_.open_dt)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
-
-    y = [map(e -> e.ret, group) for (_, group) in groups]
-    x_lbls = [string(hour) for (hour, _) in groups]
+    isempty(y) && return _empty_plot("No realizing trades"; kwargs...)
 
     plot_kwargs = merge((;
             xticks=(1:length(y), x_lbls),
             fill="green",
             linewidth=0,
-            title="Realized returns by hour (event time)",
+            title="$(basis_label) realized returns by hour (trade time)",
             legend=false,
         ), kwargs)
     _with_theme() do
@@ -753,12 +723,17 @@ end
 
 """
 Plot cumulative realized returns grouped by hour (realizing trades only).
+
+Use `return_basis=:gross` (default) or `return_basis=:net`.
+`NaN` return values are ignored.
 """
 function Fastback.plot_realized_cum_returns_by_hour(
-    trades::AbstractVector{<:Trade},
-    ret_func::Function=t -> realized_return(t);
+    trades::AbstractVector{<:Trade};
+    return_basis::Symbol=:gross,
     kwargs...
 )
+    ret_func, basis_label = _resolve_return_basis(return_basis)
+    title_str = "$(basis_label) realized returns by hour"
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
@@ -771,17 +746,17 @@ function Fastback.plot_realized_cum_returns_by_hour(
 
     _with_theme() do
         plt = nothing
-        for (i, (hour, group)) in enumerate(groups)
+        for (hour, group) in groups
             sort!(group, by=t -> t.date)
-            dts = map(t -> t.date, group)
-            rets = map(ret_func, group)
+            dts, rets = _collect_non_nan_dts_rets(group, t -> t.date, ret_func)
+            isempty(rets) && continue
             cum_rets = cumsum(rets)
             lbl = "$(hour):00+"
-            if i == 1
+            if plt === nothing
                 plot_kwargs = merge((;
                         legend=:topleft,
                         label=lbl,
-                        title="Realized returns by hour",
+                        title=title_str,
                     ), kwargs)
                 plt = Plots.plot(dts, cum_rets; plot_kwargs...)
             else
@@ -794,102 +769,54 @@ function Fastback.plot_realized_cum_returns_by_hour(
                     Plots.text(lbl, :left, 9, lbl_color))
             end
         end
-        plt
+        plt === nothing ? _empty_plot("No realizing trades"; kwargs...) : plt
     end
 end
 
-function Fastback.plot_realized_cum_returns_by_hour(
-    events::AbstractVector{<:PlotEvent},
-    ret_func::Function=e -> e.ret;
-    kwargs...
-)
-    isempty(events) && return _empty_plot("No positions"; kwargs...)
-
-    groups = events |>
-             @groupby(Dates.hour(_.open_dt)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
-
-    _with_theme() do
-        plt = nothing
-        for (i, (hour, group)) in enumerate(groups)
-            sort!(group, by=e -> e.open_dt)
-            dts = map(e -> e.open_dt, group)
-            rets = map(ret_func, group)
-            cum_rets = cumsum(rets)
-            lbl = "$(hour):00+"
-            if i == 1
-                plot_kwargs = merge((;
-                        legend=:topleft,
-                        label=lbl,
-                        title="Realized returns by hour",
-                    ), kwargs)
-                plt = Plots.plot(dts, cum_rets; plot_kwargs...)
-            else
-                series_kwargs = merge((; label=lbl), kwargs)
-                Plots.plot!(plt, dts, cum_rets; series_kwargs...)
-            end
-            if !isempty(dts)
-                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
-                Plots.annotate!(plt, dts[end], cum_rets[end],
-                    Plots.text(lbl, :left, 9, lbl_color))
-            end
-        end
-        plt
+@inline function _resolve_return_basis(return_basis::Symbol)
+    if return_basis === :gross
+        return realized_return_gross, "Gross"
+    elseif return_basis === :net
+        return realized_return_net, "Net"
     end
+    throw(ArgumentError("return_basis must be :gross or :net, got $(repr(return_basis))."))
 end
 
-"""
-Plot cumulative realized returns by hour using sequence index (net, realizing trades only).
-"""
-function Fastback.plot_realized_cum_returns_by_hour_seq_net(trades::AbstractVector{<:Trade}; kwargs...)
-    plot_kwargs = merge((; legend=false), kwargs)
-    Fastback.plot_realized_cum_returns_by_hour_seq(
-        trades,
-        t -> realized_return(t),
-        "Net realized cumulative returns by hour";
-        plot_kwargs...)
+@inline function _collect_non_nan_dts_rets(group, dt_func::Function, ret_func::Function)
+    dts = typeof(dt_func(first(group)))[]
+    rets = Float64[]
+    for item in group
+        ret = ret_func(item)
+        isnan(ret) && continue
+        push!(dts, dt_func(item))
+        push!(rets, Float64(ret))
+    end
+    dts, rets
 end
 
-function Fastback.plot_realized_cum_returns_by_hour_seq_net(events::AbstractVector{<:PlotEvent}; kwargs...)
-    plot_kwargs = merge((; legend=false), kwargs)
-    Fastback.plot_realized_cum_returns_by_hour_seq(
-        events,
-        e -> e.ret,
-        "Net realized cumulative returns by hour";
-        plot_kwargs...)
-end
-
-"""
-Plot cumulative realized returns by hour using sequence index (gross, realizing trades only).
-"""
-function Fastback.plot_realized_cum_returns_by_hour_seq_gross(trades::AbstractVector{<:Trade}; kwargs...)
-    Fastback.plot_realized_cum_returns_by_hour_seq(
-        trades,
-        t -> realized_return(t),
-        "Gross realized cumulative returns by hour";
-        kwargs...)
-end
-
-function Fastback.plot_realized_cum_returns_by_hour_seq_gross(events::AbstractVector{<:PlotEvent}; kwargs...)
-    Fastback.plot_realized_cum_returns_by_hour_seq(
-        events,
-        e -> e.ret,
-        "Gross realized cumulative returns by hour";
-        kwargs...)
+@inline function _collect_non_nan_rets(group, ret_func::Function)
+    rets = Float64[]
+    for item in group
+        ret = ret_func(item)
+        isnan(ret) && continue
+        push!(rets, Float64(ret))
+    end
+    rets
 end
 
 """
 Plot cumulative realized returns by hour using sequence index (realizing trades only).
+
+Use `return_basis=:gross` (default) or `return_basis=:net`.
+`NaN` return values are ignored.
 """
 function Fastback.plot_realized_cum_returns_by_hour_seq(
-    trades::AbstractVector{<:Trade},
-    ret_func::Function,
-    title_str::String;
+    trades::AbstractVector{<:Trade};
+    return_basis::Symbol=:gross,
     kwargs...
 )
+    ret_func, basis_label = _resolve_return_basis(return_basis)
+    title_str = "$(basis_label) realized cumulative returns by hour"
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
@@ -906,14 +833,15 @@ function Fastback.plot_realized_cum_returns_by_hour_seq(
 
     _with_theme() do
         plt = nothing
-        for (i, (hour, group)) in enumerate(groups)
+        for (hour, group) in groups
             sort!(group, by=t -> t.date)
-            rets = map(ret_func, group)
+            rets = _collect_non_nan_rets(group, ret_func)
+            isempty(rets) && continue
             n_pos = length(rets)
             x = collect(1:n_pos)
             cum_rets = 1.0 .+ cumsum(rets)
             lbl = "$(hour):00"
-            if i == 1
+            if plt === nothing
                 plot_kwargs = merge((;
                         xticks=((1, max_n), (min_date_str, max_date_str)),
                         legendfontsize=9,
@@ -940,77 +868,24 @@ function Fastback.plot_realized_cum_returns_by_hour_seq(
                     Plots.text(lbl, :left, 8, lbl_color))
             end
         end
-        plt
-    end
-end
-
-function Fastback.plot_realized_cum_returns_by_hour_seq(
-    events::AbstractVector{<:PlotEvent},
-    ret_func::Function,
-    title_str::String;
-    kwargs...
-)
-    isempty(events) && return _empty_plot("No positions"; kwargs...)
-
-    groups = events |>
-             @groupby(Dates.hour(_.open_dt)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
-
-    max_n = maximum(map(x -> length(x[2]), groups))
-    min_date_str = Dates.format(minimum(map(e -> e.open_dt, events)), "yyyy/mm/dd")
-    max_date_str = Dates.format(maximum(map(e -> e.open_dt, events)), "yyyy/mm/dd")
-
-    _with_theme() do
-        plt = nothing
-        for (i, (hour, group)) in enumerate(groups)
-            sort!(group, by=e -> e.open_dt)
-            rets = map(ret_func, group)
-            n_pos = length(rets)
-            x = collect(1:n_pos)
-            cum_rets = 1.0 .+ cumsum(rets)
-            lbl = "$(hour):00"
-            if i == 1
-                plot_kwargs = merge((;
-                        xticks=((1, max_n), (min_date_str, max_date_str)),
-                        legendfontsize=9,
-                        yformatter=y -> @sprintf("%.1f", y),
-                        fontsize=9,
-                        w=0.5,
-                        foreground_color_legend=nothing,
-                        background_color_legend=nothing,
-                        tickfontsize=9,
-                        legend=:outertopright,
-                        label=lbl,
-                        title=title_str,
-                    ), kwargs)
-                plt = Plots.plot(x, cum_rets; plot_kwargs...)
-                Plots.xlims!(plt, (1, floor(Int, 1.1 * max_n)))
-            else
-                series_kwargs = merge((; label=lbl, w=0.5), kwargs)
-                Plots.plot!(plt, x, cum_rets; series_kwargs...)
-            end
-            if n_pos > 0
-                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
-                Plots.annotate!(plt, n_pos + floor(Int, 0.03 * n_pos),
-                    cum_rets[end],
-                    Plots.text(lbl, :left, 8, lbl_color))
-            end
-        end
-        plt
+        plt === nothing ? _empty_plot("No realizing trades"; kwargs...) : plt
     end
 end
 
 """
 Plot cumulative realized returns grouped by weekday (realizing trades only).
+
+Use `return_basis=:gross` (default) or `return_basis=:net`.
+`NaN` return values are ignored.
 """
 function Fastback.plot_realized_cum_returns_by_weekday(
     trades::AbstractVector{<:Trade},
-    ret_func::Function;
+    ;
+    return_basis::Symbol=:gross,
     kwargs...
 )
+    ret_func, basis_label = _resolve_return_basis(return_basis)
+    title_str = "$(basis_label) realized returns by weekday"
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
@@ -1023,17 +898,17 @@ function Fastback.plot_realized_cum_returns_by_weekday(
 
     _with_theme() do
         plt = nothing
-        for (i, (weekday, group)) in enumerate(groups)
+        for (weekday, group) in groups
             sort!(group, by=t -> t.date)
-            dts = map(t -> t.date, group)
-            rets = map(ret_func, group)
+            dts, rets = _collect_non_nan_dts_rets(group, t -> t.date, ret_func)
+            isempty(rets) && continue
             cum_rets = cumsum(rets)
             lbl = Dates.dayname(weekday)[1:3]
-            if i == 1
+            if plt === nothing
                 plot_kwargs = merge((;
                         legend=:topleft,
                         label=lbl,
-                        title="Realized returns by weekday",
+                        title=title_str,
                     ), kwargs)
                 plt = Plots.plot(dts, cum_rets; plot_kwargs...)
             else
@@ -1046,61 +921,24 @@ function Fastback.plot_realized_cum_returns_by_weekday(
                     Plots.text(lbl, :left, 8, lbl_color))
             end
         end
-        plt
-    end
-end
-
-function Fastback.plot_realized_cum_returns_by_weekday(
-    events::AbstractVector{<:PlotEvent},
-    ret_func::Function;
-    kwargs...
-)
-    isempty(events) && return _empty_plot("No positions"; kwargs...)
-
-    groups = events |>
-             @groupby(Dates.dayofweek(_.open_dt)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
-
-    _with_theme() do
-        plt = nothing
-        for (i, (weekday, group)) in enumerate(groups)
-            sort!(group, by=e -> e.open_dt)
-            dts = map(e -> e.open_dt, group)
-            rets = map(ret_func, group)
-            cum_rets = cumsum(rets)
-            lbl = Dates.dayname(weekday)[1:3]
-            if i == 1
-                plot_kwargs = merge((;
-                        legend=:topleft,
-                        label=lbl,
-                        title="Realized returns by weekday",
-                    ), kwargs)
-                plt = Plots.plot(dts, cum_rets; plot_kwargs...)
-            else
-                series_kwargs = merge((; label=lbl), kwargs)
-                Plots.plot!(plt, dts, cum_rets; series_kwargs...)
-            end
-            if !isempty(dts)
-                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
-                Plots.annotate!(plt, dts[end], cum_rets[end],
-                    Plots.text(lbl, :left, 8, lbl_color))
-            end
-        end
-        plt
+        plt === nothing ? _empty_plot("No realizing trades"; kwargs...) : plt
     end
 end
 
 """
 Plot cumulative realized returns by weekday using sequence index (realizing trades only).
+
+Use `return_basis=:gross` (default) or `return_basis=:net`.
+`NaN` return values are ignored.
 """
 function Fastback.plot_realized_cum_returns_by_weekday_seq(
     trades::AbstractVector{<:Trade},
-    ret_func::Function;
+    ;
+    return_basis::Symbol=:gross,
     kwargs...
 )
+    ret_func, basis_label = _resolve_return_basis(return_basis)
+    title_str = "$(basis_label) realized returns by weekday"
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
@@ -1113,18 +951,19 @@ function Fastback.plot_realized_cum_returns_by_weekday_seq(
 
     _with_theme() do
         plt = nothing
-        for (i, (weekday, group)) in enumerate(groups)
+        for (weekday, group) in groups
             sort!(group, by=t -> t.date)
-            rets = map(ret_func, group)
+            rets = _collect_non_nan_rets(group, ret_func)
+            isempty(rets) && continue
             n_pos = length(rets)
             x = collect(1:n_pos)
             cum_rets = cumsum(rets)
             lbl = Dates.dayname(weekday)[1:3]
-            if i == 1
+            if plt === nothing
                 plot_kwargs = merge((;
                         legend=:bottomleft,
                         label=lbl,
-                        title="Realized returns by weekday",
+                        title=title_str,
                     ), kwargs)
                 plt = Plots.plot(x, cum_rets; plot_kwargs...)
             else
@@ -1137,53 +976,8 @@ function Fastback.plot_realized_cum_returns_by_weekday_seq(
                     Plots.text(lbl, :left, 8, lbl_color))
             end
         end
-        plt
+        plt === nothing ? _empty_plot("No realizing trades"; kwargs...) : plt
     end
 end
-
-function Fastback.plot_realized_cum_returns_by_weekday_seq(
-    events::AbstractVector{<:PlotEvent},
-    ret_func::Function;
-    kwargs...
-)
-    isempty(events) && return _empty_plot("No positions"; kwargs...)
-
-    groups = events |>
-             @groupby(Dates.dayofweek(_.open_dt)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No positions"; kwargs...)
-
-    _with_theme() do
-        plt = nothing
-        for (i, (weekday, group)) in enumerate(groups)
-            sort!(group, by=e -> e.open_dt)
-            rets = map(ret_func, group)
-            n_pos = length(rets)
-            x = collect(1:n_pos)
-            cum_rets = cumsum(rets)
-            lbl = Dates.dayname(weekday)[1:3]
-            if i == 1
-                plot_kwargs = merge((;
-                        legend=:bottomleft,
-                        label=lbl,
-                        title="Realized returns by weekday",
-                    ), kwargs)
-                plt = Plots.plot(x, cum_rets; plot_kwargs...)
-            else
-                series_kwargs = merge((; label=lbl), kwargs)
-                Plots.plot!(plt, x, cum_rets; series_kwargs...)
-            end
-            if n_pos > 0
-                lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
-                Plots.annotate!(plt, n_pos + 1, cum_rets[end],
-                    Plots.text(lbl, :left, 8, lbl_color))
-            end
-        end
-        plt
-    end
-end
-
 
 end
