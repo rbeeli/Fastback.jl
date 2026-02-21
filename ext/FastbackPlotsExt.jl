@@ -19,11 +19,12 @@ const _COLOR_EXPOSURE_LONG = "#22AA66"
 const _COLOR_EXPOSURE_SHORT = "#CC4444"
 
 @inline function _ensure_statsplots()
-    if _HAS_STATSPLOTS[]
+    if _HAS_STATSPLOTS[] || isdefined(Main, :StatsPlots)
+        _HAS_STATSPLOTS[] = true
         return
     end
     try
-        @eval import StatsPlots
+        Core.eval(Main, :(import StatsPlots))
         _HAS_STATSPLOTS[] = true
         return
     catch err
@@ -637,7 +638,8 @@ function Fastback.plot_violin_realized_returns_by_day(trades::AbstractVector{<:T
             legend=false,
         ), kwargs)
     _with_theme() do
-        StatsPlots.violin(y; plot_kwargs...)
+        sp = Base.invokelatest(getfield, Main, :StatsPlots)
+        Base.invokelatest(sp.violin, y; plot_kwargs...)
     end
 end
 
@@ -663,7 +665,8 @@ function Fastback.plot_violin_realized_returns_by_day(events::AbstractVector{<:P
             legend=false,
         ), kwargs)
     _with_theme() do
-        StatsPlots.violin(y; plot_kwargs...)
+        sp = Base.invokelatest(getfield, Main, :StatsPlots)
+        Base.invokelatest(sp.violin, y; plot_kwargs...)
     end
 end
 
@@ -693,7 +696,8 @@ function Fastback.plot_violin_realized_returns_by_hour(trades::AbstractVector{<:
             legend=false,
         ), kwargs)
     _with_theme() do
-        StatsPlots.violin(y; plot_kwargs...)
+        sp = Base.invokelatest(getfield, Main, :StatsPlots)
+        Base.invokelatest(sp.violin, y; plot_kwargs...)
     end
 end
 
@@ -719,7 +723,8 @@ function Fastback.plot_violin_realized_returns_by_hour(events::AbstractVector{<:
             legend=false,
         ), kwargs)
     _with_theme() do
-        StatsPlots.violin(y; plot_kwargs...)
+        sp = Base.invokelatest(getfield, Main, :StatsPlots)
+        Base.invokelatest(sp.violin, y; plot_kwargs...)
     end
 end
 
