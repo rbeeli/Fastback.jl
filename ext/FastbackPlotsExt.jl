@@ -7,7 +7,7 @@ using Plots
 using Query
 
 const _HAS_STATSPLOTS = Ref(false)
-const _THEME_KW = (titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false)
+const _THEME_KW = (titlelocation=:left, titlefontsize=10, widen=false, fg_legend=:false, size=(800, 450))
 const _COLOR_BALANCE = "#0088DD"
 const _COLOR_EQUITY = "#BBBB00"
 const _COLOR_OPEN_ORDERS = "#00B8D9"
@@ -44,30 +44,6 @@ end
         plot_kwargs = merge((; title=title_text), kwargs)
         Plots.plot(; plot_kwargs...)
     end
-end
-
-@inline function _drawdown_kwargs(pv::DrawdownValues)
-    if pv.mode == DrawdownMode.Percentage
-        return (;
-            label="Drawdown",
-            fill=(0, _FILL_DRAWDOWN),
-            linecolor=_COLOR_DRAWDOWN,
-            linetype=:steppost,
-            yformatter=y -> @sprintf("%.1f%%", 100y),
-            ylims=(-1.0, 0.0),
-            w=1,
-            legend=false,
-        )
-    end
-    (;
-        label="Drawdown",
-        fill=(0, _FILL_DRAWDOWN),
-        linecolor=_COLOR_DRAWDOWN,
-        linetype=:steppost,
-        yformatter=y -> @sprintf("%.0f", y),
-        w=1,
-        legend=false,
-    )
 end
 
 @inline function _has_values(pv)
@@ -201,7 +177,9 @@ Plot cash balance over time from `PeriodicValues`.
 function Fastback.plot_balance(pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No balance data"; kwargs...)
-    plt = Plots.plot()
+    plt = _with_theme() do
+        Plots.plot()
+    end
     Fastback.plot_balance!(plt, pv; title="Balance", legend=false, kwargs...)
     Plots.ylims!(plt, (0, maximum(vals)))
     plt
@@ -232,7 +210,9 @@ Plot equity over time from `PeriodicValues`.
 function Fastback.plot_equity(pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No equity data"; kwargs...)
-    plt = Plots.plot()
+    plt = _with_theme() do
+        Plots.plot()
+    end
     Fastback.plot_equity!(plt, pv; title="Equity", legend=false, kwargs...)
     plt
 end
@@ -282,7 +262,9 @@ Plot open orders over time from `PeriodicValues`.
 function Fastback.plot_open_orders_count(pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No open orders data"; kwargs...)
-    plt = Plots.plot()
+    plt = _with_theme() do
+        Plots.plot()
+    end
     Fastback.plot_open_orders_count!(plt, pv; title="# open orders", legend=false, kwargs...)
     plt
 end
@@ -337,6 +319,30 @@ function Fastback.plot_open_orders_count_seq(pv::PeriodicValues; kwargs...)
     end
 end
 
+@inline function _drawdown_kwargs(pv::DrawdownValues)
+    if pv.mode == DrawdownMode.Percentage
+        return (;
+            label="Drawdown",
+            fill=(0, _FILL_DRAWDOWN),
+            linecolor=_COLOR_DRAWDOWN,
+            linetype=:steppost,
+            yformatter=y -> @sprintf("%.1f%%", 100y),
+            ylims=(-1.0, 0.0),
+            w=1,
+            legend=false,
+        )
+    end
+    (;
+        label="Drawdown",
+        fill=(0, _FILL_DRAWDOWN),
+        linecolor=_COLOR_DRAWDOWN,
+        linetype=:steppost,
+        yformatter=y -> @sprintf("%.0f", y),
+        w=1,
+        legend=false,
+    )
+end
+
 """
 Plot drawdown series from `DrawdownValues`.
 """
@@ -344,7 +350,9 @@ function Fastback.plot_drawdown(pv::DrawdownValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No drawdown data"; kwargs...)
     title = (pv.mode == DrawdownMode.Percentage ? "Equity drawdowns [%]" : "Equity drawdowns")
-    plt = Plots.plot()
+    plt = _with_theme() do
+        Plots.plot()
+    end
     Fastback.plot_drawdown!(plt, pv; title=title, legend=false, kwargs...)
     plt
 end
@@ -410,7 +418,9 @@ function Fastback.plot_equity_drawdown(
 )
     eq_vals = values(equity_pv)
     isempty(eq_vals) && return _empty_plot("No equity data"; kwargs...)
-    plt = Plots.plot()
+    plt = _with_theme() do
+        Plots.plot()
+    end
     Fastback.plot_equity_drawdown!(plt, equity_pv, drawdown_pv;
         title="Equity & drawdown",
         legend=:topleft,
@@ -484,7 +494,9 @@ function Fastback.plot_exposure(;
 )
     has_data = _has_values(gross) || _has_values(net) || _has_values(long) || _has_values(short)
     has_data || return _empty_plot("No exposure data"; kwargs...)
-    plt = Plots.plot()
+    plt = _with_theme() do
+        Plots.plot()
+    end
     Fastback.plot_exposure!(plt;
         gross=gross,
         net=net,
