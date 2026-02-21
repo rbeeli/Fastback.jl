@@ -14,7 +14,7 @@ using DataFrames
 ## set RNG seed for reproducibility
 Random.seed!(42);
 
-## generate synthetic price series for Tesla (USD), Porsche (EUR) and Tesco (GBP)
+## generate synthetic hourly price series for Tesla (USD), Porsche (EUR) and Tesco (GBP)
 N = 2_000;
 df = DataFrame([
     :date => map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N-1),

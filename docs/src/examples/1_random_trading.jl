@@ -19,7 +19,7 @@ using Random
 ## set RNG seed for reproducibility
 Random.seed!(42);
 
-## generate synthetic price series
+## generate synthetic hourly price series
 N = 2_000;
 prices = 1000.0 .+ cumsum(randn(N) .+ 0.1);
 dts = map(x -> DateTime(2020, 1, 1) + Hour(x), 0:N-1);
@@ -44,7 +44,7 @@ collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Ho
 for (dt, price) in zip(dts, prices)
     ## randomly trade with 1% probability
     if rand() < 0.01
-        quantity = rand() > 0.4 ? 1.0 : -1.0
+        quantity = rand() > 0.4 ? 4.0 : -4.0
         order = Order(oid!(acc), DUMMY, dt, price, quantity)
         fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, fill_qty=0.75order.quantity)
     end
