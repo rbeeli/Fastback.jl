@@ -10,6 +10,7 @@ mutable struct Trade{TTime<:Dates.AbstractTime}
     const fill_pnl_settle::Price     # gross additive fill P&L in settlement currency; excludes commissions
     const realized_qty::Quantity     # quantity of the existing position that was covered by the order
     const commission_quote::Price    # paid commission in quote currency
+    const realized_commission_quote::Price # quote-ccy commission attributed to realized leg (entry allocated + exit-side share)
     const commission_settle::Price   # paid commission in settlement currency
     const cash_delta_settle::Price   # actual cash movement for this fill in settlement currency
     const pos_qty::Quantity          # quantity of the existing position
@@ -61,15 +62,18 @@ end
 Per-unit net realized return for the closed portion of a position.
 
 Uses the same price-only return basis as `realized_return_gross`, then subtracts
-an allocated commission impact for the realized part of the fill, using
-quote-domain normalization:
-`abs(pos_price) * abs(realized_qty) * multiplier`.
+the round-trip commission attribution for the realized leg:
+`realized_commission_quote / (abs(pos_price) * abs(realized_qty) * multiplier)`.
+
+`realized_commission_quote` includes:
+- allocated entry-side commission carry from previously opened exposure
+- the realized share of the current fill commission
 
 Returns `NaN` when the return base is undefined (e.g. non-realizing trades,
-`pos_price == 0`, or `fill_qty == 0`).
+`pos_price == 0`).
 """
 @inline function realized_return_net(t::Trade)
-    if !is_realizing(t) || t.pos_price == 0 || t.fill_qty == 0
+    if !is_realizing(t) || t.pos_price == 0
         return NaN
     end
 
@@ -79,9 +83,7 @@ Returns `NaN` when the return base is undefined (e.g. non-realizing trades,
         return NaN
     end
 
-    realized_fraction = abs(t.realized_qty) / abs(t.fill_qty)
-    realized_commission_quote = t.commission_quote * realized_fraction
-    gross_ret - (realized_commission_quote / realized_notional)
+    gross_ret - (t.realized_commission_quote / realized_notional)
 end
 
 function Base.show(io::IO, t::Trade)
@@ -98,6 +100,7 @@ function Base.show(io::IO, t::Trade)
               "fill_pnl_settle=$(ccy_formatter(t.fill_pnl_settle)) $(inst.settle_symbol) " *
               "realized_qty=$(format_base(inst, t.realized_qty)) $(inst.base_symbol) " *
               "commission_quote=$(format_quote(inst, t.commission_quote)) $(inst.quote_symbol) " *
+              "realized_commission_quote=$(format_quote(inst, t.realized_commission_quote)) $(inst.quote_symbol) " *
               "commission_settle=$(ccy_formatter(t.commission_settle)) $(inst.settle_symbol) " *
               "cash_delta_settle=$(ccy_formatter(t.cash_delta_settle)) $(inst.settle_symbol) " *
               "pos_qty=$(format_base(inst, t.pos_qty)) $(inst.base_symbol) " *

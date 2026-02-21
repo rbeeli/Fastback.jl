@@ -24,6 +24,7 @@ using TestItemRunner
     trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=order.price, ask=order.price, last=order.price)
 
     @test trade.realized_qty == 0.0
+    @test trade.realized_commission_quote == 0.0
     @test trade.fill_pnl_settle == 0.0
     @test trade.commission_settle ≈ commission atol=1e-12
     @test trade.cash_delta_settle ≈ -(order.quantity * order.price) - commission atol=1e-12
@@ -65,12 +66,13 @@ end
 
     expected_gross = (price_close - price_open) * qty
     expected_gross_ret = (price_close - price_open) / abs(price_open)
-    expected_net_ret = expected_gross_ret - (commission_close / (abs(price_open) * qty))
+    expected_net_ret = expected_gross_ret - ((commission_open + commission_close) / (abs(price_open) * qty))
 
     @test close_trade.realized_qty == qty
     @test close_trade.fill_pnl_settle ≈ expected_gross atol=1e-12
     @test close_trade.commission_settle ≈ commission_close atol=1e-12
     @test close_trade.cash_delta_settle ≈ qty * price_close - commission_close atol=1e-12
+    @test close_trade.realized_commission_quote ≈ (commission_open + commission_close) atol=1e-12
     @test realized_return_gross(close_trade) ≈ expected_gross_ret atol=1e-12
     @test realized_return_net(close_trade) ≈ expected_net_ret atol=1e-12
     @test cash_balance(acc, usd) ≈ cash_after_open + qty * price_close - commission_close atol=1e-12
@@ -106,6 +108,97 @@ end
     @test trade2.fill_pnl_settle == 0.0
     @test isnan(realized_return_gross(trade2))
     @test isnan(realized_return_net(trade2))
+end
+
+@testitem "realized_return_net allocates entry commission across partial closes" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=1.0))
+    deposit!(acc, :USD, 10_000.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("RETALLOC/USD"), :RETALLOC, :USD))
+
+    dt0 = DateTime(2026, 1, 1)
+    open_trade = fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0, 100.0, 4.0);
+        dt=dt0,
+        fill_price=100.0,
+        bid=100.0,
+        ask=100.0,
+        last=100.0,
+    )
+    @test open_trade.realized_commission_quote == 0.0
+
+    t1 = fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0 + Day(1), 110.0, -1.0);
+        dt=dt0 + Day(1),
+        fill_price=110.0,
+        bid=110.0,
+        ask=110.0,
+        last=110.0,
+    )
+    expected_t1_comm = 1.0 * (1.0 / 4.0) + 1.0
+    expected_t1_net = ((110.0 - 100.0) / 100.0) - (expected_t1_comm / (100.0 * 1.0))
+    @test t1.realized_commission_quote ≈ expected_t1_comm atol=1e-12
+    @test realized_return_net(t1) ≈ expected_t1_net atol=1e-12
+
+    t2 = fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0 + Day(2), 120.0, -3.0);
+        dt=dt0 + Day(2),
+        fill_price=120.0,
+        bid=120.0,
+        ask=120.0,
+        last=120.0,
+    )
+    expected_t2_comm = 1.0 * (3.0 / 4.0) + 1.0
+    expected_t2_net = ((120.0 - 100.0) / 100.0) - (expected_t2_comm / (100.0 * 3.0))
+    @test t2.realized_commission_quote ≈ expected_t2_comm atol=1e-12
+    @test realized_return_net(t2) ≈ expected_t2_net atol=1e-12
+    @test t1.realized_commission_quote + t2.realized_commission_quote ≈ 3.0 atol=1e-12
+    @test get_position(acc, inst).entry_commission_quote_carry ≈ 0.0 atol=1e-12
+end
+
+@testitem "reversal allocates fill commission between realized and newly opened legs" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=1.0))
+    deposit!(acc, :USD, 10_000.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("RETREV/USD"), :RETREV, :USD))
+    dt0 = DateTime(2026, 1, 1)
+
+    fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0, 100.0, 2.0);
+        dt=dt0,
+        fill_price=100.0,
+        bid=100.0,
+        ask=100.0,
+        last=100.0,
+    )
+
+    rev = fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0 + Day(1), 110.0, -3.0);
+        dt=dt0 + Day(1),
+        fill_price=110.0,
+        bid=110.0,
+        ask=110.0,
+        last=110.0,
+    )
+
+    expected_realized_comm = 1.0 + 1.0 * (2.0 / 3.0)
+    expected_net = ((110.0 - 100.0) / 100.0) - (expected_realized_comm / (100.0 * 2.0))
+    @test rev.realized_qty == 2.0
+    @test rev.realized_commission_quote ≈ expected_realized_comm atol=1e-12
+    @test realized_return_net(rev) ≈ expected_net atol=1e-12
+    @test get_position(acc, inst).quantity == -1.0
+    @test get_position(acc, inst).entry_commission_quote_carry ≈ (1.0 / 3.0) atol=1e-12
 end
 
 @testitem "realized_notional_quote uses closed-position basis" begin
@@ -228,9 +321,10 @@ end
     close_trade = fill_order!(acc, Order(oid!(acc), inst, dt1, 110.0, -1.0); dt=dt1, fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
 
     expected_gross_ret = (110.0 - 100.0) / 100.0
-    expected_net_ret = expected_gross_ret - (close_trade.commission_quote / (100.0 * 1.0))
+    expected_net_ret = expected_gross_ret - (2.0 / 100.0)
     @test close_trade.commission_settle != 0.0
     @test close_trade.commission_quote != 0.0
+    @test close_trade.realized_commission_quote ≈ 2.0 atol=1e-12
     @test realized_return_gross(close_trade) ≈ expected_gross_ret atol=1e-12
     @test realized_return_net(close_trade) ≈ expected_net_ret atol=1e-12
 end

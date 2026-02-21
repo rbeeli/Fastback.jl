@@ -269,6 +269,7 @@ Commission is broker-driven by default via `acc.broker`.
     pos.avg_entry_price_settle = plan.new_avg_entry_price_settle
     pos.avg_settle_price = plan.new_avg_settle_price
     pos.quantity = plan.new_qty
+    pos.entry_commission_quote_carry = plan.new_entry_commission_quote_carry
     pos.pnl_quote = plan.new_pnl_quote
     pos.pnl_settle = plan.new_pnl_settle
     pos.value_quote = plan.new_value_quote
@@ -303,6 +304,7 @@ Commission is broker-driven by default via `acc.broker`.
         plan.fill_pnl_settle,
         plan.realized_qty,
         plan.commission_quote,
+        plan.realized_commission_quote,
         plan.commission_settle,
         plan.cash_delta_settle,
         pos_qty,

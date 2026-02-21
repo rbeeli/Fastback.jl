@@ -4,6 +4,7 @@ Position state tracked per instrument (see currency/unit semantics note in `cont
 - `avg_entry_price` / `avg_settle_price`: `price` in quote currency
 - `avg_entry_price_settle`: `price` translated into settlement currency at fill-time FX (used for realized settle P&L on principal-exchange settlement)
 - `quantity`: `qty`
+- `entry_commission_quote_carry`: unamortized quote-currency entry commission attached to currently open exposure
 - `pnl_quote`, `pnl_settle`, `value_quote`, `value_settle`: cached valuation in quote/settlement currencies (`pnl_settle` for principal-exchange settlement includes FX translation versus `avg_entry_price_settle`)
 - `init_margin_settle`, `maint_margin_settle`: margin currency (defaults to settlement)
 - `mark_price`: last valuation (liquidation) price at `mark_time`
@@ -18,6 +19,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
     avg_entry_price_settle::Price
     avg_settle_price::Price
     quantity::Quantity              # negative = short selling
+    entry_commission_quote_carry::Price # unamortized quote-ccy entry commission on open exposure
     pnl_quote::Price                # quote currency P&L
     pnl_settle::Price               # settlement currency P&L (cached for reporting)
     value_quote::Price              # position value contribution in quote currency
@@ -41,6 +43,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
         avg_entry_price_settle::Price=0.0,
         avg_settle_price::Price=0.0,
         quantity::Quantity=0.0,
+        entry_commission_quote_carry::Price=0.0,
         pnl_quote::Price=0.0,
         pnl_settle::Price=0.0,
         value_quote::Price=0.0,
@@ -63,6 +66,7 @@ mutable struct Position{TTime<:Dates.AbstractTime}
             avg_entry_price_settle,
             avg_settle_price,
             quantity,
+            entry_commission_quote_carry,
             pnl_quote,
             pnl_settle,
             value_quote,
