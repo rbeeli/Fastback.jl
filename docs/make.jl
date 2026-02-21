@@ -18,9 +18,19 @@ using Documenter
 using Literate
 using Fastback
 
-function postprocess_md(md, data_dir)
+function postprocess_md(md, data_dir, notebook_name)
     # fix data folder path
     md = replace(md, "\"data/" => "\"$(data_dir)")
+
+    # add a direct link to the generated notebook near the top of the page
+    notebook_link = "*Notebook:* [`$(notebook_name).ipynb`]($(notebook_name).ipynb)\n\n"
+    if startswith(md, "```@meta\n")
+        new_md = replace(md, "```\n\n" => "```\n\n$(notebook_link)", count=1)
+        md = new_md == md ? notebook_link * md : new_md
+    else
+        md = notebook_link * md
+    end
+
     md
 end
 
@@ -67,9 +77,10 @@ function gen_markdown(path;
         source_root::String=EXAMPLES_ROOT,
         generated_root::String=GENERATED_EXAMPLES_ROOT,
         data_dir::String="../data/")
+    notebook_name = name === nothing ? splitext(basename(path))[1] : name
     kwargs = (
-        postprocess=(md -> postprocess_md(md, data_dir)),
-        credit=true,
+        postprocess=(md -> postprocess_md(md, data_dir, notebook_name)),
+        credit=false,
     )
     if name === nothing
         Literate.markdown(
@@ -92,7 +103,7 @@ function gen_notebook(path;
         data_dir::String="../data/")
     kwargs = (
         postprocess=(nb -> postprocess_nb(nb, data_dir)),
-        credit=true,
+        credit=false,
     )
     if name === nothing
         Literate.notebook(
