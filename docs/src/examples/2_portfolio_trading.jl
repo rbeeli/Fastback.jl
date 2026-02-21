@@ -6,7 +6,7 @@
 # The price data is loaded from a CSV file containing daily close prices for
 # the stocks AAPL, NVDA, TSLA, and GE, ranging from 2022-01-03 to 2024-04-22.
 #
-# The strategy buys one stock if the last 5 days were positive,
+# The strategy buys one stock if the last 4 days were positive,
 # and sells it again if the last 2 days were negative.
 # Each trade is executed at a commission of 0.1%.
 #
@@ -53,10 +53,11 @@ deposit!(acc, :USD, 10_000.0);
 instruments = map(sym -> spot_instrument(sym, sym, :USD), symbols);
 register_instrument!.(Ref(acc), instruments);
 
-## data collector for account balance, equity and drawdowns (sampling every day)
+## data collectors (sampling every day)
 collect_balance, balance_data = periodic_collector(Float64, Day(1));
 collect_equity, equity_data = periodic_collector(Float64, Day(1));
 collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Day(1));
+collect_portfolio_weights, portfolio_weights_data = portfolio_weights_collector(acc, instruments, Day(1); cash=usd);
 
 function open_position!(acc, inst, dt, price)
     ## invest 20% of equity in the position
@@ -82,7 +83,7 @@ for i in 6:nrow(df)
     for inst in instruments
         price = row[inst.symbol]
 
-        window_open = @view df[i-5:i, inst.symbol]
+        window_open = @view df[i-4:i, inst.symbol]
         window_close = @view df[i-2:i, inst.symbol]
 
         ## close position of instrument if missing data
@@ -93,7 +94,7 @@ for i in 6:nrow(df)
         end
 
         if !is_exposed_to(acc, inst)
-            ## buy if last 5 days were positive
+            ## buy if last 4 days were positive
             all(diff(window_open) .> 0) && open_position!(acc, inst, dt, price)
         else
             ## close position if last 2 days were negative
@@ -119,6 +120,8 @@ for i in 6:nrow(df)
         collect_equity(dt, equity_value)
         collect_drawdown(dt, equity_value)
     end
+
+    should_collect(portfolio_weights_data, dt) && collect_portfolio_weights(dt)
 end
 
 ## print account summary
@@ -154,6 +157,9 @@ for i in 3:ncol(df)
         label=names(df)[i])
 end
 
+## portfolio constituent weights
+p4 = Fastback.plot_portfolio_weights_over_time(portfolio_weights_data)
+
 ## P&L breakdown by stocks
 pnl_by_inst = acc.trades |>
               @groupby(_.order.inst.symbol) |>
@@ -161,7 +167,7 @@ pnl_by_inst = acc.trades |>
                   symbol = key(_),
                   pnl = sum(getfield.(_, :fill_pnl_settle))
               }) |> DataFrame
-p4 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
+p5 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
     legend=false,
     title="P&L breakdown by stocks [USD]",
     permute=(:x, :y),
@@ -171,9 +177,9 @@ p4 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
     linecolor=nothing,
     bar_width=0.5)
 
-plot(p1, p2, p3, p4;
-    layout=@layout[a{0.4h}; b{0.15h}; c{0.3h}; d{0.15h}],
-    size=(800, 800), margin=0mm, left_margin=5mm);
+plot(p1, p2, p3, p4, p5;
+    layout=@layout[a{0.3h}; b{0.12h}; c{0.22h}; d{0.2h}; e{0.16h}],
+    size=(850, 920), margin=0mm, left_margin=5mm);
 
 #---------------------------------------------------------
 

@@ -501,6 +501,73 @@ function Fastback.plot_exposure!(
 end
 
 """
+Plot portfolio constituent weights over time as a stacked area chart.
+
+`weights` must be shaped as `(length(dts), length(symbols))`.
+"""
+function Fastback.plot_portfolio_weights_over_time(
+    dts::AbstractVector{<:Dates.AbstractTime},
+    weights::AbstractMatrix{<:Real},
+    symbols::AbstractVector;
+    kwargs...
+)
+    n_dates = length(dts)
+    n_dates == 0 && return _empty_plot("No portfolio weights data"; kwargs...)
+
+    n_weight_rows, n_symbols = size(weights)
+    n_weight_rows == n_dates || throw(ArgumentError("`weights` rows ($(n_weight_rows)) must match `dts` length ($(n_dates))."))
+    length(symbols) == n_symbols || throw(ArgumentError("`symbols` length ($(length(symbols))) must match `weights` columns ($(n_symbols))."))
+    n_symbols == 0 && return _empty_plot("No portfolio constituents"; kwargs...)
+
+    labels = permutedims(string.(symbols))
+    weights_matrix = Matrix{Float64}(weights)
+    legend_cols = max(1, min(n_symbols, 6))
+    plot_kwargs = _merge_kwargs((;
+            title="Portfolio weights over time",
+            ylabel="Weight",
+            yformatter=y -> @sprintf("%.0f%%", 100y),
+            label=labels,
+            legend=:top,
+            legend_column=legend_cols,
+            legendfontsize=8,
+            foreground_color_legend=nothing,
+            background_color_legend=nothing,
+            fillalpha=0.85,
+            linewidth=0.5,
+        ), kwargs)
+
+    _with_theme() do
+        Plots.areaplot(dts, weights_matrix; plot_kwargs...)
+    end
+end
+
+"""
+Plot portfolio constituent weights over time from `PortfolioWeightsValues`.
+"""
+function Fastback.plot_portfolio_weights_over_time(
+    pv::PortfolioWeightsValues;
+    kwargs...
+)
+    dts = dates(pv)
+    n_dates = length(dts)
+    n_dates == 0 && return _empty_plot("No portfolio weights data"; kwargs...)
+
+    symbols = pv.symbols
+    n_symbols = length(symbols)
+    n_symbols == 0 && return _empty_plot("No portfolio constituents"; kwargs...)
+
+    weights = Matrix{Float64}(undef, n_dates, n_symbols)
+    for i in 1:n_symbols
+        series = pv.weights[i]
+        length(series) == n_dates || throw(ArgumentError("Weight series length ($(length(series))) for symbol $(symbols[i]) must match number of dates ($(n_dates))."))
+        @inbounds for j in 1:n_dates
+            weights[j, i] = series[j]
+        end
+    end
+    Fastback.plot_portfolio_weights_over_time(dts, weights, symbols; kwargs...)
+end
+
+"""
 Plot account cashflows by type (one panel per `CashflowKind`).
 """
 function Fastback.plot_cashflows(acc::Account{TTime}; kwargs...) where {TTime<:Dates.AbstractTime}

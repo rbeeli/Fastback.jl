@@ -125,3 +125,75 @@ end
     @test rows[1].date isa Date
     @test rows[end].date == start_date + Day(2)
 end
+
+@testitem "portfolio_weights_collector" begin
+    using Test, Fastback, Dates, Tables
+
+    acc = Account(;
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+        broker=NoOpBroker(),
+    )
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 1_000.0)
+
+    inst_a = spot_instrument(:AAA, :AAA, :USD)
+    inst_b = spot_instrument(:BBB, :BBB, :USD)
+    register_instrument!(acc, inst_a)
+    register_instrument!(acc, inst_b)
+
+    dt_open = DateTime(2020, 1, 1, 9, 0, 0)
+    order_a = Order(oid!(acc), inst_a, dt_open, 100.0, 1.0)
+    fill_order!(acc, order_a; dt=dt_open, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    order_b = Order(oid!(acc), inst_b, dt_open, 200.0, 1.0)
+    fill_order!(acc, order_b; dt=dt_open, fill_price=200.0, bid=200.0, ask=200.0, last=200.0)
+
+    collect_weights, collected = portfolio_weights_collector(acc, [inst_a, inst_b], Day(1); cash=usd)
+
+    dt1 = DateTime(2020, 1, 1, 10, 0, 0)
+    dt2 = DateTime(2020, 1, 1, 20, 0, 0)
+    dt3 = DateTime(2020, 1, 2, 10, 0, 0)
+
+    update_marks!(acc, inst_a, dt1, 100.0, 100.0, 100.0)
+    update_marks!(acc, inst_b, dt1, 200.0, 200.0, 200.0)
+    should_collect(collected, dt1) && collect_weights(dt1)
+
+    update_marks!(acc, inst_a, dt2, 110.0, 110.0, 110.0)
+    update_marks!(acc, inst_b, dt2, 190.0, 190.0, 190.0)
+    should_collect(collected, dt2) && collect_weights(dt2)
+
+    update_marks!(acc, inst_a, dt3, 120.0, 120.0, 120.0)
+    update_marks!(acc, inst_b, dt3, 180.0, 180.0, 180.0)
+    should_collect(collected, dt3) && collect_weights(dt3)
+
+    @test dates(collected) == [dt1, dt3]
+    @test collected.symbols == [:AAA, :BBB]
+    @test length(values(collected)) == 2
+    @test values(collected)[1] ≈ [0.1, 0.12]
+    @test values(collected)[2] ≈ [0.2, 0.18]
+    @test collected.last_dt == dt3
+    @test Tables.schema(collected).names == (:date, :AAA, :BBB)
+    rows = collect(Tables.rows(collected))
+    @test rows[1].AAA ≈ 0.1
+    @test rows[2].BBB ≈ 0.18
+end
+
+@testitem "portfolio_weights_collector zero equity" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+        broker=NoOpBroker(),
+    )
+    inst = spot_instrument(:AAA, :AAA, :USD)
+    register_instrument!(acc, inst)
+
+    collect_weights, collected = portfolio_weights_collector(acc, [inst], Day(1))
+    dt = DateTime(2020, 1, 1, 10, 0, 0)
+    should_collect(collected, dt) && collect_weights(dt)
+
+    @test dates(collected) == [dt]
+    @test collected.symbols == [:AAA]
+    @test values(collected)[1] == [0.0]
+end

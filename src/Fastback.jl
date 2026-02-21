@@ -28,7 +28,11 @@ include("risk.jl")
 include("margin.jl")
 include("logic.jl")
 include("invariants.jl")
-include("collectors.jl")
+include("collectors/periodic.jl")
+include("collectors/predicate.jl")
+include("collectors/extrema.jl")
+include("collectors/drawdown.jl")
+include("collectors/portfolio_weights.jl")
 include("tables.jl")
 include("analytics.jl")
 include("print.jl")
@@ -154,11 +158,13 @@ export update_marks!,
 export PeriodicValues,
     PredicateValues,
     DrawdownValues,
+    PortfolioWeightsValues,
     DrawdownMode,
     dates,
     periodic_collector,
     predicate_collector,
     drawdown_collector,
+    portfolio_weights_collector,
     should_collect,
     MinValue,
     MaxValue,
@@ -223,6 +229,7 @@ export plot_title,
     plot_equity_drawdown!,
     plot_exposure,
     plot_exposure!,
+    plot_portfolio_weights_over_time,
     plot_cashflows,
     plot_violin_realized_returns_by_day,
     plot_violin_realized_returns_by_hour,

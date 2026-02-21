@@ -59,8 +59,8 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Collectors
 
-- `PeriodicValues`, `PredicateValues`, `DrawdownValues`, `DrawdownMode`, `dates`
-- `periodic_collector`, `predicate_collector`, `drawdown_collector`, `should_collect`
+- `PeriodicValues`, `PredicateValues`, `DrawdownValues`, `PortfolioWeightsValues`, `DrawdownMode`, `dates`
+- `periodic_collector`, `predicate_collector`, `drawdown_collector`, `portfolio_weights_collector`, `should_collect`
 - `MinValue`, `MaxValue`, `min_value_collector`, `max_value_collector`
 
 ## Event driver
@@ -104,6 +104,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 - `plot_drawdown`, `plot_drawdown!`, `plot_drawdown_seq`
 - `plot_equity_drawdown`, `plot_equity_drawdown!`
 - `plot_exposure`, `plot_exposure!`
+- `plot_portfolio_weights_over_time`
 - `plot_violin_realized_returns_by_day`, `plot_violin_realized_returns_by_hour`
 - `plot_realized_cum_returns_by_hour`
 - `plot_realized_cum_returns_by_hour_seq_net`, `plot_realized_cum_returns_by_hour_seq_gross`, `plot_realized_cum_returns_by_hour_seq`
