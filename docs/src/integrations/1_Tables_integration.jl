@@ -39,37 +39,36 @@ collect_equity, equity_data = periodic_collector(Float64, Hour(12));
 collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Hour(12));
 
 ## simple momentum strategy
-prev_price = prices[1];
-for (i, (dt, price)) in enumerate(zip(dts, prices))
-    global prev_price
+let prev_price = prices[1]
+    for (i, (dt, price)) in enumerate(zip(dts, prices))
+        ## trade every 10 hours based on price momentum
+        if i % 10 == 0 && i > 10
+            momentum = (price - prev_price) / prev_price
 
-    ## trade every 10 hours based on price momentum
-    if i % 10 == 0 && i > 10
-        momentum = (price - prev_price) / prev_price
+            if momentum > 0.02  # buy signal
+                quantity = 10.0
+                order = Order(oid!(acc), AAPL, dt, price, quantity)
+                fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
 
-        if momentum > 0.02  # buy signal
-            quantity = 10.0
-            order = Order(oid!(acc), AAPL, dt, price, quantity)
-            fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+            elseif momentum < -0.02  # sell signal
+                quantity = -8.0
+                order = Order(oid!(acc), MSFT, dt, price, quantity)
+                fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+            end
 
-        elseif momentum < -0.02  # sell signal
-            quantity = -8.0
-            order = Order(oid!(acc), MSFT, dt, price, quantity)
-            fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+            prev_price = price
         end
 
-        prev_price = price
-    end
+        ## update positions P&L
+        update_marks!(acc, AAPL, dt, price, price, price)
+        update_marks!(acc, MSFT, dt, price, price, price)
 
-    ## update positions P&L
-    update_marks!(acc, AAPL, dt, price, price, price)
-    update_marks!(acc, MSFT, dt, price, price, price)
-
-    ## collect equity data
-    if should_collect(equity_data, dt)
-        equity_value = equity(acc, usd)
-        collect_equity(dt, equity_value)
-        collect_drawdown(dt, equity_value)
+        ## collect equity data
+        if should_collect(equity_data, dt)
+            equity_value = equity(acc, usd)
+            collect_equity(dt, equity_value)
+            collect_drawdown(dt, equity_value)
+        end
     end
 end
 

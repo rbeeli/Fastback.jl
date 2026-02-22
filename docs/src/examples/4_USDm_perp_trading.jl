@@ -40,18 +40,23 @@ usdt = cash_asset(acc, :USDT)
 deposit!(acc, :USDT, 10_000.0);
 
 ## register a USD-M perpetual (variation margin, cash-settled)
-perp = register_instrument!(acc, perpetual_instrument(
-    Symbol("BTCUSDT-PERP"), :BTC, :USDT;
-    margin_requirement=MarginRequirement.PercentNotional,
-    margin_init_long=0.10,
-    margin_init_short=0.10,
-    margin_maint_long=0.05,
-    margin_maint_short=0.05,
-    base_tick=0.001,
-    quote_tick=0.1,
-    base_digits=3,
-    quote_digits=1,
-));
+perp = register_instrument!(
+    acc,
+    perpetual_instrument(
+        Symbol("BTCUSDT-PERP"),
+        :BTC,
+        :USDT;
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.10,
+        margin_init_short=0.10,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+        base_tick=0.001,
+        quote_tick=0.1,
+        base_digits=3,
+        quote_digits=1,
+    ),
+);
 
 ## data collector for account equity and drawdowns (sampling every hour)
 collect_equity, equity_data = periodic_collector(Float64, Hour(1));
