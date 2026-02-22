@@ -7,7 +7,7 @@ struct FillPlan
     cash_delta_settle::Price
     fill_pnl_settle::Price            # gross additive fill P&L in settlement ccy (excludes commissions)
     realized_qty::Quantity
-    new_entry_commission_quote_carry::Price # residual quote-ccy entry commission attached to the post-fill open exposure
+    new_entry_commission_quote_carry::Price # residual signed quote-ccy entry commission/rebate attached to post-fill open exposure
     new_qty::Quantity
     new_avg_entry_price_quote::Price
     new_avg_entry_price_settle::Price
@@ -118,9 +118,9 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     new_entry_commission_quote_carry = if new_qty == 0.0
         0.0
     else
-        max(0.0, pos_entry_commission_quote_carry -
-                 allocated_entry_commission_quote +
-                 open_commission_from_fill_quote)
+        pos_entry_commission_quote_carry -
+        allocated_entry_commission_quote +
+        open_commission_from_fill_quote
     end
     new_avg_entry_price_quote = if new_qty == 0.0
         zero(Price)

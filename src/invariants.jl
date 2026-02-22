@@ -71,7 +71,6 @@ function check_invariants(acc::Account; atol::Real=1e-9, rtol::Real=1e-9)
         inst.margin_cash_index > 0 || throw(AssertionError("Instrument $(inst.symbol) has unset margin_cash_index."))
         pos.index == inst.index || throw(AssertionError("Position index $(pos.index) must equal instrument index $(inst.index) for $(inst.symbol)."))
         isfinite(pos.entry_commission_quote_carry) || throw(AssertionError("Position $(inst.symbol) must have finite entry_commission_quote_carry."))
-        pos.entry_commission_quote_carry >= -atol || throw(AssertionError("Position $(inst.symbol) has negative entry_commission_quote_carry ($(pos.entry_commission_quote_carry))."))
 
         if pos.quantity != 0.0
             isfinite(pos.mark_price) || throw(AssertionError("Position $(inst.symbol) must have a finite mark_price when exposure is non-zero."))

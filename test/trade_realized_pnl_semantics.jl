@@ -201,6 +201,47 @@ end
     @test get_position(acc, inst).entry_commission_quote_carry ≈ (1.0 / 3.0) atol=1e-12
 end
 
+@testitem "entry rebates are carried into realized_return_net" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=-1.0))
+    deposit!(acc, :USD, 10_000.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("REBATE/USD"), :REBATETST, :USD))
+    dt0 = DateTime(2026, 1, 1)
+
+    open_trade = fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0, 100.0, 2.0);
+        dt=dt0,
+        fill_price=100.0,
+        bid=100.0,
+        ask=100.0,
+        last=100.0,
+    )
+    @test open_trade.realized_qty == 0.0
+    @test open_trade.realized_commission_quote == 0.0
+    @test get_position(acc, inst).entry_commission_quote_carry ≈ -1.0 atol=1e-12
+
+    close_trade = fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0 + Day(1), 110.0, -2.0);
+        dt=dt0 + Day(1),
+        fill_price=110.0,
+        bid=110.0,
+        ask=110.0,
+        last=110.0,
+    )
+
+    expected_gross = (110.0 - 100.0) / 100.0
+    expected_net = expected_gross - ((-2.0) / (100.0 * 2.0))
+    @test close_trade.realized_commission_quote ≈ -2.0 atol=1e-12
+    @test realized_return_gross(close_trade) ≈ expected_gross atol=1e-12
+    @test realized_return_net(close_trade) ≈ expected_net atol=1e-12
+    @test get_position(acc, inst).entry_commission_quote_carry ≈ 0.0 atol=1e-12
+end
+
 @testitem "realized_notional_quote uses closed-position basis" begin
     using Test, Fastback, Dates
 

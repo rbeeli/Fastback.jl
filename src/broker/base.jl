@@ -5,8 +5,8 @@ abstract type AbstractBroker end
 """
 Commission quote produced by a broker.
 
-`fixed` is an additive fee in quote currency.
-`pct` is a percentage of traded notional (e.g. `0.001` = 10 bps).
+`fixed` is an additive amount in quote currency (positive = fee, negative = rebate).
+`pct` is a percentage of traded notional (e.g. `0.001` = 10 bps fee, `-0.001` = 10 bps rebate).
 """
 struct CommissionQuote
     fixed::Price
@@ -17,8 +17,6 @@ struct CommissionQuote
         pct_p = Price(pct)
         isfinite(fixed_p) || throw(ArgumentError("Commission fixed fee must be finite."))
         isfinite(pct_p) || throw(ArgumentError("Commission pct fee must be finite."))
-        fixed_p >= 0.0 || throw(ArgumentError("Commission fixed fee must be non-negative."))
-        pct_p >= 0.0 || throw(ArgumentError("Commission pct fee must be non-negative."))
         new(fixed_p, pct_p)
     end
 end
