@@ -24,6 +24,8 @@ end
         Symbol("EXP/USD"),
         :EXP,
         :USD;
+        contract_kind=ContractKind.Future,
+        settlement=SettlementStyle.VariationMargin,
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1,
         margin_init_short=0.1,

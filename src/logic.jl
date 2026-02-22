@@ -400,32 +400,70 @@ function roll_position!(
 end
 
 """
-Force-settles an expired instrument by synthetically closing any open position.
+Final-settles an expired futures position at the current mark and releases margin.
 
-If the instrument is expired at `dt` and the position quantity is non-zero,
-this generates a close-only order and routes it through `fill_order!` to
-record a trade and release margin. Forced close execution is side-aware:
-longs close at the stored bid and shorts close at the stored ask.
-Expiry closes are close-only (`fill_qty = -pos.quantity`) and call `fill_order!`
-with `allow_inactive=true`, so they bypass incremental-margin rejection by design.
+For variation-margin futures, expiry applies one last mark-to-market settlement at
+`pos.mark_price`, then flattens quantity and clears margin usage without synthetic
+bid/ask execution or expiry commissions.
 """
 function settle_expiry!(
     acc::Account{TTime,TBroker},
     inst::Instrument{TTime},
     dt::TTime
 )::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+    inst.contract_kind == ContractKind.Future || throw(ArgumentError("settle_expiry! only supports Future instruments, got $(inst.symbol) with $(inst.contract_kind)."))
+
     pos = get_position(acc, inst)
     (pos.quantity == 0.0 || !is_expired(inst, dt)) && return nothing
 
-    fill_price, bid, ask = _forced_close_quotes(pos)
-    qty = -pos.quantity
-    order = Order(oid!(acc), inst, dt, fill_price, qty)
-    trade = fill_order!(acc, order; dt=dt, fill_price=fill_price,
-        bid=bid,
-        ask=ask,
-        last=pos.last_price,
-        allow_inactive=true,
-        trade_reason=TradeReason.Expiry)
+    qty_before = pos.quantity
+    avg_entry_before = pos.avg_entry_price
+    settle_price = pos.mark_price
+    isfinite(settle_price) || throw(ArgumentError("settle_expiry! requires finite mark_price for $(inst.symbol); call update_marks! before expiry settlement."))
 
+    # Realize the final VM settlement amount into cash/equity at expiry.
+    _update_valuation!(acc, pos, dt, settle_price)
+
+    margin_idx = inst.margin_cash_index
+    @inbounds begin
+        acc.ledger.init_margin_used[margin_idx] -= pos.init_margin_settle
+        acc.ledger.maint_margin_used[margin_idx] -= pos.maint_margin_settle
+    end
+
+    qty_close = -qty_before
+    pos.avg_entry_price = 0.0
+    pos.avg_entry_price_settle = 0.0
+    pos.avg_settle_price = 0.0
+    pos.quantity = 0.0
+    pos.entry_commission_quote_carry = 0.0
+    pos.pnl_quote = 0.0
+    pos.pnl_settle = 0.0
+    pos.value_quote = 0.0
+    pos.value_settle = 0.0
+    pos.init_margin_settle = 0.0
+    pos.maint_margin_settle = 0.0
+    pos.borrow_fee_dt = TTime(0)
+
+    order = Order(oid!(acc), inst, dt, settle_price, qty_close)
+    trade = Trade(
+        order,
+        tid!(acc),
+        dt,
+        settle_price,
+        qty_close,
+        0.0,
+        0.0,        # Final settlement P&L is handled as VM cashflow, not trade execution P&L.
+        qty_before,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        qty_before,
+        avg_entry_before,
+        TradeReason.Expiry,
+    )
+    pos.last_order = order
+    pos.last_trade = trade
+    push!(acc.trades, trade)
     trade
 end

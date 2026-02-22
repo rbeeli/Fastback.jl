@@ -569,7 +569,7 @@ end
     @test only(interest_cfs).amount ≈ expected_interest atol=1e-8
 end
 
-@testitem "process_expiries! uses broker commission for expiry fill" begin
+@testitem "process_expiries! final settlement does not charge expiry commission" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
@@ -605,7 +605,10 @@ end
     trades = process_expiries!(acc, dt_exp)
     trade = only(trades)
     @test trade.reason == TradeReason.Expiry
-    @test trade.commission_settle ≈ 100.0 * 1.0 * commission_pct atol=1e-8
+    @test trade.commission_settle ≈ 0.0 atol=1e-12
+    @test trade.commission_quote ≈ 0.0 atol=1e-12
+    @test trade.fill_pnl_settle ≈ 0.0 atol=1e-12
+    @test trade.cash_delta_settle ≈ 0.0 atol=1e-12
     @test get_position(acc, inst).quantity == 0.0
 end
 

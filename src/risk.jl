@@ -20,7 +20,7 @@ model (required margin is `rate * abs(notional)`).
     end
 
     # No added exposure -> no margin check needed.
-    # This intentionally lets close-only fills (including expiry/liquidation)
+    # This intentionally lets close-only fills (e.g. liquidation)
     # bypass incremental initial-margin rejection.
     inc_qty == 0 && return OrderRejectReason.None
 

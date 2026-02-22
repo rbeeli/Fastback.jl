@@ -64,10 +64,8 @@ end
 """
     process_expiries!(acc, dt)
 
-Settles expired futures at `dt` using stored position bid/ask/last quotes.
-Requires positions to have finite mark and quote fields.
-Expiry fills are close-only and run with `allow_inactive=true`, so they bypass
-incremental-margin rejection by design.
+Settles expired futures at `dt` using final variation-margin settlement at the
+stored mark price, then flattens exposure and releases margin.
 Returns a reusable internal buffer cleared and refilled on each call.
 """
 function process_expiries!(
@@ -162,8 +160,8 @@ end
 
 Single-step event driver that advances time, updates FX, marks positions, applies funding,
 handles expiries, and optionally liquidates to maintenance if required.
-Expiry and liquidation routes issue close-only fills, so those paths do not raise
-`OrderRejectError` from incremental-margin checks.
+Expiry final-settles futures at mark and releases margin without synthetic
+execution fills. Liquidation routes issue close-only fills.
 Borrow-fee accrual uses per-position clocks; fills also advance/reset those clocks.
 
 Timing convention:

@@ -662,7 +662,7 @@ end
     @test pos.quantity == 0.0
 end
 
-@testitem "settle_expiry! closes positions and releases margin with side-aware execution" begin
+@testitem "settle_expiry! final-settles at mark and releases margin" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
@@ -703,8 +703,12 @@ end
 
     @test trade isa Trade
     @test acc.trades[end] === trade
-    @test trade.fill_price ≈ 104.0 atol=1e-12
+    @test trade.fill_price ≈ 105.0 atol=1e-12
     @test trade.fill_qty ≈ -qty
+    @test trade.fill_pnl_settle ≈ 0.0 atol=1e-12
+    @test trade.cash_delta_settle ≈ 0.0 atol=1e-12
+    @test trade.commission_settle ≈ 0.0 atol=1e-12
+    @test trade.commission_quote ≈ 0.0 atol=1e-12
     @test pos.quantity == 0.0
     @test pos.init_margin_settle == 0.0
     @test pos.maint_margin_settle == 0.0
@@ -712,7 +716,7 @@ end
     @test acc.ledger.maint_margin_used[usd_index] == 0.0
 end
 
-@testitem "settle_expiry! closes short exposure at stored ask" begin
+@testitem "settle_expiry! final-settles short exposure at mark" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
@@ -742,8 +746,10 @@ end
     trade = settle_expiry!(acc, inst, expiry_dt)
 
     @test trade isa Trade
-    @test trade.fill_price ≈ 107.0 atol=1e-12
-    @test trade.fill_pnl_settle ≈ -2.0 atol=1e-12
+    @test trade.fill_price ≈ 106.0 atol=1e-12
+    @test trade.fill_pnl_settle ≈ 0.0 atol=1e-12
+    @test trade.cash_delta_settle ≈ 0.0 atol=1e-12
+    @test trade.commission_settle ≈ 0.0 atol=1e-12
     @test get_position(acc, inst).quantity == 0.0
 end
 
