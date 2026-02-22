@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>VOO vs MES cost comparison · Fastback.jl</title><meta name="title" content="VOO vs MES cost comparison · Fastback.jl"/><meta property="og:title" content="VOO vs MES cost comparison · Fastback.jl"/><meta property="twitter:title" content="VOO vs MES cost comparison · Fastback.jl"/><meta name="description" content="Documentation for Fastback.jl."/><meta property="og:description" content="Documentation for Fastback.jl."/><meta property="twitter:description" content="Documentation for Fastback.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><script type="module" defer>
+    import { codeToHtml } from 'https://esm.sh/shiki@1.3.0'
+
+    async function highlightCode(lang, el) {
+        const code = el.textContent
+        if (lang == "julia-repl")
+            lang = "julia"
+        try {
+            el.outerHTML = await codeToHtml(code, {
+                lang: lang,
+                theme: 'monokai',
+                //theme: 'github-light-default',
+                //theme: 'github-dark-dimmed',
+                //theme: 'dark-plus',
+                //themes: {
+                //    light: 'github-dark-dimmed',
+                //    dark: 'github-dark',
+                //}
+            })
+        } catch (e) {
+            console.error(`Failed to highlight code on element with class="${el.classList}" using shiki: `, e)
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('run code highlighting using shiki')
+        const els = document.querySelectorAll("code[class^='language-']")
+        const promises = []
+        for (const el of els) {
+            const cls = Array.from(el.classList).filter(x => x.startsWith("language-"))
+            if (!cls.length)
+                continue
+            const lang = cls[0].substring(9)
+            el.classList.add('shiki-highlighted')
+            
+            promises.push(highlightCode(lang, el))
+        }
+        await Promise.all(promises)
+    })
+</script>
+<link href="../../../assets/styles.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img class="docs-light-only" src="../../../assets/logo.png" alt="Fastback.jl logo"/><img class="docs-dark-only" src="../../../assets/logo-dark.png" alt="Fastback.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../getting_started/">Getting started</a></li><li><a class="tocitem" href="../../../basic_setup/">Basic setup</a></li><li><a class="tocitem" href="../../../concepts/">Accounting model and event loop</a></li><li><a class="tocitem" href="../../../execution_errors/">Execution and errors</a></li><li><a class="tocitem" href="../../../pitfalls/">Pitfalls and gotchas</a></li><li><a class="tocitem" href="../../../how_to/">How-to</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../1_random_trading/">Random trading</a></li><li><a class="tocitem" href="../2_portfolio_trading/">Portfolio trading</a></li><li><a class="tocitem" href="../3_multi_currency/">Multi-Currency trading</a></li><li><a class="tocitem" href="../4_USDm_perp_trading/">USD-M perpetual trading</a></li><li class="is-active"><a class="tocitem" href>VOO vs MES cost comparison</a></li></ul></li><li><span class="tocitem">Plotting</span><ul><li><a class="tocitem" href="../../../plotting/gen/1_plots_extension/">Plots extensions</a></li></ul></li><li><span class="tocitem">Integrations</span><ul><li><a class="tocitem" href="../../../integrations/">Overview</a></li><li><a class="tocitem" href="../../../integrations/gen/1_Tables_integration/">Tables.jl</a></li><li><a class="tocitem" href="../../../integrations/gen/2_NanoDates_integration/">NanoDates.jl</a></li><li><a class="tocitem" href="../../../integrations/gen/3_Timestamps64_integration/">Timestamps64.jl</a></li></ul></li><li><a class="tocitem" href="../../../api_index/">API index</a></li><li><a class="tocitem" href="../../../glossary/">Glossary</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>VOO vs MES cost comparison</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>VOO vs MES cost comparison</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl/blob/main/docs/src/examples/5_VOO_vs_MES_comparison/main.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><p><strong>Jupyter Notebook:</strong> <a href="../5_VOO_vs_MES_comparison.ipynb"><code>5_VOO_vs_MES_comparison.ipynb</code></a></p><h1 id="S-and-P-500-exposure:-VOO-on-Reg-T-margin-vs-Micro-E-mini-futures-(MES)"><a class="docs-heading-anchor" href="#S-and-P-500-exposure:-VOO-on-Reg-T-margin-vs-Micro-E-mini-futures-(MES)">S&amp;P 500 exposure: VOO on Reg-T margin vs Micro E-mini futures (MES)</a><a id="S-and-P-500-exposure:-VOO-on-Reg-T-margin-vs-Micro-E-mini-futures-(MES)-1"></a><a class="docs-heading-anchor-permalink" href="#S-and-P-500-exposure:-VOO-on-Reg-T-margin-vs-Micro-E-mini-futures-(MES)" title="Permalink"></a></h1><p>This example compares two ways to express S&amp;P 500 exposure:</p><ol><li>VOO ETF on Reg-T margin (principal-exchange spot)</li><li>Micro E-mini S&amp;P 500 futures (MES) on variation margin</li></ol><p>It runs the same random trade schedule under two leverage factors (<code>1.0x</code> and <code>2.0x</code>) so we can see how leverage changes costs and outcomes for each vehicle.</p><p>Data window: 2020-01 to 2024-12.</p><p>Modeling assumptions:</p><ul><li>VOO uses OHLCV plus dividend/split files and is transformed to a simple total-return-like series (dividends embedded into price path).</li><li>MES marks use the daily front contract (highest volume) from the MES contract panel, with explicit rolls from <code>data/MES_roll_dates.csv</code>.</li><li>Commissions and financing are generated by <code>IBKRProFixedBroker</code>.</li><li>USD financing rates use <code>data/IBKR_USD_benchmark.csv</code> as a compact placeholder schedule for this tutorial.</li></ul><pre><code class="language-julia hljs">using Fastback
+using Dates
+using CSV
+using DataFrames
+using Random</code></pre><hr/><pre><code class="language-julia hljs">example_dir = normpath(joinpath(@__DIR__, &quot;..&quot;, &quot;..&quot;, &quot;..&quot;, &quot;src&quot;, &quot;examples&quot;, &quot;5_VOO_vs_MES_comparison&quot;))
+isdir(example_dir) || (example_dir = @__DIR__)
+data_dir = joinpath(example_dir, &quot;data&quot;)
+
+include(joinpath(example_dir, &quot;data.jl&quot;))
+
+# load daily data and align to shared calendar
+const BACKTEST_START = Date(2020, 1, 1)
+const BACKTEST_END = Date(2024, 12, 31)
+voo_df = load_voo_df(
+    data_dir;
+    start_dt=BACKTEST_START,
+    end_dt=BACKTEST_END,
+    half_spread=0.01,
+)
+mes_front_df = load_mes_front_data_df(
+    data_dir;
+    start_dt=BACKTEST_START,
+    end_dt=BACKTEST_END,
+    half_spread=0.125,
+)
+voo_df, mes_front_df = align_on_common_dates(voo_df, mes_front_df)
+
+# MES rolling and fee setup from explicit roll schedule
+mes_contract_specs = load_mes_contract_specs(
+    data_dir;
+    start_dt=first(mes_front_df.dt),
+    end_dt=last(mes_front_df.dt),
+)
+mes_per_contract_fees = Dict(
+    spec.symbol =&gt; 1.22  # 0.85 + 0.35 + 0.02
+    for spec in mes_contract_specs
+)
+
+# load USD benchmark schedule
+const IBKR_USD_BENCHMARK = load_usd_benchmark_schedule(data_dir);</code></pre><hr/><pre><code class="language-julia hljs">function make_ibkr_profile(usd_benchmark_schedule; credit_no_interest_balance, futures_per_contract)
+    IBKRProFixedBroker(
+        time_type=Date,
+        equity_per_share=0.005,
+        equity_min=1.00,
+        equity_max_pct=0.01,
+        futures_per_contract=futures_per_contract,
+        benchmark_by_cash=Dict(:USD =&gt; usd_benchmark_schedule),
+        borrow_spread=0.015,
+        lend_spread=0.005,
+        credit_no_interest_balance=credit_no_interest_balance,
+    )
+end
+
+voo_broker = make_ibkr_profile(
+    IBKR_USD_BENCHMARK;
+    credit_no_interest_balance=10_000,
+    futures_per_contract=Dict{Symbol,Price}(),
+)
+
+mes_broker = make_ibkr_profile(
+    IBKR_USD_BENCHMARK;
+    credit_no_interest_balance=10_000,
+    futures_per_contract=mes_per_contract_fees,
+);</code></pre><hr/><pre><code class="language-julia hljs"># shared backtest loop
+function run_backtest!(
+    acc,
+    inst,
+    df,
+    trade_lookup;
+    target_notional,
+)
+    for (i, row) in enumerate(eachrow(df))
+        dt = row.dt
+        bid, ask = row.bid, row.ask
+        last = row.last
+
+        marks = [MarkUpdate(inst.index, bid, ask, last)]
+        process_step!(acc, dt; marks=marks, liquidate=true)
+
+        event_no = get(trade_lookup, i, 0)
+        if event_no != 0
+            target_qty = isodd(event_no) ? calc_base_qty_for_notional(inst, last, target_notional) : 0.0
+            pos = get_position(acc, inst)
+            delta_qty = target_qty - pos.quantity
+
+            if delta_qty != 0.0
+                fill_px = delta_qty &gt; 0 ? ask : bid
+                order = Order(oid!(acc), inst, dt, fill_px, delta_qty)
+                fill_order!(acc, order, dt=dt, fill_price=fill_px, bid=bid, ask=ask, last=last)
+            end
+        end
+    end
+
+    # close any remaining position at the end
+    pos = get_position(acc, inst)
+    if has_exposure(pos)
+        row = df[end, :]
+        fill_px = pos.quantity &gt; 0 ? row.bid : row.ask
+        order = Order(oid!(acc), inst, row.dt, fill_px, -pos.quantity)
+        fill_order!(acc, order, dt=row.dt, fill_price=fill_px, bid=row.bid, ask=row.ask, last=row.last)
+    end
+
+    acc
+end
+
+# MES futures backtest with explicit rolls
+function run_mes_chain_backtest!(
+    acc,
+    mes_chain,
+    mes_roll_dates,
+    df,
+    trade_lookup;
+    target_notional,
+)
+    active_idx = 1
+
+    for (i, row) in enumerate(eachrow(df))
+        dt = row.dt
+        bid, ask = row.bid, row.ask
+        last = row.last
+
+        active_inst = mes_chain[active_idx]
+        process_step!(acc, dt; marks=[MarkUpdate(active_inst.index, bid, ask, last)], liquidate=true)
+
+        while active_idx &lt; length(mes_chain)
+            roll_dt = mes_roll_dates[active_idx]
+            dt &lt; roll_dt &amp;&amp; break
+
+            next_inst = mes_chain[active_idx+1]
+            pos = get_position(acc, active_inst)
+            if has_exposure(pos)
+                close_px = pos.quantity &gt; 0 ? bid : ask
+                open_px = pos.quantity &gt; 0 ? ask : bid
+                roll_position!(
+                    acc,
+                    active_inst,
+                    next_inst,
+                    dt;
+                    close_fill_price=close_px,
+                    close_bid=bid,
+                    close_ask=ask,
+                    close_last=last,
+                    open_fill_price=open_px,
+                    open_bid=bid,
+                    open_ask=ask,
+                    open_last=last,
+                )
+            end
+
+            active_idx += 1
+            active_inst = mes_chain[active_idx]
+        end
+
+        event_no = get(trade_lookup, i, 0)
+        if event_no != 0
+            target_qty = isodd(event_no) ? calc_base_qty_for_notional(active_inst, last, target_notional) : 0.0
+            pos = get_position(acc, active_inst)
+            delta_qty = target_qty - pos.quantity
+
+            if delta_qty != 0.0
+                fill_price = delta_qty &gt; 0 ? ask : bid
+                order = Order(oid!(acc), active_inst, dt, fill_price, delta_qty)
+                fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=bid, ask=ask, last=last)
+            end
+        end
+    end
+
+    # close any remaining positions at the end
+    for inst in mes_chain
+        pos = get_position(acc, inst)
+        if has_exposure(pos)
+            row = df[end, :]
+            fill_price = pos.quantity &gt; 0 ? row.bid : row.ask
+            order = Order(oid!(acc), inst, row.dt, fill_price, -pos.quantity)
+            fill_order!(acc, order;
+                dt=row.dt,
+                fill_price=fill_price,
+                bid=row.bid,
+                ask=row.ask,
+                last=row.last,
+                allow_inactive=true,
+            )
+        end
+    end
+
+    acc
+end
+
+# helper: deterministic random trade schedule (~20 toggles in/out)
+function make_trade_lookup(n_rows; n_events=20, seed=2020)
+    rng = MersenneTwister(seed)
+    pool = collect(15:(n_rows-15))
+    trade_indices = sort(pool[randperm(rng, length(pool))[1:n_events]])
+    Dict(idx =&gt; i for (i, idx) in enumerate(trade_indices))
+end
+
+# account + instrument builders
+
+function build_voo_account(initial_cash, broker)
+    acc = Account(;
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+        time_type=Date,
+        broker=broker,
+    )
+    deposit!(acc, :USD, initial_cash)
+
+    voo = register_instrument!(
+        acc,
+        spot_instrument(
+            :VOO,
+            :VOO,
+            :USD;
+            time_type=Date,
+            base_tick=1.0,
+            base_digits=0,
+            quote_tick=0.01,
+            quote_digits=2,
+            margin_requirement=MarginRequirement.PercentNotional,
+            margin_init_long=0.50,
+            margin_init_short=0.35,  # equals 135% collateral-style notion
+            margin_maint_long=0.25,
+            margin_maint_short=0.20,  # equals 120% collateral-style notion
+        ),
+    )
+
+    acc, voo
+end
+
+function build_mes_account(initial_cash, broker, mes_specs)
+    acc = Account(
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+        time_type=Date,
+        broker=broker,
+    )
+    deposit!(acc, :USD, initial_cash)
+
+    mes_chain = Instrument{Date}[]
+    mes_roll_dates = Date[]
+    for spec in mes_specs
+        inst = register_instrument!(
+            acc,
+            future_instrument(
+                spec.symbol,
+                :MES,
+                :USD;
+                time_type=Date,
+                base_tick=1.0,
+                base_digits=0,
+                quote_tick=0.25,
+                quote_digits=2,
+                multiplier=5.0,
+                margin_requirement=MarginRequirement.FixedPerContract,
+                margin_init_long=2_800.0,
+                margin_init_short=2_800.0,
+                margin_maint_long=2_421.0,
+                margin_maint_short=2_421.0,
+                expiry=spec.expiry,
+            ),
+        )
+        push!(mes_chain, inst)
+        push!(mes_roll_dates, spec.roll_date)
+    end
+
+    acc, mes_chain, mes_roll_dates
+end
+
+# summarize results (costs + net equity)
+
+function summarize(acc, label, initial_cash, leverage_factor)
+    end_equity = equity(acc, cash_asset(acc, :USD))
+    pnl = end_equity - initial_cash
+    commissions = sum(t.commission_settle for t in acc.trades, init = 0.0)
+    roll_trades = count(t -&gt; t.reason == TradeReason.Roll, acc.trades)
+    lend_interest = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.LendInterest, init=0.0)
+    borrow_interest = -sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowInterest, init=0.0)
+    net_interest = lend_interest - borrow_interest
+    borrow_fees = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowFee, init=0.0)
+
+    (
+        leverage=leverage_factor,
+        instrument=label,
+        target_notional=round(leverage_factor * initial_cash, digits=2),
+        trades=length(acc.trades),
+        roll_trades=roll_trades,
+        end_equity=round(end_equity, digits=2),
+        pnl=round(pnl, digits=2),
+        commissions=round(commissions, digits=2),
+        lend_interest=round(lend_interest, digits=2),
+        borrow_interest=round(borrow_interest, digits=2),
+        net_interest=round(net_interest, digits=2),
+        borrow_fees=round(borrow_fees, digits=2),
+    )
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">summarize (generic function with 1 method)</code></pre><hr/><pre><code class="language-julia hljs"># run scenarios
+
+initial_cash = 200_000.0
+leverage_factors = (1.0, 2.0)
+trade_lookup = make_trade_lookup(nrow(voo_df); n_events=20, seed=2020)
+
+rows = []
+for leverage_factor in leverage_factors
+    target_notional = leverage_factor * initial_cash
+
+    acc_voo, voo = build_voo_account(initial_cash, voo_broker)
+    run_backtest!(acc_voo, voo, voo_df, trade_lookup; target_notional=target_notional)
+    push!(rows, summarize(acc_voo, &quot;VOO (Reg-T margin)&quot;, initial_cash, leverage_factor))
+
+    acc_es, mes_chain, mes_roll_dates = build_mes_account(initial_cash, mes_broker, mes_contract_specs)
+    run_mes_chain_backtest!(
+        acc_es,
+        mes_chain,
+        mes_roll_dates,
+        mes_front_df,
+        trade_lookup;
+        target_notional=target_notional,
+    )
+    push!(rows, summarize(acc_es, &quot;MES (futures margin)&quot;, initial_cash, leverage_factor))
+end
+
+summary = DataFrame(rows)
+sort!(summary, [:leverage, :instrument])
+summary</code></pre><div><div style = "float: left;"><span>4×12 DataFrame</span></div><div style = "clear: both;"></div></div><div class = "data-frame" style = "overflow-x: scroll;"><table class = "data-frame" style = "margin-bottom: 6px;"><thead><tr class = "columnLabelRow"><th class = "stubheadLabel" style = "font-weight: bold; text-align: right;">Row</th><th style = "text-align: left;">leverage</th><th style = "text-align: left;">instrument</th><th style = "text-align: left;">target_notional</th><th style = "text-align: left;">trades</th><th style = "text-align: left;">roll_trades</th><th style = "text-align: left;">end_equity</th><th style = "text-align: left;">pnl</th><th style = "text-align: left;">commissions</th><th style = "text-align: left;">lend_interest</th><th style = "text-align: left;">borrow_interest</th><th style = "text-align: left;">net_interest</th><th style = "text-align: left;">borrow_fees</th></tr><tr class = "columnLabelRow"><th class = "stubheadLabel" style = "font-weight: bold; text-align: right;"></th><th title = "Float64" style = "text-align: left;">Float64</th><th title = "String" style = "text-align: left;">String</th><th title = "Float64" style = "text-align: left;">Float64</th><th title = "Int64" style = "text-align: left;">Int64</th><th title = "Int64" style = "text-align: left;">Int64</th><th title = "Float64" style = "text-align: left;">Float64</th><th title = "Float64" style = "text-align: left;">Float64</th><th title = "Float64" style = "text-align: left;">Float64</th><th title = "Float64" style = "text-align: left;">Float64</th><th title = "Float64" style = "text-align: left;">Float64</th><th title = "Float64" style = "text-align: left;">Float64</th><th title = "Float64" style = "text-align: left;">Float64</th></tr></thead><tbody><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td><td style = "text-align: right;">1.0</td><td style = "text-align: left;">MES (futures margin)</td><td style = "text-align: right;">200000.0</td><td style = "text-align: right;">28</td><td style = "text-align: right;">8</td><td style = "text-align: right;">2.6681e5</td><td style = "text-align: right;">66809.9</td><td style = "text-align: right;">322.08</td><td style = "text-align: right;">25853.2</td><td style = "text-align: right;">-0.0</td><td style = "text-align: right;">25853.2</td><td style = "text-align: right;">0.0</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td><td style = "text-align: right;">1.0</td><td style = "text-align: left;">VOO (Reg-T margin)</td><td style = "text-align: right;">200000.0</td><td style = "text-align: right;">20</td><td style = "text-align: right;">0</td><td style = "text-align: right;">2.70104e5</td><td style = "text-align: right;">70104.1</td><td style = "text-align: right;">51.93</td><td style = "text-align: right;">24315.9</td><td style = "text-align: right;">-0.0</td><td style = "text-align: right;">24315.9</td><td style = "text-align: right;">0.0</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">3</td><td style = "text-align: right;">2.0</td><td style = "text-align: left;">MES (futures margin)</td><td style = "text-align: right;">400000.0</td><td style = "text-align: right;">28</td><td style = "text-align: right;">8</td><td style = "text-align: right;">3.15346e5</td><td style = "text-align: right;">1.15346e5</td><td style = "text-align: right;">671.0</td><td style = "text-align: right;">30593.3</td><td style = "text-align: right;">-0.0</td><td style = "text-align: right;">30593.3</td><td style = "text-align: right;">0.0</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">4</td><td style = "text-align: right;">2.0</td><td style = "text-align: left;">VOO (Reg-T margin)</td><td style = "text-align: right;">400000.0</td><td style = "text-align: right;">20</td><td style = "text-align: right;">0</td><td style = "text-align: right;">3.1622e5</td><td style = "text-align: right;">1.1622e5</td><td style = "text-align: right;">103.9</td><td style = "text-align: right;">28064.9</td><td style = "text-align: right;">3415.45</td><td style = "text-align: right;">24649.4</td><td style = "text-align: right;">0.0</td></tr></tbody></table></div><hr/><pre><code class="language-julia hljs"># compact view: leverage effect within each instrument
+leverage_effect_wide = combine(groupby(summary, :instrument)) do sdf
+    s1 = sdf[sdf.leverage.==1.0, :]
+    s2 = sdf[sdf.leverage.==2.0, :]
+    @assert nrow(s1) == 1 &amp;&amp; nrow(s2) == 1
+
+    (
+        pnl_1x=s1.pnl[1],
+        pnl_2x=s2.pnl[1],
+        pnl_delta_2x_minus_1x=round(s2.pnl[1] - s1.pnl[1], digits=2),
+        roll_trades_1x=s1.roll_trades[1],
+        roll_trades_2x=s2.roll_trades[1],
+        comm_1x=s1.commissions[1],
+        comm_2x=s2.commissions[1],
+        lend_interest_1x=s1.lend_interest[1],
+        lend_interest_2x=s2.lend_interest[1],
+        borrow_interest_1x=s1.borrow_interest[1],
+        borrow_interest_2x=s2.borrow_interest[1],
+        net_interest_1x=s1.net_interest[1],
+        net_interest_2x=s2.net_interest[1],
+    )
+end
+
+metric_cols = names(leverage_effect_wide, Not(:instrument))
+leverage_effect = DataFrame(metric=String.(metric_cols))
+for row in eachrow(leverage_effect_wide)
+    leverage_effect[!, Symbol(row.instrument)] = [row[col] for col in metric_cols]
+end
+
+leverage_effect</code></pre><div><div style = "float: left;"><span>13×3 DataFrame</span></div><div style = "clear: both;"></div></div><div class = "data-frame" style = "overflow-x: scroll;"><table class = "data-frame" style = "margin-bottom: 6px;"><thead><tr class = "columnLabelRow"><th class = "stubheadLabel" style = "font-weight: bold; text-align: right;">Row</th><th style = "text-align: left;">metric</th><th style = "text-align: left;">MES (futures margin)</th><th style = "text-align: left;">VOO (Reg-T margin)</th></tr><tr class = "columnLabelRow"><th class = "stubheadLabel" style = "font-weight: bold; text-align: right;"></th><th title = "String" style = "text-align: left;">String</th><th title = "Real" style = "text-align: left;">Real</th><th title = "Real" style = "text-align: left;">Real</th></tr></thead><tbody><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td><td style = "text-align: left;">pnl_1x</td><td style = "text-align: right;">66809.9</td><td style = "text-align: right;">70104.1</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td><td style = "text-align: left;">pnl_2x</td><td style = "text-align: right;">1.15346e5</td><td style = "text-align: right;">1.1622e5</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">3</td><td style = "text-align: left;">pnl_delta_2x_minus_1x</td><td style = "text-align: right;">48536.2</td><td style = "text-align: right;">46116.3</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">4</td><td style = "text-align: left;">roll_trades_1x</td><td style = "text-align: right;">8</td><td style = "text-align: right;">0</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">5</td><td style = "text-align: left;">roll_trades_2x</td><td style = "text-align: right;">8</td><td style = "text-align: right;">0</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">6</td><td style = "text-align: left;">comm_1x</td><td style = "text-align: right;">322.08</td><td style = "text-align: right;">51.93</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">7</td><td style = "text-align: left;">comm_2x</td><td style = "text-align: right;">671.0</td><td style = "text-align: right;">103.9</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">8</td><td style = "text-align: left;">lend_interest_1x</td><td style = "text-align: right;">25853.2</td><td style = "text-align: right;">24315.9</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">9</td><td style = "text-align: left;">lend_interest_2x</td><td style = "text-align: right;">30593.3</td><td style = "text-align: right;">28064.9</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">10</td><td style = "text-align: left;">borrow_interest_1x</td><td style = "text-align: right;">-0.0</td><td style = "text-align: right;">-0.0</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">11</td><td style = "text-align: left;">borrow_interest_2x</td><td style = "text-align: right;">-0.0</td><td style = "text-align: right;">3415.45</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">12</td><td style = "text-align: left;">net_interest_1x</td><td style = "text-align: right;">25853.2</td><td style = "text-align: right;">24315.9</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">13</td><td style = "text-align: left;">net_interest_2x</td><td style = "text-align: right;">30593.3</td><td style = "text-align: right;">24649.4</td></tr></tbody></table></div></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../4_USDm_perp_trading/">« USD-M perpetual trading</a><a class="docs-footer-nextpage" href="../../../plotting/gen/1_plots_extension/">Plots extensions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Sunday 22 February 2026 00:48">Sunday 22 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

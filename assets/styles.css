@@ -1,0 +1,12 @@
+@media screen and (min-width: 1056px) {
+  #documenter .docs-main,
+  html.theme--documenter-dark #documenter .docs-main {
+    max-width: 80rem;
+  }
+}
+
+.data-frame {
+  /* only show horizontal scrollbar if needed */
+  overflow-x: auto !important;
+  font-size: 0.875rem;
+}

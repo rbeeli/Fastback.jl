@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Plots extensions · Fastback.jl</title><meta name="title" content="Plots extensions · Fastback.jl"/><meta property="og:title" content="Plots extensions · Fastback.jl"/><meta property="twitter:title" content="Plots extensions · Fastback.jl"/><meta name="description" content="Documentation for Fastback.jl."/><meta property="og:description" content="Documentation for Fastback.jl."/><meta property="twitter:description" content="Documentation for Fastback.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><script type="module" defer>
+    import { codeToHtml } from 'https://esm.sh/shiki@1.3.0'
+
+    async function highlightCode(lang, el) {
+        const code = el.textContent
+        if (lang == "julia-repl")
+            lang = "julia"
+        try {
+            el.outerHTML = await codeToHtml(code, {
+                lang: lang,
+                theme: 'monokai',
+                //theme: 'github-light-default',
+                //theme: 'github-dark-dimmed',
+                //theme: 'dark-plus',
+                //themes: {
+                //    light: 'github-dark-dimmed',
+                //    dark: 'github-dark',
+                //}
+            })
+        } catch (e) {
+            console.error(`Failed to highlight code on element with class="${el.classList}" using shiki: `, e)
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('run code highlighting using shiki')
+        const els = document.querySelectorAll("code[class^='language-']")
+        const promises = []
+        for (const el of els) {
+            const cls = Array.from(el.classList).filter(x => x.startsWith("language-"))
+            if (!cls.length)
+                continue
+            const lang = cls[0].substring(9)
+            el.classList.add('shiki-highlighted')
+            
+            promises.push(highlightCode(lang, el))
+        }
+        await Promise.all(promises)
+    })
+</script>
+<link href="../../../assets/styles.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img class="docs-light-only" src="../../../assets/logo.png" alt="Fastback.jl logo"/><img class="docs-dark-only" src="../../../assets/logo-dark.png" alt="Fastback.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../getting_started/">Getting started</a></li><li><a class="tocitem" href="../../../basic_setup/">Basic setup</a></li><li><a class="tocitem" href="../../../concepts/">Accounting model and event loop</a></li><li><a class="tocitem" href="../../../execution_errors/">Execution and errors</a></li><li><a class="tocitem" href="../../../pitfalls/">Pitfalls and gotchas</a></li><li><a class="tocitem" href="../../../how_to/">How-to</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../../../examples/gen/1_random_trading/">Random trading</a></li><li><a class="tocitem" href="../../../examples/gen/2_portfolio_trading/">Portfolio trading</a></li><li><a class="tocitem" href="../../../examples/gen/3_multi_currency/">Multi-Currency trading</a></li><li><a class="tocitem" href="../../../examples/gen/4_USDm_perp_trading/">USD-M perpetual trading</a></li><li><a class="tocitem" href="../../../examples/gen/5_VOO_vs_MES_comparison/">VOO vs MES cost comparison</a></li></ul></li><li><span class="tocitem">Plotting</span><ul><li class="is-active"><a class="tocitem" href>Plots extensions</a></li></ul></li><li><span class="tocitem">Integrations</span><ul><li><a class="tocitem" href="../../../integrations/">Overview</a></li><li><a class="tocitem" href="../../../integrations/gen/1_Tables_integration/">Tables.jl</a></li><li><a class="tocitem" href="../../../integrations/gen/2_NanoDates_integration/">NanoDates.jl</a></li><li><a class="tocitem" href="../../../integrations/gen/3_Timestamps64_integration/">Timestamps64.jl</a></li></ul></li><li><a class="tocitem" href="../../../api_index/">API index</a></li><li><a class="tocitem" href="../../../glossary/">Glossary</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Plotting</a></li><li class="is-active"><a href>Plots extensions</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Plots extensions</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl/blob/main/docs/src/plotting/1_plots_extension.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><p><strong>Jupyter Notebook:</strong> <a href="../1_plots_extension.ipynb"><code>1_plots_extension.ipynb</code></a></p><h1 id="Plots-extension-showcase"><a class="docs-heading-anchor" href="#Plots-extension-showcase">Plots extension showcase</a><a id="Plots-extension-showcase-1"></a><a class="docs-heading-anchor-permalink" href="#Plots-extension-showcase" title="Permalink"></a></h1><p>This example demonstrates all plotting helpers provided by the Fastback Plots extension. It runs a small backtest to populate collectors, trades, and cashflows, then renders each plot type for illustration.</p><pre><code class="language-julia hljs">using Fastback
+using Dates
+using Plots
+using CSV
+using DataFrames
+using Statistics</code></pre><hr/><p>Simple backtest to generate plot data</p><pre><code class="language-julia hljs">acc = Account(;
+    funding=AccountFunding.Margined,
+    base_currency=CashSpec(:USDT),
+    broker=BinanceBroker(; maker_derivatives=0.0004, taker_derivatives=0.0004),
+);
+usdt = cash_asset(acc, :USDT)
+deposit!(acc, :USDT, 10_000.0)
+perp = register_instrument!(
+    acc,
+    perpetual_instrument(
+        Symbol(&quot;BTCUSDT-PERP&quot;),
+        :BTC,
+        :USDT;
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.10,
+        margin_init_short=0.10,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+    ),
+)
+
+collect_balance, balance_data = periodic_collector(Float64, Hour(1));
+collect_equity, equity_data = periodic_collector(Float64, Hour(1));
+collect_open, open_orders_data = periodic_collector(Int, Hour(1));
+collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Hour(1));
+collect_gross, gross_exposure = periodic_collector(Float64, Hour(1));
+collect_net, net_exposure = periodic_collector(Float64, Hour(1));
+collect_long, long_exposure = periodic_collector(Float64, Hour(1));
+collect_short, short_exposure = periodic_collector(Float64, Hour(1));
+
+# load synthetic USD-M perp data
+# columns: dt, bid, ask, last, funding_rate
+data_path = &quot;../data/usdm_perp_1h.csv&quot;;
+
+# if data path doesn&#39;t exist, try to change working directory
+isfile(data_path) || cd(&quot;src/plotting&quot;)
+
+# parse CSV (hourly rows)
+df = DataFrame(CSV.File(data_path; dateformat=&quot;yyyy-mm-dd HH:MM:SS&quot;));
+sort!(df, :dt);
+n_steps = nrow(df);
+
+window = 24;
+deadband = 0.002;
+leverage_target = 2.0;
+
+for i in 1:n_steps
+    row = df[i, :]
+    dt = row.dt
+    bid = row.bid
+    ask = row.ask
+    last = row.last
+    funding_rate = row.funding_rate
+    marks = [MarkUpdate(perp.index, bid, ask, last)]
+    funding = funding_rate == 0.0 ? nothing : [FundingUpdate(perp.index, funding_rate)]
+    process_step!(acc, dt; marks=marks, funding=funding, liquidate=true)
+
+    if i &gt;= window
+        ma = mean(@view df.last[i-window+1:i])
+        signal = last &gt; (1 + deadband) * ma ? 1.0 : (last &lt; (1 - deadband) * ma ? -1.0 : 0.0)
+
+        pos = get_position(acc, perp)
+        target_qty = signal == 0.0 ? 0.0 : signal * leverage_target * equity(acc, usdt) / last
+        delta_qty = target_qty - pos.quantity
+
+        if abs(delta_qty) &gt; 1e-8
+            order = Order(oid!(acc), perp, dt, last, delta_qty)
+            fill_order!(acc, order; dt=dt, fill_price=last, bid=bid, ask=ask, last=last)
+        end
+    end
+
+    if should_collect(balance_data, dt)
+        collect_balance(dt, cash_balance(acc, usdt))
+        eq = equity(acc, usdt)
+        collect_equity(dt, eq)
+        collect_drawdown(dt, eq)
+        pos = get_position(acc, perp)
+        collect_open(dt, pos.quantity == 0.0 ? 0 : 1)
+        notional = pos.quantity * last * perp.multiplier
+        long_exp = max(notional, 0.0)
+        short_exp = min(notional, 0.0)
+        gross_exp = long_exp - short_exp
+        collect_gross(dt, gross_exp)
+        collect_net(dt, notional)
+        collect_long(dt, long_exp)
+        collect_short(dt, short_exp)
+    end
+end
+
+pos = get_position(acc, perp)
+if pos.quantity != 0.0
+    row = df[end, :]
+    order = Order(oid!(acc), perp, row.dt, row.last, -pos.quantity)
+    fill_order!(acc, order; dt=row.dt, fill_price=row.last, bid=row.bid, ask=row.ask, last=row.last)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[Trade] order=(oid=614, symbol=BTCUSDT-PERP) tid=614 date=2024-01-30 23:00:00 fill_px=42898.89 USDT fill_qty=0.56 BTC remaining_qty=0.00 BTC fill_pnl_settle=-0.53 USDT realized_qty=-0.56 BTC commission_quote=9.57 USDT realized_commission_quote=19.22 USDT commission_settle=9.57 USDT cash_delta_settle=-10.10 USDT pos_qty=-0.56 BTC pos_price=43257.39 USDT reason=Normal</code></pre><hr/><p>Basic plot helpers</p><p>Balance plot</p><pre><code class="language-julia hljs">Fastback.plot_balance(balance_data)</code></pre><img src="4f931dc4.svg" alt="Example block output"/><p>Equity plot</p><pre><code class="language-julia hljs">Fastback.plot_equity(equity_data)</code></pre><img src="5b2c76b0.svg" alt="Example block output"/><p>Equity plot (index x-axis)</p><pre><code class="language-julia hljs">Fastback.plot_equity(equity_data; xaxis_mode=:index)</code></pre><img src="89547eab.svg" alt="Example block output"/><p>Open orders plot</p><pre><code class="language-julia hljs">Fastback.plot_open_orders_count(open_orders_data)</code></pre><img src="c4ed1f88.svg" alt="Example block output"/><p>Open orders plot (index x-axis)</p><pre><code class="language-julia hljs">Fastback.plot_open_orders_count(open_orders_data; xaxis_mode=:index)</code></pre><img src="2c2bfba4.svg" alt="Example block output"/><p>Drawdown plot</p><pre><code class="language-julia hljs">Fastback.plot_drawdown(drawdown_data)</code></pre><img src="22ccaa66.svg" alt="Example block output"/><p>Drawdown plot (index x-axis)</p><pre><code class="language-julia hljs">Fastback.plot_drawdown(drawdown_data; xaxis_mode=:index)</code></pre><img src="9a24b9c5.svg" alt="Example block output"/><p>Exposure plot (gross, net, long, short)</p><pre><code class="language-julia hljs">Fastback.plot_exposure(;
+    gross=gross_exposure,
+    net=net_exposure,
+    long=long_exposure,
+    short=short_exposure)</code></pre><img src="0b3c77bc.svg" alt="Example block output"/><p>Equity + drawdown overlay</p><pre><code class="language-julia hljs">Fastback.plot_equity_drawdown(equity_data, drawdown_data)</code></pre><img src="52dcb227.svg" alt="Example block output"/><hr/><p>Overlay helpers (plot_! variants)</p><pre><code class="language-julia hljs">p = plot();
+Fastback.plot_balance!(p, balance_data; title=&quot;Account&quot;);
+Fastback.plot_equity!(p, equity_data);
+p
+
+p = plot();
+Fastback.plot_equity_drawdown!(p, equity_data, drawdown_data; title=&quot;Equity &amp; drawdown&quot;);
+p</code></pre><img src="998fd8b0.svg" alt="Example block output"/><hr/><p>Cashflow plots</p><pre><code class="language-julia hljs">Fastback.plot_cashflows(acc)</code></pre><img src="7b0bba9b.svg" alt="Example block output"/><hr/><p>Return-based plots</p><p>Gross returns by day (violin plot)</p><pre><code class="language-julia hljs">Fastback.plot_violin_realized_returns_by_day(acc.trades; return_basis=:gross)</code></pre><img src="949c1567.svg" alt="Example block output"/><p>Net returns by hour (violin plot)</p><pre><code class="language-julia hljs">Fastback.plot_violin_realized_returns_by_hour(acc.trades; return_basis=:net)</code></pre><img src="b13c759b.svg" alt="Example block output"/><p>Cumulative net returns by hour</p><pre><code class="language-julia hljs">Fastback.plot_realized_cum_returns_by_hour(acc.trades; return_basis=:net)</code></pre><img src="6b697820.svg" alt="Example block output"/><p>Cumulative net returns by hour (index x-axis)</p><pre><code class="language-julia hljs">Fastback.plot_realized_cum_returns_by_hour(acc.trades; return_basis=:net, xaxis_mode=:index)</code></pre><img src="4db2de67.svg" alt="Example block output"/><p>Cumulative gross returns by weekday</p><pre><code class="language-julia hljs">Fastback.plot_realized_cum_returns_by_weekday(acc.trades; return_basis=:gross)</code></pre><img src="03cdb133.svg" alt="Example block output"/><p>Cumulative gross returns by weekday (index x-axis)</p><pre><code class="language-julia hljs">Fastback.plot_realized_cum_returns_by_weekday(acc.trades; return_basis=:gross, xaxis_mode=:index)</code></pre><img src="693ddaf4.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../../examples/gen/5_VOO_vs_MES_comparison/">« VOO vs MES cost comparison</a><a class="docs-footer-nextpage" href="../../../integrations/">Overview »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Sunday 22 February 2026 00:48">Sunday 22 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

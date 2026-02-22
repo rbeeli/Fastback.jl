@@ -1,0 +1,38 @@
+@media screen and (min-width: 1056px) {
+  #documenter .docs-main {
+    max-width: 60rem;
+  }
+}
+
+#documenter .docs-sidebar ul.docs-menu {
+  /* remove line below search box + more spacing */
+  border-top: none !important;
+  padding-top: 1rem !important;
+}
+
+#documenter .docs-sidebar {
+  /* remove right border of sidebar */
+  border-right: none !important;
+}
+
+#documenter .docs-sidebar ul.docs-menu li.is-active {
+  /* remove border of active menu item */
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+#documenter .docs-sidebar ul.docs-menu .tocitem {
+  /* more spacing of menu items on the left */
+  padding-left: 1rem !important;
+}
+
+html.theme--documenter-dark #documenter .docs-sidebar ul.docs-menu li.is-active .tocitem,
+html.theme--documenter-dark #documenter .docs-sidebar ul.docs-menu li.is-active .tocitem:hover {
+  /* background color of active menu item */
+  background-color: #4d5250 !important;
+}
+
+.data-frame {
+  /* only show horizontal scrollbar if needed */
+  overflow-x: auto !important;
+}

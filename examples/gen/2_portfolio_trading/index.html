@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Portfolio trading · Fastback.jl</title><meta name="title" content="Portfolio trading · Fastback.jl"/><meta property="og:title" content="Portfolio trading · Fastback.jl"/><meta property="twitter:title" content="Portfolio trading · Fastback.jl"/><meta name="description" content="Documentation for Fastback.jl."/><meta property="og:description" content="Documentation for Fastback.jl."/><meta property="twitter:description" content="Documentation for Fastback.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><script type="module" defer>
+    import { codeToHtml } from 'https://esm.sh/shiki@1.3.0'
+
+    async function highlightCode(lang, el) {
+        const code = el.textContent
+        if (lang == "julia-repl")
+            lang = "julia"
+        try {
+            el.outerHTML = await codeToHtml(code, {
+                lang: lang,
+                theme: 'monokai',
+                //theme: 'github-light-default',
+                //theme: 'github-dark-dimmed',
+                //theme: 'dark-plus',
+                //themes: {
+                //    light: 'github-dark-dimmed',
+                //    dark: 'github-dark',
+                //}
+            })
+        } catch (e) {
+            console.error(`Failed to highlight code on element with class="${el.classList}" using shiki: `, e)
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('run code highlighting using shiki')
+        const els = document.querySelectorAll("code[class^='language-']")
+        const promises = []
+        for (const el of els) {
+            const cls = Array.from(el.classList).filter(x => x.startsWith("language-"))
+            if (!cls.length)
+                continue
+            const lang = cls[0].substring(9)
+            el.classList.add('shiki-highlighted')
+            
+            promises.push(highlightCode(lang, el))
+        }
+        await Promise.all(promises)
+    })
+</script>
+<link href="../../../assets/styles.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img class="docs-light-only" src="../../../assets/logo.png" alt="Fastback.jl logo"/><img class="docs-dark-only" src="../../../assets/logo-dark.png" alt="Fastback.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../getting_started/">Getting started</a></li><li><a class="tocitem" href="../../../basic_setup/">Basic setup</a></li><li><a class="tocitem" href="../../../concepts/">Accounting model and event loop</a></li><li><a class="tocitem" href="../../../execution_errors/">Execution and errors</a></li><li><a class="tocitem" href="../../../pitfalls/">Pitfalls and gotchas</a></li><li><a class="tocitem" href="../../../how_to/">How-to</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../1_random_trading/">Random trading</a></li><li class="is-active"><a class="tocitem" href>Portfolio trading</a></li><li><a class="tocitem" href="../3_multi_currency/">Multi-Currency trading</a></li><li><a class="tocitem" href="../4_USDm_perp_trading/">USD-M perpetual trading</a></li><li><a class="tocitem" href="../5_VOO_vs_MES_comparison/">VOO vs MES cost comparison</a></li></ul></li><li><span class="tocitem">Plotting</span><ul><li><a class="tocitem" href="../../../plotting/gen/1_plots_extension/">Plots extensions</a></li></ul></li><li><span class="tocitem">Integrations</span><ul><li><a class="tocitem" href="../../../integrations/">Overview</a></li><li><a class="tocitem" href="../../../integrations/gen/1_Tables_integration/">Tables.jl</a></li><li><a class="tocitem" href="../../../integrations/gen/2_NanoDates_integration/">NanoDates.jl</a></li><li><a class="tocitem" href="../../../integrations/gen/3_Timestamps64_integration/">Timestamps64.jl</a></li></ul></li><li><a class="tocitem" href="../../../api_index/">API index</a></li><li><a class="tocitem" href="../../../glossary/">Glossary</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Portfolio trading</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Portfolio trading</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl/blob/main/docs/src/examples/2_portfolio_trading.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><p><strong>Jupyter Notebook:</strong> <a href="../2_portfolio_trading.ipynb"><code>2_portfolio_trading.ipynb</code></a></p><h1 id="Portfolio-trading-strategy-example"><a class="docs-heading-anchor" href="#Portfolio-trading-strategy-example">Portfolio trading strategy example</a><a id="Portfolio-trading-strategy-example-1"></a><a class="docs-heading-anchor-permalink" href="#Portfolio-trading-strategy-example" title="Permalink"></a></h1><p>This example demonstrates how to run a backtest with multiple assets, i.e. trading a portfolio of assets.</p><p>The price data is loaded from a CSV file containing daily close prices for the stocks AAPL, NVDA, TSLA, and GE, ranging from 2022-01-03 to 2024-04-22.</p><p>The strategy buys one stock if the last 4 days were positive, and sells it again if the last 2 days were negative. Each trade is executed at a commission of 0.1%.</p><p>When missing data points are detected for a stock, all open positions for that stock are closed. Logic of this type is common in real-world strategies and harder to implement in a vectorized way, showcasing the flexibility of Fastback.</p><p>The account equity, balance and drawdowns are collected for every day and plotted at the end using the Plots package. Additionally, the performance and P&amp;L breakdown of each stock is plotted and statistics (avg. P&amp;L, worst P&amp;L, best P&amp;L, win rate) are printed.</p><pre><code class="language-julia hljs">using Fastback
+using Dates
+using CSV
+using DataFrames
+
+data_path = &quot;../data/stocks_1d.csv&quot;;
+
+# if data path doesn&#39;t exist, try to change working directory
+isfile(data_path) || cd(&quot;src/examples&quot;)
+
+# load CSV daily stock data for symbols AAPL, NVDA, TSLA, GE
+df_csv = DataFrame(CSV.File(data_path; dateformat=&quot;yyyy-mm-dd HH:MM:SS&quot;));
+df_csv.symbol = Symbol.(df_csv.symbol); # convert string to symbol type
+df = unstack(df_csv, :dt_close, :symbol, :close) # pivot long to wide format
+symbols = Symbol.(names(df)[2:end]);
+
+# print summary
+describe(df)
+
+# create trading account with $10&#39;000 start capital
+acc = Account(;
+    funding=AccountFunding.Margined,
+    base_currency=CashSpec(:USD),
+    broker=FlatFeeBroker(; pct=0.001),
+);
+usd = cash_asset(acc, :USD)
+deposit!(acc, :USD, 10_000.0);
+
+# register instruments for all symbols
+instruments = map(sym -&gt; spot_instrument(sym, sym, :USD), symbols);
+register_instrument!.(Ref(acc), instruments);
+
+# data collectors (sampling every day)
+collect_balance, balance_data = periodic_collector(Float64, Day(1));
+collect_equity, equity_data = periodic_collector(Float64, Day(1));
+collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Day(1));
+collect_portfolio_weights, portfolio_weights_data = portfolio_weights_collector(acc, instruments, Day(1); cash=usd);
+
+function open_position!(acc, inst, dt, price)
+    # invest 20% of equity in the position
+    qty = 0.2equity(acc, usd) / price
+    order = Order(oid!(acc), inst, dt, price, qty)
+    fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+end
+
+function close_position!(acc, inst, dt, price)
+    # close position for instrument, if any
+    pos = get_position(acc, inst)
+    has_exposure(pos) || return
+    order = Order(oid!(acc), inst, dt, price, -pos.quantity)
+    fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+end
+
+# loop over each row of DataFrame
+for i in 6:nrow(df)
+    row = df[i, :]
+    dt = row.dt_close
+
+    # loop over all instruments and check strategy rules
+    for inst in instruments
+        price = row[inst.symbol]
+
+        window_open = @view df[i-4:i, inst.symbol]
+        window_close = @view df[i-2:i, inst.symbol]
+
+        # close position of instrument if missing data
+        if any(ismissing.(window_open))
+            close_price = get_position(acc, inst).avg_entry_price
+            close_position!(acc, inst, dt, close_price)
+            continue
+        end
+
+        if !is_exposed_to(acc, inst)
+            # buy if last 4 days were positive
+            all(diff(window_open) .&gt; 0) &amp;&amp; open_position!(acc, inst, dt, price)
+        else
+            # close position if last 2 days were negative
+            all(diff(window_close) .&lt; 0) &amp;&amp; close_position!(acc, inst, dt, price)
+        end
+
+        # update position and account P&amp;L
+        update_marks!(acc, inst, dt, price, price, price)
+    end
+
+    # close all positions at the end of backtest
+    if i == nrow(df)
+        for inst in instruments
+            price = row[inst.symbol]
+            close_position!(acc, inst, dt, price)
+        end
+    end
+
+    # collect data for plotting
+    if should_collect(equity_data, dt)
+        equity_value = equity(acc, usd)
+        collect_balance(dt, cash_balance(acc, usd))
+        collect_equity(dt, equity_value)
+        collect_drawdown(dt, equity_value)
+    end
+
+    should_collect(portfolio_weights_data, dt) &amp;&amp; collect_portfolio_weights(dt)
+end
+
+# print account summary
+show(acc)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ACCOUNT SUMMARY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<span class="sgr1">Cash balances</span> (1)
+┌─────┬──────────┐
+│     │    Value │
+├─────┼──────────┤
+│ USD │ 13458.47 │
+└─────┴──────────┘
+
+<span class="sgr1">Equity balances</span> (1)
+┌─────┬──────────┐
+│     │    Value │
+├─────┼──────────┤
+│ USD │ 13458.47 │
+└─────┴──────────┘
+
+<span class="sgr1">Positions</span> (0)
+
+<span class="sgr1">Trades</span> (134)
+┌─────┬────────┬─────────────────────┬────────┬────────┬────────┬────┬────┬─────┬──────────┬──────────┬────────────────┬──────────────┬───────┐
+│  ID │ Symbol │                Date │    Qty │ Filled │  Price │ TP │ SL │ Ccy │ Fill P&amp;L │   Cash Δ │ Return (gross) │ Return (net) │ Comm. │
+├─────┼────────┼─────────────────────┼────────┼────────┼────────┼────┼────┼─────┼──────────┼──────────┼────────────────┼──────────────┼───────┤
+│   1 │   AAPL │ 2022-01-12 21:00:00 │  11.54 │  11.54 │ 173.33 │  — │  — │ USD │     0.00 │ -2002.00 │              — │            — │  2.00 │
+│   2 │     GE │ 2022-01-14 21:00:00 │  24.94 │  24.94 │  79.94 │  — │  — │ USD │     0.00 │ -1995.99 │              — │            — │  1.99 │
+│   3 │   AAPL │ 2022-01-19 21:00:00 │ -11.54 │ -11.54 │ 164.14 │  — │  — │ USD │  -105.96 │  1892.14 │         -5.30% │       -5.49% │  1.89 │
+│   4 │     GE │ 2022-01-19 21:00:00 │ -24.94 │ -24.94 │  77.98 │  — │  — │ USD │   -49.10 │  1942.95 │         -2.46% │       -2.66% │  1.94 │
+│   5 │     GE │ 2022-02-01 21:00:00 │  25.92 │  25.92 │  75.91 │  — │  — │ USD │     0.00 │ -1969.39 │              — │            — │  1.97 │
+│   6 │   NVDA │ 2022-02-02 21:00:00 │   7.80 │   7.80 │ 252.07 │  — │  — │ USD │     0.00 │ -1969.36 │              — │            — │  1.97 │
+│   7 │     GE │ 2022-02-09 21:00:00 │ -25.92 │ -25.92 │  76.91 │  — │  — │ USD │    26.11 │  1991.54 │          1.33% │        1.13% │  1.99 │
+│   8 │   NVDA │ 2022-02-11 21:00:00 │  -7.80 │  -7.80 │ 239.16 │  — │  — │ USD │  -100.78 │  1864.74 │         -5.12% │       -5.32% │  1.87 │
+│   9 │     GE │ 2022-03-11 21:00:00 │  27.26 │  27.26 │  71.58 │  — │  — │ USD │     0.00 │ -1952.88 │              — │            — │  1.95 │
+│  10 │   AAPL │ 2022-03-18 20:00:00 │  12.12 │  12.12 │ 162.13 │  — │  — │ USD │     0.00 │ -1966.25 │              — │            — │  1.96 │
+│  11 │   NVDA │ 2022-03-18 20:00:00 │   7.43 │   7.43 │ 264.21 │  — │  — │ USD │     0.00 │ -1966.11 │              — │            — │  1.96 │
+│  12 │   TSLA │ 2022-03-18 20:00:00 │   6.51 │   6.51 │ 301.80 │  — │  — │ USD │     0.00 │ -1965.71 │              — │            — │  1.96 │
+│  13 │   NVDA │ 2022-03-23 20:00:00 │  -7.43 │  -7.43 │ 256.03 │  — │  — │ USD │   -60.81 │  1901.43 │         -3.10% │       -3.29% │  1.90 │
+│  14 │     GE │ 2022-03-28 20:00:00 │ -27.26 │ -27.26 │  71.36 │  — │  — │ USD │    -5.92 │  1943.07 │         -0.30% │       -0.50% │  1.95 │
+│  15 │   AAPL │ 2022-03-31 20:00:00 │ -12.12 │ -12.12 │ 172.64 │  — │  — │ USD │   127.33 │  2089.52 │          6.48% │        6.28% │  2.09 │
+│   ⋮ │      ⋮ │                   ⋮ │      ⋮ │      ⋮ │      ⋮ │  ⋮ │  ⋮ │   ⋮ │        ⋮ │        ⋮ │              ⋮ │            ⋮ │     ⋮ │
+│ 120 │   NVDA │ 2024-01-09 21:00:00 │   4.60 │   4.60 │ 531.40 │  — │  — │ USD │     0.00 │ -2448.16 │              — │            — │  2.45 │
+│ 121 │     GE │ 2024-01-16 21:00:00 │ -19.00 │ -19.00 │ 127.97 │  — │  — │ USD │   -15.39 │  2428.39 │         -0.63% │       -0.83% │  2.43 │
+│ 122 │   AAPL │ 2024-01-23 21:00:00 │  12.83 │  12.83 │ 194.93 │  — │  — │ USD │     0.00 │ -2504.12 │              — │            — │  2.50 │
+│ 123 │   AAPL │ 2024-01-25 21:00:00 │ -12.83 │ -12.83 │ 193.92 │  — │  — │ USD │   -12.95 │  2486.19 │         -0.52% │       -0.72% │  2.49 │
+│ 124 │   TSLA │ 2024-02-09 21:00:00 │  13.50 │  13.50 │ 193.57 │  — │  — │ USD │     0.00 │ -2615.51 │              — │            — │  2.61 │
+│ 125 │     GE │ 2024-02-12 21:00:00 │  18.64 │  18.64 │ 140.17 │  — │  — │ USD │     0.00 │ -2614.99 │              — │            — │  2.61 │
+│ 126 │   TSLA │ 2024-02-13 21:00:00 │ -13.50 │ -13.50 │ 184.02 │  — │  — │ USD │  -128.91 │  2481.51 │         -4.93% │       -5.13% │  2.48 │
+│ 127 │   NVDA │ 2024-02-16 21:00:00 │  -4.60 │  -4.60 │ 726.13 │  — │  — │ USD │   896.22 │  3338.60 │         36.64% │       36.41% │  3.34 │
+│ 128 │   NVDA │ 2024-03-05 21:00:00 │   3.09 │   3.09 │ 859.64 │  — │  — │ USD │     0.00 │ -2657.92 │              — │            — │  2.66 │
+│ 129 │   NVDA │ 2024-03-11 20:00:00 │  -3.09 │  -3.09 │ 857.74 │  — │  — │ USD │    -5.87 │  2646.75 │         -0.22% │       -0.42% │  2.65 │
+│ 130 │   NVDA │ 2024-03-21 20:00:00 │   2.98 │   2.98 │ 914.35 │  — │  — │ USD │     0.00 │ -2725.75 │              — │            — │  2.72 │
+│ 131 │     GE │ 2024-03-25 20:00:00 │ -18.64 │ -18.64 │ 173.49 │  — │  — │ USD │   620.99 │  3230.14 │         23.77% │       23.55% │  3.23 │
+│ 132 │   NVDA │ 2024-03-27 20:00:00 │  -2.98 │  -2.98 │ 902.50 │  — │  — │ USD │   -35.29 │  2685.05 │         -1.30% │       -1.49% │  2.69 │
+│ 133 │     GE │ 2024-04-08 20:00:00 │  17.27 │  17.27 │ 156.52 │  — │  — │ USD │     0.00 │ -2705.21 │              — │            — │  2.70 │
+│ 134 │     GE │ 2024-04-15 20:00:00 │ -17.27 │ -17.27 │ 153.70 │  — │  — │ USD │   -48.69 │  2651.16 │         -1.80% │       -2.00% │  2.65 │
+└─────┴────────┴─────────────────────┴────────┴────────┴────────┴────┴────┴─────┴──────────┴──────────┴────────────────┴──────────────┴───────┘
+                                                                                                                               104 rows omitted
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</code></pre><h3 id="Plot-account-balance,-equity,-drawdowns-and-stocks-performance"><a class="docs-heading-anchor" href="#Plot-account-balance,-equity,-drawdowns-and-stocks-performance">Plot account balance, equity, drawdowns and stocks performance</a><a id="Plot-account-balance,-equity,-drawdowns-and-stocks-performance-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-account-balance,-equity,-drawdowns-and-stocks-performance" title="Permalink"></a></h3><pre><code class="language-julia hljs">using Plots, Query, Printf, Measures
+
+theme(:juno)
+
+# equity / cash balance
+p1 = plot()
+Fastback.plot_balance!(p1, balance_data; title=&quot;Account&quot;)
+Fastback.plot_equity!(p1, equity_data)
+
+# drawdowns
+p2 = Fastback.plot_drawdown(drawdown_data)
+
+# stocks performance
+p3 = plot(
+    df.dt_close, df[!, 2] ./ df[1, 2];
+    title=&quot;Stocks performance (normalized)&quot;,
+    yformatter=y -&gt; @sprintf(&quot;%.1f&quot;, y),
+    label=names(df)[2],
+    linetype=:steppost,
+    color=:green,
+);
+for i in 3:ncol(df)
+    plot!(p3,
+        df.dt_close, df[!, i] ./ df[1, i];
+        label=names(df)[i])
+end
+
+# portfolio constituent weights
+p4 = Fastback.plot_portfolio_weights_over_time(portfolio_weights_data)
+
+# P&amp;L breakdown by stocks
+pnl_by_inst = acc.trades |&gt;
+              @groupby(_.order.inst.symbol) |&gt;
+              @map({
+                  symbol = key(_),
+                  pnl = sum(getfield.(_, :fill_pnl_settle))
+              }) |&gt; DataFrame
+p5 = bar(string.(pnl_by_inst.symbol), pnl_by_inst.pnl;
+    legend=false,
+    title=&quot;P&amp;L breakdown by stocks [USD]&quot;,
+    permute=(:x, :y),
+    xlims=(0, size(pnl_by_inst)[1]),
+    yformatter=y -&gt; @sprintf(&quot;%.0f&quot;, y),
+    color=&quot;#BBBB00&quot;,
+    linecolor=nothing,
+    bar_width=0.5)
+
+plot(p1, p2, p3, p4, p5;
+    layout=@layout[a{0.3h}; b{0.12h}; c{0.22h}; d{0.2h}; e{0.16h}],
+    size=(850, 920), margin=0mm, left_margin=5mm)</code></pre><img src="21c5ffd3.svg" alt="Example block output"/><h3 id="Calculate-statistics-per-stock"><a class="docs-heading-anchor" href="#Calculate-statistics-per-stock">Calculate statistics per stock</a><a id="Calculate-statistics-per-stock-1"></a><a class="docs-heading-anchor-permalink" href="#Calculate-statistics-per-stock" title="Permalink"></a></h3><p>Calculates summary statistics for each stock. Using the <code>Query.jl</code> package, all trades are first grouped by instrument symbol, then average P&amp;L, worst P&amp;L, best P&amp;L, and win rate are calculated. Finally, the results are piped into a <code>DataFrame</code> and printed using the <code>PrettyTables.jl</code> package.</p><pre><code class="language-julia hljs">using PrettyTables
+
+df = acc.trades |&gt;
+@groupby(_.order.inst.symbol) |&gt;
+@map({
+    symbol = key(_),
+    avg_pnl = sum(getfield.(_, :fill_pnl_settle)) / length(_),
+    worst_pnl = minimum(getfield.(_, :fill_pnl_settle)),
+    best_pnl = maximum(getfield.(_, :fill_pnl_settle)),
+    win_rate = round.(count(getfield.(_, :fill_pnl_settle) .&gt; 0) / count(is_realizing.(_)), sigdigits=2),
+}) |&gt; DataFrame
+
+pretty_table(df; column_labels=[&quot;Symbol&quot;, &quot;Avg P&amp;L&quot;, &quot;Worst P&amp;L&quot;, &quot;Best P&amp;L&quot;, &quot;Win Rate&quot;])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌────────┬─────────┬───────────┬──────────┬──────────┐
+│ Symbol │ Avg P&amp;L │ Worst P&amp;L │ Best P&amp;L │ Win Rate │
+├────────┼─────────┼───────────┼──────────┼──────────┤
+│   AAPL │ 19.6695 │  -105.965 │  283.873 │     0.46 │
+│     GE │ 24.6416 │  -152.106 │  620.992 │     0.33 │
+│   NVDA │ 26.1299 │  -205.557 │  896.225 │     0.38 │
+│   TSLA │ 42.5721 │  -295.745 │  777.213 │     0.53 │
+└────────┴─────────┴───────────┴──────────┴──────────┘</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../1_random_trading/">« Random trading</a><a class="docs-footer-nextpage" href="../3_multi_currency/">Multi-Currency trading »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Sunday 22 February 2026 00:48">Sunday 22 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
