@@ -735,7 +735,7 @@ function Fastback.plot_realized_cum_returns_by_hour(
                             foreground_color_legend=nothing,
                             background_color_legend=nothing,
                             tickfontsize=9,
-                            legend=:outertopright,
+                            legend=false,
                             label=lbl,
                             title=title_str,
                         ), kwargs)
@@ -755,7 +755,7 @@ function Fastback.plot_realized_cum_returns_by_hour(
                 lbl = "$(hour):00+"
                 if plt === nothing
                     plot_kwargs = merge((;
-                            legend=:topleft,
+                            legend=false,
                             label=lbl,
                             title=title_str,
                         ), kwargs)
@@ -896,7 +896,7 @@ function Fastback.plot_realized_cum_returns_by_weekday(
                 x = collect(1:n_pos)
                 if plt === nothing
                     plot_kwargs = merge((;
-                            legend=:bottomleft,
+                            legend=false,
                             label=lbl,
                             title=title_str,
                         ), kwargs)
@@ -913,7 +913,7 @@ function Fastback.plot_realized_cum_returns_by_weekday(
             else
                 if plt === nothing
                     plot_kwargs = merge((;
-                            legend=:topleft,
+                            legend=false,
                             label=lbl,
                             title=title_str,
                         ), kwargs)
