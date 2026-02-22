@@ -1,5 +1,7 @@
 """
-Flat fee commission model with optional per-cash financing rates.
+Flat signed-commission model with optional per-cash financing rates.
+
+`fixed` and `pct` may be positive (fee) or negative (rebate).
 """
 struct FlatFeeBroker <: AbstractBroker
     commission::CommissionQuote

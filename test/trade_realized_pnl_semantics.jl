@@ -242,6 +242,90 @@ end
     @test get_position(acc, inst).entry_commission_quote_carry ≈ 0.0 atol=1e-12
 end
 
+@testitem "pct rebates are carried into realized_return_net" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(pct=-0.001))
+    deposit!(acc, :USD, 10_000.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("REBPCT/USD"), :REBPCT, :USD))
+    dt0 = DateTime(2026, 1, 1)
+
+    open_trade = fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0, 100.0, 2.0);
+        dt=dt0,
+        fill_price=100.0,
+        bid=100.0,
+        ask=100.0,
+        last=100.0,
+    )
+    @test open_trade.realized_qty == 0.0
+    @test open_trade.realized_commission_quote == 0.0
+    @test open_trade.commission_quote ≈ -0.2 atol=1e-12
+    @test get_position(acc, inst).entry_commission_quote_carry ≈ -0.2 atol=1e-12
+
+    close_trade = fill_order!(
+        acc,
+        Order(oid!(acc), inst, dt0 + Day(1), 110.0, -2.0);
+        dt=dt0 + Day(1),
+        fill_price=110.0,
+        bid=110.0,
+        ask=110.0,
+        last=110.0,
+    )
+
+    expected_gross = (110.0 - 100.0) / 100.0
+    expected_net = expected_gross - ((-0.42) / (100.0 * 2.0))
+    @test close_trade.commission_quote ≈ -0.22 atol=1e-12
+    @test close_trade.realized_commission_quote ≈ -0.42 atol=1e-12
+    @test realized_return_gross(close_trade) ≈ expected_gross atol=1e-12
+    @test realized_return_net(close_trade) ≈ expected_net atol=1e-12
+    @test get_position(acc, inst).entry_commission_quote_carry ≈ 0.0 atol=1e-12
+end
+
+@testitem "commission attribution conserves charged commissions across mixed fills" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.5, pct=0.001))
+    deposit!(acc, :USD, 100_000.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("COMMCONS/USD"), :COMMCONS, :USD))
+    dt0 = DateTime(2026, 1, 1)
+
+    legs = [
+        (100.0, 4.0),
+        (103.0, -1.0),
+        (99.0, 3.0),
+        (101.0, -8.0),
+        (98.0, 1.0),
+        (97.0, 1.0),
+    ]
+
+    for (i, (px, qty)) in enumerate(legs)
+        dt = dt0 + Day(i - 1)
+        fill_order!(
+            acc,
+            Order(oid!(acc), inst, dt, px, qty);
+            dt=dt,
+            fill_price=px,
+            bid=px,
+            ask=px,
+            last=px,
+        )
+
+        realized_commission = sum(t.realized_commission_quote for t in acc.trades)
+        charged_commission = sum(t.commission_quote for t in acc.trades)
+        carry = get_position(acc, inst).entry_commission_quote_carry
+        @test realized_commission + carry ≈ charged_commission atol=1e-12
+    end
+
+    @test get_position(acc, inst).quantity ≈ 0.0 atol=1e-12
+    @test get_position(acc, inst).entry_commission_quote_carry ≈ 0.0 atol=1e-12
+end
+
 @testitem "realized_notional_quote uses closed-position basis" begin
     using Test, Fastback, Dates
 
