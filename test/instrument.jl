@@ -99,14 +99,15 @@ end
         1,
         1,
         InstrumentSpec(
-        Symbol("QTY/USD"),
-        :QTY,
-        :USD;
-        base_tick=1.0,
-        base_min=0.0,
-        base_max=10.0,
-        multiplier=5.0,
-    ))
+            Symbol("QTY/USD"),
+            :QTY,
+            :USD;
+            base_tick=1.0,
+            base_min=0.0,
+            base_max=10.0,
+            multiplier=5.0,
+        ),
+    )
 
     @test calc_base_qty_for_notional(inst, 100.0, 2_499.0) == 4.0
     @test calc_base_qty_for_notional(inst, 100.0, 2_500.0) == 5.0
@@ -119,14 +120,15 @@ end
         1,
         1,
         InstrumentSpec(
-        Symbol("QTYSGN/USD"),
-        :QTYSGN,
-        :USD;
-        base_tick=1.0,
-        base_min=-10.0,
-        base_max=10.0,
-        multiplier=5.0,
-    ))
+            Symbol("QTYSGN/USD"),
+            :QTYSGN,
+            :USD;
+            base_tick=1.0,
+            base_min=-10.0,
+            base_max=10.0,
+            multiplier=5.0,
+        ),
+    )
 
     @test calc_base_qty_for_notional(inst_signed, 100.0, -2_550.0) == -5.0
     @test calc_base_qty_for_notional(inst_signed, -100.0, 2_550.0) == 5.0
@@ -137,11 +139,12 @@ end
         1,
         1,
         InstrumentSpec(
-        Symbol("QTYFRAC/USD"),
-        :QTYFRAC,
-        :USD;
-        base_tick=0.25,
-        multiplier=1.0,
-    ))
+            Symbol("QTYFRAC/USD"),
+            :QTYFRAC,
+            :USD;
+            base_tick=0.25,
+            multiplier=1.0,
+        ),
+    )
     @test calc_base_qty_for_notional(inst_fractional, 10.0, 37.0) ≈ 3.5
 end
