@@ -18,7 +18,9 @@ end
 Create a periodic portfolio-weights collector.
 Returns a tuple of (collector_function, PortfolioWeightsValues).
 
-Weights are collected as `value_quote(position) / equity(acc, cash)` per instrument.
+Weights are collected as signed marked notionals divided by `equity(acc, cash)`:
+`qty * abs(mark_price) * multiplier`, converted from instrument quote currency
+into `cash` when needed.
 """
 function portfolio_weights_collector(
     acc::Account{TTime},
@@ -52,7 +54,9 @@ function portfolio_weights_collector(
 
         for (i, inst) in pairs(instruments)
             pos = get_position(acc, inst)
-            push!(wts[i], value_quote(pos) / equity_value)
+            notional_quote = pos.quantity * abs(pos.mark_price) * inst.spec.multiplier
+            notional_cash = notional_quote * get_rate(acc, inst.quote_cash_index, cash.index)
+            push!(wts[i], notional_cash / equity_value)
         end
         pv.last_dt = dt
         return
