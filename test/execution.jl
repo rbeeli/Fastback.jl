@@ -42,11 +42,11 @@ using TestItemRunner
     @test pos.quantity == pos_qty_before
     @test plan.fill_qty == order.quantity
     @test plan.commission_settle == commission + commission_pct * notional_value(order)
-    @test plan.cash_delta_settle == -(order.quantity * price * inst.multiplier + plan.commission_settle)
+    @test plan.cash_delta_settle == -(order.quantity * price * inst.spec.multiplier + plan.commission_settle)
     @test plan.fill_pnl_settle == 0.0
     @test plan.new_qty == order.quantity
     @test plan.new_avg_entry_price_quote == price
-    @test plan.new_value_quote == order.quantity * price * inst.multiplier
+    @test plan.new_value_quote == order.quantity * price * inst.spec.multiplier
     @test plan.new_pnl_quote == 0.0
 
     trade = fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
@@ -100,7 +100,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("SPOT/USD"),
             :SPOT,
             :USD;
@@ -161,7 +161,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("FUT/USD"),
             :FUT,
             :USD;
@@ -213,8 +213,8 @@ end
     @test plan.new_avg_entry_price_quote == price_open
     @test plan.new_value_quote == 0.0
     @test plan.new_pnl_quote == 0.0
-    @test plan.new_init_margin_settle == abs(plan.new_qty) * price_mark * inst.multiplier * 0.1
-    @test plan.new_maint_margin_settle == abs(plan.new_qty) * price_mark * inst.multiplier * 0.05
+    @test plan.new_init_margin_settle == abs(plan.new_qty) * price_mark * inst.spec.multiplier * 0.1
+    @test plan.new_maint_margin_settle == abs(plan.new_qty) * price_mark * inst.spec.multiplier * 0.05
 
     trade_close = fill_order!(acc, order_close; dt=dt_mark, fill_price=price_mark, bid=price_mark, ask=price_mark, last=price_mark)
 
@@ -243,7 +243,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("VADD/USD"),
             :VADD,
             :USD;
@@ -280,7 +280,7 @@ end
     cash_before_fill = cash_balance(acc, usd)
     trade = fill_order!(acc, order; dt=dt, fill_price=order.price, bid=bid, ask=ask, last=mark_price)
 
-    expected_settle = (mark_price - ask) * inst.multiplier
+    expected_settle = (mark_price - ask) * inst.spec.multiplier
 
     @test plan.new_qty == 1.0
     @test trade isa Trade
@@ -309,7 +309,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("VMRISK/USD"),
             :VMRISK,
             :USD;
@@ -365,7 +365,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("VPART/USD"),
             :VPART,
             :USD;
@@ -427,7 +427,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("NEGVM/USD"),
             :NEGVM,
             :USD;
@@ -597,7 +597,7 @@ end
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 1_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("ASTLAST/USD"), :ASTLAST, :USD;
+    inst = register_instrument!(acc, InstrumentSpec(Symbol("ASTLAST/USD"), :ASTLAST, :USD;
         settlement=SettlementStyle.PrincipalExchange,
         contract_kind=ContractKind.Spot,
         margin_requirement=MarginRequirement.PercentNotional,

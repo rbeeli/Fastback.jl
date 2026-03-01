@@ -27,7 +27,7 @@ function portfolio_weights_collector(
     cash::Cash=acc.base_currency,
 ) where {TTime<:Dates.AbstractTime,TPeriod<:Period}
     dts = Vector{TTime}()
-    syms = Symbol[getfield(inst, :symbol) for inst in instruments]
+    syms = Symbol[symbol(inst) for inst in instruments]
     wts = [Price[] for _ in 1:length(instruments)]
     init_value = TTime(0)
     pv = PortfolioWeightsValues{TTime,TPeriod}(

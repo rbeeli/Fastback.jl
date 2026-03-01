@@ -68,16 +68,16 @@ A zero quantity indicates no position (i.e., flat) -> TradeDir.Null.
 """
 Notional order value in quote currency (`abs(qty) * abs(price) * multiplier`).
 """
-@inline notional_value(order::Order) = abs(order.quantity) * abs(order.price) * order.inst.multiplier
+@inline notional_value(order::Order) = abs(order.quantity) * abs(order.price) * order.inst.spec.multiplier
 
 function Base.show(io::IO, o::Order{TTime}) where {TTime}
     date_formatter = x -> Dates.format(x, "yyyy-mm-dd HH:MM:SS")
-    tp_str = isnan(o.take_profit) ? "—" : "$(format_quote(o.inst, o.take_profit)) $(o.inst.quote_symbol)"
-    sl_str = isnan(o.stop_loss) ? "—" : "$(format_quote(o.inst, o.stop_loss)) $(o.inst.quote_symbol)"
-    print(io, "[Order] $(o.inst.symbol) " *
+    tp_str = isnan(o.take_profit) ? "—" : "$(format_quote(o.inst, o.take_profit)) $(o.inst.spec.quote_symbol)"
+    sl_str = isnan(o.stop_loss) ? "—" : "$(format_quote(o.inst, o.stop_loss)) $(o.inst.spec.quote_symbol)"
+    print(io, "[Order] $(o.inst.spec.symbol) " *
               "date=$(date_formatter(o.date)) " *
-              "price=$(format_quote(o.inst, o.price)) $(o.inst.quote_symbol) " *
-              "qty=$(format_base(o.inst, o.quantity)) $(o.inst.base_symbol) " *
+              "price=$(format_quote(o.inst, o.price)) $(o.inst.spec.quote_symbol) " *
+              "qty=$(format_base(o.inst, o.quantity)) $(o.inst.spec.base_symbol) " *
               "tp=$(tp_str) " *
               "sl=$(sl_str)")
 end

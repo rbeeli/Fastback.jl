@@ -23,7 +23,7 @@ using TestItemRunner
     @test cash_after_open ≈ 8_989.0 atol=1e-12
 
     pos = get_position(acc, inst)
-    expected_pnl = qty * (pos.mark_price - pos.avg_entry_price) * inst.multiplier
+    expected_pnl = qty * (pos.mark_price - pos.avg_entry_price) * inst.spec.multiplier
     @test expected_pnl ≈ -20.0 atol=1e-12
     @test equity(acc, usd) ≈ cash_after_open + pos.value_settle atol=1e-12
 
@@ -79,7 +79,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 100.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("RISK/USD"), :RISK, :USD;
+    inst = register_instrument!(acc, InstrumentSpec(Symbol("RISK/USD"), :RISK, :USD;
         settlement=SettlementStyle.PrincipalExchange,
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.5,
@@ -120,7 +120,7 @@ end
     deposit!(acc, :EUR, 0.0)
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
 
-    spot = register_instrument!(acc, Instrument(Symbol("SPOT/EURUSD"), :SPOT, :EUR;
+    spot = register_instrument!(acc, InstrumentSpec(Symbol("SPOT/EURUSD"), :SPOT, :EUR;
         settle_symbol=:USD,
         settlement=SettlementStyle.PrincipalExchange,
         margin_requirement=MarginRequirement.PercentNotional,

@@ -128,7 +128,7 @@ Fees/commissions are handled elsewhere (execution/account), not here.
 """
 @inline function calc_pnl_quote(pos::Position, close_price)
     # quantity negative for shorts, thus works for both long and short
-    pos.quantity * (close_price - pos.avg_settle_price) * pos.inst.multiplier
+    pos.quantity * (close_price - pos.avg_settle_price) * pos.inst.spec.multiplier
 end
 
 
@@ -217,10 +217,10 @@ end
 # end
 
 function Base.show(io::IO, pos::Position)
-    print(io, "[Position] $(pos.inst.symbol) " *
-              "entry=$(format_quote(pos.inst, pos.avg_entry_price)) $(pos.inst.quote_symbol) " *
-              "qty=$(format_base(pos.inst, pos.quantity)) $(pos.inst.base_symbol) " *
-              "pnl_quote=$(format_quote(pos.inst, pos.pnl_quote)) $(pos.inst.quote_symbol)")
+    print(io, "[Position] $(pos.inst.spec.symbol) " *
+              "entry=$(format_quote(pos.inst, pos.avg_entry_price)) $(pos.inst.spec.quote_symbol) " *
+              "qty=$(format_base(pos.inst, pos.quantity)) $(pos.inst.spec.base_symbol) " *
+              "pnl_quote=$(format_quote(pos.inst, pos.pnl_quote)) $(pos.inst.spec.quote_symbol)")
 end
 
 Base.show(pos::Position) = Base.show(stdout, pos)

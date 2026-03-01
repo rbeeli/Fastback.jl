@@ -11,7 +11,7 @@ using TestItemRunner
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("VM/BASIS"),
             :VM,
             :USD;
@@ -73,7 +73,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("VM/SPREAD"),
             :VM,
             :USD;
@@ -110,7 +110,7 @@ end
 
     inst2 = register_instrument!(
         acc2,
-        Instrument(
+        InstrumentSpec(
             Symbol("VM/SPREAD/S"),
             :VM,
             :USD;

@@ -110,7 +110,7 @@ end
     using Test, Fastback
 
     bad_requirement = Core.Intrinsics.bitcast(MarginRequirement.T, Int8(7))
-    inst = Instrument(Symbol("BAD/USD"), :BAD, :USD;
+    inst = InstrumentSpec(Symbol("BAD/USD"), :BAD, :USD;
         margin_requirement=bad_requirement,
         margin_init_long=1.0,
         margin_init_short=1.0,
@@ -120,7 +120,7 @@ end
 
     base_currency=CashSpec(:USD)
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
-    register_instrument!(acc, inst)
+    inst = register_instrument!(acc, inst)
 
     @test_throws ArgumentError margin_init_margin_ccy(acc, inst, 1.0, 10.0)
     @test_throws ArgumentError margin_maint_margin_ccy(acc, inst, 1.0, 10.0)
@@ -132,7 +132,7 @@ end
     base_currency=CashSpec(:USD)
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("MK/USD"),
         :MK,
         :USD;

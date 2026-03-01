@@ -16,20 +16,20 @@ Currency and unit semantics used throughout contract math:
 Quote-currency P&L for a position at `price` relative to `basis_price`.
 """
 @inline function calc_pnl_quote(inst::Instrument, qty, price, basis_price)::Price
-    qty * (price - basis_price) * inst.multiplier
+    qty * (price - basis_price) * inst.spec.multiplier
 end
 
 """
 Quote-currency position value contribution under the instrument settlement style.
 """
 @inline function calc_value_quote(inst::Instrument, qty, price)::Price
-    settlement = inst.settlement
+    settlement = inst.spec.settlement
     if settlement == SettlementStyle.PrincipalExchange
-        return qty * price * inst.multiplier
+        return qty * price * inst.spec.multiplier
     elseif settlement == SettlementStyle.VariationMargin
         return zero(Price)
     else
-        throw(ArgumentError("Unsupported settlement style $(inst.settlement)."))
+        throw(ArgumentError("Unsupported settlement style $(inst.spec.settlement)."))
     end
 end
 
@@ -46,7 +46,7 @@ of open principal is reflected in unrealized settlement P&L.
     avg_entry_price_settle::Price,
 )::Price
     qty == 0 && return zero(Price)
-    value_settle - qty * avg_entry_price_settle * inst.multiplier
+    value_settle - qty * avg_entry_price_settle * inst.spec.multiplier
 end
 
 """
@@ -58,7 +58,7 @@ Quote-currency cash delta for a principal-exchange fill.
     fill_price::Price,
     commission_total_quote::Price,
 )::Price
-    -(fill_qty * fill_price * inst.multiplier) - commission_total_quote
+    -(fill_qty * fill_price * inst.spec.multiplier) - commission_total_quote
 end
 
 """
@@ -92,7 +92,7 @@ Return the reference price used for margin requirements.
     mark_price::Price,
     last_price::Price,
 )::Price
-    if inst.settlement == SettlementStyle.VariationMargin
+    if inst.spec.settlement == SettlementStyle.VariationMargin
         return mark_price
     end
     acc.funding == AccountFunding.FullyFunded ? mark_price : last_price
@@ -112,19 +112,19 @@ Example: a 10% initial margin is `0.10`.
 @inline function margin_init_margin_ccy(acc::Account, inst::Instrument, qty, price)::Price
     qty == 0 && return zero(Price)
     if acc.funding == AccountFunding.FullyFunded
-        quote_req = abs(qty) * abs(price) * inst.multiplier
+        quote_req = abs(qty) * abs(price) * inst.spec.multiplier
         return to_margin(acc, inst, quote_req)
     end
-    requirement = inst.margin_requirement
+    requirement = inst.spec.margin_requirement
     if requirement == MarginRequirement.PercentNotional
-        rate = qty > 0 ? inst.margin_init_long : inst.margin_init_short
-        quote_req = abs(qty) * abs(price) * inst.multiplier * rate
+        rate = qty > 0 ? inst.spec.margin_init_long : inst.spec.margin_init_short
+        quote_req = abs(qty) * abs(price) * inst.spec.multiplier * rate
         return to_margin(acc, inst, quote_req)
     elseif requirement == MarginRequirement.FixedPerContract
-        per_contract = qty > 0 ? inst.margin_init_long : inst.margin_init_short
+        per_contract = qty > 0 ? inst.spec.margin_init_long : inst.spec.margin_init_short
         return abs(qty) * per_contract
     end
-    throw(ArgumentError("Unsupported margin_requirement $(requirement) for instrument $(inst.symbol)."))
+    throw(ArgumentError("Unsupported margin_requirement $(requirement) for instrument $(inst.spec.symbol)."))
 end
 
 """
@@ -141,17 +141,17 @@ Example: a 5% maintenance margin is `0.05`.
 @inline function margin_maint_margin_ccy(acc::Account, inst::Instrument, qty, price)::Price
     qty == 0 && return zero(Price)
     if acc.funding == AccountFunding.FullyFunded
-        quote_req = abs(qty) * abs(price) * inst.multiplier
+        quote_req = abs(qty) * abs(price) * inst.spec.multiplier
         return to_margin(acc, inst, quote_req)
     end
-    requirement = inst.margin_requirement
+    requirement = inst.spec.margin_requirement
     if requirement == MarginRequirement.PercentNotional
-        rate = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
-        quote_req = abs(qty) * abs(price) * inst.multiplier * rate
+        rate = qty > 0 ? inst.spec.margin_maint_long : inst.spec.margin_maint_short
+        quote_req = abs(qty) * abs(price) * inst.spec.multiplier * rate
         return to_margin(acc, inst, quote_req)
     elseif requirement == MarginRequirement.FixedPerContract
-        per_contract = qty > 0 ? inst.margin_maint_long : inst.margin_maint_short
+        per_contract = qty > 0 ? inst.spec.margin_maint_long : inst.spec.margin_maint_short
         return abs(qty) * per_contract
     end
-    throw(ArgumentError("Unsupported margin_requirement $(requirement) for instrument $(inst.symbol)."))
+    throw(ArgumentError("Unsupported margin_requirement $(requirement) for instrument $(inst.spec.symbol)."))
 end

@@ -8,7 +8,7 @@ using TestItemRunner
     acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.5))
     deposit!(acc, :USD, 1_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("ABC/USD"),
         :ABC,
         :USD;
@@ -60,7 +60,7 @@ end
     @test trade_rows[end].cash_delta_settle ≈ 23.5
     @test trade_rows[end].settlement_style == SettlementStyle.PrincipalExchange
     trade_cols = Tables.columntable(tbl)
-    @test trade_cols.symbol == fill(inst.symbol, length(acc.trades))
+    @test trade_cols.symbol == fill(inst.spec.symbol, length(acc.trades))
 
     println(DataFrame(tbl))
 end
@@ -77,7 +77,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("FX/EURUSD"),
             :FX,
             :EUR;
@@ -108,7 +108,7 @@ end
     @test row.commission_settle ≈ commission_settle atol=1e-12
     @test row.fill_pnl_settle ≈ 0.0 atol=1e-12
     @test row.cash_delta_settle ≈ expected_cash_delta atol=1e-12
-    @test row.symbol == inst.symbol
+    @test row.symbol == inst.spec.symbol
 end
 
 @testitem "positions_table" setup=[TablesTestSetup] begin
@@ -130,12 +130,12 @@ end
     rows = collect(Tables.rows(tbl))
     @test length(rows) == length(acc.positions)
     pos_row = only(rows)
-    @test pos_row.symbol == inst.symbol
+    @test pos_row.symbol == inst.spec.symbol
     @test pos_row.qty ≈ -1.0
     @test pos_row.avg_entry_price ≈ 12.0
     @test pos_row.avg_settle_price ≈ 12.0
-    @test pos_row.base_ccy == inst.base_symbol
-    @test pos_row.quote_ccy == inst.quote_symbol
+    @test pos_row.base_ccy == inst.spec.base_symbol
+    @test pos_row.quote_ccy == inst.spec.quote_symbol
     @test pos_row.last_oid == order₂.oid
     @test pos_row.last_tid == acc.trades[end].tid
 end

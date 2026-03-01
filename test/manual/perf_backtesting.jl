@@ -10,8 +10,7 @@ function run_backtest()
     deposit!(acc, :USD, 100_000.0)
 
     # define instrument
-    DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD; margin_requirement=MarginRequirement.PercentNotional)
-    register_instrument!(acc, DUMMY)
+    DUMMY = register_instrument!(acc, InstrumentSpec(Symbol("DUMMY"), :DUMMY, :USD; margin_requirement=MarginRequirement.PercentNotional))
 
     dt = DateTime(2018, 1, 2, 9, 30, 0)
     for i = 1:1_000_000
@@ -39,8 +38,7 @@ const acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base
 deposit!(acc, :USD, 100_000.0)
 
 # define instrument
-const DUMMY = Instrument(Symbol("DUMMY"), :DUMMY, :USD; margin_requirement=MarginRequirement.PercentNotional)
-register_instrument!(acc, DUMMY)
+const DUMMY = register_instrument!(acc, InstrumentSpec(Symbol("DUMMY"), :DUMMY, :USD; margin_requirement=MarginRequirement.PercentNotional))
 
 # get position for instrument
 const pos = get_position(acc, DUMMY)

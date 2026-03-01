@@ -56,7 +56,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
 
     # Percentage commissions should be based on absolute traded notional,
     # including contracts that can trade at negative prices.
-    notional_value_quote = abs(fill_price) * abs(fill_qty) * inst.multiplier
+    notional_value_quote = abs(fill_price) * abs(fill_qty) * inst.spec.multiplier
     commission_total_quote = commission + commission_pct * notional_value_quote
 
     fill_price_settle = to_settle(acc, inst, fill_price)
@@ -81,11 +81,11 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
 
     commission_settle = to_settle(acc, inst, commission_total_quote)
 
-    if inst.settlement == SettlementStyle.PrincipalExchange
+    if inst.spec.settlement == SettlementStyle.PrincipalExchange
         # Principal-exchange settlement exchanges full principal, so realized settle P&L must use
         # settlement-entry basis (captures FX translation between entry and exit).
         fill_pnl_settle = realized_qty != 0.0 ?
-            realized_qty * (fill_price_settle - pos_avg_entry_price_settle) * inst.multiplier :
+            realized_qty * (fill_price_settle - pos_avg_entry_price_settle) * inst.spec.multiplier :
             0.0
     else
         fill_pnl_quote = cash_delta_quote_vm(
@@ -99,7 +99,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
         fill_pnl_settle = to_settle(acc, inst, fill_pnl_quote)
     end
 
-    cash_delta_quote_val = if inst.settlement == SettlementStyle.VariationMargin
+    cash_delta_quote_val = if inst.spec.settlement == SettlementStyle.VariationMargin
         cash_delta_quote_vm(
             inst,
             inc_qty,
@@ -144,7 +144,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
 
     new_avg_settle_price = if new_qty == 0.0
         zero(Price)
-    elseif inst.settlement == SettlementStyle.VariationMargin
+    elseif inst.spec.settlement == SettlementStyle.VariationMargin
         mark_price
     else
         if pos_qty == 0.0
@@ -158,7 +158,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
         end
     end
 
-    if inst.settlement == SettlementStyle.VariationMargin
+    if inst.spec.settlement == SettlementStyle.VariationMargin
         new_pnl_quote = 0.0
         new_value_quote = 0.0
     else
@@ -166,10 +166,10 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
         new_pnl_quote = calc_pnl_quote(inst, new_qty, mark_price, basis_after)
         new_value_quote = calc_value_quote(inst, new_qty, mark_price)
     end
-    new_value_settle = inst.settlement == SettlementStyle.VariationMargin ? 0.0 : to_settle(acc, inst, new_value_quote)
+    new_value_settle = inst.spec.settlement == SettlementStyle.VariationMargin ? 0.0 : to_settle(acc, inst, new_value_quote)
     value_delta_settle = new_value_settle - pos_value_settle
 
-    new_pnl_settle = if inst.settlement == SettlementStyle.VariationMargin
+    new_pnl_settle = if inst.spec.settlement == SettlementStyle.VariationMargin
         0.0
     else
         pnl_settle_principal_exchange(inst, new_qty, new_value_settle, new_avg_entry_price_settle)

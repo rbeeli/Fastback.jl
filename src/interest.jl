@@ -26,10 +26,10 @@ Interest is applied to both balances and equities and recorded as
         qty < 0.0 || continue
 
         inst = pos.inst
-        inst.contract_kind == ContractKind.Spot || continue
-        inst.settlement == SettlementStyle.PrincipalExchange || continue
+        inst.spec.contract_kind == ContractKind.Spot || continue
+        inst.spec.settlement == SettlementStyle.PrincipalExchange || continue
 
-        settled_proceeds = -qty * pos.avg_entry_price_settle * inst.multiplier
+        settled_proceeds = -qty * pos.avg_entry_price_settle * inst.spec.multiplier
         settled_proceeds > 0.0 || continue
 
         proceeds[inst.settle_cash_index] += settled_proceeds

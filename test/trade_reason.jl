@@ -20,7 +20,7 @@ end
     base_currency=CashSpec(:USD)
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 1_000.0)
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("EXP/USD"),
         :EXP,
         :USD;

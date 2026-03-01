@@ -77,7 +77,7 @@ function process_expiries!(
 
     @inbounds for pos in acc.positions
         inst = pos.inst
-        inst.contract_kind == ContractKind.Future || continue
+        inst.spec.contract_kind == ContractKind.Future || continue
         is_expired(inst, dt) || continue
         
         trade = settle_expiry!(
@@ -109,10 +109,10 @@ requirements) using settlement-aware margin reference prices.
         quote_settle_fx = quote_idx != settle_idx
         quote_margin_fx = quote_idx != margin_idx
         margin_fx_sensitive = quote_margin_fx && pos.quantity != 0.0 &&
-                              (acc.funding == AccountFunding.FullyFunded || inst.margin_requirement == MarginRequirement.PercentNotional)
+                              (acc.funding == AccountFunding.FullyFunded || inst.spec.margin_requirement == MarginRequirement.PercentNotional)
         quote_settle_fx || margin_fx_sensitive || continue
 
-        if quote_settle_fx && inst.settlement != SettlementStyle.VariationMargin
+        if quote_settle_fx && inst.spec.settlement != SettlementStyle.VariationMargin
             val_quote = pos.value_quote
             new_value_settle = val_quote == 0.0 ? 0.0 : to_settle(acc, inst, val_quote)
             value_delta = new_value_settle - pos.value_settle

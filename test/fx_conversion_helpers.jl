@@ -14,7 +14,7 @@ using TestItemRunner
     usd_to_chf = 0.9
     update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), usd_to_chf)
 
-    spot_inst = register_instrument!(acc, Instrument(
+    spot_inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOT/USDCHF"),
         :SPOT,
         :USD;
@@ -52,9 +52,9 @@ using TestItemRunner
         commission,
         0.0,
     )
-    expected_cash_delta = to_settle(acc, spot_inst, -(qty * price * spot_inst.multiplier + commission))
-    expected_init_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_init_short * usd_to_chf
-    expected_maint_margin = abs(qty) * price * spot_inst.multiplier * spot_inst.margin_maint_short * usd_to_chf
+    expected_cash_delta = to_settle(acc, spot_inst, -(qty * price * spot_inst.spec.multiplier + commission))
+    expected_init_margin = abs(qty) * price * spot_inst.spec.multiplier * spot_inst.spec.margin_init_short * usd_to_chf
+    expected_maint_margin = abs(qty) * price * spot_inst.spec.multiplier * spot_inst.spec.margin_maint_short * usd_to_chf
     @test plan.cash_delta_settle ≈ expected_cash_delta atol=1e-10
     @test plan.new_init_margin_settle ≈ expected_init_margin atol=1e-10
     @test plan.new_maint_margin_settle ≈ expected_maint_margin atol=1e-10
@@ -71,14 +71,14 @@ using TestItemRunner
     accrue_borrow_fees!(acc, dt_fee)
     bal_after_fee = acc.ledger.balances[chf_idx]
     yearfrac = Dates.value(Dates.Millisecond(dt_fee - dt)) / (1000 * 60 * 60 * 24 * 365.0)
-    expected_fee_settle = abs(qty) * price * spot_inst.multiplier * spot_inst.short_borrow_rate * yearfrac * usd_to_chf
+    expected_fee_settle = abs(qty) * price * spot_inst.spec.multiplier * spot_inst.spec.short_borrow_rate * yearfrac * usd_to_chf
     @test bal_before_fee - bal_after_fee ≈ expected_fee_settle atol=1e-8
     cf_fee = acc.cashflows[end]
     @test cf_fee.kind == CashflowKind.BorrowFee
     @test cf_fee.cash_index == chf_idx
     @test cf_fee.amount ≈ -expected_fee_settle atol=1e-8
 
-    perp_inst = register_instrument!(acc, Instrument(
+    perp_inst = register_instrument!(acc, InstrumentSpec(
         Symbol("PERP/USDCHF"),
         :PERP,
         :USD;
@@ -100,7 +100,7 @@ using TestItemRunner
     bal_before_funding = acc.ledger.balances[chf_idx]
     funding_rate = 0.02
     apply_funding!(acc, perp_inst, dt_perp + Hour(8); funding_rate=funding_rate)
-    payment_quote = -order_perp.quantity * order_perp.price * perp_inst.multiplier * funding_rate
+    payment_quote = -order_perp.quantity * order_perp.price * perp_inst.spec.multiplier * funding_rate
     expected_payment_settle = payment_quote * usd_to_chf
     @test acc.ledger.balances[chf_idx] ≈ bal_before_funding + expected_payment_settle atol=1e-8
     cf_funding = acc.cashflows[end]
@@ -130,7 +130,7 @@ end
     usd_to_chf = 0.8
     update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), usd_to_chf)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOTFXI/USDCHF"),
         :SPOTFXI,
         :USD;
@@ -165,9 +165,9 @@ end
     advance_time!(acc, dt1; accrue_interest=true, accrue_borrow_fees=true)
 
     yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
-    short_proceeds_settle = abs(qty) * price * inst.multiplier * usd_to_chf
+    short_proceeds_settle = abs(qty) * price * inst.spec.multiplier * usd_to_chf
     expected_interest = (bal_before - short_proceeds_settle) * 0.02 * yearfrac
-    expected_fee_settle = short_proceeds_settle * inst.short_borrow_rate * yearfrac
+    expected_fee_settle = short_proceeds_settle * inst.spec.short_borrow_rate * yearfrac
     expected_net = expected_interest - expected_fee_settle
 
     @test acc.ledger.balances[chf_idx] ≈ bal_before + expected_net atol=1e-8

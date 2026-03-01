@@ -51,7 +51,7 @@ deposit!(acc, :USD, 10_000.0);
 
 ## register instruments for all symbols
 instruments = map(sym -> spot_instrument(sym, sym, :USD), symbols);
-register_instrument!.(Ref(acc), instruments);
+instruments = register_instrument!.(Ref(acc), instruments);
 
 ## data collectors (sampling every day)
 collect_balance, balance_data = periodic_collector(Float64, Day(1));
@@ -81,10 +81,10 @@ for i in 6:nrow(df)
 
     ## loop over all instruments and check strategy rules
     for inst in instruments
-        price = row[inst.symbol]
+        price = row[symbol(inst)]
 
-        window_open = @view df[i-4:i, inst.symbol]
-        window_close = @view df[i-2:i, inst.symbol]
+        window_open = @view df[i-4:i, symbol(inst)]
+        window_close = @view df[i-2:i, symbol(inst)]
 
         ## close position of instrument if missing data
         if any(ismissing.(window_open))
@@ -108,7 +108,7 @@ for i in 6:nrow(df)
     ## close all positions at the end of backtest
     if i == nrow(df)
         for inst in instruments
-            price = row[inst.symbol]
+            price = row[symbol(inst)]
             close_position!(acc, inst, dt, price)
         end
     end
@@ -163,7 +163,7 @@ p4 = Fastback.plot_portfolio_weights_over_time(portfolio_weights_data)
 
 ## P&L breakdown by stocks
 pnl_by_inst = acc.trades |>
-              @groupby(_.order.inst.symbol) |>
+              @groupby(symbol(_.order.inst)) |>
               @map({
                   symbol = key(_),
                   pnl = sum(getfield.(_, :fill_pnl_settle))
@@ -195,7 +195,7 @@ plot(p1, p2, p3, p4, p5;
 using PrettyTables
 
 df = acc.trades |>
-@groupby(_.order.inst.symbol) |>
+@groupby(symbol(_.order.inst)) |>
 @map({
     symbol = key(_),
     avg_pnl = sum(getfield.(_, :fill_pnl_settle)) / length(_),

@@ -64,7 +64,7 @@ end
     ::Price;
     is_maker::Bool=false,
 )::CommissionQuote
-    rate = if inst.contract_kind == ContractKind.Spot
+    rate = if inst.spec.contract_kind == ContractKind.Spot
         is_maker ? broker.maker_spot : broker.taker_spot
     else
         is_maker ? broker.maker_derivatives : broker.taker_derivatives

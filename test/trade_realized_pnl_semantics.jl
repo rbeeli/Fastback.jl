@@ -333,7 +333,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("RETNOT/USD"),
         :RETNOT,
         :USD;
@@ -384,7 +384,7 @@ end
         deposit!(acc, :USD, 1_000.0)
         inst = register_instrument!(
             acc,
-            Instrument(
+            InstrumentSpec(
                 sym,
                 :RETNEG,
                 :USD;
@@ -427,7 +427,7 @@ end
     deposit!(acc, :USD, 10_000.0)
 
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("RETNET/EURUSD"),
         :RETNET,
         :EUR;
@@ -464,7 +464,7 @@ end
     deposit!(acc, :USD, 0.0)
 
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FXREAL/EURUSD"),
         :FXREAL,
         :EUR;
@@ -500,7 +500,7 @@ end
     register_cash_asset!(acc, CashSpec(:EUR))
     deposit!(acc, :USD, 0.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FXREAL/SCALE"),
         :FXREAL,
         :EUR;

@@ -8,7 +8,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 - `Price`, `Quantity`
 - `TradeDir`, `SettlementStyle`, `MarginRequirement`, `MarginAggregation`, `ContractKind`, `AccountFunding`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `TradeReason`
-- `Cash`, `CashSpec`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
+- `Cash`, `CashSpec`, `InstrumentSpec`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
 - `ExchangeRates`
 
 ## Trade direction helpers

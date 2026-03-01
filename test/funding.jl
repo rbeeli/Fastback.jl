@@ -11,7 +11,7 @@ using TestItemRunner
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("PERP/USD"),
             :PERP,
             :USD;
@@ -33,7 +33,7 @@ using TestItemRunner
     funding_rate = 0.01
     apply_funding!(acc, inst, dt + Hour(8); funding_rate=funding_rate)
 
-    expected_payment = -1.0 * open_price * inst.multiplier * funding_rate
+    expected_payment = -1.0 * open_price * inst.spec.multiplier * funding_rate
     @test cash_balance(acc, usd) ≈ 1_000.0 + expected_payment atol=1e-8
     @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-8
     cf1 = only(acc.cashflows)
@@ -49,7 +49,7 @@ using TestItemRunner
 
     pos = get_position(acc, inst)
     @test pos.quantity ≈ -1.0
-    expected_payment2 = -pos.quantity * open_price * inst.multiplier * funding_rate
+    expected_payment2 = -pos.quantity * open_price * inst.spec.multiplier * funding_rate
     @test cash_balance(acc, usd) ≈ 1_000.0 + expected_payment + expected_payment2 atol=1e-8
     @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-8
     @test length(acc.cashflows) == 2
@@ -68,7 +68,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("PERPMARK/USD"),
             :PERPMARK,
             :USD;
@@ -92,7 +92,7 @@ end
     funding_rate = 0.01
     apply_funding!(acc, inst, dt1 + Hour(8); funding_rate=funding_rate)
 
-    expected_payment = -1.0 * 100.0 * inst.multiplier * funding_rate
+    expected_payment = -1.0 * 100.0 * inst.spec.multiplier * funding_rate
     @test cash_balance(acc, usd) ≈ 1_000.0 + expected_payment atol=1e-8
     @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-8
 end
@@ -107,7 +107,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("PERPNEG/USD"),
             :PERPNEG,
             :USD;
@@ -138,7 +138,7 @@ end
 
     apply_funding!(acc, inst, dt + Hour(8); funding_rate=funding_rate)
     cf_long = acc.cashflows[end]
-    expected_long_payment = -abs(negative_price) * inst.multiplier * funding_rate
+    expected_long_payment = -abs(negative_price) * inst.spec.multiplier * funding_rate
     @test cf_long.amount ≈ expected_long_payment atol=1e-8
 
     fill_order!(
@@ -152,6 +152,6 @@ end
     )
     apply_funding!(acc, inst, dt + Day(1) + Hour(8); funding_rate=funding_rate)
     cf_short = acc.cashflows[end]
-    expected_short_payment = abs(negative_price) * inst.multiplier * funding_rate
+    expected_short_payment = abs(negative_price) * inst.spec.multiplier * funding_rate
     @test cf_short.amount ≈ expected_short_payment atol=1e-8
 end

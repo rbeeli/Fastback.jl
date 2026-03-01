@@ -7,7 +7,8 @@ and it updates balances, equity, and margin deterministically.
 
 - Account: the central ledger (cash, positions, trades, equity, margin, cashflows).
 - Cash: a funding currency (USD, EUR, BTC) with balances and equity tracked per symbol.
-- Instrument: contract metadata (symbols, settlement, margin, lifecycle).
+- InstrumentSpec: immutable contract metadata (symbols, settlement, margin, lifecycle).
+- Instrument: account-bound handle with instrument/cash indices resolved at registration.
 - Order: intent to trade at a given time, price, quantity.
 - Trade: realized fill produced by `fill_order!`.
 - Position: netted exposure per instrument with average entry price.

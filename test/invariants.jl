@@ -27,7 +27,7 @@ using TestItemRunner
 
     @test Fastback.check_invariants(acc)
 
-    inst_asset = register_instrument!(acc, Instrument(
+    inst_asset = register_instrument!(acc, InstrumentSpec(
         Symbol("ASSET/EURUSD"),
         :ASSET,
         :EUR;

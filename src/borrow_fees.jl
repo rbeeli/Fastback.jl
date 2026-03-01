@@ -18,9 +18,9 @@ with actual short exposure.
 ) where {TTime<:Dates.AbstractTime}
     pos.quantity < 0.0 || return acc
     inst = pos.inst
-    inst.contract_kind == ContractKind.Spot || return acc
-    inst.settlement == SettlementStyle.PrincipalExchange || return acc
-    inst.short_borrow_rate > 0.0 || return acc
+    inst.spec.contract_kind == ContractKind.Spot || return acc
+    inst.spec.settlement == SettlementStyle.PrincipalExchange || return acc
+    inst.spec.short_borrow_rate > 0.0 || return acc
 
     last_dt = pos.borrow_fee_dt
     if last_dt == TTime(0)
@@ -37,7 +37,7 @@ with actual short exposure.
 
     fee_price = isnan(pos.last_price) ? pos.mark_price : pos.last_price
     # Borrow-fee notional should be non-negative even when contracts trade at negative prices.
-    fee_quote = abs(pos.quantity) * abs(fee_price) * inst.multiplier * inst.short_borrow_rate * yearfrac
+    fee_quote = abs(pos.quantity) * abs(fee_price) * inst.spec.multiplier * inst.spec.short_borrow_rate * yearfrac
     settle_idx = inst.settle_cash_index
     fee = to_settle(acc, inst, fee_quote)
     if fee != 0.0

@@ -8,7 +8,7 @@
     close_price::Price,
 ) where {TTime<:Dates.AbstractTime}
     inst = pos.inst
-    settlement = inst.settlement
+    settlement = inst.spec.settlement
     settle_cash_index = inst.settle_cash_index
     qty = pos.quantity
     basis_price = pos.avg_settle_price
@@ -113,7 +113,7 @@ end
     last_price::Price,
 ) where {TTime<:Dates.AbstractTime}
     _update_valuation!(acc, pos, dt, close_price)
-    if pos.inst.settlement != SettlementStyle.VariationMargin
+    if pos.inst.spec.settlement != SettlementStyle.VariationMargin
         pos.avg_settle_price = pos.avg_entry_price
     end
     margin_price = margin_reference_price(acc, pos.inst, close_price, last_price)
@@ -150,7 +150,7 @@ end
 
 @inline function _calc_mark_price(inst::Instrument, qty, bid, ask)
     # Variation margin instruments should mark at a neutral price to avoid spread bleed.
-    if inst.settlement == SettlementStyle.VariationMargin
+    if inst.spec.settlement == SettlementStyle.VariationMargin
         return (bid + ask) / 2
     end
     if qty > 0
@@ -163,8 +163,8 @@ end
 end
 
 @inline function _forced_close_quotes(pos::Position)
-    isfinite(pos.last_bid) || throw(ArgumentError("Forced close for $(pos.inst.symbol) requires finite last_bid; call update_marks! before expiry/liquidation."))
-    isfinite(pos.last_ask) || throw(ArgumentError("Forced close for $(pos.inst.symbol) requires finite last_ask; call update_marks! before expiry/liquidation."))
+    isfinite(pos.last_bid) || throw(ArgumentError("Forced close for $(pos.inst.spec.symbol) requires finite last_bid; call update_marks! before expiry/liquidation."))
+    isfinite(pos.last_ask) || throw(ArgumentError("Forced close for $(pos.inst.spec.symbol) requires finite last_ask; call update_marks! before expiry/liquidation."))
     bid = pos.last_bid
     ask = pos.last_ask
     fill_price = pos.quantity > 0.0 ? bid : ask
@@ -282,9 +282,9 @@ Commission is broker-driven by default via `acc.broker`.
     pos.last_price = last
     pos.mark_time = dt
     if pos.quantity < 0.0 &&
-        inst.contract_kind == ContractKind.Spot &&
-        inst.settlement == SettlementStyle.PrincipalExchange &&
-        inst.short_borrow_rate > 0.0
+        inst.spec.contract_kind == ContractKind.Spot &&
+        inst.spec.settlement == SettlementStyle.PrincipalExchange &&
+        inst.spec.short_borrow_rate > 0.0
         pos.borrow_fee_dt = dt
     else
         pos.borrow_fee_dt = TTime(0)
@@ -350,21 +350,21 @@ function roll_position!(
     allow_inactive_open::Bool=false,
 )::Tuple{Union{Trade{TTime},Nothing},Union{Trade{TTime},Nothing}} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     from_inst.index == to_inst.index &&
-        throw(ArgumentError("roll_position! requires distinct instruments, got $(from_inst.symbol)."))
-    from_inst.base_symbol == to_inst.base_symbol ||
-        throw(ArgumentError("roll_position! requires matching base_symbol, got $(from_inst.base_symbol) and $(to_inst.base_symbol)."))
-    from_inst.quote_symbol == to_inst.quote_symbol ||
-        throw(ArgumentError("roll_position! requires matching quote_symbol, got $(from_inst.quote_symbol) and $(to_inst.quote_symbol)."))
-    from_inst.multiplier == to_inst.multiplier ||
-        throw(ArgumentError("roll_position! requires matching multiplier, got $(from_inst.multiplier) and $(to_inst.multiplier)."))
-    from_inst.settle_symbol == to_inst.settle_symbol ||
-        throw(ArgumentError("roll_position! requires matching settle_symbol, got $(from_inst.settle_symbol) and $(to_inst.settle_symbol)."))
-    from_inst.margin_symbol == to_inst.margin_symbol ||
-        throw(ArgumentError("roll_position! requires matching margin_symbol, got $(from_inst.margin_symbol) and $(to_inst.margin_symbol)."))
-    from_inst.settlement == to_inst.settlement ||
-        throw(ArgumentError("roll_position! requires matching settlement style, got $(from_inst.settlement) and $(to_inst.settlement)."))
-    from_inst.margin_requirement == to_inst.margin_requirement ||
-        throw(ArgumentError("roll_position! requires matching margin_requirement, got $(from_inst.margin_requirement) and $(to_inst.margin_requirement)."))
+        throw(ArgumentError("roll_position! requires distinct instruments, got $(from_inst.spec.symbol)."))
+    from_inst.spec.base_symbol == to_inst.spec.base_symbol ||
+        throw(ArgumentError("roll_position! requires matching base_symbol, got $(from_inst.spec.base_symbol) and $(to_inst.spec.base_symbol)."))
+    from_inst.spec.quote_symbol == to_inst.spec.quote_symbol ||
+        throw(ArgumentError("roll_position! requires matching quote_symbol, got $(from_inst.spec.quote_symbol) and $(to_inst.spec.quote_symbol)."))
+    from_inst.spec.multiplier == to_inst.spec.multiplier ||
+        throw(ArgumentError("roll_position! requires matching multiplier, got $(from_inst.spec.multiplier) and $(to_inst.spec.multiplier)."))
+    from_inst.spec.settle_symbol == to_inst.spec.settle_symbol ||
+        throw(ArgumentError("roll_position! requires matching settle_symbol, got $(from_inst.spec.settle_symbol) and $(to_inst.spec.settle_symbol)."))
+    from_inst.spec.margin_symbol == to_inst.spec.margin_symbol ||
+        throw(ArgumentError("roll_position! requires matching margin_symbol, got $(from_inst.spec.margin_symbol) and $(to_inst.spec.margin_symbol)."))
+    from_inst.spec.settlement == to_inst.spec.settlement ||
+        throw(ArgumentError("roll_position! requires matching settlement style, got $(from_inst.spec.settlement) and $(to_inst.spec.settlement)."))
+    from_inst.spec.margin_requirement == to_inst.spec.margin_requirement ||
+        throw(ArgumentError("roll_position! requires matching margin_requirement, got $(from_inst.spec.margin_requirement) and $(to_inst.spec.margin_requirement)."))
 
     pos = get_position(acc, from_inst)
     qty = pos.quantity
@@ -411,7 +411,7 @@ function settle_expiry!(
     inst::Instrument{TTime},
     dt::TTime
 )::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    inst.contract_kind == ContractKind.Future || throw(ArgumentError("settle_expiry! only supports Future instruments, got $(inst.symbol) with $(inst.contract_kind)."))
+    inst.spec.contract_kind == ContractKind.Future || throw(ArgumentError("settle_expiry! only supports Future instruments, got $(inst.spec.symbol) with $(inst.spec.contract_kind)."))
 
     pos = get_position(acc, inst)
     (pos.quantity == 0.0 || !is_expired(inst, dt)) && return nothing
@@ -419,7 +419,7 @@ function settle_expiry!(
     qty_before = pos.quantity
     avg_entry_before = pos.avg_entry_price
     settle_price = pos.mark_price
-    isfinite(settle_price) || throw(ArgumentError("settle_expiry! requires finite mark_price for $(inst.symbol); call update_marks! before expiry settlement."))
+    isfinite(settle_price) || throw(ArgumentError("settle_expiry! requires finite mark_price for $(inst.spec.symbol); call update_marks! before expiry settlement."))
 
     # Realize the final VM settlement amount into cash/equity at expiry.
     _update_valuation!(acc, pos, dt, settle_price)

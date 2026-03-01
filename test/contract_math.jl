@@ -11,7 +11,7 @@ using TestItemRunner
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("AST/USD"),
             :AST,
             :USD;
@@ -40,7 +40,7 @@ using TestItemRunner
     @test equity_after ≈ equity_before - commission atol=1e-12
 
     pos = get_position(acc, inst)
-    @test pos.value_quote ≈ qty * price * inst.multiplier atol=1e-12
+    @test pos.value_quote ≈ qty * price * inst.spec.multiplier atol=1e-12
     @test pos.pnl_quote ≈ 0.0 atol=1e-12
 end
 
@@ -54,7 +54,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("CSH/USD"),
             :CSH,
             :USD;
@@ -80,13 +80,13 @@ end
 
     close_price = 55.0
     update_marks!(acc, pos, dt + Hour(1), close_price, close_price, close_price)
-    expected_pnl = qty * (close_price - price) * inst.multiplier
+    expected_pnl = qty * (close_price - price) * inst.spec.multiplier
     @test equity(acc, usd) ≈ equity_before + expected_pnl atol=1e-12
 
     # move back below entry to confirm symmetry
     close_price2 = 48.0
     update_marks!(acc, pos, dt + Hour(2), close_price2, close_price2, close_price2)
-    expected_pnl2 = qty * (close_price2 - price) * inst.multiplier
+    expected_pnl2 = qty * (close_price2 - price) * inst.spec.multiplier
     @test equity(acc, usd) ≈ equity_before + expected_pnl2 atol=1e-12
 end
 
@@ -100,7 +100,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("PERP/USD"),
             :PERP,
             :USD;
@@ -142,12 +142,18 @@ end
 @testitem "cash_delta_quote_principal_exchange uses principal plus commission" begin
     using Test, Fastback
 
-    inst = Instrument(Symbol("A/USD"), :A, :USD; margin_requirement=MarginRequirement.PercentNotional, multiplier=2.0)
+    inst = Instrument(
+        1,
+        1,
+        1,
+        1,
+        InstrumentSpec(Symbol("A/USD"), :A, :USD; margin_requirement=MarginRequirement.PercentNotional, multiplier=2.0),
+    )
     fill_qty = 3.0
     fill_price = 5.5
     commission = 1.2
 
-    expected = -(fill_qty * fill_price * inst.multiplier) - commission
+    expected = -(fill_qty * fill_price * inst.spec.multiplier) - commission
     @test Fastback.cash_delta_quote_principal_exchange(inst, fill_qty, fill_price, commission) ≈ expected atol=1e-12
 end
 
@@ -155,11 +161,17 @@ end
     using Test, Fastback
 
     inst = Instrument(
-        Symbol("VM2/USD"),
-        :VM2,
-        :USD;
-        settlement=SettlementStyle.VariationMargin,
-        multiplier=1.0,
+        1,
+        1,
+        1,
+        1,
+        InstrumentSpec(
+            Symbol("VM2/USD"),
+            :VM2,
+            :USD;
+            settlement=SettlementStyle.VariationMargin,
+            multiplier=1.0,
+        ),
     )
 
     pos_qty = 2.0
@@ -193,7 +205,7 @@ end
     base_currency=CashSpec(:USD)
     acc_margin = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc_margin, :USD, 0.0)
-    inst_margin = register_instrument!(acc_margin, Instrument(
+    inst_margin = register_instrument!(acc_margin, InstrumentSpec(
         Symbol("NEG/MARGIN"),
         :NEG,
         :USD;
@@ -210,10 +222,10 @@ end
     mark = -10.0
     qty_long = 3.0
     qty_short = -3.0
-    @test margin_init_margin_ccy(acc_margin, inst_margin, qty_long, mark) ≈ abs(qty_long) * abs(mark) * inst_margin.multiplier * inst_margin.margin_init_long
-    @test margin_maint_margin_ccy(acc_margin, inst_margin, qty_long, mark) ≈ abs(qty_long) * abs(mark) * inst_margin.multiplier * inst_margin.margin_maint_long
-    @test margin_init_margin_ccy(acc_margin, inst_margin, qty_short, mark) ≈ abs(qty_short) * abs(mark) * inst_margin.multiplier * inst_margin.margin_init_short
-    @test margin_maint_margin_ccy(acc_margin, inst_margin, qty_short, mark) ≈ abs(qty_short) * abs(mark) * inst_margin.multiplier * inst_margin.margin_maint_short
+    @test margin_init_margin_ccy(acc_margin, inst_margin, qty_long, mark) ≈ abs(qty_long) * abs(mark) * inst_margin.spec.multiplier * inst_margin.spec.margin_init_long
+    @test margin_maint_margin_ccy(acc_margin, inst_margin, qty_long, mark) ≈ abs(qty_long) * abs(mark) * inst_margin.spec.multiplier * inst_margin.spec.margin_maint_long
+    @test margin_init_margin_ccy(acc_margin, inst_margin, qty_short, mark) ≈ abs(qty_short) * abs(mark) * inst_margin.spec.multiplier * inst_margin.spec.margin_init_short
+    @test margin_maint_margin_ccy(acc_margin, inst_margin, qty_short, mark) ≈ abs(qty_short) * abs(mark) * inst_margin.spec.multiplier * inst_margin.spec.margin_maint_short
 
     base_currency=CashSpec(:USD)
     acc_cash = Account(; broker=NoOpBroker(), funding=AccountFunding.FullyFunded, base_currency=base_currency)
@@ -225,7 +237,7 @@ end
         multiplier=2.0,
     ))
     qty_cash = 3.0
-    expected_full_notional = abs(qty_cash) * abs(mark) * inst_cash.multiplier
+    expected_full_notional = abs(qty_cash) * abs(mark) * inst_cash.spec.multiplier
     @test margin_init_margin_ccy(acc_cash, inst_cash, qty_cash, mark) ≈ expected_full_notional
     @test margin_maint_margin_ccy(acc_cash, inst_cash, qty_cash, mark) ≈ expected_full_notional
 end
@@ -237,7 +249,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 0.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("NEG/FILL"),
         :NEG,
         :USD;

@@ -60,8 +60,8 @@ end
     deposit!(acc, :GBP, 0.0)
     inst2 = spot_instrument(Symbol("MISS/GBP"), :MISS, :GBP)
     registered = register_instrument!(acc, inst2)
-    @test registered === inst2
-    @test get_position(acc, inst2).inst === inst2
+    @test registered.spec == inst2
+    @test get_position(acc, registered).inst === registered
 end
 
 @testitem "Account long order w/o commission" begin
@@ -166,7 +166,7 @@ end
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 600.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("MARG/USD"), :MARG, :USD;
+    inst = register_instrument!(acc, InstrumentSpec(Symbol("MARG/USD"), :MARG, :USD;
         settlement=SettlementStyle.PrincipalExchange,
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.5,
@@ -307,7 +307,7 @@ end
     order = Order(oid!(acc), inst, dates[1], price, qty)
     trade = fill_order!(acc, order; dt=dates[1], fill_price=price, bid=price, ask=price, last=price)
 
-    expected_notional = qty * price * inst.multiplier
+    expected_notional = qty * price * inst.spec.multiplier
     @test notional_value(order) == expected_notional
     @test notional_value(trade) == expected_notional
     @test trade.commission_settle == commission_pct * expected_notional
@@ -320,7 +320,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOT/USD"),
         :SPOT,
         :USD;
@@ -355,7 +355,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOT/USD"),
         :SPOT,
         :USD;
@@ -390,7 +390,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FUT/USD"),
         :FUT,
         :USD;
@@ -448,7 +448,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("VMARK/USD"),
         :VMARK,
         :USD;
@@ -491,7 +491,7 @@ end
 
     start_dt = DateTime(2026, 1, 1)
     expiry_dt = DateTime(2026, 2, 1)
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("EXP/USD"),
         :EXP,
         :USD;
@@ -608,7 +608,7 @@ end
     acc = Account(; broker=NoOpBroker(), base_currency=base_currency)
     deposit!(acc, :USD, 5_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FUT/USD"),
         :FUT,
         :USD;
@@ -636,7 +636,7 @@ end
     base_currency=CashSpec(:USD)
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 100.0)
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("MARGINFAIL/USD"),
         :MARGINFAIL,
         :USD;
@@ -671,7 +671,7 @@ end
 
     start_dt = DateTime(2026, 1, 1)
     expiry_dt = DateTime(2026, 2, 1)
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FUT/USD"),
         :FUT,
         :USD;
@@ -725,7 +725,7 @@ end
 
     start_dt = DateTime(2026, 1, 1)
     expiry_dt = DateTime(2026, 2, 1)
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FUTNAN/USD"),
         :FUTNAN,
         :USD;
@@ -760,7 +760,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("NOMARGIN/USD"),
         :NOMARGIN,
         :USD;
@@ -792,7 +792,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("MARGIN/USD"),
         :MARGIN,
         :USD;
@@ -831,7 +831,7 @@ end
     @test acc.funding == AccountFunding.Margined
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("BROKER/USD"),
         :BROKER,
         :USD;
@@ -868,7 +868,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FIXED/USD"),
         :FIXED,
         :USD;
@@ -920,7 +920,7 @@ end
     deposit!(acc, :EUR, 0.0)
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.10) # EUR→USD
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FIXED/EUR"),
         :FIXED,
         :EUR;
@@ -987,7 +987,7 @@ end
 
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FXEQ/EURUSD"),
         :FXEQ,
         :EUR;

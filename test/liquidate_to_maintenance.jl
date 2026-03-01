@@ -7,12 +7,12 @@ using TestItemRunner
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 16_000.0)
 
-    inst_big = register_instrument!(acc, Instrument(Symbol("BIG/USD"), :BIG, :USD;
+    inst_big = register_instrument!(acc, InstrumentSpec(Symbol("BIG/USD"), :BIG, :USD;
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.2, margin_init_short=0.2,
         margin_maint_long=0.1, margin_maint_short=0.1))
 
-    inst_small = register_instrument!(acc, Instrument(Symbol("SML/USD"), :SML, :USD;
+    inst_small = register_instrument!(acc, InstrumentSpec(Symbol("SML/USD"), :SML, :USD;
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.2, margin_init_short=0.2,
         margin_maint_long=0.1, margin_maint_short=0.1))
@@ -45,7 +45,7 @@ end
     acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=1.0, pct=0.02))
     deposit!(acc, :USD, 1_500.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("RISK/USD"), :RISK, :USD;
+    inst = register_instrument!(acc, InstrumentSpec(Symbol("RISK/USD"), :RISK, :USD;
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
         margin_maint_long=0.1, margin_maint_short=0.1))
@@ -75,7 +75,7 @@ end
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 25.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("VMMAINT/USD"), :VMMAINT, :USD;
+    inst = register_instrument!(acc, InstrumentSpec(Symbol("VMMAINT/USD"), :VMMAINT, :USD;
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
         margin_requirement=MarginRequirement.PercentNotional,
@@ -113,14 +113,14 @@ end
     deposit!(acc, :EUR, 200.0)
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
 
-    inst_eur = register_instrument!(acc, Instrument(Symbol("PER/EUR"), :PER, :EUR;
+    inst_eur = register_instrument!(acc, InstrumentSpec(Symbol("PER/EUR"), :PER, :EUR;
         settle_symbol=:EUR,
         settlement=SettlementStyle.PrincipalExchange,
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.3, margin_init_short=0.3,
         margin_maint_long=0.2, margin_maint_short=0.2))
 
-    inst_usd = register_instrument!(acc, Instrument(Symbol("PER/USD"), :PER, :USD;
+    inst_usd = register_instrument!(acc, InstrumentSpec(Symbol("PER/USD"), :PER, :USD;
         settle_symbol=:USD,
         settlement=SettlementStyle.PrincipalExchange,
         margin_requirement=MarginRequirement.PercentNotional,
@@ -158,7 +158,7 @@ end
     deposit!(acc, :EUR, 1_000.0)
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1) # EUR -> USD
 
-    inst = register_instrument!(acc, Instrument(Symbol("PCUR/FALLBACK"), :PCUR, :USD;
+    inst = register_instrument!(acc, InstrumentSpec(Symbol("PCUR/FALLBACK"), :PCUR, :USD;
         settle_symbol=:USD,
         margin_symbol=:EUR,
         contract_kind=ContractKind.Spot,

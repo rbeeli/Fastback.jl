@@ -13,7 +13,7 @@ using TestItemRunner
 
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.07)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("EURSPOT/EUR"),
         :EURSPOT,
         :EUR;
@@ -45,7 +45,7 @@ end
 
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.07)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("EURSPOT/EUR"),
         :EURSPOT,
         :EUR;

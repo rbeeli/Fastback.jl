@@ -7,7 +7,7 @@ using TestItemRunner
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 5_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("SHORT/USD"), :SHORT, :USD;
+    inst = register_instrument!(acc, InstrumentSpec(Symbol("SHORT/USD"), :SHORT, :USD;
         settlement=SettlementStyle.PrincipalExchange,
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
@@ -45,7 +45,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 5_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("SHORTSPREAD/USD"), :SHORTSPREAD, :USD;
+    inst = register_instrument!(acc, InstrumentSpec(Symbol("SHORTSPREAD/USD"), :SHORTSPREAD, :USD;
         settlement=SettlementStyle.PrincipalExchange,
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
@@ -68,7 +68,7 @@ end
     after_bal = cash_balance(acc, cash_asset(acc, :USD))
 
     yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
-    expected_fee = abs(qty) * last * inst.multiplier * inst.short_borrow_rate * yearfrac
+    expected_fee = abs(qty) * last * inst.spec.multiplier * inst.spec.short_borrow_rate * yearfrac
 
     @test before_bal - after_bal ≈ expected_fee atol=1e-10
 end
@@ -81,7 +81,7 @@ end
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 5_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("SHORTNEG/USD"), :SHORTNEG, :USD;
+    inst = register_instrument!(acc, InstrumentSpec(Symbol("SHORTNEG/USD"), :SHORTNEG, :USD;
         settlement=SettlementStyle.PrincipalExchange,
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
@@ -109,7 +109,7 @@ end
     bal_after = cash_balance(acc, usd)
 
     yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
-    expected_fee = abs(qty) * abs(negative_price) * inst.multiplier * inst.short_borrow_rate * yearfrac
+    expected_fee = abs(qty) * abs(negative_price) * inst.spec.multiplier * inst.spec.short_borrow_rate * yearfrac
     cf = acc.cashflows[end]
 
     @test bal_before - bal_after ≈ expected_fee atol=1e-10
@@ -124,7 +124,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("SHORTOPEN/USD"), :SHORTOPEN, :USD;
+    inst = register_instrument!(acc, InstrumentSpec(Symbol("SHORTOPEN/USD"), :SHORTOPEN, :USD;
         settlement=SettlementStyle.PrincipalExchange,
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
@@ -144,7 +144,7 @@ end
     accrue_borrow_fees!(acc, dt2)
 
     yearfrac = Dates.value(Dates.Millisecond(dt2 - dt1)) / (1000 * 60 * 60 * 24 * 365.0)
-    expected_fee = abs(qty) * price * inst.multiplier * inst.short_borrow_rate * yearfrac
+    expected_fee = abs(qty) * price * inst.spec.multiplier * inst.spec.short_borrow_rate * yearfrac
 
     borrow_cfs = filter(cf -> cf.kind == CashflowKind.BorrowFee, acc.cashflows)
     @test length(borrow_cfs) == 1
@@ -158,7 +158,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(Symbol("SHORTCLOSE/USD"), :SHORTCLOSE, :USD;
+    inst = register_instrument!(acc, InstrumentSpec(Symbol("SHORTCLOSE/USD"), :SHORTCLOSE, :USD;
         settlement=SettlementStyle.PrincipalExchange,
         margin_requirement=MarginRequirement.PercentNotional,
         margin_init_long=0.1, margin_init_short=0.1,
@@ -174,7 +174,7 @@ end
     fill_order!(acc, Order(oid!(acc), inst, dt1, price, -qty); dt=dt1, fill_price=price, bid=price, ask=price, last=price)
 
     yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
-    expected_fee = abs(qty) * price * inst.multiplier * inst.short_borrow_rate * yearfrac
+    expected_fee = abs(qty) * price * inst.spec.multiplier * inst.spec.short_borrow_rate * yearfrac
 
     borrow_cfs = filter(cf -> cf.kind == CashflowKind.BorrowFee, acc.cashflows)
     @test length(borrow_cfs) == 1

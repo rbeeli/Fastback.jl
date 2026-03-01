@@ -71,8 +71,8 @@ end
     qty_abs = abs(qty)
     qty_abs == 0.0 && return CommissionQuote()
 
-    if inst.contract_kind == ContractKind.Spot
-        notional = qty_abs * abs(price) * inst.multiplier
+    if inst.spec.contract_kind == ContractKind.Spot
+        notional = qty_abs * abs(price) * inst.spec.multiplier
         fee = min(
             max(broker.equity_min, broker.equity_per_share * qty_abs),
             broker.equity_max_pct * notional,
@@ -80,7 +80,7 @@ end
         return CommissionQuote(; fixed=fee, pct=0.0)
     end
 
-    per_contract = get(broker.futures_per_contract, inst.symbol, 0.0)
+    per_contract = get(broker.futures_per_contract, inst.spec.symbol, 0.0)
     CommissionQuote(; fixed=qty_abs * per_contract, pct=0.0)
 end
 

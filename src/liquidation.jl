@@ -26,7 +26,7 @@ function liquidate_all!(
             allow_inactive=true,
             trade_reason=TradeReason.Liquidation,
         )
-        trade isa Trade || throw(ArgumentError("Liquidation rejected for $(pos.inst.symbol) with reason $(trade)"))
+        trade isa Trade || throw(ArgumentError("Liquidation rejected for $(pos.inst.spec.symbol) with reason $(trade)"))
         push!(trades, trade)
     end
     trades
@@ -202,7 +202,7 @@ function liquidate_to_maintenance!(
         if trade isa Trade
             push!(trades, trade)
         else
-            throw(ArgumentError("Liquidation rejected for $(max_pos.inst.symbol) with reason $(trade)"))
+            throw(ArgumentError("Liquidation rejected for $(max_pos.inst.spec.symbol) with reason $(trade)"))
         end
     end
 

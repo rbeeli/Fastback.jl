@@ -11,7 +11,7 @@ using TestItemRunner
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.0)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = Instrument(Symbol("BTC/EUR_SETL_USD"), :BTC, :EUR;
+    inst = InstrumentSpec(Symbol("BTC/EUR_SETL_USD"), :BTC, :EUR;
         settle_symbol=:USD,
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
@@ -23,7 +23,7 @@ using TestItemRunner
         multiplier=1.0,
     )
 
-    register_instrument!(acc, inst)
+    inst = register_instrument!(acc, inst)
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 20_000.0, 1.0)
@@ -57,7 +57,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("VM/USD"),
             :VM,
             :USD;
@@ -111,7 +111,7 @@ end
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.0)
     deposit!(acc, :USD, 5_000.0)
 
-    inst = Instrument(Symbol("DERIV/EUR-MEUR"), :BTC, :EUR;
+    inst = InstrumentSpec(Symbol("DERIV/EUR-MEUR"), :BTC, :EUR;
         settle_symbol=:EUR,
         contract_kind=ContractKind.Future,
         settlement=SettlementStyle.VariationMargin,
@@ -123,7 +123,7 @@ end
         expiry=DateTime(2026, 1, 10),
     )
 
-    register_instrument!(acc, inst)
+    inst = register_instrument!(acc, inst)
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 20_000.0, 0.1)
@@ -151,7 +151,7 @@ end
 
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1) # EUR -> USD
 
-    inst = Instrument(Symbol("MARGIN/EUR"), :MARG, :USD;
+    inst = InstrumentSpec(Symbol("MARGIN/EUR"), :MARG, :USD;
         settle_symbol=:USD,
         margin_symbol=:EUR,
         contract_kind=ContractKind.Perpetual,
@@ -164,7 +164,7 @@ end
         multiplier=1.0,
     )
 
-    register_instrument!(acc, inst)
+    inst = register_instrument!(acc, inst)
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 100.0, 1.0)
@@ -192,7 +192,7 @@ end
     deposit!(acc, :EUR, 1_000.0)
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1) # EUR -> USD
 
-    inst = Instrument(Symbol("PCUR/SETTLEDEF"), :PCUR, :USD;
+    inst = InstrumentSpec(Symbol("PCUR/SETTLEDEF"), :PCUR, :USD;
         settle_symbol=:USD,
         margin_symbol=:EUR,
         contract_kind=ContractKind.Spot,
@@ -204,7 +204,7 @@ end
         margin_maint_short=0.5,
         multiplier=1.0,
     )
-    register_instrument!(acc, inst)
+    inst = register_instrument!(acc, inst)
 
     # Notional 11*100=1100 USD -> 1000 EUR margin requirement, fully covered by EUR equity.
     # But 50 USD commission would push USD post-fill equity below zero.
@@ -238,7 +238,7 @@ end
 
     deposit!(acc, :USD, 10_000.0)
 
-    inst = Instrument(Symbol("BTC/EUR_SETL_USD_MUSD"), :BTC, :EUR;
+    inst = InstrumentSpec(Symbol("BTC/EUR_SETL_USD_MUSD"), :BTC, :EUR;
         settle_symbol=:USD,
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
@@ -250,7 +250,7 @@ end
         multiplier=1.0,
     )
 
-    register_instrument!(acc, inst)
+    inst = register_instrument!(acc, inst)
 
     dt = DateTime(2026, 1, 1)
     order = Order(oid!(acc), inst, dt, 20_000.0, 1.0)

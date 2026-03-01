@@ -14,7 +14,7 @@ using TestItemRunner
     # 1 EUR = 1.2 USD
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.2)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("TEST/EURUSD"),
         :TEST,
         :EUR;
@@ -60,7 +60,7 @@ end
 
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("PNLSET/EURUSD"),
         :PNLSET,
         :EUR;

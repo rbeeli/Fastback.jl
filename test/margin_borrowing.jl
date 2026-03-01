@@ -8,7 +8,7 @@ using TestItemRunner
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 6_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("MARGINABLE/USD"),
         :MARGINABLE,
         :USD;
@@ -39,7 +39,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 6_000.0)
 
-    inst = Instrument(
+    inst = InstrumentSpec(
         Symbol("CASHONLY/USD"),
         :CASHONLY,
         :USD;
@@ -56,7 +56,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 1_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("DERISK/USD"),
         :DERISK,
         :USD;

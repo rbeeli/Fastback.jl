@@ -11,10 +11,10 @@ function recompute_equities(acc::Account)
 
     @inbounds for pos in acc.positions
         inst = pos.inst
-        settlement = inst.settlement
+        settlement = inst.spec.settlement
 
         if settlement == SettlementStyle.VariationMargin
-            iszero(pos.value_quote) || throw(AssertionError("Variation-margin position $(inst.symbol) must have zero value_quote."))
+            iszero(pos.value_quote) || throw(AssertionError("Variation-margin position $(inst.spec.symbol) must have zero value_quote."))
             continue
         end
 
@@ -22,7 +22,7 @@ function recompute_equities(acc::Account)
         iszero(val_quote) && continue
 
         settle_idx = inst.settle_cash_index
-        settle_idx > 0 || throw(AssertionError("Instrument $(inst.symbol) has unset settle_cash_index."))
+        settle_idx > 0 || throw(AssertionError("Instrument $(inst.spec.symbol) has unset settle_cash_index."))
 
         equities[settle_idx] += to_settle(acc, inst, val_quote)
     end
@@ -42,7 +42,7 @@ function recompute_margins(acc::Account)
 
     @inbounds for pos in acc.positions
         margin_idx = pos.inst.margin_cash_index
-        margin_idx > 0 || throw(AssertionError("Instrument $(pos.inst.symbol) has unset margin_cash_index."))
+        margin_idx > 0 || throw(AssertionError("Instrument $(pos.inst.spec.symbol) has unset margin_cash_index."))
 
         init[margin_idx] += pos.init_margin_settle
         maint[margin_idx] += pos.maint_margin_settle
@@ -66,39 +66,39 @@ function check_invariants(acc::Account; atol::Real=1e-9, rtol::Real=1e-9)
     @inbounds for pos in acc.positions
         inst = pos.inst
 
-        inst.quote_cash_index > 0 || throw(AssertionError("Instrument $(inst.symbol) has unset quote_cash_index."))
-        inst.settle_cash_index > 0 || throw(AssertionError("Instrument $(inst.symbol) has unset settle_cash_index."))
-        inst.margin_cash_index > 0 || throw(AssertionError("Instrument $(inst.symbol) has unset margin_cash_index."))
-        pos.index == inst.index || throw(AssertionError("Position index $(pos.index) must equal instrument index $(inst.index) for $(inst.symbol)."))
-        isfinite(pos.entry_commission_quote_carry) || throw(AssertionError("Position $(inst.symbol) must have finite entry_commission_quote_carry."))
+        inst.quote_cash_index > 0 || throw(AssertionError("Instrument $(inst.spec.symbol) has unset quote_cash_index."))
+        inst.settle_cash_index > 0 || throw(AssertionError("Instrument $(inst.spec.symbol) has unset settle_cash_index."))
+        inst.margin_cash_index > 0 || throw(AssertionError("Instrument $(inst.spec.symbol) has unset margin_cash_index."))
+        pos.index == inst.index || throw(AssertionError("Position index $(pos.index) must equal instrument index $(inst.index) for $(inst.spec.symbol)."))
+        isfinite(pos.entry_commission_quote_carry) || throw(AssertionError("Position $(inst.spec.symbol) must have finite entry_commission_quote_carry."))
 
         if pos.quantity != 0.0
-            isfinite(pos.mark_price) || throw(AssertionError("Position $(inst.symbol) must have a finite mark_price when exposure is non-zero."))
-            isfinite(pos.last_bid) || throw(AssertionError("Position $(inst.symbol) must have a finite last_bid when exposure is non-zero."))
-            isfinite(pos.last_ask) || throw(AssertionError("Position $(inst.symbol) must have a finite last_ask when exposure is non-zero."))
-            isfinite(pos.last_price) || throw(AssertionError("Position $(inst.symbol) must have a finite last_price when exposure is non-zero."))
-            pos.mark_time != typeof(pos.mark_time)(0) || throw(AssertionError("Position $(inst.symbol) must have a mark_time when exposure is non-zero."))
+            isfinite(pos.mark_price) || throw(AssertionError("Position $(inst.spec.symbol) must have a finite mark_price when exposure is non-zero."))
+            isfinite(pos.last_bid) || throw(AssertionError("Position $(inst.spec.symbol) must have a finite last_bid when exposure is non-zero."))
+            isfinite(pos.last_ask) || throw(AssertionError("Position $(inst.spec.symbol) must have a finite last_ask when exposure is non-zero."))
+            isfinite(pos.last_price) || throw(AssertionError("Position $(inst.spec.symbol) must have a finite last_price when exposure is non-zero."))
+            pos.mark_time != typeof(pos.mark_time)(0) || throw(AssertionError("Position $(inst.spec.symbol) must have a mark_time when exposure is non-zero."))
         else
             isapprox(pos.avg_entry_price_settle, 0.0; atol=atol, rtol=rtol) ||
-                throw(AssertionError("Flat position $(inst.symbol) must have zero avg_entry_price_settle."))
+                throw(AssertionError("Flat position $(inst.spec.symbol) must have zero avg_entry_price_settle."))
             isapprox(pos.entry_commission_quote_carry, 0.0; atol=atol, rtol=rtol) ||
-                throw(AssertionError("Flat position $(inst.symbol) must have zero entry_commission_quote_carry."))
+                throw(AssertionError("Flat position $(inst.spec.symbol) must have zero entry_commission_quote_carry."))
         end
 
-        if inst.settlement == SettlementStyle.VariationMargin
-            isapprox(pos.value_quote, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.symbol) must have zero value_quote."))
-            isapprox(pos.value_settle, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.symbol) must have zero value_settle."))
-            isapprox(pos.pnl_quote, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.symbol) must have zero pnl_quote."))
-            isapprox(pos.pnl_settle, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.symbol) must have zero pnl_settle."))
+        if inst.spec.settlement == SettlementStyle.VariationMargin
+            isapprox(pos.value_quote, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.spec.symbol) must have zero value_quote."))
+            isapprox(pos.value_settle, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.spec.symbol) must have zero value_settle."))
+            isapprox(pos.pnl_quote, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.spec.symbol) must have zero pnl_quote."))
+            isapprox(pos.pnl_settle, 0.0; atol=atol, rtol=rtol) || throw(AssertionError("Variation-margin position $(inst.spec.symbol) must have zero pnl_settle."))
         else
             isapprox(pos.avg_settle_price, pos.avg_entry_price; atol=atol, rtol=rtol) ||
-                throw(AssertionError("Position $(inst.symbol) avg_settle_price must match avg_entry_price for non-variation settlement."))
+                throw(AssertionError("Position $(inst.spec.symbol) avg_settle_price must match avg_entry_price for non-variation settlement."))
             val_settle_expected = to_settle(acc, inst, pos.value_quote)
             isapprox(pos.value_settle, val_settle_expected; atol=atol, rtol=rtol) ||
-                throw(AssertionError("Position $(inst.symbol) value_settle cache is stale (expected $(val_settle_expected), found $(pos.value_settle))."))
+                throw(AssertionError("Position $(inst.spec.symbol) value_settle cache is stale (expected $(val_settle_expected), found $(pos.value_settle))."))
             pnl_settle_expected = pnl_settle_principal_exchange(inst, pos.quantity, pos.value_settle, pos.avg_entry_price_settle)
             isapprox(pos.pnl_settle, pnl_settle_expected; atol=atol, rtol=rtol) ||
-                throw(AssertionError("Position $(inst.symbol) pnl_settle cache is stale (expected $(pnl_settle_expected), found $(pos.pnl_settle))."))
+                throw(AssertionError("Position $(inst.spec.symbol) pnl_settle cache is stale (expected $(pnl_settle_expected), found $(pos.pnl_settle))."))
         end
     end
 

@@ -139,8 +139,8 @@ end
 
     inst_a = spot_instrument(:AAA, :AAA, :USD)
     inst_b = spot_instrument(:BBB, :BBB, :USD)
-    register_instrument!(acc, inst_a)
-    register_instrument!(acc, inst_b)
+    inst_a = register_instrument!(acc, inst_a)
+    inst_b = register_instrument!(acc, inst_b)
 
     dt_open = DateTime(2020, 1, 1, 9, 0, 0)
     order_a = Order(oid!(acc), inst_a, dt_open, 100.0, 1.0)
@@ -187,7 +187,7 @@ end
         broker=NoOpBroker(),
     )
     inst = spot_instrument(:AAA, :AAA, :USD)
-    register_instrument!(acc, inst)
+    inst = register_instrument!(acc, inst)
 
     collect_weights, collected = portfolio_weights_collector(acc, [inst], Day(1))
     dt = DateTime(2020, 1, 1, 10, 0, 0)

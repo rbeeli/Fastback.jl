@@ -7,7 +7,7 @@ using TestItemRunner
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOTM/USD"),
         :SPOTM,
         :USD;
@@ -48,7 +48,7 @@ end
     )
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOTML/USD"),
         :SPOTML,
         :USD;
@@ -101,7 +101,7 @@ end
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOTMS/USD"),
         :SPOTMS,
         :USD;
@@ -159,7 +159,7 @@ end
     )
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOTMSI/USD"),
         :SPOTMSI,
         :USD;
@@ -195,9 +195,9 @@ end
     advance_time!(acc, dt1; accrue_interest=true, accrue_borrow_fees=true)
 
     yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
-    short_proceeds = abs(qty) * price * inst.multiplier
+    short_proceeds = abs(qty) * price * inst.spec.multiplier
     expected_interest = (bal_before - short_proceeds) * 0.02 * yearfrac
-    expected_fee = abs(qty) * price * inst.multiplier * inst.short_borrow_rate * yearfrac
+    expected_fee = abs(qty) * price * inst.spec.multiplier * inst.spec.short_borrow_rate * yearfrac
     expected_delta = expected_interest - expected_fee
 
     @test cash_balance(acc, usd) ≈ bal_before + expected_delta atol=1e-6
@@ -237,7 +237,7 @@ end
     )
     deposit!(acc, :USD, 10_100.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOTIBKR/USD"),
         :SPOTIBKR,
         :USD;
@@ -269,7 +269,7 @@ end
     accrue_interest!(acc, dt1)
 
     yearfrac = Dates.value(Dates.Millisecond(dt1 - dt0)) / (1000 * 60 * 60 * 24 * 365.0)
-    short_proceeds = abs(qty) * price * inst.multiplier
+    short_proceeds = abs(qty) * price * inst.spec.multiplier
     free_cash = bal_before - short_proceeds
     expected_lend = free_cash * (0.03 - 0.005) * yearfrac
     expected_rebate = short_proceeds * (0.03 - 0.01) * yearfrac
@@ -299,7 +299,7 @@ end
     )
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOTINCL/USD"),
         :SPOTINCL,
         :USD;
@@ -495,7 +495,7 @@ end
 
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :CHF), 1.1)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOTFX/EURCHF"),
         :SPOTFX,
         :EUR;
@@ -522,7 +522,7 @@ end
     update_marks!(acc, inst, dt + Hour(1), price_mark, price_mark, price_mark)
 
     pos = get_position(acc, inst)
-    expected_pnl_quote = qty * (price_mark - price_entry) * inst.multiplier
+    expected_pnl_quote = qty * (price_mark - price_entry) * inst.spec.multiplier
     @test pos.pnl_quote ≈ expected_pnl_quote atol=1e-8
 
     rate = get_rate(acc.exchange_rates, cash_asset(acc, :EUR), cash_asset(acc, :CHF))

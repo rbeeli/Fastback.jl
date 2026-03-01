@@ -15,7 +15,7 @@ using TestItemRunner
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("SHRT/USD"),
             :SHRT,
             :USD;
@@ -46,9 +46,9 @@ using TestItemRunner
 
     yearfrac = 1 / 365
     pos = get_position(acc, inst)
-    short_proceeds = abs(pos.quantity) * pos.avg_entry_price_settle * inst.multiplier
+    short_proceeds = abs(pos.quantity) * pos.avg_entry_price_settle * inst.spec.multiplier
     expected_interest = (bal_before - short_proceeds) * 0.05 * yearfrac
-    expected_borrow = abs(pos.quantity) * pos.mark_price * inst.multiplier * 0.20 * yearfrac
+    expected_borrow = abs(pos.quantity) * pos.mark_price * inst.spec.multiplier * 0.20 * yearfrac
     @test bal_after_first - bal_before ≈ (expected_interest - expected_borrow) atol=1e-8
 
     process_step!(acc, dt1)
@@ -85,7 +85,7 @@ end
     dt0 = DateTime(2026, 1, 1)
     dt1 = dt0 + Day(1)
 
-    spot_inst = register_instrument!(acc, Instrument(
+    spot_inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOTORD/USDCHF"),
         :SPOTORD,
         :USD;
@@ -100,7 +100,7 @@ end
         multiplier=1.0,
     ))
 
-    perp_inst = register_instrument!(acc, Instrument(
+    perp_inst = register_instrument!(acc, InstrumentSpec(
         Symbol("PERPORD/USD"),
         :PERPORD,
         :USD;
@@ -114,7 +114,7 @@ end
         multiplier=1.0,
     ))
 
-    fut_inst = register_instrument!(acc, Instrument(
+    fut_inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FUTORD/USD"),
         :FUTORD,
         :USD;
@@ -210,7 +210,7 @@ end
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10_000.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("VMINT/USD"),
         :VMINT,
         :USD;
@@ -238,8 +238,8 @@ end
 
     yearfrac = 1 / 365
     expected_interest = bal_before * 0.10 * yearfrac
-    expected_vm = 100.0 * (110.0 - 100.0) * inst.multiplier
-    expected_funding = -100.0 * 110.0 * inst.multiplier * 0.01
+    expected_vm = 100.0 * (110.0 - 100.0) * inst.spec.multiplier
+    expected_funding = -100.0 * 110.0 * inst.spec.multiplier * 0.01
 
     interest_cfs = filter(cf -> cf.kind == CashflowKind.LendInterest, acc.cashflows)
     @test length(interest_cfs) == 1
@@ -266,7 +266,7 @@ end
     deposit!(acc, :CHF, 1_000.0)
     update_rate!(er, cash_asset(acc, :USD), cash_asset(acc, :CHF), 1.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FXREVAL/USDCHF"),
         :FXREVAL,
         :USD;
@@ -300,7 +300,7 @@ end
     expected_value = to_settle(acc, inst, pos_after.value_quote)
     expected_eq = eq_before + (expected_value - value_before)
     expected_init = margin_init_margin_ccy(acc, inst, pos_after.quantity, pos_after.last_price)
-    expected_pnl_settle = expected_value - pos_after.quantity * pos_after.avg_entry_price_settle * inst.multiplier
+    expected_pnl_settle = expected_value - pos_after.quantity * pos_after.avg_entry_price_settle * inst.spec.multiplier
 
     @test pos_after.value_settle ≈ expected_value atol=1e-12
     @test pos_after.pnl_settle ≈ expected_pnl_settle atol=1e-12
@@ -323,7 +323,7 @@ end
     deposit!(acc, :EUR, 0.0)
     update_rate!(er, eur, usd, 1.1)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("FXCASH/EURUSD"),
         :FXCASH,
         :EUR;
@@ -385,7 +385,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("BORROW/USD"),
             :BORROW,
             :USD;
@@ -414,7 +414,7 @@ end
     bal_after = cash_balance(acc, usd)
 
     yearfrac = 1 / 365
-    expected_fee = abs(-10.0) * 100.0 * inst.multiplier * inst.short_borrow_rate * yearfrac
+    expected_fee = abs(-10.0) * 100.0 * inst.spec.multiplier * inst.spec.short_borrow_rate * yearfrac
 
     @test bal_before - bal_after ≈ expected_fee atol=1e-10
 
@@ -439,7 +439,7 @@ end
 
         inst = register_instrument!(
             acc,
-            Instrument(
+            InstrumentSpec(
                 Symbol("BORROWFX/USDCHF"),
                 :BORROWFX,
                 :USD;
@@ -477,8 +477,8 @@ end
     borrow_manual = only(filter(cf -> cf.kind == CashflowKind.BorrowFee, acc_manual.cashflows))
 
     yearfrac = 1 / 365
-    expected_old_fx = -abs(-10.0) * 100.0 * inst_step.multiplier * inst_step.short_borrow_rate * yearfrac * 1.0
-    expected_new_fx = -abs(-10.0) * 100.0 * inst_manual.multiplier * inst_manual.short_borrow_rate * yearfrac * 2.0
+    expected_old_fx = -abs(-10.0) * 100.0 * inst_step.spec.multiplier * inst_step.spec.short_borrow_rate * yearfrac * 1.0
+    expected_new_fx = -abs(-10.0) * 100.0 * inst_manual.spec.multiplier * inst_manual.spec.short_borrow_rate * yearfrac * 2.0
 
     @test borrow_step.amount ≈ expected_old_fx atol=1e-10
     @test borrow_manual.amount ≈ expected_old_fx atol=1e-10
@@ -583,7 +583,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("FUT/USD"),
             :FUT,
             :USD;
@@ -625,7 +625,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("FUT2/USD"),
             :FUT2,
             :USD;
@@ -676,7 +676,7 @@ end
     usd = cash_asset(acc, :USD)
     deposit!(acc, :USD, 10.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("VMNOLIQ/USD"),
         :VMNOLIQ,
         :USD;

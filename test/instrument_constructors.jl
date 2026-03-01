@@ -5,7 +5,7 @@ using TestItemRunner
     using Test, Fastback, Dates
 
     spot = spot_instrument(Symbol("SPOT/PHYS"), :SPOT, :USD)
-    @test Fastback.validate_instrument(spot) === nothing
+    @test Fastback.validate_instrument_spec(spot) === nothing
     @test spot.contract_kind == ContractKind.Spot
     @test spot.settlement == SettlementStyle.PrincipalExchange
     @test spot.margin_requirement == MarginRequirement.PercentNotional
@@ -22,7 +22,7 @@ using TestItemRunner
         margin_maint_long=0.05,
         margin_maint_short=0.05,
     )
-    @test Fastback.validate_instrument(mspot) === nothing
+    @test Fastback.validate_instrument_spec(mspot) === nothing
 
     perp = perpetual_instrument(Symbol("PERP/VM"), :PERP, :USD;
         margin_requirement=MarginRequirement.PercentNotional,
@@ -31,7 +31,7 @@ using TestItemRunner
         margin_maint_long=0.05,
         margin_maint_short=0.05,
     )
-    @test Fastback.validate_instrument(perp) === nothing
+    @test Fastback.validate_instrument_spec(perp) === nothing
     @test perp.contract_kind == ContractKind.Perpetual
     @test perp.settlement == SettlementStyle.VariationMargin
     @test perp.expiry == DateTime(0)
@@ -44,10 +44,11 @@ using TestItemRunner
         margin_maint_long=0.05,
         margin_maint_short=0.05,
     )
-    @test Fastback.validate_instrument(fut) === nothing
+    @test Fastback.validate_instrument_spec(fut) === nothing
     @test fut.contract_kind == ContractKind.Future
     @test fut.settlement == SettlementStyle.VariationMargin
-    @test has_expiry(fut)
+    fut_inst = Instrument(1, 1, 1, 1, fut)
+    @test has_expiry(fut_inst)
 end
 
 @testitem "Instrument constructor helpers reject invalid combinations" begin
@@ -71,17 +72,17 @@ end
     )
 
     # direct validation guards for legacy constructor usage
-    spot_vm = Instrument(Symbol("SPOT/VM"), :SPOT, :USD;
+    spot_vm = InstrumentSpec(Symbol("SPOT/VM"), :SPOT, :USD;
         settlement=SettlementStyle.VariationMargin,
         margin_requirement=MarginRequirement.PercentNotional,
     )
-    @test_throws ArgumentError Fastback.validate_instrument(spot_vm)
+    @test_throws ArgumentError Fastback.validate_instrument_spec(spot_vm)
 
-    perp_with_expiry = Instrument(Symbol("PERP/EXP"), :PERP, :USD;
+    perp_with_expiry = InstrumentSpec(Symbol("PERP/EXP"), :PERP, :USD;
         contract_kind=ContractKind.Perpetual,
         settlement=SettlementStyle.VariationMargin,
         margin_requirement=MarginRequirement.PercentNotional,
         expiry=DateTime(2027, 1, 1),
     )
-    @test_throws ArgumentError Fastback.validate_instrument(perp_with_expiry)
+    @test_throws ArgumentError Fastback.validate_instrument_spec(perp_with_expiry)
 end

@@ -16,9 +16,13 @@ A `Trade` records the actual execution of an order, including fill price, filled
 
 A `Position` maintains the net exposure for an instrument using a weighted-average cost basis. It stores the average prices, quantity, and unrealized P&L caches (`pnl_quote`, `pnl_settle`). For principal-exchange instruments, `pnl_settle` includes both quote-price move and FX translation versus `avg_entry_price_settle`. Positions are stored in `Account.positions`.
 
+## InstrumentSpec
+
+`InstrumentSpec` holds immutable contract metadata: symbols, contract kind, settlement style, margin settings, lifecycle (`start_time`, `expiry`), and multiplier. Build specs with `InstrumentSpec(...)` or convenience constructors like `spot_instrument`, then register them with an account.
+
 ## Instrument
 
-`Instrument` models a tradable product, binding together the display symbol, base asset settings, and quote asset settings. Instruments must be registered with an account before use using the `register_instrument!` function. Contract type (`contract_kind`) and lifecycle bounds (`start_time`, `expiry`) let you represent spot pairs, perpetual swaps, and dated futures explicitly.
+`Instrument` is the account-bound handle returned by `register_instrument!`. It contains per-account indices (`index`, `quote_cash_index`, `settle_cash_index`, `margin_cash_index`) and references its `InstrumentSpec` metadata.
 
 ### Spot on Margin
 

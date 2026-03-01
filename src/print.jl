@@ -19,7 +19,7 @@ function print_trades(
 
     cols = [
         Dict(:name => "ID", :val => t -> t.tid, :fmt => (t, v) -> v),
-        Dict(:name => "Symbol", :val => t -> t.order.inst.symbol, :fmt => (t, v) -> v),
+        Dict(:name => "Symbol", :val => t -> t.order.inst.spec.symbol, :fmt => (t, v) -> v),
         # Dict(:name => "Date", :val => t -> "$(format_datetime(acc, t.order.date)) +$(Dates.value(round(t.date - t.order.date, Millisecond))) ms", :fmt => (e, v) -> v),
         Dict(:name => "Date", :val => t -> "$(format_datetime(acc, t.date))", :fmt => (e, v) -> v),
         Dict(:name => "Qty", :val => t -> t.order.quantity, :fmt => (t, v) -> format_base(t.order.inst, v)),
@@ -28,7 +28,7 @@ function print_trades(
         Dict(:name => "Price", :val => t -> t.fill_price, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
         Dict(:name => "TP", :val => t -> t.order.take_profit, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
         Dict(:name => "SL", :val => t -> t.order.stop_loss, :fmt => (t, v) -> isnan(v) ? "—" : format_quote(t.order.inst, v)),
-        Dict(:name => "Ccy", :val => t -> t.order.inst.settle_symbol, :fmt => (t, v) -> v),
+        Dict(:name => "Ccy", :val => t -> t.order.inst.spec.settle_symbol, :fmt => (t, v) -> v),
         Dict(:name => "Fill P&L", :val => t -> t.fill_pnl_settle, :fmt => (t, v) -> begin
             cash = acc.ledger.cash[t.order.inst.settle_cash_index]
             isnan(v) ? "—" : format_cash(cash, v)
@@ -107,7 +107,7 @@ function print_cashflows(
         Dict(:name => "Kind", :val => cf -> cf.kind, :fmt => (cf, v) -> v),
         Dict(:name => "Cash", :val => cf -> cash[cf.cash_index].symbol, :fmt => (cf, v) -> v),
         Dict(:name => "Amount", :val => cf -> cf.amount, :fmt => (cf, v) -> format_cash(cash[cf.cash_index], v)),
-        Dict(:name => "Inst", :val => cf -> cf.inst_index, :fmt => (cf, v) -> v == 0 ? "—" : string(positions[v].inst.symbol)),
+        Dict(:name => "Inst", :val => cf -> cf.inst_index, :fmt => (cf, v) -> v == 0 ? "—" : string(positions[v].inst.spec.symbol)),
     ]
 
     column_labels = [c[:name] for c in cols]
@@ -166,10 +166,10 @@ function print_positions(
     length(positions) == 0 && return
 
     cols = [
-        Dict(:name => "Symbol", :val => t -> t.inst.symbol, :fmt => (p, v) -> v),
+        Dict(:name => "Symbol", :val => t -> t.inst.spec.symbol, :fmt => (p, v) -> v),
         Dict(:name => "Qty", :val => t -> t.quantity, :fmt => (p, v) -> format_base(p.inst, v)),
         Dict(:name => "Entry px", :val => t -> t.avg_entry_price, :fmt => (p, v) -> isnan(v) ? "—" : format_quote(p.inst, v)),
-        Dict(:name => "Ccy", :val => t -> t.inst.quote_symbol, :fmt => (p, v) -> v),
+        Dict(:name => "Ccy", :val => t -> t.inst.spec.quote_symbol, :fmt => (p, v) -> v),
         Dict(:name => "P&L", :val => t -> t.pnl_quote, :fmt => (p, v) -> isnan(v) ? "—" : format_quote(p.inst, v)),
     ]
 

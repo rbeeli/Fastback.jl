@@ -7,7 +7,7 @@ using TestItemRunner
     acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=base_currency)
     deposit!(acc, :USD, 500.0)
 
-    inst = register_instrument!(acc, Instrument(
+    inst = register_instrument!(acc, InstrumentSpec(
         Symbol("SPOT/USD"),
         :SPOT,
         :USD;
@@ -46,7 +46,7 @@ end
 
     update_rate!(er, cash_asset(acc, :EUR), cash_asset(acc, :USD), 1.1)
 
-    inst_eur = register_instrument!(acc, Instrument(
+    inst_eur = register_instrument!(acc, InstrumentSpec(
         Symbol("PER/EUR"),
         :PER,
         :EUR;

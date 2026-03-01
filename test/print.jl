@@ -57,7 +57,7 @@ end
 
     inst = register_instrument!(
         acc,
-        Instrument(
+        InstrumentSpec(
             Symbol("FX/EURUSD"),
             :FX,
             :EUR;

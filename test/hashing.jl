@@ -10,8 +10,8 @@ using TestItemRunner
     cash_dict[cash] = 1
     @test cash_dict[cash] == 1
 
-    inst = spot_instrument(Symbol("HASH/USD"), :HASH, :USD)
-    inst.index = 1
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
+    inst = register_instrument!(acc, spot_instrument(Symbol("HASH/USD"), :HASH, :USD))
     @test hash(inst) isa UInt
     inst_dict = Dict{typeof(inst),Int}()
     inst_dict[inst] = 2

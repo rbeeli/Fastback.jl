@@ -198,37 +198,32 @@ Before trading any instrument, it must be registered in the account.
 """
 function register_instrument!(
     acc::Account{TTime},
-    inst::Instrument{TTime}
+    spec::InstrumentSpec{TTime}
 ) where {TTime<:Dates.AbstractTime}
-    # ensure instrument is not being reused
-    inst.index > 0 && throw(ArgumentError("Instrument $(inst.symbol) is already registered (index > 0)"))
-
     # ensure instrument symbol is not already registered
-    if any(x -> x.inst.symbol == inst.symbol, acc.positions)
-        throw(ArgumentError("Instrument $(inst.symbol) already registered"))
+    if any(x -> x.inst.spec.symbol == spec.symbol, acc.positions)
+        throw(ArgumentError("Instrument $(spec.symbol) already registered"))
     end
 
     # sanity check instrument parameters
-    validate_instrument(inst)
+    validate_instrument_spec(spec)
 
     # ensure cash assets are registered in account
-    if !has_cash_asset(acc.ledger, inst.quote_symbol)
-        throw(ArgumentError("Quote cash asset '$(inst.quote_symbol)' for instrument '$(inst.symbol)' not registered in account"))
+    if !has_cash_asset(acc.ledger, spec.quote_symbol)
+        throw(ArgumentError("Quote cash asset '$(spec.quote_symbol)' for instrument '$(spec.symbol)' not registered in account"))
     end
-    if !has_cash_asset(acc.ledger, inst.settle_symbol)
-        throw(ArgumentError("Settlement cash asset '$(inst.settle_symbol)' for instrument '$(inst.symbol)' not registered in account"))
+    if !has_cash_asset(acc.ledger, spec.settle_symbol)
+        throw(ArgumentError("Settlement cash asset '$(spec.settle_symbol)' for instrument '$(spec.symbol)' not registered in account"))
     end
-    if !has_cash_asset(acc.ledger, inst.margin_symbol)
-        throw(ArgumentError("Margin cash asset '$(inst.margin_symbol)' for instrument '$(inst.symbol)' not registered in account"))
+    if !has_cash_asset(acc.ledger, spec.margin_symbol)
+        throw(ArgumentError("Margin cash asset '$(spec.margin_symbol)' for instrument '$(spec.symbol)' not registered in account"))
     end
 
-    # set cash indexes for fast array indexing and margin calculations
-    inst.quote_cash_index = cash_index(acc.ledger, inst.quote_symbol)
-    inst.settle_cash_index = cash_index(acc.ledger, inst.settle_symbol)
-    inst.margin_cash_index = cash_index(acc.ledger, inst.margin_symbol)
-
-    # set asset index for fast array indexing and hashing
-    inst.index = length(acc.positions) + 1
+    quote_cash_index = cash_index(acc.ledger, spec.quote_symbol)
+    settle_cash_index = cash_index(acc.ledger, spec.settle_symbol)
+    margin_cash_index = cash_index(acc.ledger, spec.margin_symbol)
+    index = length(acc.positions) + 1
+    inst = Instrument(index, quote_cash_index, settle_cash_index, margin_cash_index, spec)
 
     # create empty position for the instrument
     push!(acc.positions, Position{TTime}(inst.index, inst))

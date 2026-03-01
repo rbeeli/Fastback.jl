@@ -21,7 +21,7 @@ end
 """
 Notional trade value in quote currency (`abs(qty) * abs(price) * multiplier`).
 """
-@inline notional_value(t::Trade) = abs(t.fill_price) * abs(t.fill_qty) * t.order.inst.multiplier
+@inline notional_value(t::Trade) = abs(t.fill_price) * abs(t.fill_qty) * t.order.inst.spec.multiplier
 
 """
 Realized notional of the closed portion in quote currency.
@@ -30,7 +30,7 @@ Computed on the pre-fill position basis as:
 `abs(pos_price) * abs(realized_qty) * abs(multiplier)`.
 Returns `0.0` for non-realizing fills.
 """
-@inline realized_notional_quote(t::Trade) = abs(t.pos_price) * abs(t.realized_qty) * abs(t.order.inst.multiplier)
+@inline realized_notional_quote(t::Trade) = abs(t.pos_price) * abs(t.realized_qty) * abs(t.order.inst.spec.multiplier)
 
 """
 Return `true` if the trade realizes any P&L.
@@ -91,20 +91,20 @@ function Base.show(io::IO, t::Trade)
     ccy_formatter = x -> @sprintf("%.2f", x)
     inst = t.order.inst
     print(io, "[Trade] " *
-              "order=(oid=$(t.order.oid), symbol=$(inst.symbol)) " *
+              "order=(oid=$(t.order.oid), symbol=$(inst.spec.symbol)) " *
               "tid=$(t.tid) " *
               "date=$(date_formatter(t.date)) " *
-              "fill_px=$(format_quote(inst, t.fill_price)) $(inst.quote_symbol) " *
-              "fill_qty=$(format_base(inst, t.fill_qty)) $(inst.base_symbol) " *
-              "remaining_qty=$(format_base(inst, t.remaining_qty)) $(inst.base_symbol) " *
-              "fill_pnl_settle=$(ccy_formatter(t.fill_pnl_settle)) $(inst.settle_symbol) " *
-              "realized_qty=$(format_base(inst, t.realized_qty)) $(inst.base_symbol) " *
-              "commission_quote=$(format_quote(inst, t.commission_quote)) $(inst.quote_symbol) " *
-              "realized_commission_quote=$(format_quote(inst, t.realized_commission_quote)) $(inst.quote_symbol) " *
-              "commission_settle=$(ccy_formatter(t.commission_settle)) $(inst.settle_symbol) " *
-              "cash_delta_settle=$(ccy_formatter(t.cash_delta_settle)) $(inst.settle_symbol) " *
-              "pos_qty=$(format_base(inst, t.pos_qty)) $(inst.base_symbol) " *
-              "pos_price=$(format_quote(inst, t.pos_price)) $(inst.quote_symbol) " *
+              "fill_px=$(format_quote(inst, t.fill_price)) $(inst.spec.quote_symbol) " *
+              "fill_qty=$(format_base(inst, t.fill_qty)) $(inst.spec.base_symbol) " *
+              "remaining_qty=$(format_base(inst, t.remaining_qty)) $(inst.spec.base_symbol) " *
+              "fill_pnl_settle=$(ccy_formatter(t.fill_pnl_settle)) $(inst.spec.settle_symbol) " *
+              "realized_qty=$(format_base(inst, t.realized_qty)) $(inst.spec.base_symbol) " *
+              "commission_quote=$(format_quote(inst, t.commission_quote)) $(inst.spec.quote_symbol) " *
+              "realized_commission_quote=$(format_quote(inst, t.realized_commission_quote)) $(inst.spec.quote_symbol) " *
+              "commission_settle=$(ccy_formatter(t.commission_settle)) $(inst.spec.settle_symbol) " *
+              "cash_delta_settle=$(ccy_formatter(t.cash_delta_settle)) $(inst.spec.settle_symbol) " *
+              "pos_qty=$(format_base(inst, t.pos_qty)) $(inst.spec.base_symbol) " *
+              "pos_price=$(format_quote(inst, t.pos_price)) $(inst.spec.quote_symbol) " *
               "reason=$(t.reason)")
 end
 
