@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>NanoDates.jl · Fastback.jl</title><meta name="title" content="NanoDates.jl · Fastback.jl"/><meta property="og:title" content="NanoDates.jl · Fastback.jl"/><meta property="twitter:title" content="NanoDates.jl · Fastback.jl"/><meta name="description" content="Documentation for Fastback.jl."/><meta property="og:description" content="Documentation for Fastback.jl."/><meta property="twitter:description" content="Documentation for Fastback.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><script type="module" defer>
+    import { codeToHtml } from 'https://esm.sh/shiki@1.3.0'
+
+    async function highlightCode(lang, el) {
+        const code = el.textContent
+        if (lang == "julia-repl")
+            lang = "julia"
+        try {
+            el.outerHTML = await codeToHtml(code, {
+                lang: lang,
+                theme: 'monokai',
+                //theme: 'github-light-default',
+                //theme: 'github-dark-dimmed',
+                //theme: 'dark-plus',
+                //themes: {
+                //    light: 'github-dark-dimmed',
+                //    dark: 'github-dark',
+                //}
+            })
+        } catch (e) {
+            console.error(`Failed to highlight code on element with class="${el.classList}" using shiki: `, e)
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('run code highlighting using shiki')
+        const els = document.querySelectorAll("code[class^='language-']")
+        const promises = []
+        for (const el of els) {
+            const cls = Array.from(el.classList).filter(x => x.startsWith("language-"))
+            if (!cls.length)
+                continue
+            const lang = cls[0].substring(9)
+            el.classList.add('shiki-highlighted')
+            
+            promises.push(highlightCode(lang, el))
+        }
+        await Promise.all(promises)
+    })
+</script>
+<link href="../../../assets/styles.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img class="docs-light-only" src="../../../assets/logo.png" alt="Fastback.jl logo"/><img class="docs-dark-only" src="../../../assets/logo-dark.png" alt="Fastback.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../getting_started/">Getting started</a></li><li><a class="tocitem" href="../../../basic_setup/">Basic setup</a></li><li><a class="tocitem" href="../../../concepts/">Accounting model and event loop</a></li><li><a class="tocitem" href="../../../execution_errors/">Execution and errors</a></li><li><a class="tocitem" href="../../../pitfalls/">Pitfalls and gotchas</a></li><li><a class="tocitem" href="../../../how_to/">How-to</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../../../examples/gen/1_random_trading/">Random trading</a></li><li><a class="tocitem" href="../../../examples/gen/2_portfolio_trading/">Portfolio trading</a></li><li><a class="tocitem" href="../../../examples/gen/3_multi_currency/">Multi-Currency trading</a></li><li><a class="tocitem" href="../../../examples/gen/4_USDm_perp_trading/">USD-M perpetual trading</a></li><li><a class="tocitem" href="../../../examples/gen/5_VOO_vs_MES_comparison/">VOO vs MES cost comparison</a></li></ul></li><li><span class="tocitem">Plotting</span><ul><li><a class="tocitem" href="../../../plotting/gen/1_plots_extension/">Plots extensions</a></li></ul></li><li><span class="tocitem">Integrations</span><ul><li><a class="tocitem" href="../../">Overview</a></li><li><a class="tocitem" href="../1_Tables_integration/">Tables.jl</a></li><li class="is-active"><a class="tocitem" href>NanoDates.jl</a></li><li><a class="tocitem" href="../3_Timestamps64_integration/">Timestamps64.jl</a></li></ul></li><li><a class="tocitem" href="../../../api_index/">API index</a></li><li><a class="tocitem" href="../../../glossary/">Glossary</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Integrations</a></li><li class="is-active"><a href>NanoDates.jl</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>NanoDates.jl</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl/blob/main/docs/src/integrations/2_NanoDates_integration.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><p><strong>Jupyter Notebook:</strong> <a href="../2_NanoDates_integration.ipynb"><code>2_NanoDates_integration.ipynb</code></a></p><h1 id="NanoDates-integration-example"><a class="docs-heading-anchor" href="#NanoDates-integration-example">NanoDates integration example</a><a id="NanoDates-integration-example-1"></a><a class="docs-heading-anchor-permalink" href="#NanoDates-integration-example" title="Permalink"></a></h1><p>This example shows how to pair Fastback&#39;s timestamp parametrization with high-resolution <code>NanoDate</code> values from NanoDates.jl. It is derived from the random trading walkthrough but focuses on exercising the integration, so plotting has been omitted.</p><pre><code class="language-julia hljs">using Fastback
+using Dates
+using NanoDates
+using Random
+
+# set RNG seed for reproducibility
+Random.seed!(42);
+
+# generate synthetic price series
+N = 2_000
+prices = 1000.0 .+ cumsum(randn(N) .+ 0.1)
+start_dt = NanoDate(2020, 1, 1)
+dts = [start_dt + Hour(i) for i in 0:N-1]
+
+# create trading account with $10&#39;000 start capital and NanoDate support (margin-enabled for shorting)
+acc = Account(;
+    time_type=NanoDate,
+    funding=AccountFunding.Margined,
+    base_currency=CashSpec(:USD),
+    broker=FlatFeeBroker(; pct=0.001),
+)
+usd = cash_asset(acc, :USD)
+deposit!(acc, :USD, 10_000.0)
+
+# register a dummy instrument
+DUMMY = register_instrument!(acc, spot_instrument(Symbol(&quot;DUMMY/USD&quot;), :DUMMY, :USD; time_type=NanoDate))
+
+# data collector for account equity and drawdowns (sampling every hour)
+collect_equity, equity_data = periodic_collector(Float64, Hour(1); time_type=NanoDate)
+collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Hour(1); time_type=NanoDate)
+
+# loop over price series
+for (dt, price) in zip(dts, prices)
+    # randomly trade with 1% probability
+    if rand() &lt; 0.01
+        quantity = rand() &gt; 0.4 ? 1.0 : -1.0
+        order = Order(oid!(acc), DUMMY, dt, price, quantity)
+        fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price, fill_qty=0.75order.quantity)
+    end
+
+    # update position and account P&amp;L
+    update_marks!(acc, DUMMY, dt, price, price, price)
+
+    # collect data for analysis
+    if should_collect(equity_data, dt)
+        equity_value = equity(acc, usd)
+        collect_equity(dt, equity_value)
+        collect_drawdown(dt, equity_value)
+    end
+end
+
+# print account summary
+show(acc)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ACCOUNT SUMMARY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<span class="sgr1">Cash balances</span> (1)
+┌─────┬─────────┐
+│     │   Value │
+├─────┼─────────┤
+│ USD │ 4509.06 │
+└─────┴─────────┘
+
+<span class="sgr1">Equity balances</span> (1)
+┌─────┬──────────┐
+│     │    Value │
+├─────┼──────────┤
+│ USD │ 10409.78 │
+└─────┴──────────┘
+
+<span class="sgr1">Positions</span> (1)
+┌───────────┬──────┬──────────┬─────┬────────┐
+│    Symbol │  Qty │ Entry px │ Ccy │    P&amp;L │
+├───────────┼──────┼──────────┼─────┼────────┤
+│ DUMMY/USD │ 5.25 │  1068.10 │ USD │ 293.20 │
+└───────────┴──────┴──────────┴─────┴────────┘
+
+<span class="sgr1">Trades</span> (23)
+┌────┬───────────┬─────────────────────┬───────┬────────┬─────────┬────┬────┬─────┬──────────┬─────────┬────────────────┬──────────────┬───────┐
+│ ID │    Symbol │                Date │   Qty │ Filled │   Price │ TP │ SL │ Ccy │ Fill P&amp;L │  Cash Δ │ Return (gross) │ Return (net) │ Comm. │
+├────┼───────────┼─────────────────────┼───────┼────────┼─────────┼────┼────┼─────┼──────────┼─────────┼────────────────┼──────────────┼───────┤
+│  1 │ DUMMY/USD │ 2020-01-01 03:00:00 │  1.00 │   0.75 │  999.66 │  — │  — │ USD │     0.00 │ -750.50 │              — │            — │  0.75 │
+│  2 │ DUMMY/USD │ 2020-01-05 02:00:00 │  1.00 │   0.75 │ 1004.04 │  — │  — │ USD │     0.00 │ -753.78 │              — │            — │  0.75 │
+│  3 │ DUMMY/USD │ 2020-01-07 18:00:00 │  1.00 │   0.75 │ 1005.23 │  — │  — │ USD │     0.00 │ -754.67 │              — │            — │  0.75 │
+│  4 │ DUMMY/USD │ 2020-01-10 04:00:00 │ -1.00 │  -0.75 │ 1014.50 │  — │  — │ USD │     8.64 │  760.11 │          1.15% │        0.95% │  0.76 │
+│  5 │ DUMMY/USD │ 2020-01-14 05:00:00 │  1.00 │   0.75 │ 1005.24 │  — │  — │ USD │     0.00 │ -754.68 │              — │            — │  0.75 │
+│  6 │ DUMMY/USD │ 2020-01-16 05:00:00 │ -1.00 │  -0.75 │  998.26 │  — │  — │ USD │    -4.10 │  747.95 │         -0.55% │       -0.74% │  0.75 │
+│  7 │ DUMMY/USD │ 2020-01-16 18:00:00 │  1.00 │   0.75 │  998.62 │  — │  — │ USD │     0.00 │ -749.71 │              — │            — │  0.75 │
+│  8 │ DUMMY/USD │ 2020-01-18 03:00:00 │  1.00 │   0.75 │ 1002.23 │  — │  — │ USD │     0.00 │ -752.42 │              — │            — │  0.75 │
+│  9 │ DUMMY/USD │ 2020-01-18 10:00:00 │ -1.00 │  -0.75 │ 1003.12 │  — │  — │ USD │     0.78 │  751.59 │          0.10% │       -0.10% │  0.75 │
+│ 10 │ DUMMY/USD │ 2020-01-19 02:00:00 │ -1.00 │  -0.75 │ 1007.68 │  — │  — │ USD │     4.20 │  755.00 │          0.56% │        0.36% │  0.76 │
+│ 11 │ DUMMY/USD │ 2020-01-30 02:00:00 │  1.00 │   0.75 │ 1014.10 │  — │  — │ USD │     0.00 │ -761.33 │              — │            — │  0.76 │
+│ 12 │ DUMMY/USD │ 2020-02-03 14:00:00 │  1.00 │   0.75 │ 1026.44 │  — │  — │ USD │     0.00 │ -770.60 │              — │            — │  0.77 │
+│ 13 │ DUMMY/USD │ 2020-02-10 16:00:00 │  1.00 │   0.75 │ 1039.42 │  — │  — │ USD │     0.00 │ -780.34 │              — │            — │  0.78 │
+│ 14 │ DUMMY/USD │ 2020-02-12 20:00:00 │  1.00 │   0.75 │ 1050.59 │  — │  — │ USD │     0.00 │ -788.73 │              — │            — │  0.79 │
+│ 15 │ DUMMY/USD │ 2020-02-27 17:00:00 │  1.00 │   0.75 │ 1049.16 │  — │  — │ USD │     0.00 │ -787.65 │              — │            — │  0.79 │
+│ 16 │ DUMMY/USD │ 2020-02-27 23:00:00 │ -1.00 │  -0.75 │ 1044.86 │  — │  — │ USD │    13.95 │  782.86 │          1.81% │        1.61% │  0.78 │
+│ 17 │ DUMMY/USD │ 2020-03-04 21:00:00 │ -1.00 │  -0.75 │ 1069.05 │  — │  — │ USD │    32.09 │  800.98 │          4.17% │        3.96% │  0.80 │
+│ 18 │ DUMMY/USD │ 2020-03-07 17:00:00 │ -1.00 │  -0.75 │ 1076.76 │  — │  — │ USD │    37.87 │  806.76 │          4.92% │        4.72% │  0.81 │
+│ 19 │ DUMMY/USD │ 2020-03-10 02:00:00 │  1.00 │   0.75 │ 1090.97 │  — │  — │ USD │     0.00 │ -819.05 │              — │            — │  0.82 │
+│ 20 │ DUMMY/USD │ 2020-03-18 04:00:00 │  1.00 │   0.75 │ 1113.01 │  — │  — │ USD │     0.00 │ -835.59 │              — │            — │  0.83 │
+│ 21 │ DUMMY/USD │ 2020-03-18 23:00:00 │  1.00 │   0.75 │ 1114.18 │  — │  — │ USD │     0.00 │ -836.47 │              — │            — │  0.84 │
+│ 22 │ DUMMY/USD │ 2020-03-22 17:00:00 │  1.00 │   0.75 │ 1121.58 │  — │  — │ USD │     0.00 │ -842.02 │              — │            — │  0.84 │
+│ 23 │ DUMMY/USD │ 2020-03-23 00:00:00 │ -1.00 │  -0.75 │ 1122.93 │  — │  — │ USD │    41.13 │  841.36 │          5.13% │        4.93% │  0.84 │
+└────┴───────────┴─────────────────────┴───────┴────────┴─────────┴────┴────┴─────┴──────────┴─────────┴────────────────┴──────────────┴───────┘
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../1_Tables_integration/">« Tables.jl</a><a class="docs-footer-nextpage" href="../3_Timestamps64_integration/">Timestamps64.jl »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Sunday 1 March 2026 20:01">Sunday 1 March 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

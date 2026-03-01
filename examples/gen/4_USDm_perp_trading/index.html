@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>USD-M perpetual trading · Fastback.jl</title><meta name="title" content="USD-M perpetual trading · Fastback.jl"/><meta property="og:title" content="USD-M perpetual trading · Fastback.jl"/><meta property="twitter:title" content="USD-M perpetual trading · Fastback.jl"/><meta name="description" content="Documentation for Fastback.jl."/><meta property="og:description" content="Documentation for Fastback.jl."/><meta property="twitter:description" content="Documentation for Fastback.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><script type="module" defer>
+    import { codeToHtml } from 'https://esm.sh/shiki@1.3.0'
+
+    async function highlightCode(lang, el) {
+        const code = el.textContent
+        if (lang == "julia-repl")
+            lang = "julia"
+        try {
+            el.outerHTML = await codeToHtml(code, {
+                lang: lang,
+                theme: 'monokai',
+                //theme: 'github-light-default',
+                //theme: 'github-dark-dimmed',
+                //theme: 'dark-plus',
+                //themes: {
+                //    light: 'github-dark-dimmed',
+                //    dark: 'github-dark',
+                //}
+            })
+        } catch (e) {
+            console.error(`Failed to highlight code on element with class="${el.classList}" using shiki: `, e)
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('run code highlighting using shiki')
+        const els = document.querySelectorAll("code[class^='language-']")
+        const promises = []
+        for (const el of els) {
+            const cls = Array.from(el.classList).filter(x => x.startsWith("language-"))
+            if (!cls.length)
+                continue
+            const lang = cls[0].substring(9)
+            el.classList.add('shiki-highlighted')
+            
+            promises.push(highlightCode(lang, el))
+        }
+        await Promise.all(promises)
+    })
+</script>
+<link href="../../../assets/styles.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img class="docs-light-only" src="../../../assets/logo.png" alt="Fastback.jl logo"/><img class="docs-dark-only" src="../../../assets/logo-dark.png" alt="Fastback.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../getting_started/">Getting started</a></li><li><a class="tocitem" href="../../../basic_setup/">Basic setup</a></li><li><a class="tocitem" href="../../../concepts/">Accounting model and event loop</a></li><li><a class="tocitem" href="../../../execution_errors/">Execution and errors</a></li><li><a class="tocitem" href="../../../pitfalls/">Pitfalls and gotchas</a></li><li><a class="tocitem" href="../../../how_to/">How-to</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../1_random_trading/">Random trading</a></li><li><a class="tocitem" href="../2_portfolio_trading/">Portfolio trading</a></li><li><a class="tocitem" href="../3_multi_currency/">Multi-Currency trading</a></li><li class="is-active"><a class="tocitem" href>USD-M perpetual trading</a></li><li><a class="tocitem" href="../5_VOO_vs_MES_comparison/">VOO vs MES cost comparison</a></li></ul></li><li><span class="tocitem">Plotting</span><ul><li><a class="tocitem" href="../../../plotting/gen/1_plots_extension/">Plots extensions</a></li></ul></li><li><span class="tocitem">Integrations</span><ul><li><a class="tocitem" href="../../../integrations/">Overview</a></li><li><a class="tocitem" href="../../../integrations/gen/1_Tables_integration/">Tables.jl</a></li><li><a class="tocitem" href="../../../integrations/gen/2_NanoDates_integration/">NanoDates.jl</a></li><li><a class="tocitem" href="../../../integrations/gen/3_Timestamps64_integration/">Timestamps64.jl</a></li></ul></li><li><a class="tocitem" href="../../../api_index/">API index</a></li><li><a class="tocitem" href="../../../glossary/">Glossary</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>USD-M perpetual trading</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>USD-M perpetual trading</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/rbeeli/Fastback.jl/blob/main/docs/src/examples/4_USDm_perp_trading.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><p><strong>Jupyter Notebook:</strong> <a href="../4_USDm_perp_trading.ipynb"><code>4_USDm_perp_trading.ipynb</code></a></p><h1 id="USD-M-perpetual-(Binance-style)-example"><a class="docs-heading-anchor" href="#USD-M-perpetual-(Binance-style)-example">USD-M perpetual (Binance-style) example</a><a id="USD-M-perpetual-(Binance-style)-example-1"></a><a class="docs-heading-anchor-permalink" href="#USD-M-perpetual-(Binance-style)-example" title="Permalink"></a></h1><p>This example shows how to backtest a USD-M perpetual swap using <code>process_step!</code> with mark updates and funding events. The CSV data is synthetic but shaped like Binance USD-M: hourly bid/ask/last prices and a funding rate applied every 8 hours (non-zero rows).</p><pre><code class="language-julia hljs">using Fastback
+using Dates
+using CSV
+using DataFrames
+using Statistics</code></pre><hr/><pre><code class="language-julia hljs"># load synthetic USD-M perp data
+# columns: dt, bid, ask, last, funding_rate
+
+data_path = &quot;../data/usdm_perp_1h.csv&quot;;
+
+# if data path doesn&#39;t exist, try to change working directory
+isfile(data_path) || cd(&quot;src/examples&quot;)
+
+# parse CSV (hourly rows)
+df = DataFrame(CSV.File(data_path; dateformat=&quot;yyyy-mm-dd HH:MM:SS&quot;));
+sort!(df, :dt);
+
+# quick sanity check
+first(df, 5)</code></pre><div><div style = "float: left;"><span>5×5 DataFrame</span></div><div style = "clear: both;"></div></div><div class = "data-frame" style = "overflow-x: scroll;"><table class = "data-frame" style = "margin-bottom: 6px;"><thead><tr class = "columnLabelRow"><th class = "stubheadLabel" style = "font-weight: bold; text-align: right;">Row</th><th style = "text-align: left;">dt</th><th style = "text-align: left;">bid</th><th style = "text-align: left;">ask</th><th style = "text-align: left;">last</th><th style = "text-align: left;">funding_rate</th></tr><tr class = "columnLabelRow"><th class = "stubheadLabel" style = "font-weight: bold; text-align: right;"></th><th title = "Dates.DateTime" style = "text-align: left;">DateTime</th><th title = "Float64" style = "text-align: left;">Float64</th><th title = "Float64" style = "text-align: left;">Float64</th><th title = "Float64" style = "text-align: left;">Float64</th><th title = "Float64" style = "text-align: left;">Float64</th></tr></thead><tbody><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">1</td><td style = "text-align: left;">2024-01-01T00:00:00</td><td style = "text-align: right;">41984.5</td><td style = "text-align: right;">41992.9</td><td style = "text-align: right;">41988.6</td><td style = "text-align: right;">-9.0e-6</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">2</td><td style = "text-align: left;">2024-01-01T01:00:00</td><td style = "text-align: right;">42044.4</td><td style = "text-align: right;">42052.8</td><td style = "text-align: right;">42048.5</td><td style = "text-align: right;">0.0</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">3</td><td style = "text-align: left;">2024-01-01T02:00:00</td><td style = "text-align: right;">41919.5</td><td style = "text-align: right;">41927.9</td><td style = "text-align: right;">41923.9</td><td style = "text-align: right;">0.0</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">4</td><td style = "text-align: left;">2024-01-01T03:00:00</td><td style = "text-align: right;">41897.9</td><td style = "text-align: right;">41906.3</td><td style = "text-align: right;">41901.9</td><td style = "text-align: right;">0.0</td></tr><tr class = "dataRow"><td class = "rowLabel" style = "font-weight: bold; text-align: right;">5</td><td style = "text-align: left;">2024-01-01T04:00:00</td><td style = "text-align: right;">41908.5</td><td style = "text-align: right;">41916.8</td><td style = "text-align: right;">41912.8</td><td style = "text-align: right;">0.0</td></tr></tbody></table></div><hr/><pre><code class="language-julia hljs"># create a margined account funded in USDT
+acc = Account(;
+    funding=AccountFunding.Margined,
+    base_currency=CashSpec(:USDT),
+    broker=BinanceBroker(; maker_derivatives=0.0004, taker_derivatives=0.0004),
+);
+usdt = cash_asset(acc, :USDT)
+deposit!(acc, :USDT, 10_000.0);
+
+# register a USD-M perpetual (variation margin, cash-settled)
+perp = register_instrument!(
+    acc,
+    perpetual_instrument(
+        Symbol(&quot;BTCUSDT-PERP&quot;),
+        :BTC,
+        :USDT;
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.10,
+        margin_init_short=0.10,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+        base_tick=0.001,
+        quote_tick=0.1,
+        base_digits=3,
+        quote_digits=1,
+    ),
+);
+
+# data collector for account equity and drawdowns (sampling every hour)
+collect_equity, equity_data = periodic_collector(Float64, Hour(1));
+collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Hour(1));</code></pre><hr/><pre><code class="language-julia hljs"># simple trend-following strategy
+# - compute a 24h moving average
+# - go long if price is &gt;0.2% above MA
+# - go short if price is &gt;0.2% below MA
+# - target ~3x notional leverage
+
+window = 24;
+deadband = 0.002;
+leverage_target = 3.0;
+
+@inline fill_price_for_qty(qty, bid, ask) = qty &gt; 0.0 ? ask : bid
+
+for i in 1:nrow(df)
+    row = df[i, :]
+    dt = row.dt
+    bid = row.bid
+    ask = row.ask
+    last = row.last
+    funding_rate = row.funding_rate
+
+    # apply marks and funding for this step
+    marks = [MarkUpdate(perp.index, bid, ask, last)]
+    funding = funding_rate == 0.0 ? nothing : [FundingUpdate(perp.index, funding_rate)]
+    process_step!(acc, dt; marks=marks, funding=funding, liquidate=true)
+
+    # trade after marks/funding (positions at funding timestamp are used)
+    if i &gt;= window
+        ma = mean(@view df.last[i-window+1:i])
+        signal = last &gt; (1 + deadband) * ma ? 1.0 : (last &lt; (1 - deadband) * ma ? -1.0 : 0.0)
+
+        pos = get_position(acc, perp)
+        target_notional = signal == 0.0 ? 0.0 : signal * leverage_target * equity(acc, usdt)
+        target_qty = calc_base_qty_for_notional(perp, last, target_notional)
+        delta_qty = target_qty - pos.quantity
+
+        if abs(delta_qty) &gt;= (perp.spec.base_tick / 2)
+            fill_price = fill_price_for_qty(delta_qty, bid, ask)
+            order = Order(oid!(acc), perp, dt, fill_price, delta_qty)
+            fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=bid, ask=ask, last=last)
+        end
+    end
+
+    # collect data for plotting
+    if should_collect(equity_data, dt)
+        eq = equity(acc, usdt)
+        collect_equity(dt, eq)
+        collect_drawdown(dt, eq)
+    end
+end
+
+# close any remaining position at the end
+row = df[end, :]
+pos = get_position(acc, perp)
+if pos.quantity != 0.0
+    close_qty = -pos.quantity
+    close_fill_price = fill_price_for_qty(close_qty, row.bid, row.ask)
+    order = Order(oid!(acc), perp, row.dt, close_fill_price, close_qty)
+    fill_order!(acc, order; dt=row.dt, fill_price=close_fill_price, bid=row.bid, ask=row.ask, last=row.last)
+end
+
+# summarize funding P&amp;L
+funding_pnl = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.Funding)
+println(&quot;Funding P&amp;L (USDT): &quot;, round(funding_pnl, digits=2))
+
+# fill-level P&amp;L decomposition (variation margin)
+gross_fill_settled_pnl = sum(t.fill_pnl_settle for t in acc.trades; init=0.0)
+commissions = sum(t.commission_settle for t in acc.trades; init=0.0)
+net_fill_cash = sum(t.cash_delta_settle for t in acc.trades; init=0.0)
+println(&quot;Gross fill settled P&amp;L (USDT): &quot;, round(gross_fill_settled_pnl, digits=2))
+println(&quot;Commissions (USDT): &quot;, round(commissions, digits=2))
+println(&quot;Net fill cash delta (USDT): &quot;, round(net_fill_cash, digits=2))
+
+# print account summary
+show(acc)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Funding P&amp;L (USDT): 19.07
+Gross fill settled P&amp;L (USDT): -366.52
+Commissions (USDT): 1466.02
+Net fill cash delta (USDT): -1832.53
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ACCOUNT SUMMARY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<span class="sgr1">Cash balances</span> (1)
+┌──────┬──────────┐
+│      │    Value │
+├──────┼──────────┤
+│ USDT │ 12592.19 │
+└──────┴──────────┘
+
+<span class="sgr1">Equity balances</span> (1)
+┌──────┬──────────┐
+│      │    Value │
+├──────┼──────────┤
+│ USDT │ 12592.19 │
+└──────┴──────────┘
+
+<span class="sgr1">Positions</span> (0)
+
+<span class="sgr1">Trades</span> (557)
+┌─────┬──────────────┬─────────────────────┬────────┬────────┬─────────┬────┬────┬──────┬──────────┬────────┬────────────────┬──────────────┬───────┐
+│  ID │       Symbol │                Date │    Qty │ Filled │   Price │ TP │ SL │  Ccy │ Fill P&amp;L │ Cash Δ │ Return (gross) │ Return (net) │ Comm. │
+├─────┼──────────────┼─────────────────────┼────────┼────────┼─────────┼────┼────┼──────┼──────────┼────────┼────────────────┼──────────────┼───────┤
+│   1 │ BTCUSDT-PERP │ 2024-01-01 23:00:00 │ -0.716 │ -0.716 │ 41863.2 │  — │  — │ USDT │    -3.00 │ -14.99 │              — │            — │ 11.99 │
+│   2 │ BTCUSDT-PERP │ 2024-01-02 00:00:00 │  0.716 │  0.716 │ 41914.2 │  — │  — │ USDT │    -3.00 │ -15.00 │         -0.12% │       -0.20% │ 12.00 │
+│   3 │ BTCUSDT-PERP │ 2024-01-02 01:00:00 │ -0.713 │ -0.713 │ 41838.1 │  — │  — │ USDT │    -2.98 │ -14.92 │              — │            — │ 11.93 │
+│   4 │ BTCUSDT-PERP │ 2024-01-02 02:00:00 │  0.713 │  0.713 │ 41911.6 │  — │  — │ USDT │    -2.99 │ -14.94 │         -0.18% │       -0.26% │ 11.95 │
+│   5 │ BTCUSDT-PERP │ 2024-01-02 09:00:00 │  0.701 │  0.701 │ 42212.1 │  — │  — │ USDT │    -2.96 │ -14.79 │              — │            — │ 11.84 │
+│   6 │ BTCUSDT-PERP │ 2024-01-02 10:00:00 │ -0.003 │ -0.003 │ 42153.1 │  — │  — │ USDT │    -0.01 │  -0.06 │         -0.14% │       -0.22% │  0.05 │
+│   7 │ BTCUSDT-PERP │ 2024-01-02 11:00:00 │ -0.002 │ -0.002 │ 42083.8 │  — │  — │ USDT │    -0.01 │  -0.04 │         -0.30% │       -0.38% │  0.03 │
+│   8 │ BTCUSDT-PERP │ 2024-01-02 12:00:00 │ -0.696 │ -0.696 │ 42037.0 │  — │  — │ USDT │    -2.93 │ -14.63 │         -0.41% │       -0.49% │ 11.70 │
+│   9 │ BTCUSDT-PERP │ 2024-01-02 13:00:00 │  0.692 │  0.692 │ 42109.3 │  — │  — │ USDT │    -2.91 │ -14.57 │              — │            — │ 11.66 │
+│  10 │ BTCUSDT-PERP │ 2024-01-02 14:00:00 │ -0.002 │ -0.002 │ 42077.0 │  — │  — │ USDT │    -0.01 │  -0.04 │         -0.08% │       -0.16% │  0.03 │
+│  11 │ BTCUSDT-PERP │ 2024-01-02 15:00:00 │ -0.690 │ -0.690 │ 41986.9 │  — │  — │ USDT │    -2.90 │ -14.49 │         -0.29% │       -0.37% │ 11.59 │
+│  12 │ BTCUSDT-PERP │ 2024-01-02 18:00:00 │  0.684 │  0.684 │ 42146.0 │  — │  — │ USDT │    -2.88 │ -14.41 │              — │            — │ 11.53 │
+│  13 │ BTCUSDT-PERP │ 2024-01-02 20:00:00 │  0.002 │  0.002 │ 42247.1 │  — │  — │ USDT │    -0.01 │  -0.04 │              — │            — │  0.03 │
+│  14 │ BTCUSDT-PERP │ 2024-01-02 21:00:00 │  0.004 │  0.004 │ 42351.7 │  — │  — │ USDT │    -0.02 │  -0.08 │              — │            — │  0.07 │
+│  15 │ BTCUSDT-PERP │ 2024-01-02 22:00:00 │  0.005 │  0.005 │ 42518.3 │  — │  — │ USDT │    -0.02 │  -0.11 │              — │            — │  0.09 │
+│   ⋮ │            ⋮ │                   ⋮ │      ⋮ │      ⋮ │       ⋮ │  ⋮ │  ⋮ │    ⋮ │        ⋮ │      ⋮ │              ⋮ │            ⋮ │     ⋮ │
+│ 543 │ BTCUSDT-PERP │ 2024-01-30 09:00:00 │  0.004 │  0.004 │ 43695.2 │  — │  — │ USDT │    -0.02 │  -0.09 │              — │            — │  0.07 │
+│ 544 │ BTCUSDT-PERP │ 2024-01-30 10:00:00 │ -0.008 │ -0.008 │ 43492.7 │  — │  — │ USDT │    -0.03 │  -0.17 │         -0.19% │       -0.27% │  0.14 │
+│ 545 │ BTCUSDT-PERP │ 2024-01-30 11:00:00 │  0.004 │  0.004 │ 43595.4 │  — │  — │ USDT │    -0.02 │  -0.09 │              — │            — │  0.07 │
+│ 546 │ BTCUSDT-PERP │ 2024-01-30 12:00:00 │ -0.001 │ -0.001 │ 43564.8 │  — │  — │ USDT │    -0.00 │  -0.02 │         -0.03% │       -0.11% │  0.02 │
+│ 547 │ BTCUSDT-PERP │ 2024-01-30 13:00:00 │  0.002 │  0.002 │ 43636.5 │  — │  — │ USDT │    -0.01 │  -0.04 │              — │            — │  0.03 │
+│ 548 │ BTCUSDT-PERP │ 2024-01-30 14:00:00 │  0.003 │  0.003 │ 43701.2 │  — │  — │ USDT │    -0.01 │  -0.07 │              — │            — │  0.05 │
+│ 549 │ BTCUSDT-PERP │ 2024-01-30 15:00:00 │ -0.002 │ -0.002 │ 43644.5 │  — │  — │ USDT │    -0.01 │  -0.04 │          0.16% │        0.08% │  0.03 │
+│ 550 │ BTCUSDT-PERP │ 2024-01-30 16:00:00 │ -0.859 │ -0.859 │ 43453.8 │  — │  — │ USDT │    -3.74 │ -18.67 │         -0.28% │       -0.36% │ 14.93 │
+│ 551 │ BTCUSDT-PERP │ 2024-01-30 18:00:00 │ -0.854 │ -0.854 │ 43259.7 │  — │  — │ USDT │    -3.69 │ -18.47 │              — │            — │ 14.78 │
+│ 552 │ BTCUSDT-PERP │ 2024-01-30 19:00:00 │  0.002 │  0.002 │ 43269.3 │  — │  — │ USDT │    -0.01 │  -0.04 │         -0.02% │       -0.10% │  0.03 │
+│ 553 │ BTCUSDT-PERP │ 2024-01-30 20:00:00 │ -0.001 │ -0.001 │ 43252.3 │  — │  — │ USDT │    -0.00 │  -0.02 │              — │            — │  0.02 │
+│ 554 │ BTCUSDT-PERP │ 2024-01-30 21:00:00 │ -0.006 │ -0.006 │ 43169.1 │  — │  — │ USDT │    -0.03 │  -0.13 │              — │            — │  0.10 │
+│ 555 │ BTCUSDT-PERP │ 2024-01-30 22:00:00 │ -0.001 │ -0.001 │ 43164.9 │  — │  — │ USDT │    -0.00 │  -0.02 │              — │            — │  0.02 │
+│ 556 │ BTCUSDT-PERP │ 2024-01-30 23:00:00 │ -0.021 │ -0.021 │ 42893.7 │  — │  — │ USDT │    -0.09 │  -0.45 │              — │            — │  0.36 │
+│ 557 │ BTCUSDT-PERP │ 2024-01-30 23:00:00 │  0.881 │  0.881 │ 42902.2 │  — │  — │ USDT │    -3.78 │ -18.90 │          0.80% │        0.72% │ 15.12 │
+└─────┴──────────────┴─────────────────────┴────────┴────────┴─────────┴────┴────┴──────┴──────────┴────────┴────────────────┴──────────────┴───────┘
+                                                                                                                                     527 rows omitted
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</code></pre><hr/><h3 id="Plot-account-equity-curve"><a class="docs-heading-anchor" href="#Plot-account-equity-curve">Plot account equity curve</a><a id="Plot-account-equity-curve-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-account-equity-curve" title="Permalink"></a></h3><pre><code class="language-julia hljs">using Plots
+
+theme(:juno)
+
+Fastback.plot_equity(equity_data; size=(800, 400))</code></pre><img src="0ad5c9aa.svg" alt="Example block output"/><hr/><h3 id="Plot-account-equity-drawdown-curve"><a class="docs-heading-anchor" href="#Plot-account-equity-drawdown-curve">Plot account equity drawdown curve</a><a id="Plot-account-equity-drawdown-curve-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-account-equity-drawdown-curve" title="Permalink"></a></h3><pre><code class="language-julia hljs">Fastback.plot_drawdown(drawdown_data; size=(800, 200))</code></pre><img src="6bafea27.svg" alt="Example block output"/><hr/><h3 id="Plot-cashflows-by-type"><a class="docs-heading-anchor" href="#Plot-cashflows-by-type">Plot cashflows by type</a><a id="Plot-cashflows-by-type-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-cashflows-by-type" title="Permalink"></a></h3><pre><code class="language-julia hljs">Fastback.plot_cashflows(acc)</code></pre><img src="94aa566b.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../3_multi_currency/">« Multi-Currency trading</a><a class="docs-footer-nextpage" href="../5_VOO_vs_MES_comparison/">VOO vs MES cost comparison »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.0 on <span class="colophon-date" title="Sunday 1 March 2026 20:00">Sunday 1 March 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
