@@ -99,7 +99,7 @@ for i in 1:nrow(df)
         target_qty = calc_base_qty_for_notional(perp, last, target_notional)
         delta_qty = target_qty - pos.quantity
 
-        if abs(delta_qty) >= (perp.base_tick / 2)
+        if abs(delta_qty) >= (perp.spec.base_tick / 2)
             fill_price = fill_price_for_qty(delta_qty, bid, ask)
             order = Order(oid!(acc), perp, dt, fill_price, delta_qty)
             fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=bid, ask=ask, last=last)

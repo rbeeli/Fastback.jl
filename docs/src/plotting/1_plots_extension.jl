@@ -92,7 +92,7 @@ for i in 1:n_steps
         collect_drawdown(dt, eq)
         pos = get_position(acc, perp)
         collect_open(dt, pos.quantity == 0.0 ? 0 : 1)
-        notional = pos.quantity * last * perp.multiplier
+        notional = pos.quantity * last * perp.spec.multiplier
         long_exp = max(notional, 0.0)
         short_exp = min(notional, 0.0)
         gross_exp = long_exp - short_exp
