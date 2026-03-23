@@ -21,6 +21,7 @@ end
 
     @test acc.track_trades
     @test acc.track_cashflows
+    @test acc.trade_count == 0
 end
 
 @testitem "Account keeps broker as concrete type parameter" begin
@@ -49,6 +50,7 @@ end
     trade = fill_order!(acc, order; dt=dt, fill_price=10.0, bid=10.0, ask=10.0, last=10.0)
     @test trade.order === order
     @test acc.trades[end] === trade
+    @test acc.trade_count == 1
 end
 
 @testitem "fill_order! can skip trade tracking" begin
@@ -75,6 +77,7 @@ end
     @test trade === nothing
     @test isempty(acc.trades)
     @test acc.trade_sequence == 0
+    @test acc.trade_count == 1
     @test isnothing(pos.last_order)
     @test isnothing(pos.last_trade)
     @test pos.quantity == 2.0
@@ -833,6 +836,7 @@ end
 
     @test trade === nothing
     @test isempty(acc.trades)
+    @test acc.trade_count == 2
     @test isnothing(pos.last_order)
     @test isnothing(pos.last_trade)
     @test pos.quantity == 0.0

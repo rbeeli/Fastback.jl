@@ -429,6 +429,7 @@ function settle_expiry!(
     pos.maint_margin_settle = 0.0
     pos.borrow_fee_dt = TTime(0)
 
+    count_trade!(acc)
     acc.track_trades || return nothing
 
     order = Order(oid!(acc), inst, dt, settle_price, qty_close)

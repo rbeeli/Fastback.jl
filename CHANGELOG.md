@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - `Cashflow` struct immutable now.
-- `Account` constructor parameters `track_trades` and `track_cashflows` to optionally switch off tracking of trades and cashflows.
+- `Account` constructor parameters `track_trades` and `track_cashflows` to optionally switch off tracking of trades and cashflows. New `trade_count` field that's always populated, even if `track_trades=false`.
 
 ## [0.5.0] - 2026-02-15
 

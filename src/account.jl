@@ -13,6 +13,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     const track_cashflows::Bool
     order_sequence::Int
     trade_sequence::Int
+    trade_count::Int
     cashflow_sequence::Int
     last_event_dt::TTime
     last_interest_dt::TTime
@@ -53,6 +54,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
             track_cashflows,
             order_sequence,
             trade_sequence,
+            0, # trade_count
             0, # cashflow_sequence
             TTime(0), # last_event_dt
             TTime(0), # last_interest_dt
@@ -98,6 +100,14 @@ Generates the next cashflow ID sequence value for the account.
 """
 @inline cfid!(acc::Account) = acc.cashflow_sequence += 1
 
+"""
+Increments the number of executed/synthetic trades applied to the account.
+Unlike `trade_sequence`, this counter advances even when trade history is not stored.
+"""
+@inline function count_trade!(acc::Account)
+    acc.trade_count += 1
+end
+
 @inline function _record_cashflow!(
     acc::Account{TTime},
     dt::TTime,
@@ -122,6 +132,7 @@ end
     pos_entry_price::Price,
     trade_reason::TradeReason.T,
 ) where {TTime<:Dates.AbstractTime}
+    count_trade!(acc)
     acc.track_trades || return nothing
 
     trade = Trade(
