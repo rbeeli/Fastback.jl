@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2026-03-23
+
+### Changed
+
+- `Cashflow` struct immutable now.
+- `Account` constructor parameters `track_trades` and `track_cashflows` to optionally switch off tracking of trades and cashflows.
+
 ## [0.5.0] - 2026-02-15
 
 ### Breaking changes ⚠️

@@ -35,7 +35,7 @@
                 acc.ledger.balances[settle_cash_index] += settled_amount
                 acc.ledger.equities[settle_cash_index] += settled_amount
             end
-            push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.VariationMargin, settle_cash_index, settled_amount, inst.index))
+            _record_cashflow!(acc, dt, CashflowKind.VariationMargin, settle_cash_index, settled_amount, inst.index)
         end
         pos.pnl_quote = 0.0
         pos.pnl_settle = 0.0
@@ -195,6 +195,7 @@ end
 
 """
 Fills an order, applying cash/equity/margin deltas and returning the resulting `Trade`.
+Returns `nothing` when `acc.track_trades == false`.
 Accrues borrow fees for any eligible principal-exchange spot short exposure up to `dt` and
 restarts the borrow-fee clock based on the post-fill position.
 Throws `OrderRejectError` when the fill is rejected (inactive instrument or risk checks).
@@ -217,7 +218,7 @@ Commission is broker-driven by default via `acc.broker`.
     bid::Price,
     ask::Price,
     last::Price,
-)::Trade{TTime} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+)::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     inst = order.inst
     isfinite(fill_price) || throw(ArgumentError("fill_order! requires finite fill_price, got $(fill_price) at dt=$(dt)."))
     isfinite(bid) || throw(ArgumentError("fill_order! requires finite bid, got $(bid) at dt=$(dt)."))
@@ -290,35 +291,17 @@ Commission is broker-driven by default via `acc.broker`.
         pos.borrow_fee_dt = TTime(0)
     end
 
-    # generate trade sequence number
-    tid = tid!(acc)
-
-    # create trade object
-    trade = Trade(
+    _record_trade!(
+        acc,
+        pos,
         order,
-        tid,
         dt,
         fill_price,
-        plan.fill_qty,
-        plan.remaining_qty,
-        plan.fill_pnl_settle,
-        plan.realized_qty,
-        plan.commission_quote,
-        plan.realized_commission_quote,
-        plan.commission_settle,
-        plan.cash_delta_settle,
+        plan,
         pos_qty,
         pos_entry_price,
-        trade_reason
+        trade_reason,
     )
-
-    # track last order and trade that touched the position
-    pos.last_order = order
-    pos.last_trade = trade
-
-    push!(acc.trades, trade)
-
-    trade
 end
 
 """
@@ -326,8 +309,9 @@ Roll an open position from one instrument into another at a shared timestamp.
 
 The helper closes the entire `from_inst` exposure first, then opens the same
 signed quantity in `to_inst`. Both fills are tagged with `TradeReason.Roll`
-and use explicit prices for each leg. Returns `(close_trade, open_trade)`, or
-`(nothing, nothing)` when `from_inst` is already flat.
+and use explicit prices for each leg. Returns recorded trades when
+`acc.track_trades == true`, or `(nothing, nothing)` when history tracking is
+disabled. Still returns `(nothing, nothing)` when `from_inst` is already flat.
 
 The roll requires matching settlement/margin accounting profile
 (`settle_symbol`, `margin_symbol`, `settlement`, `margin_requirement`) so
@@ -404,7 +388,8 @@ Final-settles an expired futures position at the current mark and releases margi
 
 For variation-margin futures, expiry applies one last mark-to-market settlement at
 `pos.mark_price`, then flattens quantity and clears margin usage without synthetic
-bid/ask execution or expiry commissions.
+bid/ask execution or expiry commissions. Returns `nothing` when
+`acc.track_trades == false`.
 """
 function settle_expiry!(
     acc::Account{TTime,TBroker},
@@ -443,6 +428,8 @@ function settle_expiry!(
     pos.init_margin_settle = 0.0
     pos.maint_margin_settle = 0.0
     pos.borrow_fee_dt = TTime(0)
+
+    acc.track_trades || return nothing
 
     order = Order(oid!(acc), inst, dt, settle_price, qty_close)
     trade = Trade(

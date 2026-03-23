@@ -10,11 +10,11 @@ using EnumX
     Other = 6
 end
 
-mutable struct Cashflow{TTime<:Dates.AbstractTime}
-    const id::Int                    # sequence id
-    const dt::TTime                  # event time
-    const kind::CashflowKind.T       # category
-    const cash_index::Int            # index into Account.cash arrays
-    const amount::Price              # movement amount in settlement currency of cash_index
-    const inst_index::Int            # instrument index, 0 if not tied to an instrument
+struct Cashflow{TTime<:Dates.AbstractTime}
+    id::Int                    # sequence id
+    dt::TTime                  # event time
+    kind::CashflowKind.T       # category
+    cash_index::Int            # index into Account.cash arrays
+    amount::Price              # movement amount in settlement currency of cash_index
+    inst_index::Int            # instrument index, 0 if not tied to an instrument
 end

@@ -14,6 +14,15 @@ using TestItemRunner
     @test acc.cashflow_sequence == 1
 end
 
+@testitem "Account history tracking defaults to enabled" begin
+    using Test, Fastback
+
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
+
+    @test acc.track_trades
+    @test acc.track_cashflows
+end
+
 @testitem "Account keeps broker as concrete type parameter" begin
     using Test, Fastback
 
@@ -40,6 +49,37 @@ end
     trade = fill_order!(acc, order; dt=dt, fill_price=10.0, bid=10.0, ask=10.0, last=10.0)
     @test trade.order === order
     @test acc.trades[end] === trade
+end
+
+@testitem "fill_order! can skip trade tracking" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(
+        ;
+        broker=FlatFeeBroker(fixed=0.5),
+        funding=AccountFunding.Margined,
+        base_currency=base_currency,
+        track_trades=false,
+    )
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 1_000.0)
+
+    inst = register_instrument!(acc, spot_instrument(Symbol("NOTRACK/USD"), :NOTRACK, :USD))
+    pos = get_position(acc, inst)
+    dt = DateTime(2025, 1, 1)
+    order = Order(oid!(acc), inst, dt, 10.0, 2.0)
+
+    trade = fill_order!(acc, order; dt=dt, fill_price=10.0, bid=10.0, ask=10.0, last=10.0)
+
+    @test trade === nothing
+    @test isempty(acc.trades)
+    @test acc.trade_sequence == 0
+    @test isnothing(pos.last_order)
+    @test isnothing(pos.last_trade)
+    @test pos.quantity == 2.0
+    @test cash_balance(acc, usd) ≈ 979.5 atol=1e-12
+    @test equity(acc, usd) ≈ 999.5 atol=1e-12
 end
 
 @testitem "Instrument requires quote cash asset" begin
@@ -751,6 +791,55 @@ end
     @test trade.cash_delta_settle ≈ 0.0 atol=1e-12
     @test trade.commission_settle ≈ 0.0 atol=1e-12
     @test get_position(acc, inst).quantity == 0.0
+end
+
+@testitem "settle_expiry! respects disabled trade tracking" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(
+        ;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=base_currency,
+        track_trades=false,
+    )
+    deposit!(acc, :USD, 20_000.0)
+
+    start_dt = DateTime(2026, 1, 1)
+    expiry_dt = DateTime(2026, 2, 1)
+    inst = register_instrument!(acc, InstrumentSpec(
+        Symbol("FUTNOTRACK/USD"),
+        :FUTNOTRACK,
+        :USD;
+        contract_kind=ContractKind.Future,
+        settlement=SettlementStyle.VariationMargin,
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+        start_time=start_dt,
+        expiry=expiry_dt,
+    ))
+    pos = get_position(acc, inst)
+
+    open_dt = start_dt + Day(10)
+    fill_order!(acc, Order(oid!(acc), inst, open_dt, 100.0, 1.0); dt=open_dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    update_marks!(acc, inst, expiry_dt, 105.0, 105.0, 105.0)
+
+    usd_index = cash_asset(acc, :USD).index
+    trade = settle_expiry!(acc, inst, expiry_dt)
+
+    @test trade === nothing
+    @test isempty(acc.trades)
+    @test isnothing(pos.last_order)
+    @test isnothing(pos.last_trade)
+    @test pos.quantity == 0.0
+    @test pos.init_margin_settle == 0.0
+    @test pos.maint_margin_settle == 0.0
+    @test acc.ledger.init_margin_used[usd_index] == 0.0
+    @test acc.ledger.maint_margin_used[usd_index] == 0.0
 end
 
 @testitem "Zero margin rates keep margin usage at zero" begin

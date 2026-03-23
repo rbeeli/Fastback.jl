@@ -55,7 +55,6 @@ function accrue_interest!(
 
     yearfrac = millis / (1000 * 60 * 60 * 24 * Price(year_basis))
 
-    cfs = acc.cashflows
     rate_dt = acc.last_interest_dt
     ledger = acc.ledger
     short_proceeds_by_cash = ledger.short_proceeds_by_cash_buffer
@@ -86,7 +85,7 @@ function accrue_interest!(
         ledger.balances[i] += interest
         ledger.equities[i] += interest
         kind = interest >= 0 ? CashflowKind.LendInterest : CashflowKind.BorrowInterest
-        push!(cfs, Cashflow{TTime}(cfid!(acc), dt, kind, i, interest, 0))
+        _record_cashflow!(acc, dt, kind, i, interest, 0)
     end
 
     acc.last_interest_dt = dt

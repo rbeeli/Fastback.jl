@@ -20,6 +20,12 @@ using TestItemRunner
     @test alloc == 0
 end
 
+@testitem "Cashflow is bits-stored for inline vector storage" begin
+    using Test, Fastback, Dates
+
+    @test isbitstype(Cashflow{DateTime})
+end
+
 @testitem "fill_order! allocations are bounded after warmup" begin
     using Test, Fastback, Dates
 

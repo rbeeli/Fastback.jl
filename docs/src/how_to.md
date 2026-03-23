@@ -47,6 +47,7 @@ Notes:
 - FX updates are applied on the account's `ExchangeRates`.
 - Cash registration is account-owned: use `register_cash_asset!(acc, CashSpec(:EUR))` and `ExchangeRates` is resized automatically.
 - Setup order: create `Account`, register additional cash assets, set FX rates, then fund it.
+- Set `track_trades=false` and/or `track_cashflows=false` on `Account` when you only need final state and want lower history overhead.
 - Orders are filled separately with `fill_order!`.
 - For `MarginRequirement.PercentNotional`, `margin_init_*` / `margin_maint_*` are equity fractions of notional (`0.10` means 10%).
 

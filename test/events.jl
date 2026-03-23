@@ -569,6 +569,86 @@ end
     @test only(interest_cfs).amount ≈ expected_interest atol=1e-8
 end
 
+@testitem "process_step! can skip cashflow tracking without changing accounting" begin
+    using Test, Fastback, Dates
+
+    function setup_account(track_cashflows::Bool)
+        acc = Account(
+            ;
+            broker=FlatFeeBroker(; borrow_by_cash=Dict(:USD=>0.0), lend_by_cash=Dict(:USD=>0.05)),
+            funding=AccountFunding.Margined,
+            base_currency=CashSpec(:USD),
+            track_cashflows=track_cashflows,
+        )
+        deposit!(acc, :USD, 20_000.0)
+
+        spot_inst = register_instrument!(acc, spot_instrument(
+            Symbol("CFSHORT/USD"),
+            :CFSHORT,
+            :USD;
+            short_borrow_rate=0.10,
+        ))
+        perp_inst = register_instrument!(acc, InstrumentSpec(
+            Symbol("CFPERP/USD"),
+            :CFPERP,
+            :USD;
+            contract_kind=ContractKind.Perpetual,
+            settlement=SettlementStyle.VariationMargin,
+            margin_requirement=MarginRequirement.PercentNotional,
+            margin_init_long=0.1,
+            margin_maint_long=0.05,
+            margin_init_short=0.1,
+            margin_maint_short=0.05,
+        ))
+
+        dt0 = DateTime(2026, 1, 1)
+        fill_order!(acc, Order(oid!(acc), spot_inst, dt0, 100.0, -10.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+        fill_order!(acc, Order(oid!(acc), perp_inst, dt0, 50.0, 1.0); dt=dt0, fill_price=50.0, bid=50.0, ask=50.0, last=50.0)
+
+        process_step!(acc, dt0)
+
+        dt1 = dt0 + Day(1)
+        marks = [
+            MarkUpdate(spot_inst.index, 90.0, 90.0, 90.0),
+            MarkUpdate(perp_inst.index, 60.0, 60.0, 60.0),
+        ]
+        funding = [FundingUpdate(perp_inst.index, 0.01)]
+        process_step!(acc, dt1; marks=marks, funding=funding)
+
+        return acc, spot_inst, perp_inst
+    end
+
+    tracked, tracked_spot, tracked_perp = setup_account(true)
+    untracked, untracked_spot, untracked_perp = setup_account(false)
+
+    @test !isempty(tracked.cashflows)
+    @test isempty(untracked.cashflows)
+
+    @test untracked.ledger.balances ≈ tracked.ledger.balances atol=1e-10
+    @test untracked.ledger.equities ≈ tracked.ledger.equities atol=1e-10
+    @test untracked.ledger.init_margin_used ≈ tracked.ledger.init_margin_used atol=1e-10
+    @test untracked.ledger.maint_margin_used ≈ tracked.ledger.maint_margin_used atol=1e-10
+
+    tracked_spot_pos = get_position(tracked, tracked_spot)
+    untracked_spot_pos = get_position(untracked, untracked_spot)
+    @test untracked_spot_pos.quantity ≈ tracked_spot_pos.quantity atol=1e-10
+    @test untracked_spot_pos.pnl_quote ≈ tracked_spot_pos.pnl_quote atol=1e-10
+    @test untracked_spot_pos.pnl_settle ≈ tracked_spot_pos.pnl_settle atol=1e-10
+    @test untracked_spot_pos.value_quote ≈ tracked_spot_pos.value_quote atol=1e-10
+    @test untracked_spot_pos.value_settle ≈ tracked_spot_pos.value_settle atol=1e-10
+    @test untracked_spot_pos.borrow_fee_dt == tracked_spot_pos.borrow_fee_dt
+
+    tracked_perp_pos = get_position(tracked, tracked_perp)
+    untracked_perp_pos = get_position(untracked, untracked_perp)
+    @test untracked_perp_pos.quantity ≈ tracked_perp_pos.quantity atol=1e-10
+    @test untracked_perp_pos.avg_settle_price ≈ tracked_perp_pos.avg_settle_price atol=1e-10
+    @test untracked_perp_pos.init_margin_settle ≈ tracked_perp_pos.init_margin_settle atol=1e-10
+    @test untracked_perp_pos.maint_margin_settle ≈ tracked_perp_pos.maint_margin_settle atol=1e-10
+
+    @test Fastback.check_invariants(tracked)
+    @test Fastback.check_invariants(untracked)
+end
+
 @testitem "process_expiries! final settlement does not charge expiry commission" begin
     using Test, Fastback, Dates
 

@@ -29,7 +29,7 @@ function apply_funding!(
             acc.ledger.balances[settle_idx] += payment
             acc.ledger.equities[settle_idx] += payment
         end
-        push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.Funding, settle_idx, payment, inst.index))
+        _record_cashflow!(acc, dt, CashflowKind.Funding, settle_idx, payment, inst.index)
     end
     return acc
 end

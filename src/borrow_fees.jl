@@ -43,7 +43,7 @@ with actual short exposure.
     if fee != 0.0
         acc.ledger.balances[settle_idx] -= fee
         acc.ledger.equities[settle_idx] -= fee
-        push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, CashflowKind.BorrowFee, settle_idx, -fee, inst.index))
+        _record_cashflow!(acc, dt, CashflowKind.BorrowFee, settle_idx, -fee, inst.index)
     end
 
     pos.borrow_fee_dt = dt

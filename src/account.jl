@@ -9,6 +9,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     const trades::Vector{Trade{TTime}}
     const cashflows::Vector{Cashflow{TTime}}
     const _expiry_trades_buffer::Vector{Trade{TTime}}
+    const track_trades::Bool
+    const track_cashflows::Bool
     order_sequence::Int
     trade_sequence::Int
     cashflow_sequence::Int
@@ -24,6 +26,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
         funding::AccountFunding.T=AccountFunding.FullyFunded,
         margin_aggregation::MarginAggregation.T=MarginAggregation.BaseCurrency,
         broker::TBroker,
+        track_trades::Bool=true,
+        track_cashflows::Bool=true,
         date_format=dateformat"yyyy-mm-dd",
         datetime_format=dateformat"yyyy-mm-dd HH:MM:SS",
         order_sequence=0,
@@ -45,6 +49,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
             Vector{Trade{TTime}}(), # trades
             Vector{Cashflow{TTime}}(), # cashflows
             Vector{Trade{TTime}}(), # reusable expiry buffer
+            track_trades,
+            track_cashflows,
             order_sequence,
             trade_sequence,
             0, # cashflow_sequence
@@ -91,6 +97,55 @@ Generates the next trade ID sequence value for the account.
 Generates the next cashflow ID sequence value for the account.
 """
 @inline cfid!(acc::Account) = acc.cashflow_sequence += 1
+
+@inline function _record_cashflow!(
+    acc::Account{TTime},
+    dt::TTime,
+    kind::CashflowKind.T,
+    cash_index::Int,
+    amount::Price,
+    inst_index::Int,
+) where {TTime<:Dates.AbstractTime}
+    acc.track_cashflows || return nothing
+    push!(acc.cashflows, Cashflow{TTime}(cfid!(acc), dt, kind, cash_index, amount, inst_index))
+    nothing
+end
+
+@inline function _record_trade!(
+    acc::Account{TTime},
+    pos::Position{TTime},
+    order::Order{TTime},
+    dt::TTime,
+    fill_price::Price,
+    plan,
+    pos_qty::Quantity,
+    pos_entry_price::Price,
+    trade_reason::TradeReason.T,
+) where {TTime<:Dates.AbstractTime}
+    acc.track_trades || return nothing
+
+    trade = Trade(
+        order,
+        tid!(acc),
+        dt,
+        fill_price,
+        plan.fill_qty,
+        plan.remaining_qty,
+        plan.fill_pnl_settle,
+        plan.realized_qty,
+        plan.commission_quote,
+        plan.realized_commission_quote,
+        plan.commission_settle,
+        plan.cash_delta_settle,
+        pos_qty,
+        pos_entry_price,
+        trade_reason,
+    )
+    pos.last_order = order
+    pos.last_trade = trade
+    push!(acc.trades, trade)
+    trade
+end
 
 """
 Deposits cash into the account balance.

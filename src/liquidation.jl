@@ -3,7 +3,8 @@
 
 Liquidates all open positions using stored side-aware quotes, returning the generated trades.
 Liquidation fills are close-only and run with `allow_inactive=true`, so they bypass
-incremental-margin rejection by design.
+incremental-margin rejection by design. When `acc.track_trades == false`, state
+updates still apply but the returned vector is empty.
 """
 function liquidate_all!(
     acc::Account{TTime,TBroker},
@@ -26,8 +27,7 @@ function liquidate_all!(
             allow_inactive=true,
             trade_reason=TradeReason.Liquidation,
         )
-        trade isa Trade || throw(ArgumentError("Liquidation rejected for $(pos.inst.spec.symbol) with reason $(trade)"))
-        push!(trades, trade)
+        trade === nothing || push!(trades, trade)
     end
     trades
 end
@@ -41,7 +41,8 @@ incremental-margin rejection by design.
 
 Per-currency liquidation first targets the worst excess-liquidity currency by
 simulating full closes, then falls back to globally reducing maintenance if no
-candidate can directly improve that worst currency.
+candidate can directly improve that worst currency. When `acc.track_trades == false`,
+state updates still apply but the returned vector is empty.
 """
 @inline function _largest_maint_contributor(
     acc::Account,
@@ -199,10 +200,8 @@ function liquidate_to_maintenance!(
             allow_inactive=true,
             trade_reason=TradeReason.Liquidation,
         )
-        if trade isa Trade
+        if trade !== nothing
             push!(trades, trade)
-        else
-            throw(ArgumentError("Liquidation rejected for $(max_pos.inst.spec.symbol) with reason $(trade)"))
         end
     end
 

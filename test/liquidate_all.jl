@@ -76,3 +76,39 @@ end
     @test trade.cash_delta_settle ≈ -1.0 atol=1e-12
     @test get_position(acc, inst).quantity == 0.0
 end
+
+@testitem "liquidate_all! respects disabled trade tracking" begin
+    using Test, Fastback, Dates
+
+    base_currency=CashSpec(:USD)
+    acc = Account(
+        ;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=base_currency,
+        track_trades=false,
+    )
+    deposit!(acc, :USD, 10_000.0)
+
+    inst = register_instrument!(acc, InstrumentSpec(
+        Symbol("NOTRACKLIQ/USD"),
+        :NOTRACKLIQ,
+        :USD;
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+    ))
+
+    dt = DateTime(2024, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 10.0); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+
+    trades = liquidate_all!(acc, dt)
+
+    @test isempty(trades)
+    @test isempty(acc.trades)
+    @test get_position(acc, inst).quantity == 0.0
+    @test all(x -> x == 0.0, acc.ledger.init_margin_used)
+    @test all(x -> x == 0.0, acc.ledger.maint_margin_used)
+end
