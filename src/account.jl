@@ -104,7 +104,7 @@ Generates the next cashflow ID sequence value for the account.
 Increments the number of executed/synthetic trades applied to the account.
 Unlike `trade_sequence`, this counter advances even when trade history is not stored.
 """
-@inline function count_trade!(acc::Account)
+@inline function _count_trade!(acc::Account)
     acc.trade_count += 1
 end
 
@@ -132,7 +132,7 @@ end
     pos_entry_price::Price,
     trade_reason::TradeReason.T,
 ) where {TTime<:Dates.AbstractTime}
-    count_trade!(acc)
+    _count_trade!(acc)
     acc.track_trades || return nothing
 
     trade = Trade(
