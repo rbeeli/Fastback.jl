@@ -7,6 +7,7 @@ mutable struct Trade{TTime<:Dates.AbstractTime}
     const fill_price::Price          # price at which the order was filled
     const fill_qty::Quantity         # negative = short selling
     const remaining_qty::Quantity    # remaining (unfilled) quantity after the order was (partially) filled
+    const notional_base::Price       # absolute traded notional in account base currency at fill time
     const fill_pnl_settle::Price     # gross additive fill P&L in settlement currency; excludes commissions
     const realized_qty::Quantity     # quantity of the existing position that was covered by the order
     const commission_quote::Price    # paid commission in quote currency

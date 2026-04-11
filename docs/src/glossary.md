@@ -85,7 +85,9 @@ A `Cash` object models a funding currency (USD, EUR, BTC, …) with display prec
 
 ## Collector
 
-Collectors are lightweight recorders that capture time-series or summary statistics during a backtest. `periodic_collector`, `predicate_collector`, `drawdown_collector`, and helpers like `min_value_collector` are part of the collectors API and return both the collecting closure and the mutable storage.
+Collectors are lightweight recorders that capture time-series or summary statistics during a backtest. `periodic_collector`, `predicate_collector`, `drawdown_collector`, `portfolio_weights_collector`, `turnover_collector`, and helpers like `min_value_collector` are part of the collectors API and return both the collecting closure and the mutable storage.
+
+`turnover_collector` records fill-time gross traded notional in account base currency and reports turnover as `gross_traded_notional / (2 * equity_base_ccy(acc))` by default. Use `TurnoverMode.OneWay` to report `gross_traded_notional / equity_base_ccy(acc)`. Turnover is `NaN` when base-currency equity is nonpositive.
 
 ## Exchange Rate
 

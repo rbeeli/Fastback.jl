@@ -433,6 +433,8 @@ function settle_expiry!(
     acc.track_trades || return nothing
 
     order = Order(oid!(acc), inst, dt, settle_price, qty_close)
+    notional_quote = abs(settle_price) * abs(qty_close) * inst.spec.multiplier
+    notional_base = iszero(notional_quote) ? 0.0 : notional_quote * get_rate_base_ccy(acc, inst.quote_cash_index)
     trade = Trade(
         order,
         tid!(acc),
@@ -440,6 +442,7 @@ function settle_expiry!(
         settle_price,
         qty_close,
         0.0,
+        notional_base,
         0.0,        # Final settlement P&L is handled as VM cashflow, not trade execution P&L.
         qty_before,
         0.0,

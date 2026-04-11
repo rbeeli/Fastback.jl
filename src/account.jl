@@ -135,6 +135,7 @@ end
     _count_trade!(acc)
     acc.track_trades || return nothing
 
+    notional_base = iszero(plan.notional_value_quote) ? 0.0 : plan.notional_value_quote * get_rate_base_ccy(acc, order.inst.quote_cash_index)
     trade = Trade(
         order,
         tid!(acc),
@@ -142,6 +143,7 @@ end
         fill_price,
         plan.fill_qty,
         plan.remaining_qty,
+        notional_base,
         plan.fill_pnl_settle,
         plan.realized_qty,
         plan.commission_quote,

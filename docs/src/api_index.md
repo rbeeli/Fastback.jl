@@ -59,8 +59,8 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Collectors
 
-- `PeriodicValues`, `PredicateValues`, `DrawdownValues`, `PortfolioWeightsValues`, `DrawdownMode`, `dates`
-- `periodic_collector`, `predicate_collector`, `drawdown_collector`, `portfolio_weights_collector`, `should_collect`
+- `PeriodicValues`, `PredicateValues`, `DrawdownValues`, `PortfolioWeightsValues`, `TurnoverValues`, `DrawdownMode`, `TurnoverMode`, `dates`
+- `periodic_collector`, `predicate_collector`, `drawdown_collector`, `portfolio_weights_collector`, `turnover_collector`, `should_collect`
 - `MinValue`, `MaxValue`, `min_value_collector`, `max_value_collector`
 
 ## Event driver

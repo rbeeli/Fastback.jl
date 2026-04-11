@@ -1,6 +1,7 @@
 struct FillPlan
     fill_qty::Quantity
     remaining_qty::Quantity
+    notional_value_quote::Price
     commission_quote::Price
     realized_commission_quote::Price   # quote-ccy commission attributed to realized leg (entry allocated + exit-side share)
     commission_settle::Price
@@ -183,6 +184,7 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     FillPlan(
         fill_qty,
         remaining_qty,
+        notional_value_quote,
         commission_total_quote,
         realized_commission_quote,
         commission_settle,

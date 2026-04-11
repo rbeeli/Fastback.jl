@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-04-11
+
+### Breaking changes ⚠️
+
+- `Trade` now stores fill-time base-currency traded notional in the new `notional_base` field. Positional `Trade` construction must include this field.
+
+### Added
+
+- `turnover_collector`, `TurnoverValues`, and `TurnoverMode` for account-level turnover series. The collector tracks gross traded notional by period using fill-time base-currency notionals, reports round-trip turnover by default, supports one-way notional turnover via `TurnoverMode.OneWay`, returns `NaN` for nonpositive base-currency equity, and includes the turnover mode in Tables.jl rows.
+
 ## [0.5.1] - 2026-03-23
 
 ### Changed

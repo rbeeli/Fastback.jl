@@ -33,6 +33,7 @@ include("collectors/predicate.jl")
 include("collectors/extrema.jl")
 include("collectors/drawdown.jl")
 include("collectors/portfolio_weights.jl")
+include("collectors/turnover.jl")
 include("tables.jl")
 include("analytics.jl")
 include("print.jl")
@@ -162,12 +163,15 @@ export PeriodicValues,
     PredicateValues,
     DrawdownValues,
     PortfolioWeightsValues,
+    TurnoverValues,
     DrawdownMode,
+    TurnoverMode,
     dates,
     periodic_collector,
     predicate_collector,
     drawdown_collector,
     portfolio_weights_collector,
+    turnover_collector,
     should_collect,
     MinValue,
     MaxValue,
