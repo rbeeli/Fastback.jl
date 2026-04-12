@@ -104,19 +104,16 @@ For a backtesting engine like Fastback.jl, the most common missing built‑ins I
   
 ## Building documentation
 
-The documentation is built using [Documenter.jl](https://documenter.juliadocs.org/stable/).
+The documentation is built using [Documenter.jl](https://documenter.juliadocs.org/stable/) and [DocumenterVitepress.jl](https://github.com/LuxDL/DocumenterVitepress.jl).
 
 To rebuild, run the following command from the root of the repository:
 
 ```bash
-cd docs
-julia --project --eval 'using Pkg; Pkg.resolve(); Pkg.instantiate()'
-julia --project make.jl
+julia --project=docs docs/makedocs.jl
 ```
 
 To view the documentation locally, run:
 
 ```bash
-cd docs
-npx live-server ./build
+just serve-docs
 ```

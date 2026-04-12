@@ -1,38 +1,52 @@
-name: Deploy Documenter.jl generated documentation
+name: Docs build and deploy
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v6
         with:
-          fetch-depth: 1 # Only fetch the latest commit to keep the job light.
+          persist-credentials: false
 
-      - name: Set up Julia
-        uses: julia-actions/setup-julia@v1
+      - name: Install python
+        uses: actions/setup-python@v6
         with:
-          version: "1.12"
+          python-version: "3.8"
 
-      - name: Install dependencies
-        run: |
-          cd docs
-          julia --project -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()*"/../")); Pkg.add(url="https://github.com/rbeeli/Documenter.jl"); Pkg.resolve(); Pkg.instantiate()'
-
-      - name: Build documentation
-        run: |
-          cd docs
-          julia --project make.jl
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Install Julia
+        uses: julia-actions/setup-julia@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/build
-          force_orphan: true
+          version: "1"
+
+      - uses: julia-actions/cache@v3
+
+      - name: Build and deploy docs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          cd docs;
+          julia --color=yes makedocs.jl
+
+      - name: Upload site as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Docs build
+          path: ./docs/build

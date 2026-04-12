@@ -1,5 +1,24 @@
-build-docs:
-	julia --project=docs -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate(); include("docs/make.jl")'
+docs-build:
+	julia --project=docs docs/makedocs.jl
 
-serve-docs:
-	(python3 -m http.server 8080 --directory docs/build &) && sleep 1 && (command -v xdg-open >/dev/null && xdg-open http://localhost:8080 || command -v open >/dev/null && open http://localhost:8080 || echo "Open http://localhost:8080 in your browser")
+docs-serve:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	cleanup() {
+		kill "$server_pid" 2>/dev/null || true
+	}
+	if [ ! -f docs/build/1/index.html ]; then
+		just build-docs
+	fi
+	docs/node_modules/.bin/vitepress preview docs/build/.documenter --host 127.0.0.1 --port 8000 >/tmp/fastback-docs-server.log 2>&1 &
+	server_pid=$!
+	trap cleanup EXIT
+	trap 'cleanup; exit 0' INT TERM
+	sleep 1
+	if command -v open >/dev/null 2>&1; then
+		open "http://127.0.0.1:8000/"
+	elif command -v xdg-open >/dev/null 2>&1; then
+		xdg-open "http://127.0.0.1:8000/"
+	fi
+	echo "Serving docs at http://127.0.0.1:8000/"
+	wait "$server_pid" || true

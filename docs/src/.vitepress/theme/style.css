@@ -1,0 +1,38 @@
+@font-face {
+  font-family: JuliaMono-Regular;
+  src: url("https://cdn.jsdelivr.net/gh/cormullion/juliamono/webfonts/JuliaMono-Regular.woff2");
+}
+
+:root {
+  --vp-font-family-mono: JuliaMono-Regular, monospace;
+  --vp-layout-max-width: 1720px;
+}
+
+pre,
+code {
+  font-family: JuliaMono-Regular, monospace;
+  font-feature-settings: "calt" off;
+  letter-spacing: 0;
+}
+
+.vp-doc div[class~="language-"] pre.shiki.vp-code,
+.vp-doc div[class~="language-"] pre.shiki.vp-code code,
+.vp-doc div[class~="language-"] pre.shiki.vp-code code .line {
+  line-height: 1rem !important;
+  letter-spacing: 0;
+}
+
+.vp-doc table,
+.data-frame {
+  overflow-x: auto !important;
+  font-size: 0.875rem;
+}
+
+@media (min-width: 1440px) {
+  .VPDoc.has-aside .content-container,
+  .VPDoc.has-aside .container,
+  .VPDoc .content-container,
+  .VPDoc .container {
+    max-width: 1260px !important;
+  }
+}
