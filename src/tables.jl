@@ -327,3 +327,142 @@ Return a Tables.jl view over account equities.
 """
 equities_table(acc::Account) = EquityBalancesTable(acc.ledger.cash, acc.ledger.equities)
 
+# -----------------------------------------------------------------------------
+
+struct PnlConcentrationRows
+    table::PnlConcentrationTable
+end
+
+struct PerformanceSummaryRows
+    summary::PerformanceSummary
+end
+
+const _PERFORMANCE_SUMMARY_TABLE_NAMES = (
+    :tot_ret,
+    :cagr,
+    :sharpe,
+    :sortino,
+    :calmar,
+    :max_dd,
+    :avg_dd,
+    :ulcer,
+    :vol,
+    :n_trades,
+    :n_closing_trades,
+    :winners,
+    :losers,
+)
+
+const _PERFORMANCE_SUMMARY_TABLE_TYPES = (
+    Float64,
+    Float64,
+    Float64,
+    Float64,
+    Float64,
+    Float64,
+    Float64,
+    Float64,
+    Float64,
+    Int,
+    Int,
+    Union{Missing,Float64},
+    Union{Missing,Float64},
+)
+
+const _PNL_CONCENTRATION_TABLE_NAMES = (
+    :bucket,
+    :quote_symbol,
+    :realized_trade_count,
+    :gross_realized_pnl_quote,
+    :net_realized_pnl_quote,
+    :share_of_abs_pnl,
+    :share_of_net_pnl,
+)
+
+const _PNL_CONCENTRATION_TABLE_TYPES = (
+    PnlConcentrationBucket,
+    Symbol,
+    Int,
+    Price,
+    Price,
+    Float64,
+    Float64,
+)
+
+Tables.istable(::Type{PnlConcentrationTable}) = true
+Tables.rowaccess(::Type{PnlConcentrationTable}) = true
+Tables.columnaccess(::Type{PnlConcentrationTable}) = true
+Tables.rows(tbl::PnlConcentrationTable) = PnlConcentrationRows(tbl)
+Tables.schema(::PnlConcentrationTable) = Tables.Schema(
+    _PNL_CONCENTRATION_TABLE_NAMES,
+    _PNL_CONCENTRATION_TABLE_TYPES,
+)
+Tables.columns(tbl::PnlConcentrationTable) = (
+    bucket=tbl.bucket,
+    quote_symbol=tbl.quote_symbol,
+    realized_trade_count=tbl.realized_trade_count,
+    gross_realized_pnl_quote=tbl.gross_realized_pnl_quote,
+    net_realized_pnl_quote=tbl.net_realized_pnl_quote,
+    share_of_abs_pnl=tbl.share_of_abs_pnl,
+    share_of_net_pnl=tbl.share_of_net_pnl,
+)
+
+Base.length(tbl::PnlConcentrationTable) = length(tbl.bucket)
+Base.length(rows::PnlConcentrationRows) = length(rows.table)
+Base.size(tbl::PnlConcentrationTable) = (length(tbl), length(_PNL_CONCENTRATION_TABLE_NAMES))
+Base.size(tbl::PnlConcentrationTable, dim::Integer) = dim == 1 ? length(tbl) :
+    dim == 2 ? length(_PNL_CONCENTRATION_TABLE_NAMES) :
+    1
+
+function Base.iterate(rows::PnlConcentrationRows, idx::Int=1)
+    tbl = rows.table
+    idx > length(tbl) && return nothing
+    row = (
+        bucket=@inbounds(tbl.bucket[idx]),
+        quote_symbol=@inbounds(tbl.quote_symbol[idx]),
+        realized_trade_count=@inbounds(tbl.realized_trade_count[idx]),
+        gross_realized_pnl_quote=@inbounds(tbl.gross_realized_pnl_quote[idx]),
+        net_realized_pnl_quote=@inbounds(tbl.net_realized_pnl_quote[idx]),
+        share_of_abs_pnl=@inbounds(tbl.share_of_abs_pnl[idx]),
+        share_of_net_pnl=@inbounds(tbl.share_of_net_pnl[idx]),
+    )
+    return row, idx + 1
+end
+
+Tables.istable(::Type{PerformanceSummaryTable}) = true
+Tables.rowaccess(::Type{PerformanceSummaryTable}) = true
+Tables.rows(tbl::PerformanceSummaryTable) = PerformanceSummaryRows(tbl.summary)
+Tables.schema(::PerformanceSummaryTable) = Tables.Schema(
+    _PERFORMANCE_SUMMARY_TABLE_NAMES,
+    _PERFORMANCE_SUMMARY_TABLE_TYPES,
+)
+
+Base.length(::PerformanceSummaryTable) = 1
+Base.length(::PerformanceSummaryRows) = 1
+Base.size(::PerformanceSummaryTable) = (1, length(_PERFORMANCE_SUMMARY_TABLE_NAMES))
+Base.size(::PerformanceSummaryTable, dim::Integer) = dim == 1 ? 1 :
+    dim == 2 ? length(_PERFORMANCE_SUMMARY_TABLE_NAMES) :
+    1
+
+function Base.iterate(rows::PerformanceSummaryRows, idx::Int=1)
+    idx > 1 && return nothing
+    return _performance_summary_table_row(rows.summary), 2
+end
+
+function _performance_summary_table_row(summary::PerformanceSummary)
+    (
+        tot_ret=summary.tot_ret,
+        cagr=summary.cagr,
+        sharpe=summary.sharpe,
+        sortino=summary.sortino,
+        calmar=summary.calmar,
+        max_dd=summary.max_dd,
+        avg_dd=summary.avg_dd,
+        ulcer=summary.ulcer,
+        vol=summary.vol,
+        n_trades=summary.n_trades,
+        n_closing_trades=summary.n_closing_trades,
+        winners=summary.winners,
+        losers=summary.losers,
+    )
+end

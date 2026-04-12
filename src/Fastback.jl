@@ -34,8 +34,8 @@ include("collectors/extrema.jl")
 include("collectors/drawdown.jl")
 include("collectors/portfolio_weights.jl")
 include("collectors/turnover.jl")
-include("tables.jl")
 include("analytics.jl")
+include("tables.jl")
 include("print.jl")
 include("plots.jl")
 include("backtest_runner.jl")
@@ -197,7 +197,20 @@ export balances_table,
     cashflows_table
 
 # Analytics
-export performance_summary_table
+export performance_summary_table,
+    performance_summary,
+    PerformanceSummary,
+    TradeSummary,
+    QuoteTradeSummary,
+    SettlementTradeSummary,
+    RealizedHoldingPeriod,
+    HoldingPeriodSummary,
+    gross_realized_pnl_quote,
+    net_realized_pnl_quote,
+    trade_summary,
+    realized_holding_periods,
+    holding_period_summary,
+    pnl_concentration
 
 # Formatting helpers
 export format_cash,

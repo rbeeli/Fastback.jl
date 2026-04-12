@@ -2,7 +2,7 @@ using Dates
 using TestItemRunner
 
 @testsnippet TablesTestSetup begin
-    using Test, Fastback, Dates, Tables, DataFrames
+    using Test, Fastback, Dates, Tables
 
     base_currency=CashSpec(:USD)
     acc = Account(; funding=AccountFunding.Margined, base_currency=base_currency, broker=FlatFeeBroker(fixed=0.5))
@@ -62,7 +62,7 @@ end
     trade_cols = Tables.columntable(tbl)
     @test trade_cols.symbol == fill(inst.spec.symbol, length(acc.trades))
 
-    println(DataFrame(tbl))
+    @test Tables.istable(typeof(tbl))
 end
 
 @testitem "trades_table uses settlement currency for quote/settle mismatch" begin
@@ -148,7 +148,8 @@ end
     @test balance_row.symbol == :USD
     @test balance_row.balance ≈ cash_balance(acc, cash_asset(acc, :USD))
 
-    println(DataFrame(tbl))
+    balance_cols = Tables.columntable(tbl)
+    @test balance_cols.symbol == [:USD]
 end
 
 @testitem "equities_table" setup=[TablesTestSetup] begin
@@ -159,5 +160,6 @@ end
     @test equity_row.symbol == :USD
     @test equity_row.equity ≈ equity(acc, cash_asset(acc, :USD))
 
-    println(DataFrame(tbl))
+    equity_cols = Tables.columntable(tbl)
+    @test equity_cols.symbol == [:USD]
 end

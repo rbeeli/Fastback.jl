@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-04-12
+
+### Added
+
+- `PerformanceSummary`, `TradeSummary`, `QuoteTradeSummary`, `SettlementTradeSummary`, `RealizedHoldingPeriod`, and `HoldingPeriodSummary` result types with explicit fields and compact REPL display.
+- `performance_summary`, `trade_summary`, `realized_holding_periods`, `holding_period_summary`, and `pnl_concentration` analytics helpers.
+- `gross_realized_pnl_quote` and `net_realized_pnl_quote` helpers for quote-currency realized P&L diagnostics.
+- `performance_summary_table` as a one-row Tables.jl source exposing the fields of `PerformanceSummary`, including trade diagnostics such as `n_trades`, `n_closing_trades`, `winners`, and `losers`.
+- `performance_summary` returns unrounded numeric values with compact display, `trade_summary` groups quote- and settlement-currency diagnostics by currency, and `pnl_concentration` reports realized P&L concentration by bucket and quote currency.
+
 ## [0.6.0] - 2026-04-11
 
 ### Breaking changes ⚠️

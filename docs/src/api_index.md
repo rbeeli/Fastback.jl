@@ -78,7 +78,10 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Analytics
 
-- `performance_summary_table`
+- `performance_summary`, `performance_summary_table`
+- `PerformanceSummary`, `TradeSummary`, `QuoteTradeSummary`, `SettlementTradeSummary`, `RealizedHoldingPeriod`, `HoldingPeriodSummary`
+- `gross_realized_pnl_quote`, `net_realized_pnl_quote`
+- `trade_summary`, `realized_holding_periods`, `holding_period_summary`, `pnl_concentration`
 
 ## Formatting helpers
 

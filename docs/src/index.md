@@ -60,7 +60,7 @@ using Plots
 Fastback.plot_equity(equity_data)
 ```
 
-See [Getting started](getting_started.md) for a runnable walkthrough and next steps.
+See [Getting started](getting_started.md) for a runnable walkthrough and [Analytics](analytics.md) for trade diagnostics and summary helpers.
 
 ## Features
 

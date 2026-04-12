@@ -181,6 +181,7 @@ makedocs(
         "Execution and errors" => "execution_errors.md",
         "Pitfalls and gotchas" => "pitfalls.md",
         "How-to" => "how_to.md",
+        "Analytics" => "analytics.md",
         "Examples" => [
             "Random trading" => "examples/gen/1_random_trading.md",
             "Portfolio trading" => "examples/gen/2_portfolio_trading.md",

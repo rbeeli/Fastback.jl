@@ -14,6 +14,7 @@
 
 using Fastback
 using Dates
+using DataFrames
 using Random
 
 ## set RNG seed for reproducibility
@@ -83,4 +84,4 @@ Fastback.plot_drawdown(drawdown_data, size=(800, 200),)
 
 # ### Summary performance table
 
-performance_summary_table(equity_data; periods_per_year=365 * 24)
+DataFrame(performance_summary_table(equity_data; periods_per_year=365 * 24))
