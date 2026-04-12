@@ -56,7 +56,7 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
 
 ## Docs workflow
 
-- Add/modify walkthrough examples in `docs/src/examples`, integration examples in `docs/src/integrations`, and plotting examples in `docs/src/plotting`; register them in `docs/make.jl` so both markdown and notebooks regenerate.  
+- Add/modify walkthrough examples in `docs/src/examples`, integration examples in `docs/src/integrations`, and plotting examples in `docs/src/plotting`; register them in `docs/make.jl` so markdown pages regenerate.
 - Regenerate docs after user-facing changes; assets/styles live under `docs/src/assets/`.  
 - Keep README badge/version in sync when releasing.
 

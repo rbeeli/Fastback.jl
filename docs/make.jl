@@ -18,33 +18,11 @@ using Documenter
 using Literate
 using Fastback
 
-function postprocess_md(md, data_dir, notebook_name)
+function postprocess_md(md, data_dir)
     # fix data folder path
     md = replace(md, "\"data/" => "\"$(data_dir)")
 
-    # add a direct link to the generated notebook near the top of the page
-    notebook_link = "**Jupyter Notebook:** [`$(notebook_name).ipynb`]($(notebook_name).ipynb)\n\n"
-    if startswith(md, "```@meta\n")
-        new_md = replace(md, "```\n\n" => "```\n\n$(notebook_link)", count=1)
-        md = new_md == md ? notebook_link * md : new_md
-    else
-        md = notebook_link * md
-    end
-
     md
-end
-
-function postprocess_nb(nb, data_dir)
-    for cell in nb["cells"]
-        if cell["cell_type"] == "code"
-            for (i, line) in enumerate(cell["source"])
-                # fix data folder path
-                line = replace(line, "\"data/" => "\"$(data_dir)")
-                cell["source"][i] = line
-            end
-        end
-    end
-    nb
 end
 
 const EXAMPLES_ROOT = joinpath(DOCS_ROOT, "src", "examples")
@@ -77,9 +55,8 @@ function gen_markdown(path;
         source_root::String=EXAMPLES_ROOT,
         generated_root::String=GENERATED_EXAMPLES_ROOT,
         data_dir::String="../data/")
-    notebook_name = name === nothing ? splitext(basename(path))[1] : name
     kwargs = (
-        postprocess=(md -> postprocess_md(md, data_dir, notebook_name)),
+        postprocess=(md -> postprocess_md(md, data_dir)),
         credit=false,
     )
     if name === nothing
@@ -89,29 +66,6 @@ function gen_markdown(path;
             kwargs...)
     else
         Literate.markdown(
-            joinpath(source_root, path),
-            generated_root;
-            kwargs...,
-            name=name)
-    end
-end
-
-function gen_notebook(path;
-        name=nothing,
-        source_root::String=EXAMPLES_ROOT,
-        generated_root::String=GENERATED_EXAMPLES_ROOT,
-        data_dir::String="../data/")
-    kwargs = (
-        postprocess=(nb -> postprocess_nb(nb, data_dir)),
-        credit=false,
-    )
-    if name === nothing
-        Literate.notebook(
-            joinpath(source_root, path),
-            generated_root;
-            kwargs...)
-    else
-        Literate.notebook(
             joinpath(source_root, path),
             generated_root;
             kwargs...,
@@ -138,29 +92,6 @@ gen_markdown(
     source_root=INTEGRATIONS_ROOT,
     generated_root=GENERATED_INTEGRATIONS_ROOT);
 gen_markdown(
-    "1_plots_extension.jl";
-    source_root=PLOTTING_ROOT,
-    generated_root=GENERATED_PLOTTING_ROOT);
-
-# generate notebook files
-gen_notebook("1_random_trading.jl");
-gen_notebook("2_portfolio_trading.jl");
-gen_notebook("3_multi_currency.jl");
-gen_notebook("4_USDm_perp_trading.jl");
-gen_notebook("5_VOO_vs_MES_comparison/main.jl"; name="5_VOO_vs_MES_comparison");
-gen_notebook(
-    "1_Tables_integration.jl";
-    source_root=INTEGRATIONS_ROOT,
-    generated_root=GENERATED_INTEGRATIONS_ROOT);
-gen_notebook(
-    "2_NanoDates_integration.jl";
-    source_root=INTEGRATIONS_ROOT,
-    generated_root=GENERATED_INTEGRATIONS_ROOT);
-gen_notebook(
-    "3_Timestamps64_integration.jl";
-    source_root=INTEGRATIONS_ROOT,
-    generated_root=GENERATED_INTEGRATIONS_ROOT);
-gen_notebook(
     "1_plots_extension.jl";
     source_root=PLOTTING_ROOT,
     generated_root=GENERATED_PLOTTING_ROOT);
