@@ -16,6 +16,10 @@ Use them for quick checks after a backtest:
 
 `performance_summary` summarizes a periodic return series, or a `PeriodicValues`
 equity collector. It returns a `PerformanceSummary` with compact REPL printing.
+Alongside total return, CAGR, Sharpe/Sortino/Calmar, volatility, and drawdowns,
+it reports period count, best/worst period returns, positive-period rate,
+95% expected shortfall, skewness, kurtosis, downside volatility, drawdown
+duration/time-in-drawdown, and Omega ratio.
 
 ```@example analytics
 using Fastback

@@ -11,6 +11,17 @@ struct PerformanceSummary
     avg_dd::Float64
     ulcer::Float64
     vol::Float64
+    n_periods::Int
+    best_ret::Float64
+    worst_ret::Float64
+    positive_period_rate::Float64
+    expected_shortfall_95::Float64
+    skewness::Float64
+    kurtosis::Float64
+    downside_vol::Float64
+    max_dd_duration::Int
+    pct_time_in_drawdown::Float64
+    omega::Float64
     n_trades::Int
     n_closing_trades::Int
     winners::Union{Missing,Float64}
@@ -95,6 +106,17 @@ function Base.show(io::IO, summary::PerformanceSummary)
         "    avg_dd=$(summary.avg_dd),\n" *
         "    ulcer=$(summary.ulcer),\n" *
         "    vol=$(summary.vol),\n" *
+        "    n_periods=$(summary.n_periods),\n" *
+        "    best_ret=$(summary.best_ret),\n" *
+        "    worst_ret=$(summary.worst_ret),\n" *
+        "    positive_period_rate=$(summary.positive_period_rate),\n" *
+        "    expected_shortfall_95=$(summary.expected_shortfall_95),\n" *
+        "    skewness=$(summary.skewness),\n" *
+        "    kurtosis=$(summary.kurtosis),\n" *
+        "    downside_vol=$(summary.downside_vol),\n" *
+        "    max_dd_duration=$(summary.max_dd_duration),\n" *
+        "    pct_time_in_drawdown=$(summary.pct_time_in_drawdown),\n" *
+        "    omega=$(summary.omega),\n" *
         "    n_trades=$(summary.n_trades),\n" *
         "    n_closing_trades=$(summary.n_closing_trades),\n" *
         "    winners=$(summary.winners),\n" *
@@ -181,6 +203,64 @@ end
         push!(out, v)
     end
     out
+end
+
+function _return_path_stats(returns::Vector{Float64})
+    best_ret = -Inf
+    worst_ret = Inf
+    n_positive = 0
+    @inbounds @simd for r in returns
+        best_ret = max(best_ret, r)
+        worst_ret = min(worst_ret, r)
+        n_positive += r > 0.0
+    end
+    return (
+        best_ret=best_ret,
+        worst_ret=worst_ret,
+        positive_period_rate=n_positive / length(returns),
+    )
+end
+
+function _drawdown_duration_stats(returns::Vector{Float64}, compound::Bool)
+    n = length(returns)
+    n == 0 && return (max_dd_duration=0, pct_time_in_drawdown=NaN)
+
+    wealth = 1.0
+    peak = 1.0
+    current_duration = 0
+    max_duration = 0
+    drawdown_periods = 0
+
+    if compound
+        @inbounds for r in returns
+            wealth *= 1.0 + r
+            if wealth >= peak
+                peak = wealth
+                current_duration = 0
+            else
+                current_duration += 1
+                max_duration = max(max_duration, current_duration)
+                drawdown_periods += 1
+            end
+        end
+    else
+        @inbounds for r in returns
+            wealth += r
+            if wealth >= peak
+                peak = wealth
+                current_duration = 0
+            else
+                current_duration += 1
+                max_duration = max(max_duration, current_duration)
+                drawdown_periods += 1
+            end
+        end
+    end
+
+    return (
+        max_dd_duration=max_duration,
+        pct_time_in_drawdown=drawdown_periods / n,
+    )
 end
 
 """
@@ -753,12 +833,26 @@ function _performance_summary(
             NaN,
             NaN,
             NaN,
+            0,
+            NaN,
+            NaN,
+            NaN,
+            NaN,
+            NaN,
+            NaN,
+            NaN,
+            0,
+            NaN,
+            NaN,
             n_trades,
             n_closing_trades,
             winners,
             losers,
         )
     end
+
+    path_stats = _return_path_stats(returns)
+    drawdown_stats = _drawdown_duration_stats(returns, compound)
 
     PerformanceSummary(
         RiskPerf.total_return(returns),
@@ -770,6 +864,17 @@ function _performance_summary(
         RiskPerf.average_drawdown_pct(returns; compound=compound),
         RiskPerf.ulcer_index(returns; compound=compound),
         RiskPerf.volatility(returns; multiplier=periods_per_year),
+        length(returns),
+        path_stats.best_ret,
+        path_stats.worst_ret,
+        path_stats.positive_period_rate,
+        RiskPerf.expected_shortfall(returns, 0.05; method=:historical),
+        RiskPerf.skewness(returns),
+        RiskPerf.kurtosis(returns),
+        RiskPerf.downside_deviation(returns, mar; method=:full) * sqrt(Float64(periods_per_year)),
+        drawdown_stats.max_dd_duration,
+        drawdown_stats.pct_time_in_drawdown,
+        RiskPerf.omega_ratio(returns, mar),
         n_trades,
         n_closing_trades,
         winners,

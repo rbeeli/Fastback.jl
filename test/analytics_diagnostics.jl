@@ -387,6 +387,17 @@ end
     @test isapprox(summary.max_dd, RiskPerf.max_drawdown_pct(rets; compound=true); atol=1e-12)
     @test isapprox(summary.avg_dd, RiskPerf.average_drawdown_pct(rets; compound=true); atol=1e-12)
     @test isapprox(summary.ulcer, RiskPerf.ulcer_index(rets; compound=true); atol=1e-12)
+    @test summary.n_periods == length(rets)
+    @test summary.best_ret == maximum(rets)
+    @test summary.worst_ret == minimum(rets)
+    @test isapprox(summary.positive_period_rate, 0.75; atol=1e-12)
+    @test isapprox(summary.expected_shortfall_95, RiskPerf.expected_shortfall(rets, 0.05; method=:historical); atol=1e-12)
+    @test isapprox(summary.skewness, RiskPerf.skewness(rets); atol=1e-12)
+    @test isapprox(summary.kurtosis, RiskPerf.kurtosis(rets); atol=1e-12)
+    @test isapprox(summary.downside_vol, RiskPerf.downside_deviation(rets, 0.0; method=:full) * sqrt(252); atol=1e-12)
+    @test summary.max_dd_duration == 1
+    @test isapprox(summary.pct_time_in_drawdown, 0.25; atol=1e-12)
+    @test isapprox(summary.omega, RiskPerf.omega_ratio(rets, 0.0); atol=1e-12)
     @test summary.n_trades == 3
     @test summary.n_closing_trades == 2
     @test summary.winners == 0.5
@@ -406,6 +417,17 @@ end
         :avg_dd,
         :ulcer,
         :vol,
+        :n_periods,
+        :best_ret,
+        :worst_ret,
+        :positive_period_rate,
+        :expected_shortfall_95,
+        :skewness,
+        :kurtosis,
+        :downside_vol,
+        :max_dd_duration,
+        :pct_time_in_drawdown,
+        :omega,
         :n_trades,
         :n_closing_trades,
         :winners,
@@ -415,6 +437,17 @@ end
     @test isapprox(cols.tot_ret[1], summary.tot_ret; atol=1e-12)
     @test isapprox(cols.cagr[1], RiskPerf.cagr(rets, 252); atol=1e-12)
     @test isapprox(cols.vol[1], RiskPerf.volatility(rets; multiplier=252); atol=1e-12)
+    @test cols.n_periods == [4]
+    @test cols.best_ret == [0.01]
+    @test cols.worst_ret == [-0.004]
+    @test isapprox(cols.positive_period_rate[1], 0.75; atol=1e-12)
+    @test isapprox(cols.expected_shortfall_95[1], summary.expected_shortfall_95; atol=1e-12)
+    @test isapprox(cols.skewness[1], summary.skewness; atol=1e-12)
+    @test isapprox(cols.kurtosis[1], summary.kurtosis; atol=1e-12)
+    @test isapprox(cols.downside_vol[1], summary.downside_vol; atol=1e-12)
+    @test cols.max_dd_duration == [1]
+    @test isapprox(cols.pct_time_in_drawdown[1], 0.25; atol=1e-12)
+    @test isapprox(cols.omega[1], summary.omega; atol=1e-12)
     @test cols.n_trades == [3]
     @test cols.n_closing_trades == [2]
     @test cols.winners == Union{Missing,Float64}[0.5]
