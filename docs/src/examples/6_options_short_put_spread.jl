@@ -27,10 +27,8 @@ const SPREAD_WIDTH = 10.0
 const ENTRY_DTE = 30
 const ENTRY_GAP = 21
 
-data_dir = "data";
-
-## if data path doesn't exist, try to change working directory
-isdir(data_dir) || cd("src/examples")
+data_dir = joinpath(@__DIR__, "data"); #src
+#md data_dir = joinpath(@__DIR__, "..", "data");
 
 ## load synthetic SPY and SPY put option data
 market = DataFrame(CSV.File(joinpath(data_dir, "options_spy_1d.csv"); dateformat="yyyy-mm-dd"));
@@ -60,113 +58,130 @@ function spy_put(expiry::Date, strike::Real)
     )
 end
 
-## account: margin-enabled, with IBKR Pro Fixed option commissions
-acc = Account(;
-    time_type=Date,
-    funding=AccountFunding.Margined,
-    base_currency=CashSpec(:USD),
-    broker=IBKRProFixedBroker(; time_type=Date),
-)
-usd = cash_asset(acc, :USD)
-deposit!(acc, :USD, START_CAPITAL)
+function run_short_put_spread_backtest(market, option_quotes, quote_by_key)
+    ## account: margin-enabled, with IBKR Pro Fixed option commissions
+    acc = Account(;
+        time_type=Date,
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+        broker=IBKRProFixedBroker(; time_type=Date),
+    )
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, START_CAPITAL)
 
-## data collectors
-collect_equity, equity_data = periodic_collector(Float64, Day(1); time_type=Date)
-collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Day(1); time_type=Date)
+    ## data collectors
+    collect_equity, equity_data = periodic_collector(Float64, Day(1); time_type=Date)
+    collect_drawdown, drawdown_data = drawdown_collector(DrawdownMode.Percentage, Day(1); time_type=Date)
 
-registered_options = Instrument{Date}[]
-open_legs = Instrument{Date}[]
-entries = DataFrame(
-    entry_dt=Date[],
-    expiry=Date[],
-    short_strike=Float64[],
-    long_strike=Float64[],
-    credit=Float64[],
-    margin_used=Float64[],
-)
-
-next_entry_idx = Ref(1)
-
-for i in eachindex(market.dt)
-    dt = market.dt[i]
-    spot = market.spot[i]
-
-    ## Mark all live options and update the option chain's underlying price.
-    marks = MarkUpdate[]
-    for inst in registered_options
-        is_expired(inst, dt) && continue
-        q = quote_by_key[(dt, inst.spec.expiry, inst.spec.strike)]
-        push!(marks, MarkUpdate(inst.index, q.bid, q.ask, q.last))
-    end
-
-    process_step!(
-        acc,
-        dt;
-        option_underlyings=[OptionUnderlyingUpdate(:SPY, :USD, spot)],
-        marks=marks,
-        expiries=true,
+    registered_options = Instrument{Date}[]
+    open_legs = Instrument{Date}[]
+    entries = DataFrame(
+        entry_dt=Date[],
+        expiry=Date[],
+        short_strike=Float64[],
+        long_strike=Float64[],
+        credit=Float64[],
+        margin_used=Float64[],
     )
 
-    filter!(inst -> get_position(acc, inst).quantity != 0.0, open_legs)
+    next_entry_idx = 1
 
-    ## Enter one 30 DTE put credit spread at a time.
-    if isempty(open_legs) && i >= next_entry_idx[] && i + ENTRY_DTE <= nrow(market)
-        expiry = market.dt[i + ENTRY_DTE]
-        chain = option_quotes[(option_quotes.dt .== dt) .& (option_quotes.expiry .== expiry) .& (option_quotes.right .== "P"), :]
-        short_idx = argmin(abs.(abs.(chain.delta) .- TARGET_DELTA))
-        short_quote = chain[short_idx, :]
-        long_idx = argmin(abs.(chain.strike .- (short_quote.strike - SPREAD_WIDTH)))
-        long_quote = chain[long_idx, :]
-        short_strike = Float64(short_quote.strike)
-        long_strike = Float64(long_quote.strike)
+    for i in eachindex(market.dt)
+        dt = market.dt[i]
+        spot = market.spot[i]
 
-        long_put = register_instrument!(acc, spy_put(expiry, long_strike))
-        short_put = register_instrument!(acc, spy_put(expiry, short_strike))
-        push!(registered_options, long_put)
-        push!(registered_options, short_put)
+        ## Mark all live options and update the option chain's underlying price.
+        marks = MarkUpdate[]
+        for inst in registered_options
+            is_expired(inst, dt) && continue
+            q = quote_by_key[(dt, inst.spec.expiry, inst.spec.strike)]
+            push!(marks, MarkUpdate(inst.index, q.bid, q.ask, q.last))
+        end
 
-        ## Buy the protective leg first, then sell the higher-strike put.
-        fill_order!(
+        process_step!(
             acc,
-            Order(oid!(acc), long_put, dt, long_quote.ask, CONTRACTS);
-            dt=dt,
-            fill_price=long_quote.ask,
-            bid=long_quote.bid,
-            ask=long_quote.ask,
-            last=long_quote.last,
-            underlying_price=spot,
-        )
-        fill_order!(
-            acc,
-            Order(oid!(acc), short_put, dt, short_quote.bid, -CONTRACTS);
-            dt=dt,
-            fill_price=short_quote.bid,
-            bid=short_quote.bid,
-            ask=short_quote.ask,
-            last=short_quote.last,
-            underlying_price=spot,
+            dt;
+            option_underlyings=[OptionUnderlyingUpdate(:SPY, :USD, spot)],
+            marks=marks,
+            expiries=true,
         )
 
-        credit = (short_quote.bid - long_quote.ask) * CONTRACTS * short_put.spec.multiplier
-        push!(entries, (
-            entry_dt=dt,
-            expiry=expiry,
-            short_strike=short_strike,
-            long_strike=long_strike,
-            credit=credit,
-            margin_used=init_margin_used(acc, usd),
-        ))
-        push!(open_legs, long_put)
-        push!(open_legs, short_put)
-        next_entry_idx[] = i + ENTRY_GAP
+        filter!(inst -> get_position(acc, inst).quantity != 0.0, open_legs)
+
+        ## Enter one 30 DTE put credit spread at a time.
+        if isempty(open_legs) && i >= next_entry_idx && i + ENTRY_DTE <= nrow(market)
+            expiry = market.dt[i + ENTRY_DTE]
+            chain = option_quotes[(option_quotes.dt .== dt) .& (option_quotes.expiry .== expiry) .& (option_quotes.right .== "P"), :]
+            short_idx = argmin(abs.(abs.(chain.delta) .- TARGET_DELTA))
+            short_quote = chain[short_idx, :]
+            long_idx = argmin(abs.(chain.strike .- (short_quote.strike - SPREAD_WIDTH)))
+            long_quote = chain[long_idx, :]
+            short_strike = Float64(short_quote.strike)
+            long_strike = Float64(long_quote.strike)
+
+            long_put = register_instrument!(acc, spy_put(expiry, long_strike))
+            short_put = register_instrument!(acc, spy_put(expiry, short_strike))
+            push!(registered_options, long_put)
+            push!(registered_options, short_put)
+
+            ## Buy the protective leg first, then sell the higher-strike put.
+            fill_order!(
+                acc,
+                Order(oid!(acc), long_put, dt, long_quote.ask, CONTRACTS);
+                dt=dt,
+                fill_price=long_quote.ask,
+                bid=long_quote.bid,
+                ask=long_quote.ask,
+                last=long_quote.last,
+                underlying_price=spot,
+            )
+            fill_order!(
+                acc,
+                Order(oid!(acc), short_put, dt, short_quote.bid, -CONTRACTS);
+                dt=dt,
+                fill_price=short_quote.bid,
+                bid=short_quote.bid,
+                ask=short_quote.ask,
+                last=short_quote.last,
+                underlying_price=spot,
+            )
+
+            credit = (short_quote.bid - long_quote.ask) * CONTRACTS * short_put.spec.multiplier
+            push!(entries, (
+                entry_dt=dt,
+                expiry=expiry,
+                short_strike=short_strike,
+                long_strike=long_strike,
+                credit=credit,
+                margin_used=init_margin_used(acc, usd),
+            ))
+            push!(open_legs, long_put)
+            push!(open_legs, short_put)
+            next_entry_idx = i + ENTRY_GAP
+        end
+
+        if should_collect(equity_data, dt)
+            equity_value = equity(acc, usd)
+            collect_equity(dt, equity_value)
+            collect_drawdown(dt, equity_value)
+        end
     end
 
-    if should_collect(equity_data, dt)
-        equity_value = equity(acc, usd)
-        collect_equity(dt, equity_value)
-        collect_drawdown(dt, equity_value)
-    end
+    (
+        acc=acc,
+        usd=usd,
+        entries=entries,
+        equity_data=equity_data,
+        drawdown_data=drawdown_data,
+    )
 end
+
+result = run_short_put_spread_backtest(market, option_quotes, quote_by_key);
+acc = result.acc;
+usd = result.usd;
+entries = result.entries;
+equity_data = result.equity_data;
+drawdown_data = result.drawdown_data;
 
 ## account and strategy summary
 show(acc)
