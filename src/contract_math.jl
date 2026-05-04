@@ -111,6 +111,14 @@ Example: a 10% initial margin is `0.10`.
 """
 @inline function margin_init_margin_ccy(acc::Account, inst::Instrument, qty, price)::Price
     qty == 0 && return zero(Price)
+    if inst.spec.contract_kind == ContractKind.Option
+        _validate_option_price(inst, "price", price)
+        if qty > 0
+            quote_req = abs(qty) * price * inst.spec.multiplier
+            return to_margin(acc, inst, quote_req)
+        end
+        return option_naked_margin_ccy(acc, inst, qty, price)
+    end
     if acc.funding == AccountFunding.FullyFunded
         quote_req = abs(qty) * abs(price) * inst.spec.multiplier
         return to_margin(acc, inst, quote_req)
@@ -140,6 +148,14 @@ Example: a 5% maintenance margin is `0.05`.
 """
 @inline function margin_maint_margin_ccy(acc::Account, inst::Instrument, qty, price)::Price
     qty == 0 && return zero(Price)
+    if inst.spec.contract_kind == ContractKind.Option
+        _validate_option_price(inst, "price", price)
+        if qty > 0
+            quote_req = abs(qty) * price * inst.spec.multiplier
+            return to_margin(acc, inst, quote_req)
+        end
+        return option_naked_margin_ccy(acc, inst, qty, price)
+    end
     if acc.funding == AccountFunding.FullyFunded
         quote_req = abs(qty) * abs(price) * inst.spec.multiplier
         return to_margin(acc, inst, quote_req)

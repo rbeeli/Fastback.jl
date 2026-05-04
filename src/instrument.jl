@@ -24,6 +24,12 @@ struct InstrumentSpec{TTime<:Dates.AbstractTime}
     start_time::TTime
     expiry::TTime
     multiplier::Float64
+    underlying_symbol::Symbol
+    strike::Price
+    option_right::OptionRight.T
+    exercise_style::OptionExerciseStyle.T
+    option_short_margin_rate::Price
+    option_short_margin_min_rate::Price
 
     function InstrumentSpec(
         symbol::Symbol,
@@ -46,6 +52,12 @@ struct InstrumentSpec{TTime<:Dates.AbstractTime}
         margin_maint_short::Price=Price(NaN),
         short_borrow_rate::Price=0.0,
         multiplier::Float64=1.0,
+        underlying_symbol::Symbol=base_symbol,
+        strike::Price=Price(NaN),
+        option_right::OptionRight.T=OptionRight.Null,
+        exercise_style::OptionExerciseStyle.T=OptionExerciseStyle.Null,
+        option_short_margin_rate::Price=0.20,
+        option_short_margin_min_rate::Price=0.10,
         time_type::Type{TTime}=DateTime,
         start_time::TTime=time_type(0),
         expiry::TTime=time_type(0),
@@ -82,6 +94,12 @@ struct InstrumentSpec{TTime<:Dates.AbstractTime}
             start_time,
             expiry,
             multiplier,
+            underlying_symbol,
+            strike,
+            option_right,
+            exercise_style,
+            option_short_margin_rate,
+            option_short_margin_min_rate,
         )
     end
 end
@@ -327,6 +345,75 @@ function future_instrument(
     spec
 end
 
+"""
+    option_instrument(symbol, underlying_symbol, quote_symbol; strike, expiry, right, kwargs...)
+
+Listed option constructor using principal-exchange premium settlement.
+Prices are option premium per underlying unit and `multiplier` is the contract
+size, usually `100.0` for US equity options. Quantity is measured in contracts.
+Long-option margin is the premium paid; short-option margin uses
+`option_short_margin_rate` and `option_short_margin_min_rate`.
+Generic `margin_requirement` and `margin_init_*`/`margin_maint_*` settings are
+not constructor arguments for options.
+
+V1 options are quote-driven and cash-settled at expiry by Fastback; exercise and
+assignment into the underlying are intentionally not modeled.
+"""
+function option_instrument(
+    symbol::Symbol,
+    underlying_symbol::Symbol,
+    quote_symbol::Symbol;
+    strike::Price,
+    expiry::TTime,
+    right::OptionRight.T,
+    exercise_style::OptionExerciseStyle.T=OptionExerciseStyle.American,
+    base_tick::Quantity=1.0,
+    base_min::Quantity=-Inf,
+    base_max::Quantity=Inf,
+    base_digits::Int=0,
+    quote_tick::Price=0.01,
+    quote_digits::Int=2,
+    settle_symbol::Symbol=quote_symbol,
+    margin_symbol::Symbol=settle_symbol,
+    multiplier::Float64=100.0,
+    option_short_margin_rate::Price=0.20,
+    option_short_margin_min_rate::Price=0.10,
+    time_type::Type{TTime}=DateTime,
+    start_time::TTime=time_type(0),
+)::InstrumentSpec{TTime} where {TTime<:Dates.AbstractTime}
+    spec = InstrumentSpec(
+        symbol, symbol, quote_symbol;
+        base_tick=base_tick,
+        base_min=base_min,
+        base_max=base_max,
+        base_digits=base_digits,
+        quote_tick=quote_tick,
+        quote_digits=quote_digits,
+        contract_kind=ContractKind.Option,
+        settle_symbol=settle_symbol,
+        margin_symbol=margin_symbol,
+        settlement=SettlementStyle.PrincipalExchange,
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.0,
+        margin_init_short=0.0,
+        margin_maint_long=0.0,
+        margin_maint_short=0.0,
+        short_borrow_rate=0.0,
+        multiplier=multiplier,
+        underlying_symbol=underlying_symbol,
+        strike=strike,
+        option_right=right,
+        exercise_style=exercise_style,
+        option_short_margin_rate=option_short_margin_rate,
+        option_short_margin_min_rate=option_short_margin_min_rate,
+        time_type=time_type,
+        start_time=start_time,
+        expiry=expiry,
+    )
+    validate_instrument_spec(spec)
+    spec
+end
+
 function Base.show(io::IO, spec::InstrumentSpec)
     str = "[InstrumentSpec] " *
           "symbol=$(spec.symbol) " *
@@ -406,7 +493,7 @@ function validate_instrument_spec(spec::InstrumentSpec{TTime}) where {TTime<:Dat
     spec.margin_maint_short <= spec.margin_init_short ||
         throw(ArgumentError("Instrument $(spec.symbol) must satisfy margin_maint_short <= margin_init_short."))
 
-    if spec.margin_requirement == MarginRequirement.PercentNotional
+    if kind != ContractKind.Option && spec.margin_requirement == MarginRequirement.PercentNotional
         if spec.margin_init_long > 1.0 || spec.margin_init_short > 1.0 || spec.margin_maint_long > 1.0 || spec.margin_maint_short > 1.0
             @warn "Instrument $(spec.symbol) uses PercentNotional margin rates above 1.0. Fastback interprets these rates as equity fractions of notional (IMR/MMR-style), not total collateral ratios. Example: broker short requirement 150% collateral (proceeds + 50% equity) should be configured as 0.50, not 1.50."
         end
@@ -420,6 +507,26 @@ function validate_instrument_spec(spec::InstrumentSpec{TTime}) where {TTime<:Dat
     elseif kind == ContractKind.Future
         settlement == SettlementStyle.VariationMargin || throw(ArgumentError("Future instrument $(spec.symbol) must use VariationMargin settlement."))
         spec.expiry != TTime(0) || throw(ArgumentError("Future instrument $(spec.symbol) must define an expiry."))
+    elseif kind == ContractKind.Option
+        settlement == SettlementStyle.PrincipalExchange || throw(ArgumentError("Option instrument $(spec.symbol) must use PrincipalExchange settlement."))
+        spec.expiry != TTime(0) || throw(ArgumentError("Option instrument $(spec.symbol) must define an expiry."))
+        spec.margin_requirement == MarginRequirement.PercentNotional ||
+            throw(ArgumentError("Option instrument $(spec.symbol) uses option-specific margin; generic margin_requirement must be PercentNotional."))
+        if spec.margin_init_long != 0.0 || spec.margin_init_short != 0.0 || spec.margin_maint_long != 0.0 || spec.margin_maint_short != 0.0
+            throw(ArgumentError("Option instrument $(spec.symbol) uses option-specific margin; generic margin_init_* and margin_maint_* fields must be 0.0."))
+        end
+        spec.option_right in (OptionRight.Call, OptionRight.Put) ||
+            throw(ArgumentError("Option instrument $(spec.symbol) must set option_right to Call or Put."))
+        spec.exercise_style in (OptionExerciseStyle.American, OptionExerciseStyle.European) ||
+            throw(ArgumentError("Option instrument $(spec.symbol) must set exercise_style to American or European."))
+        isfinite(spec.strike) || throw(ArgumentError("Option instrument $(spec.symbol) must set finite strike."))
+        spec.strike > 0.0 || throw(ArgumentError("Option instrument $(spec.symbol) must set positive strike."))
+        isfinite(spec.option_short_margin_rate) || throw(ArgumentError("Option instrument $(spec.symbol) must set finite option_short_margin_rate."))
+        spec.option_short_margin_rate >= 0.0 || throw(ArgumentError("Option instrument $(spec.symbol) must set non-negative option_short_margin_rate."))
+        isfinite(spec.option_short_margin_min_rate) || throw(ArgumentError("Option instrument $(spec.symbol) must set finite option_short_margin_min_rate."))
+        spec.option_short_margin_min_rate >= 0.0 || throw(ArgumentError("Option instrument $(spec.symbol) must set non-negative option_short_margin_min_rate."))
+    else
+        throw(ArgumentError("Unsupported contract kind $(kind) for instrument $(spec.symbol)."))
     end
 
     nothing

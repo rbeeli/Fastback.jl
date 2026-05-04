@@ -6,8 +6,9 @@
 
 Fastback provides a lightweight, flexible and highly efficient event-based backtesting library for quantitative trading strategies.
 
-Fastback focuses on deterministic accounting: it tracks open positions, balances, equity, margin, and cashflows across multiple currencies.
+Fastback focuses on deterministic accounting: it tracks open positions, balances, equity, margin, option premium flows, and cashflows across multiple currencies.
 The execution pipeline supports broker-driven commissions/financing and partial fills; slippage and delays are modeled by the timestamps and fill prices you pass in.
+Listed options are supported as quote-driven, cash-settled contracts, including underlying mark updates, expiry settlement at intrinsic value, short-option margin, and atomic multi-leg fills for classic strategies such as vertical spreads, butterflies, and condors.
 
 Fastback does not try to model every aspect of a trading system, e.g. data ingestion, strategy logic, OMS/execution gateways, or logging.
 Instead, it provides basic building blocks for creating a custom backtesting environment that is easy to understand and extend.
@@ -15,7 +16,7 @@ Broker behavior is intentionally lightweight and pluggable via broker profiles (
 For example, Fastback has no notion of "strategy" or "indicator"; such constructs are highly strategy specific, and therefore up to the user to define.
 
 The event-based architecture aims to mimic how real-world trading systems ingest streaming data.
-You drive the engine with explicit mark, FX, and funding updates, plus optional expiry and liquidation steps, which reduces the implementation gap to live execution compared to vectorized backtesting frameworks.
+You drive the engine with explicit mark, option-underlying, FX, and funding updates, plus optional expiry and liquidation steps, which reduces the implementation gap to live execution compared to vectorized backtesting frameworks.
 
 ## Hello world backtest
 
@@ -62,14 +63,15 @@ Fastback.plot_equity(equity_data)
 
 ## Features
 
-- Event-driven accounting engine with explicit event processing (`process_step!`) for marks, FX, funding, expiries, and optional liquidation
-- Instruments: spot (including spot-on-margin), perpetuals, and futures with lifecycle guards (start/expiry), optional contract multipliers, and settlement styles (`PrincipalExchange`/`VariationMargin`)
+- Event-driven accounting engine with explicit event processing (`process_step!`) for marks, option-underlying marks, FX, funding, expiries, and optional liquidation
+- Instruments: spot (including spot-on-margin), perpetuals, futures, and listed options with lifecycle guards (start/expiry), optional contract multipliers, and settlement styles (`PrincipalExchange`/`VariationMargin`)
+- Options backtesting: premium cash accounting, cash-settled expiry, conservative naked-short margin, bounded multi-leg margin relief, and atomic package fills via `fill_option_strategy!`
 - Funding policies: fully funded or margined; per-currency or base-currency margin aggregation; percent-notional or fixed-per-contract margin requirements
 - Broker profiles for commissions/financing (e.g. flat-fee, IBKR-style, Binance-style)
 - Multi-currency cash book with FX conversion helpers and base-currency metrics
 - Execution & risk: broker-driven commissions, partial fills, liquidation-aware marking (bid/ask/last), and initial/maintenance margin checks
 - Netted positions with weighted-average cost, realized/unrealized P&L, and a cashflow ledger + accrual helpers (lend/borrow interest, broker-defined short-proceeds treatment, borrow fees on principal-exchange spot shorts, funding, variation margin)
-- Expiry handling for futures (auto-close via synthetic close) plus deterministic liquidation helpers
+- Expiry handling for futures and cash-settled options plus deterministic liquidation helpers
 - Collectors (periodic, predicate, drawdown, min/max) and Tables.jl views for balances, equity, positions, trades, cashflows; pretty-print helpers
 - Batch backtesting and parameter sweeps with threaded runner and ETA logging
 - Integrations

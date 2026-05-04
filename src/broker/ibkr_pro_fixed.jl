@@ -5,6 +5,12 @@ struct IBKRProFixedBroker{TTime<:Dates.AbstractTime} <: AbstractBroker
     equity_per_share::Price
     equity_min::Price
     equity_max_pct::Price
+    option_per_contract::Price
+    option_min::Price
+    option_low_premium_per_contract::Price
+    option_mid_premium_per_contract::Price
+    option_low_premium_threshold::Price
+    option_mid_premium_threshold::Price
     futures_per_contract::Dict{Symbol,Price}
     benchmark_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}
     borrow_spread::Price
@@ -20,6 +26,12 @@ function IBKRProFixedBroker(
     equity_per_share::Real=0.005,
     equity_min::Real=1.0,
     equity_max_pct::Real=0.01,
+    option_per_contract::Real=0.65,
+    option_min::Real=1.0,
+    option_low_premium_per_contract::Real=0.25,
+    option_mid_premium_per_contract::Real=0.50,
+    option_low_premium_threshold::Real=0.05,
+    option_mid_premium_threshold::Real=0.10,
     futures_per_contract::Dict{Symbol,Price}=Dict{Symbol,Price}(),
     benchmark_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}=Dict{Symbol,StepSchedule{time_type,Price}}(),
     borrow_spread::Real=0.015,
@@ -31,6 +43,12 @@ function IBKRProFixedBroker(
     equity_per_share_p = Price(equity_per_share)
     equity_min_p = Price(equity_min)
     equity_max_pct_p = Price(equity_max_pct)
+    option_per_contract_p = Price(option_per_contract)
+    option_min_p = Price(option_min)
+    option_low_p = Price(option_low_premium_per_contract)
+    option_mid_p = Price(option_mid_premium_per_contract)
+    option_low_threshold_p = Price(option_low_premium_threshold)
+    option_mid_threshold_p = Price(option_mid_premium_threshold)
     borrow_spread_p = Price(borrow_spread)
     lend_spread_p = Price(lend_spread)
     credit_floor_p = Price(credit_no_interest_balance)
@@ -39,6 +57,12 @@ function IBKRProFixedBroker(
     equity_per_share_p >= 0.0 || throw(ArgumentError("equity_per_share must be non-negative."))
     equity_min_p >= 0.0 || throw(ArgumentError("equity_min must be non-negative."))
     equity_max_pct_p >= 0.0 || throw(ArgumentError("equity_max_pct must be non-negative."))
+    option_per_contract_p >= 0.0 || throw(ArgumentError("option_per_contract must be non-negative."))
+    option_min_p >= 0.0 || throw(ArgumentError("option_min must be non-negative."))
+    option_low_p >= 0.0 || throw(ArgumentError("option_low_premium_per_contract must be non-negative."))
+    option_mid_p >= 0.0 || throw(ArgumentError("option_mid_premium_per_contract must be non-negative."))
+    option_low_threshold_p >= 0.0 || throw(ArgumentError("option_low_premium_threshold must be non-negative."))
+    option_mid_threshold_p >= option_low_threshold_p || throw(ArgumentError("option_mid_premium_threshold must be >= option_low_premium_threshold."))
     borrow_spread_p >= 0.0 || throw(ArgumentError("borrow_spread must be non-negative."))
     lend_spread_p >= 0.0 || throw(ArgumentError("lend_spread must be non-negative."))
     credit_floor_p >= 0.0 || throw(ArgumentError("credit_no_interest_balance must be non-negative."))
@@ -50,6 +74,12 @@ function IBKRProFixedBroker(
         equity_per_share_p,
         equity_min_p,
         equity_max_pct_p,
+        option_per_contract_p,
+        option_min_p,
+        option_low_p,
+        option_mid_p,
+        option_low_threshold_p,
+        option_mid_threshold_p,
         futures_per_contract,
         benchmark_by_cash,
         borrow_spread_p,
@@ -78,6 +108,15 @@ end
             broker.equity_max_pct * notional,
         )
         return CommissionQuote(; fixed=fee, pct=0.0)
+    elseif inst.spec.contract_kind == ContractKind.Option
+        per_contract = if abs(price) < broker.option_low_premium_threshold
+            broker.option_low_premium_per_contract
+        elseif abs(price) < broker.option_mid_premium_threshold
+            broker.option_mid_premium_per_contract
+        else
+            broker.option_per_contract
+        end
+        return CommissionQuote(; fixed=max(broker.option_min, qty_abs * per_contract), pct=0.0)
     end
 
     per_contract = get(broker.futures_per_contract, inst.spec.symbol, 0.0)

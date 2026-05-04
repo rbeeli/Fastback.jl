@@ -43,3 +43,22 @@ end
     @test ex_unknown == 1.0
     @test rebate_unknown == 0.0
 end
+
+@testitem "IBKRProFixedBroker applies option premium tiers and order minimum" begin
+    using Test, Fastback, Dates
+
+    broker = IBKRProFixedBroker()
+    expiry = DateTime(2026, 1, 17)
+    spec = option_instrument(Symbol("AAPL_20260117_C100"), :AAPL, :USD;
+        strike=100.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+    )
+    inst = Instrument(1, 1, 1, 1, spec)
+    dt = DateTime(2026, 1, 5)
+
+    @test broker_commission(broker, inst, dt, 1.0, 0.04).fixed == 1.0
+    @test broker_commission(broker, inst, dt, 10.0, 0.04).fixed ≈ 2.5 atol=1e-12
+    @test broker_commission(broker, inst, dt, 2.0, 0.07).fixed == 1.0
+    @test broker_commission(broker, inst, dt, 2.0, 0.11).fixed ≈ 1.3 atol=1e-12
+end

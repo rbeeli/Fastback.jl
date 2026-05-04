@@ -108,3 +108,63 @@ end
     end
     @test alloc == 0
 end
+
+@testitem "option margin recompute reuses scratch buffers after warmup" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        time_type=Date,
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+    )
+    deposit!(acc, :USD, 10_000.0)
+
+    dt = Date(2026, 1, 5)
+    expiry = Date(2026, 2, 20)
+    long_put = register_instrument!(acc, option_instrument(:PERFOPT_P90, :AAPL, :USD;
+        strike=90.0,
+        expiry=expiry,
+        right=OptionRight.Put,
+        time_type=Date,
+    ))
+    short_put = register_instrument!(acc, option_instrument(:PERFOPT_P100, :AAPL, :USD;
+        strike=100.0,
+        expiry=expiry,
+        right=OptionRight.Put,
+        time_type=Date,
+    ))
+    short_call = register_instrument!(acc, option_instrument(:PERFOPT_C110, :AAPL, :USD;
+        strike=110.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+        time_type=Date,
+    ))
+    long_call = register_instrument!(acc, option_instrument(:PERFOPT_C120, :AAPL, :USD;
+        strike=120.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+        time_type=Date,
+    ))
+
+    fill_option_strategy!(
+        acc,
+        Order{Date}[
+            Order(oid!(acc), long_put, dt, 1.0, 1.0),
+            Order(oid!(acc), short_put, dt, 3.0, -1.0),
+            Order(oid!(acc), short_call, dt, 3.0, -1.0),
+            Order(oid!(acc), long_call, dt, 1.0, 1.0),
+        ];
+        dt=dt,
+        fill_prices=Price[1.0, 3.0, 3.0, 1.0],
+        bids=Price[1.0, 3.0, 3.0, 1.0],
+        asks=Price[1.0, 3.0, 3.0, 1.0],
+        lasts=Price[1.0, 3.0, 3.0, 1.0],
+        underlying_price=105.0,
+    )
+
+    Fastback.recompute_option_margins!(acc)
+    Fastback.recompute_option_margins!(acc)
+    alloc = @allocated Fastback.recompute_option_margins!(acc)
+    @test alloc == 0
+end

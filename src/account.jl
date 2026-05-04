@@ -1,3 +1,31 @@
+mutable struct OptionMarginScratch
+    const init_by_pos::Vector{Price}
+    const maint_by_pos::Vector{Price}
+    const qty_by_pos::Vector{Quantity}
+    const mark_by_pos::Vector{Price}
+    const processed::Vector{Bool}
+    const group_idx::Vector{Int}
+    const current_init::Vector{Price}
+    const current_maint::Vector{Price}
+    const projected_init::Vector{Price}
+    const projected_maint::Vector{Price}
+end
+
+const OptionUnderlyingKey = Tuple{Symbol,Symbol}
+
+OptionMarginScratch() = OptionMarginScratch(
+    Price[],
+    Price[],
+    Quantity[],
+    Price[],
+    Bool[],
+    Int[],
+    Price[],
+    Price[],
+    Price[],
+    Price[],
+)
+
 mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     const funding::AccountFunding.T
     const margin_aggregation::MarginAggregation.T
@@ -8,6 +36,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     const positions::Vector{Position{TTime}}
     const trades::Vector{Trade{TTime}}
     const cashflows::Vector{Cashflow{TTime}}
+    const option_underlying_prices::Dict{OptionUnderlyingKey,Price}
+    const _option_margin_scratch::OptionMarginScratch
     const _expiry_trades_buffer::Vector{Trade{TTime}}
     const track_trades::Bool
     const track_cashflows::Bool
@@ -49,6 +79,8 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
             Vector{Position{TTime}}(), # positions
             Vector{Trade{TTime}}(), # trades
             Vector{Cashflow{TTime}}(), # cashflows
+            Dict{OptionUnderlyingKey,Price}(), # option underlying marks by (underlying, quote)
+            OptionMarginScratch(),
             Vector{Trade{TTime}}(), # reusable expiry buffer
             track_trades,
             track_cashflows,

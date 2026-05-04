@@ -7,7 +7,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 ## Core types and enums
 
 - `Price`, `Quantity`
-- `TradeDir`, `SettlementStyle`, `MarginRequirement`, `MarginAggregation`, `ContractKind`, `AccountFunding`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `TradeReason`
+- `TradeDir`, `SettlementStyle`, `MarginRequirement`, `MarginAggregation`, `ContractKind`, `OptionRight`, `OptionExerciseStyle`, `AccountFunding`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `TradeReason`
 - `Cash`, `CashSpec`, `InstrumentSpec`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
 - `ExchangeRates`
 
@@ -21,7 +21,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Order and trade utilities
 
-- `symbol`, `notional_value`, `fill_order!`
+- `symbol`, `notional_value`, `fill_order!`, `fill_option_strategy!`
 - `realized_notional_quote`, `is_realizing`, `realized_return_gross`, `realized_return_net`
 
 ## Cash ledger operations
@@ -47,6 +47,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 ## Contract math
 
 - `calc_value_quote`, `calc_pnl_quote`
+- `option_intrinsic_value`, `option_underlying_price`, `update_option_underlying_price!`
 - `margin_init_margin_ccy`, `margin_maint_margin_ccy`
 
 ## Exchange rate utilities
@@ -55,7 +56,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Portfolio logic
 
-- `update_marks!`, `settle_expiry!`
+- `update_marks!`, `settle_expiry!`, `settle_option_expiry!`
 
 ## Collectors
 
@@ -65,7 +66,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Event driver
 
-- `MarkUpdate`, `FundingUpdate`, `FXUpdate`
+- `MarkUpdate`, `OptionUnderlyingUpdate`, `FundingUpdate`, `FXUpdate`
 - `advance_time!`, `process_step!`, `process_expiries!`
 
 ## Backtesting
@@ -88,7 +89,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 - `format_cash`, `format_base`, `format_quote`
 - `calc_base_qty_for_notional`
 - `has_expiry`, `is_expired`, `is_active`, `ensure_active`
-- `spot_instrument`, `perpetual_instrument`, `future_instrument`
+- `spot_instrument`, `perpetual_instrument`, `future_instrument`, `option_instrument`
 
 ## Printing helpers
 

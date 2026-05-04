@@ -101,6 +101,8 @@ gen_markdown("2_portfolio_trading.jl");
 gen_markdown("3_multi_currency.jl");
 gen_markdown("4_USDm_perp_trading.jl");
 gen_markdown("5_VOO_vs_MES_comparison/main.jl"; name="5_VOO_vs_MES_comparison");
+gen_markdown("6_options_short_put_spread.jl");
+gen_markdown("7_options_strategy_fill.jl");
 gen_markdown(
     "1_Tables_integration.jl";
     source_root=INTEGRATIONS_ROOT,
@@ -144,6 +146,8 @@ Documenter.makedocs(
             "Multi-Currency trading" => "examples/gen/3_multi_currency.md",
             "USD-M perpetual trading" => "examples/gen/4_USDm_perp_trading.md",
             "VOO vs MES cost comparison" => "examples/gen/5_VOO_vs_MES_comparison.md",
+            "Options short put spread" => "examples/gen/6_options_short_put_spread.md",
+            "Atomic option strategy fills" => "examples/gen/7_options_strategy_fill.md",
         ],
         "Plotting" => [
             "Plots extensions" => "plotting/gen/1_plots_extension.md",

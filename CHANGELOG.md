@@ -2,14 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.8.0] - 2026-05-03
-
-### Breaking changes ⚠️
-
-- `PerformanceSummary` now includes additional equity-curve diagnostics, changing positional construction and the exact `performance_summary_table` schema.
+## [0.9.0] - 2026-05-04
 
 ### Added
 
+- Basic listed option support via `ContractKind.Option`, `OptionRight`, `OptionExerciseStyle`, and `option_instrument`.
+- Quote-driven option premium accounting, underlying mark updates through `OptionUnderlyingUpdate`, and cash-settled option expiry via `settle_option_expiry!`.
+- Conservative short-option margin with instrument-level `option_short_margin_rate` and `option_short_margin_min_rate` parameters, plus bounded multi-leg option margin relief for spreads, butterflies, and condors.
+- `fill_option_strategy!` for atomic multi-leg option fills checked against final package buying power.
+- IBKR Pro Fixed option commissions with premium tiers and per-order minimums.
+
+## [0.8.0] - 2026-05-03
+
+### Added
+
+- `PerformanceSummary` now includes additional equity-curve diagnostics, changing positional construction and the exact `performance_summary_table` schema.
 - `performance_summary` now reports `n_periods`, `best_ret`, `worst_ret`, `positive_period_rate`, `expected_shortfall_95`, `skewness`, `kurtosis`, `downside_vol`, `max_dd_duration`, `pct_time_in_drawdown`, and `omega`.
 - `performance_summary_table` exposes the new `PerformanceSummary` fields as Tables.jl columns.
 

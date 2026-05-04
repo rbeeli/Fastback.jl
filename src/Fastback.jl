@@ -19,6 +19,7 @@ include("broker/flat_fee.jl")
 include("broker/ibkr_pro_fixed.jl")
 include("broker/binance.jl")
 include("account.jl")
+include("options.jl")
 include("contract_math.jl")
 include("interest.jl")
 include("borrow_fees.jl")
@@ -50,6 +51,8 @@ export Price,
     MarginRequirement,
     MarginAggregation,
     ContractKind,
+    OptionRight,
+    OptionExerciseStyle,
     AccountFunding,
     CashflowKind,
     OrderRejectReason,
@@ -90,6 +93,7 @@ export symbol,
     notional_value,
     realized_notional_quote,
     fill_order!,
+    fill_option_strategy!,
     roll_position!,
     is_realizing,
     realized_return_gross,
@@ -146,6 +150,9 @@ export has_exposure,
 # Contract math
 export calc_value_quote,
     calc_pnl_quote,
+    option_intrinsic_value,
+    option_underlying_price,
+    update_option_underlying_price!,
     margin_init_margin_ccy,
     margin_maint_margin_ccy
 
@@ -156,7 +163,8 @@ export get_rate,
 
 # Portfolio logic
 export update_marks!,
-    settle_expiry!
+    settle_expiry!,
+    settle_option_expiry!
 
 # Collectors
 export PeriodicValues,
@@ -180,6 +188,7 @@ export PeriodicValues,
 
 # Event driver
 export MarkUpdate,
+    OptionUnderlyingUpdate,
     FundingUpdate,
     FXUpdate,
     advance_time!,
@@ -223,7 +232,8 @@ export format_cash,
     ensure_active,
     spot_instrument,
     perpetual_instrument,
-    future_instrument
+    future_instrument,
+    option_instrument
 
 # Printing helpers
 export print_cash_balances,
