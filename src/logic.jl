@@ -337,6 +337,190 @@ function _restore_option_strategy_state!(acc::Account, snapshot::OptionStrategyS
     acc
 end
 
+struct OptionUnderlyingSnapshot
+    underlying_key::OptionUnderlyingKey
+    had_underlying::Bool
+    underlying_price::Price
+end
+
+@inline function _snapshot_option_underlying(
+    acc::Account,
+    underlying_key::OptionUnderlyingKey,
+)::OptionUnderlyingSnapshot
+    had_underlying = haskey(acc.option_underlying_prices, underlying_key)
+    underlying_price = get(acc.option_underlying_prices, underlying_key, Price(NaN))
+    OptionUnderlyingSnapshot(underlying_key, had_underlying, underlying_price)
+end
+
+@inline function _restore_option_underlying!(acc::Account, snapshot::OptionUnderlyingSnapshot)
+    if snapshot.had_underlying
+        acc.option_underlying_prices[snapshot.underlying_key] = snapshot.underlying_price
+    else
+        delete!(acc.option_underlying_prices, snapshot.underlying_key)
+    end
+    acc
+end
+
+@inline function _fill_order_after_validation!(
+    acc::Account{TTime,TBroker},
+    order::Order{TTime},
+    dt::TTime,
+    fill_price::Price,
+    fill_qty::Quantity,
+    is_maker::Bool,
+    trade_reason::TradeReason.T,
+    underlying_price::Price,
+    bid::Price,
+    ask::Price,
+    last::Price,
+)::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+    inst = order.inst
+    if inst.spec.contract_kind == ContractKind.Option && isfinite(underlying_price)
+        _set_option_underlying_price!(acc, inst, underlying_price)
+    end
+
+    pos = get_position(acc, inst)
+    fill_qty = fill_qty != 0 ? fill_qty : order.quantity
+
+    mark_for_position = _calc_mark_price(inst, pos.quantity, bid, ask)
+    mark_for_valuation = _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
+    margin_for_valuation = margin_reference_price(acc, inst, mark_for_valuation, last)
+    needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_position ||
+                        pos.last_bid != bid || pos.last_ask != ask || pos.last_price != last || pos.mark_time != dt
+    needs_mark_update && _update_marks!(acc, pos, dt, mark_for_position, bid, ask, last)
+
+    _accrue_borrow_fee!(acc, pos, dt)
+    pos_qty = pos.quantity
+    pos_entry_price = pos.avg_entry_price
+    commission_quote = broker_commission(acc.broker, inst, dt, fill_qty, fill_price; is_maker=is_maker)
+
+    plan = plan_fill(
+        acc,
+        pos,
+        order,
+        dt,
+        fill_price,
+        mark_for_valuation,
+        margin_for_valuation,
+        fill_qty,
+        commission_quote.fixed,
+        commission_quote.pct,
+    )
+
+    rejection = check_fill_constraints(acc, pos, plan)
+    rejection == OrderRejectReason.None || throw(OrderRejectError(rejection))
+
+    _apply_fill_plan!(
+        acc,
+        pos,
+        order,
+        dt,
+        fill_price,
+        bid,
+        ask,
+        last,
+        mark_for_valuation,
+        plan,
+        pos_qty,
+        pos_entry_price,
+        trade_reason,
+    )
+end
+
+@inline function _fill_option_order_after_validation!(
+    acc::Account{TTime,TBroker},
+    order::Order{TTime},
+    dt::TTime,
+    fill_price::Price,
+    fill_qty::Quantity,
+    is_maker::Bool,
+    trade_reason::TradeReason.T,
+    underlying_price::Price,
+    bid::Price,
+    ask::Price,
+    last::Price,
+)::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+    inst = order.inst
+    restore_underlying = isfinite(underlying_price)
+    underlying_snapshot = _snapshot_option_underlying(acc, (inst.spec.underlying_symbol, inst.spec.quote_symbol))
+
+    pos = get_position(acc, inst)
+    fill_qty = fill_qty != 0 ? fill_qty : order.quantity
+
+    mark_for_position = _calc_mark_price(inst, pos.quantity, bid, ask)
+    mark_for_valuation = _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
+    margin_for_valuation = margin_reference_price(acc, inst, mark_for_valuation, last)
+
+    local plan::FillPlan
+    local pos_qty::Quantity
+    local pos_entry_price::Price
+
+    try
+        restore_underlying && _set_option_underlying_price!(acc, inst, underlying_price)
+
+        pos_qty = pos.quantity
+        pos_entry_price = pos.avg_entry_price
+        commission_quote = broker_commission(acc.broker, inst, dt, fill_qty, fill_price; is_maker=is_maker)
+
+        plan = plan_fill(
+            acc,
+            pos,
+            order,
+            dt,
+            fill_price,
+            mark_for_valuation,
+            margin_for_valuation,
+            fill_qty,
+            commission_quote.fixed,
+            commission_quote.pct,
+        )
+
+        current_marked_option_init, _ = _option_margin_totals(
+            acc;
+            override_index=inst.index,
+            override_qty=pos.quantity,
+            override_mark_price=mark_for_position,
+        )
+        current_option_init, _ = _stored_option_margin_totals(acc)
+        current_init_base = _account_init_with_option_totals_base(
+            acc,
+            current_option_init,
+            current_marked_option_init,
+        )
+        projected_option_init, _ = _project_option_margin_totals_after_fill(acc, pos, plan)
+        inc_qty = calc_exposure_increase_quantity(pos.quantity, plan.fill_qty)
+        rejection = _check_option_fill_constraints(
+            acc,
+            pos,
+            plan,
+            inc_qty,
+            current_option_init,
+            projected_option_init,
+            current_init_base,
+        )
+        rejection == OrderRejectReason.None || throw(OrderRejectError(rejection))
+    catch
+        restore_underlying && _restore_option_underlying!(acc, underlying_snapshot)
+        rethrow()
+    end
+
+    _apply_fill_plan!(
+        acc,
+        pos,
+        order,
+        dt,
+        fill_price,
+        bid,
+        ask,
+        last,
+        mark_for_valuation,
+        plan,
+        pos_qty,
+        pos_entry_price,
+        trade_reason,
+    )
+end
+
 function _apply_fill_plan!(
     acc::Account{TTime,TBroker},
     pos::Position{TTime},
@@ -440,54 +624,37 @@ Commission is broker-driven by default via `acc.broker`.
     _validate_option_mark_prices(inst, bid, ask, last)
     allow_inactive || is_active(inst, dt) || throw(OrderRejectError(OrderRejectReason.InstrumentNotAllowed))
     if inst.spec.contract_kind == ContractKind.Option && isfinite(underlying_price)
-        _set_option_underlying_price!(acc, inst, underlying_price)
+        _validate_option_price(inst, "underlying_price", underlying_price)
     end
 
-    pos = get_position(acc, inst)
-    fill_qty = fill_qty != 0 ? fill_qty : order.quantity
+    if inst.spec.contract_kind == ContractKind.Option
+        return _fill_option_order_after_validation!(
+            acc,
+            order,
+            dt,
+            fill_price,
+            fill_qty,
+            is_maker,
+            trade_reason,
+            underlying_price,
+            bid,
+            ask,
+            last,
+        )
+    end
 
-    mark_for_position = _calc_mark_price(inst, pos.quantity, bid, ask)
-    mark_for_valuation = _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
-    margin_for_valuation = margin_reference_price(acc, inst, mark_for_valuation, last)
-    needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_position ||
-                        pos.last_bid != bid || pos.last_ask != ask || pos.last_price != last || pos.mark_time != dt
-    needs_mark_update && _update_marks!(acc, pos, dt, mark_for_position, bid, ask, last)
-
-    _accrue_borrow_fee!(acc, pos, dt)
-    pos_qty = pos.quantity
-    pos_entry_price = pos.avg_entry_price
-    commission_quote = broker_commission(acc.broker, inst, dt, fill_qty, fill_price; is_maker=is_maker)
-
-    plan = plan_fill(
+    _fill_order_after_validation!(
         acc,
-        pos,
         order,
         dt,
         fill_price,
-        mark_for_valuation,
-        margin_for_valuation,
         fill_qty,
-        commission_quote.fixed,
-        commission_quote.pct,
-    )
-
-    rejection = check_fill_constraints(acc, pos, plan)
-    rejection == OrderRejectReason.None || throw(OrderRejectError(rejection))
-
-    _apply_fill_plan!(
-        acc,
-        pos,
-        order,
-        dt,
-        fill_price,
+        is_maker,
+        trade_reason,
+        underlying_price,
         bid,
         ask,
         last,
-        mark_for_valuation,
-        plan,
-        pos_qty,
-        pos_entry_price,
-        trade_reason,
     )
 end
 

@@ -92,18 +92,53 @@ function _check_option_strategy_constraints(
     end
 end
 
+@inline function _account_init_with_option_totals_base(
+    acc::Account,
+    current_option_init::Vector{Price},
+    option_init::Vector{Price},
+)::Price
+    total = zero(Price)
+    @inbounds for i in eachindex(acc.ledger.init_margin_used)
+        init_used = acc.ledger.init_margin_used[i] - current_option_init[i] + option_init[i]
+        iszero(init_used) && continue
+        total += init_used * _get_rate_base_ccy_idx(acc, i)
+    end
+    total
+end
+
 @inline function _check_option_fill_constraints(
     acc::Account{TTime},
     pos::Position{TTime},
     impact::FillPlan,
     inc_qty::Quantity,
 )::OrderRejectReason.T where {TTime<:Dates.AbstractTime}
-    inst = pos.inst
-    settle_idx = inst.settle_cash_index
     current_option_init, _ = _stored_option_margin_totals(acc)
     projected_option_init, _ = _project_option_margin_totals_after_fill(acc, pos, impact)
-
     current_init_base = init_margin_used_base_ccy(acc)
+
+    _check_option_fill_constraints(
+        acc,
+        pos,
+        impact,
+        inc_qty,
+        current_option_init,
+        projected_option_init,
+        current_init_base,
+    )
+end
+
+@inline function _check_option_fill_constraints(
+    acc::Account{TTime},
+    pos::Position{TTime},
+    impact::FillPlan,
+    inc_qty::Quantity,
+    current_option_init::Vector{Price},
+    projected_option_init::Vector{Price},
+    current_init_base::Price,
+)::OrderRejectReason.T where {TTime<:Dates.AbstractTime}
+    inst = pos.inst
+    settle_idx = inst.settle_cash_index
+
     projected_init_base = zero(Price)
     @inbounds for i in eachindex(acc.ledger.init_margin_used)
         projected = acc.ledger.init_margin_used[i] - current_option_init[i] + projected_option_init[i]

@@ -461,13 +461,38 @@ end
     @test init_margin_used(acc, usd) ≈ 300.0 atol=1e-12
     @test maint_margin_used(acc, usd) ≈ 300.0 atol=1e-12
 
+    long_pos = get_position(acc, long_call)
+    short_pos = get_position(acc, short_call)
+    before = (
+        cash=cash_balance(acc, usd),
+        equity=equity(acc, usd),
+        init=init_margin_used(acc, usd),
+        maint=maint_margin_used(acc, usd),
+        long_mark=long_pos.mark_price,
+        long_value=long_pos.value_settle,
+        long_pnl=long_pos.pnl_settle,
+        long_init=long_pos.init_margin_settle,
+        long_maint=long_pos.maint_margin_settle,
+        long_bid=long_pos.last_bid,
+        long_ask=long_pos.last_ask,
+        long_last=long_pos.last_price,
+        long_mark_time=long_pos.mark_time,
+        short_init=short_pos.init_margin_settle,
+        short_maint=short_pos.maint_margin_settle,
+        underlying=option_underlying_price(acc, :AAPL, :USD),
+        trades=length(acc.trades),
+        trade_sequence=acc.trade_sequence,
+        trade_count=acc.trade_count,
+    )
+
     err = try
-        fill_order!(acc, Order(oid!(acc), long_call, dt + Hour(1), 1.0, -1.0);
+        fill_order!(acc, Order(oid!(acc), long_call, dt + Hour(1), 1.2, -1.0);
             dt=dt + Hour(1),
-            fill_price=1.0,
-            bid=1.0,
-            ask=1.0,
-            last=1.0,
+            fill_price=1.2,
+            bid=1.2,
+            ask=1.2,
+            last=1.2,
+            underlying_price=99.0,
         )
         nothing
     catch e
@@ -476,7 +501,27 @@ end
 
     @test err isa OrderRejectError
     @test err.reason == OrderRejectReason.InsufficientInitialMargin
-    @test get_position(acc, long_call).quantity == 1.0
+    @test cash_balance(acc, usd) ≈ before.cash atol=1e-12
+    @test equity(acc, usd) ≈ before.equity atol=1e-12
+    @test init_margin_used(acc, usd) ≈ before.init atol=1e-12
+    @test maint_margin_used(acc, usd) ≈ before.maint atol=1e-12
+    @test long_pos.quantity == 1.0
+    @test long_pos.mark_price == before.long_mark
+    @test long_pos.value_settle == before.long_value
+    @test long_pos.pnl_settle == before.long_pnl
+    @test long_pos.init_margin_settle == before.long_init
+    @test long_pos.maint_margin_settle == before.long_maint
+    @test long_pos.last_bid == before.long_bid
+    @test long_pos.last_ask == before.long_ask
+    @test long_pos.last_price == before.long_last
+    @test long_pos.mark_time == before.long_mark_time
+    @test short_pos.quantity == -1.0
+    @test short_pos.init_margin_settle == before.short_init
+    @test short_pos.maint_margin_settle == before.short_maint
+    @test option_underlying_price(acc, :AAPL, :USD) == before.underlying
+    @test length(acc.trades) == before.trades
+    @test acc.trade_sequence == before.trade_sequence
+    @test acc.trade_count == before.trade_count
     @test Fastback.check_invariants(acc)
 end
 
