@@ -27,7 +27,12 @@ const SPREAD_WIDTH = 10.0
 const ENTRY_DTE = 30
 const ENTRY_GAP = 21
 
-data_dir = joinpath(@__DIR__, "data");
+data_dir = "data";
+
+## if data path doesn't exist, try to change working directory
+isdir(data_dir) || cd("src/examples")
+
+## load synthetic SPY and SPY put option data
 market = DataFrame(CSV.File(joinpath(data_dir, "options_spy_1d.csv"); dateformat="yyyy-mm-dd"));
 sort!(market, :dt);
 option_quotes = DataFrame(CSV.File(joinpath(data_dir, "options_spy_put_quotes_1d.csv"); dateformat="yyyy-mm-dd"));
