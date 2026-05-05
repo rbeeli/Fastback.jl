@@ -1,5 +1,10 @@
 """
 Simplified IBKR Pro Fixed style broker.
+
+US option commissions include the configured premium-tier commission plus
+predictable per-contract/pass-through regulatory, clearing, and transaction
+fees. Exchange-specific maker/taker routing fees are intentionally left to
+custom broker overrides or calibrated flat-fee overlays.
 """
 struct IBKRProFixedBroker{TTime<:Dates.AbstractTime} <: AbstractBroker
     equity_per_share::Price
@@ -11,6 +16,11 @@ struct IBKRProFixedBroker{TTime<:Dates.AbstractTime} <: AbstractBroker
     option_mid_premium_per_contract::Price
     option_low_premium_threshold::Price
     option_mid_premium_threshold::Price
+    option_orf_per_contract::Price
+    option_occ_per_contract::Price
+    option_cat_per_contract::Price
+    option_finra_taf_per_contract_sold::Price
+    option_sec_transaction_rate::Price
     futures_per_contract::Dict{Symbol,Price}
     benchmark_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}
     borrow_spread::Price
@@ -32,6 +42,11 @@ function IBKRProFixedBroker(
     option_mid_premium_per_contract::Real=0.50,
     option_low_premium_threshold::Real=0.05,
     option_mid_premium_threshold::Real=0.10,
+    option_orf_per_contract::Real=0.02295,
+    option_occ_per_contract::Real=0.025,
+    option_cat_per_contract::Real=0.0003,
+    option_finra_taf_per_contract_sold::Real=0.00329,
+    option_sec_transaction_rate::Real=0.0000206,
     futures_per_contract::Dict{Symbol,Price}=Dict{Symbol,Price}(),
     benchmark_by_cash::Dict{Symbol,StepSchedule{TTime,Price}}=Dict{Symbol,StepSchedule{time_type,Price}}(),
     borrow_spread::Real=0.015,
@@ -49,6 +64,11 @@ function IBKRProFixedBroker(
     option_mid_p = Price(option_mid_premium_per_contract)
     option_low_threshold_p = Price(option_low_premium_threshold)
     option_mid_threshold_p = Price(option_mid_premium_threshold)
+    option_orf_p = Price(option_orf_per_contract)
+    option_occ_p = Price(option_occ_per_contract)
+    option_cat_p = Price(option_cat_per_contract)
+    option_finra_taf_p = Price(option_finra_taf_per_contract_sold)
+    option_sec_rate_p = Price(option_sec_transaction_rate)
     borrow_spread_p = Price(borrow_spread)
     lend_spread_p = Price(lend_spread)
     credit_floor_p = Price(credit_no_interest_balance)
@@ -63,6 +83,11 @@ function IBKRProFixedBroker(
     option_mid_p >= 0.0 || throw(ArgumentError("option_mid_premium_per_contract must be non-negative."))
     option_low_threshold_p >= 0.0 || throw(ArgumentError("option_low_premium_threshold must be non-negative."))
     option_mid_threshold_p >= option_low_threshold_p || throw(ArgumentError("option_mid_premium_threshold must be >= option_low_premium_threshold."))
+    option_orf_p >= 0.0 || throw(ArgumentError("option_orf_per_contract must be non-negative."))
+    option_occ_p >= 0.0 || throw(ArgumentError("option_occ_per_contract must be non-negative."))
+    option_cat_p >= 0.0 || throw(ArgumentError("option_cat_per_contract must be non-negative."))
+    option_finra_taf_p >= 0.0 || throw(ArgumentError("option_finra_taf_per_contract_sold must be non-negative."))
+    option_sec_rate_p >= 0.0 || throw(ArgumentError("option_sec_transaction_rate must be non-negative."))
     borrow_spread_p >= 0.0 || throw(ArgumentError("borrow_spread must be non-negative."))
     lend_spread_p >= 0.0 || throw(ArgumentError("lend_spread must be non-negative."))
     credit_floor_p >= 0.0 || throw(ArgumentError("credit_no_interest_balance must be non-negative."))
@@ -80,6 +105,11 @@ function IBKRProFixedBroker(
         option_mid_p,
         option_low_threshold_p,
         option_mid_threshold_p,
+        option_orf_p,
+        option_occ_p,
+        option_cat_p,
+        option_finra_taf_p,
+        option_sec_rate_p,
         futures_per_contract,
         benchmark_by_cash,
         borrow_spread_p,
@@ -116,7 +146,18 @@ end
         else
             broker.option_per_contract
         end
-        return CommissionQuote(; fixed=max(broker.option_min, qty_abs * per_contract), pct=0.0)
+        base_fee = max(broker.option_min, qty_abs * per_contract)
+        pass_through_fee = qty_abs * (
+            broker.option_orf_per_contract +
+            broker.option_occ_per_contract +
+            broker.option_cat_per_contract
+        )
+        if qty < 0.0
+            premium_sale_value = qty_abs * abs(price) * inst.spec.multiplier
+            pass_through_fee += qty_abs * broker.option_finra_taf_per_contract_sold
+            pass_through_fee += premium_sale_value * broker.option_sec_transaction_rate
+        end
+        return CommissionQuote(; fixed=base_fee + pass_through_fee, pct=0.0)
     end
 
     per_contract = get(broker.futures_per_contract, inst.spec.symbol, 0.0)

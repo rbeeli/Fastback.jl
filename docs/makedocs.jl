@@ -136,6 +136,7 @@ Documenter.makedocs(
         "Getting started" => "getting_started.md",
         "Basic setup" => "basic_setup.md",
         "Accounting model and event loop" => "concepts.md",
+        "Options limitations" => "options_limitations.md",
         "Execution and errors" => "execution_errors.md",
         "Pitfalls and gotchas" => "pitfalls.md",
         "How-to" => "how_to.md",

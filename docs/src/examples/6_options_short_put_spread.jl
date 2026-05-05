@@ -4,6 +4,12 @@
 # The strategy sells one 30-delta put and buys a lower-strike put as protection,
 # holds the vertical spread to cash-settled expiry, and then repeats.
 #
+# !!! warning "Cash-settled proxy"
+#     This example uses SPY-like symbols and data, but Fastback treats these
+#     options as cash-settled, assignment-free contracts. It does not model
+#     OCC/IBKR physical delivery, early exercise, short assignment, or pin risk.
+#     See [Options limitations / IBKR mapping](@ref).
+#
 # The data is a static CSV pair: daily SPY-like underlying marks and a
 # ThetaData-style put option quote table with bid/ask/last/delta rows. The
 # important Fastback pieces are:

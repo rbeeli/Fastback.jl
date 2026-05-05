@@ -34,6 +34,15 @@ and it updates balances, equity, and margin deterministically.
 
 `AccountFunding.FullyFunded` is a funding policy, not a settlement style.
 
+## Listed options model
+
+Fastback treats listed options as quote-driven, cash-settled contracts. This is deliberate
+even when examples use SPY-like or AAPL-like symbols. Early exercise, short assignment,
+physical delivery, pin risk, and broker-specific exercise processing are not modeled.
+
+See [Options limitations / IBKR mapping](options_limitations.md) before using equity-option
+examples as a proxy for broker or OCC behavior.
+
 ## Margin requirements and styles
 
 - Funding policies: `AccountFunding.FullyFunded` enforces fully funded exposure (full notional margin), disallows short exposure, prices requirements from liquidation marks (bid for longs, ask for shorts), and requires withdrawals to respect available funds; `AccountFunding.Margined` uses instrument margin settings, with margin priced from marks for `VariationMargin` instruments and from last-trade for other settlement styles.

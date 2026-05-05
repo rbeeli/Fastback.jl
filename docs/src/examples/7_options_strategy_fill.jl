@@ -14,6 +14,12 @@
 # A single-leg fill would need 500 of buying power for the long call before the
 # short call exists. `fill_option_strategy!` checks the final package margin
 # first, so an account with exactly 300 can enter the complete spread.
+#
+# !!! warning "Cash-settled proxy"
+#     This example uses AAPL-like option symbols, but Fastback treats these
+#     options as cash-settled, assignment-free contracts. It does not model
+#     OCC/IBKR physical delivery, early exercise, short assignment, or pin risk.
+#     See [Options limitations / IBKR mapping](@ref).
 
 using Fastback
 using Dates

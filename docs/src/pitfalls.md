@@ -5,6 +5,7 @@
 - Principal-exchange spot short-sale proceeds are not automatically lend-eligible: `accrue_interest!` applies broker-defined short-proceeds rules (`broker_short_proceeds_rates`) to exclude proceeds from lend base and optionally apply a separate rebate.
 - Use `update_marks!` to keep equity and margin in sync with prices.
 - Expiry/liquidation helpers use stored side-aware quotes (`last_bid`/`last_ask`); keep marks updated with `update_marks!`.
+- Listed options are cash-settled and assignment-free in Fastback. SPY-like or AAPL-like examples are synthetic proxies, not OCC/IBKR physical-delivery simulations. See [Options limitations / IBKR mapping](options_limitations.md).
 - Multi-currency equity depends on `ExchangeRates` being updated.
 - Register non-base currencies via `register_cash_asset!(acc, CashSpec(:EUR))`.
 - For variation-margin instruments, fills immediately settle to the current mark basis: execution-to-mark (`mark - fill`) hits cash on the fill, and post-fill `avg_settle_price` is the mark. Trade-level additive fill amounts are `fill_pnl_settle` (gross) and `cash_delta_settle` (net of commission).

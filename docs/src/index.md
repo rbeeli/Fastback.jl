@@ -9,6 +9,7 @@ Fastback provides a lightweight, flexible and highly efficient event-based backt
 Fastback focuses on deterministic accounting: it tracks open positions, balances, equity, margin, option premium flows, and cashflows across multiple currencies.
 The execution pipeline supports broker-driven commissions/financing and partial fills; slippage and delays are modeled by the timestamps and fill prices you pass in.
 Listed options are supported as quote-driven, cash-settled contracts, including underlying mark updates, expiry settlement at intrinsic value, short-option margin, and atomic multi-leg fills for classic strategies such as vertical spreads, butterflies, and condors.
+For equity-option symbols such as SPY or AAPL, this is a cash-settled, assignment-free proxy; see [Options limitations / IBKR mapping](options_limitations.md).
 
 Fastback does not try to model every aspect of a trading system, e.g. data ingestion, strategy logic, OMS/execution gateways, or logging.
 Instead, it provides basic building blocks for creating a custom backtesting environment that is easy to understand and extend.
