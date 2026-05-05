@@ -679,6 +679,82 @@ end
     @test Fastback.check_invariants(acc_fail)
 end
 
+@testitem "fill_option_strategy! can price IBKR option package commission once" begin
+    using Test, Fastback, Dates
+
+    dt = DateTime(2026, 1, 5)
+    expiry = DateTime(2026, 1, 17)
+    package_broker = IBKRProFixedBroker(;
+        option_orf_per_contract=0.0,
+        option_occ_per_contract=0.0,
+        option_cat_per_contract=0.0,
+        option_finra_taf_per_contract_sold=0.0,
+        option_sec_transaction_rate=0.0,
+    )
+    per_leg_broker = IBKRProFixedBroker(;
+        option_orf_per_contract=0.0,
+        option_occ_per_contract=0.0,
+        option_cat_per_contract=0.0,
+        option_finra_taf_per_contract_sold=0.0,
+        option_sec_transaction_rate=0.0,
+        option_strategy_commission=OptionStrategyCommissionMode.PerLegOrders,
+    )
+
+    function make_account(tag::Symbol, account_broker)
+        acc = Account(; broker=account_broker, funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
+        usd = cash_asset(acc, :USD)
+        deposit!(acc, :USD, 1_000.0)
+        long_call = register_instrument!(acc, option_instrument(Symbol("AAPL_20260117_C100_$(tag)"), :AAPL, :USD;
+            strike=100.0,
+            expiry=expiry,
+            right=OptionRight.Call,
+        ))
+        short_call = register_instrument!(acc, option_instrument(Symbol("AAPL_20260117_C105_$(tag)"), :AAPL, :USD;
+            strike=105.0,
+            expiry=expiry,
+            right=OptionRight.Call,
+        ))
+        acc, usd, long_call, short_call
+    end
+
+    acc_pkg, usd_pkg, pkg_long, pkg_short = make_account(:COMBO_PACKAGE, package_broker)
+    trades_pkg = fill_option_strategy!(
+        acc_pkg,
+        [
+            Order(oid!(acc_pkg), pkg_long, dt, 0.04, 1.0),
+            Order(oid!(acc_pkg), pkg_short, dt, 0.03, -1.0),
+        ];
+        dt=dt,
+        fill_prices=[0.04, 0.03],
+        bids=[0.04, 0.03],
+        asks=[0.04, 0.03],
+        lasts=[0.04, 0.03],
+        underlying_price=100.0,
+    )
+
+    acc_leg, usd_leg, leg_long, leg_short = make_account(:COMBO_LEGS, per_leg_broker)
+    trades_leg = fill_option_strategy!(
+        acc_leg,
+        [
+            Order(oid!(acc_leg), leg_long, dt, 0.04, 1.0),
+            Order(oid!(acc_leg), leg_short, dt, 0.03, -1.0),
+        ];
+        dt=dt,
+        fill_prices=[0.04, 0.03],
+        bids=[0.04, 0.03],
+        asks=[0.04, 0.03],
+        lasts=[0.04, 0.03],
+        underlying_price=100.0,
+    )
+
+    @test sum(t.commission_quote for t in trades_pkg) ≈ 1.0 atol=1e-12
+    @test sum(t.commission_quote for t in trades_leg) ≈ 2.0 atol=1e-12
+    @test cash_balance(acc_pkg, usd_pkg) ≈ 998.0 atol=1e-12
+    @test cash_balance(acc_leg, usd_leg) ≈ 997.0 atol=1e-12
+    @test Fastback.check_invariants(acc_pkg)
+    @test Fastback.check_invariants(acc_leg)
+end
+
 @testitem "Rejected option strategy fill restores preflight mark and margin state" begin
     using Test, Fastback, Dates
 
@@ -1036,9 +1112,9 @@ end
         underlying_price=100.0,
     )
 
-    update_marks!(acc, long_call, dt + Day(1), 4.0, 4.0, 4.0; recompute_option_margins=false)
+    Fastback._update_marks_from_quotes!(acc, get_position(acc, long_call), dt + Day(1), 4.0, 4.0, 4.0, false)
     Fastback.mark_option_position_dirty!(acc, long_call.index)
-    update_marks!(acc, short_call, dt + Day(1), 1.5, 1.5, 1.5; recompute_option_margins=false)
+    Fastback._update_marks_from_quotes!(acc, get_position(acc, short_call), dt + Day(1), 1.5, 1.5, 1.5, false)
     Fastback.mark_option_position_dirty!(acc, short_call.index)
 
     @test length(acc.dirty_option_groups) == 1

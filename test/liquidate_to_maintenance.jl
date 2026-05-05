@@ -223,7 +223,6 @@ end
         bid=20.0,
         ask=20.0,
         last=20.0,
-        allow_inactive=true,
         trade_reason=TradeReason.Liquidation,
     )
     @test is_under_maintenance(acc_regular)
@@ -239,7 +238,6 @@ end
             bid=160.0,
             ask=160.0,
             last=160.0,
-            allow_inactive=true,
             trade_reason=TradeReason.Liquidation,
         )
         nothing

@@ -7,7 +7,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 ## Core types and enums
 
 - `Price`, `Quantity`
-- `TradeDir`, `SettlementStyle`, `MarginRequirement`, `MarginAggregation`, `ContractKind`, `OptionRight`, `OptionExerciseStyle`, `AccountFunding`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `TradeReason`
+- `TradeDir`, `SettlementStyle`, `MarginRequirement`, `MarginAggregation`, `ContractKind`, `OptionRight`, `OptionExerciseStyle`, `OptionStrategyCommissionMode`, `AccountFunding`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `TradeReason`
 - `Cash`, `CashSpec`, `InstrumentSpec`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
 - `ExchangeRates`
 
@@ -17,7 +17,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Broker hooks
 
-- `broker_commission`, `broker_interest_rates`, `broker_short_proceeds_rates`
+- `broker_commission`, `broker_option_strategy_commissions!`, `broker_interest_rates`, `broker_short_proceeds_rates`
 
 ## Order and trade utilities
 

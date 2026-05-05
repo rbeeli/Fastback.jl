@@ -210,7 +210,6 @@ function run_mes_chain_backtest!(
                 bid=row.bid,
                 ask=row.ask,
                 last=row.last,
-                allow_inactive=true,
             )
         end
     end

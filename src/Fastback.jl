@@ -54,6 +54,7 @@ export Price,
     ContractKind,
     OptionRight,
     OptionExerciseStyle,
+    OptionStrategyCommissionMode,
     AccountFunding,
     CashflowKind,
     OrderRejectReason,
@@ -86,6 +87,7 @@ export trade_dir,
 
 # Broker hooks
 export broker_commission,
+    broker_option_strategy_commissions!,
     broker_interest_rates,
     broker_short_proceeds_rates
 

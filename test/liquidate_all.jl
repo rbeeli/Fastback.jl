@@ -168,7 +168,6 @@ end
         bid=32.0,
         ask=32.0,
         last=32.0,
-        allow_inactive=true,
         trade_reason=TradeReason.Liquidation,
     )
     err = try
@@ -178,7 +177,6 @@ end
             bid=80.0,
             ask=80.0,
             last=80.0,
-            allow_inactive=true,
             trade_reason=TradeReason.Liquidation,
         )
         nothing

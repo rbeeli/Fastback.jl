@@ -261,15 +261,12 @@ end
     _set_option_underlying_price!(acc, inst.spec.underlying_symbol, inst.spec.quote_symbol, underlying_price)
 end
 
-"""
-Update the underlying mark used for option margin and expiry settlement.
-"""
-function update_option_underlying_price!(
+function _update_option_underlying_price!(
     acc::Account,
     underlying_symbol::Symbol,
     quote_symbol::Symbol,
-    underlying_price::Real;
-    recompute_option_margins::Bool=true,
+    underlying_price::Real,
+    recompute_option_margins::Bool,
 )
     _set_option_underlying_price!(acc, underlying_symbol, quote_symbol, Price(underlying_price))
     if recompute_option_margins
@@ -279,20 +276,31 @@ function update_option_underlying_price!(
     acc
 end
 
+"""
+Update the underlying mark used for option margin and expiry settlement.
+"""
 function update_option_underlying_price!(
     acc::Account,
     underlying_symbol::Symbol,
-    underlying_price::Real;
-    recompute_option_margins::Bool=true,
+    quote_symbol::Symbol,
+    underlying_price::Real,
 )
-    throw(ArgumentError("update_option_underlying_price! requires quote_symbol; call update_option_underlying_price!(acc, underlying_symbol, quote_symbol, underlying_price) or update_option_underlying_price!(acc, inst, underlying_price)."))
+    _update_option_underlying_price!(acc, underlying_symbol, quote_symbol, underlying_price, true)
 end
 
 function update_option_underlying_price!(
     acc::Account,
+    underlying_symbol::Symbol,
+    underlying_price::Real,
+)
+    throw(ArgumentError("update_option_underlying_price! requires quote_symbol; call update_option_underlying_price!(acc, underlying_symbol, quote_symbol, underlying_price) or update_option_underlying_price!(acc, inst, underlying_price)."))
+end
+
+function _update_option_underlying_price!(
+    acc::Account,
     inst::Instrument,
-    underlying_price::Real;
-    recompute_option_margins::Bool=true,
+    underlying_price::Real,
+    recompute_option_margins::Bool,
 )
     _set_option_underlying_price!(acc, inst, Price(underlying_price))
     if recompute_option_margins
@@ -300,6 +308,14 @@ function update_option_underlying_price!(
         recompute_dirty_option_groups!(acc)
     end
     acc
+end
+
+function update_option_underlying_price!(
+    acc::Account,
+    inst::Instrument,
+    underlying_price::Real,
+)
+    _update_option_underlying_price!(acc, inst, underlying_price, true)
 end
 
 """
@@ -946,15 +962,12 @@ function _project_option_margin_totals_after_fill(
     )
 end
 
-"""
-Cash-settle an expired option at intrinsic value and flatten the position.
-"""
-function settle_option_expiry!(
+function _settle_option_expiry!(
     acc::Account{TTime,TBroker},
     inst::Instrument{TTime},
-    dt::TTime;
-    underlying_price::Price=Price(NaN),
-    recompute_option_margins::Bool=true,
+    dt::TTime,
+    underlying_price::Price,
+    recompute_option_margins::Bool,
 )::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     is_option(inst) || throw(ArgumentError("settle_option_expiry! only supports Option instruments, got $(inst.spec.symbol) with $(inst.spec.contract_kind)."))
 
@@ -1032,4 +1045,16 @@ function settle_option_expiry!(
     pos.last_trade = trade
     push!(acc.trades, trade)
     trade
+end
+
+"""
+Cash-settle an expired option at intrinsic value and flatten the position.
+"""
+function settle_option_expiry!(
+    acc::Account{TTime,TBroker},
+    inst::Instrument{TTime},
+    dt::TTime;
+    underlying_price::Price=Price(NaN),
+)::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+    _settle_option_expiry!(acc, inst, dt, underlying_price, true)
 end

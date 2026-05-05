@@ -18,6 +18,7 @@ mutable struct OptionMarginScratch{TTime<:Dates.AbstractTime}
     const strategy_pos_qtys::Vector{Quantity}
     const strategy_pos_entry_prices::Vector{Price}
     const strategy_projected_mark_prices::Vector{Price}
+    const strategy_commissions::Vector{CommissionQuote}
     const projected_active_positions::Vector{Int}
     const override_indices::Vector{Int}
     generation::Int
@@ -66,6 +67,7 @@ OptionMarginScratch{TTime}() where {TTime<:Dates.AbstractTime} = OptionMarginScr
     Quantity[],
     Price[],
     Price[],
+    CommissionQuote[],
     Int[],
     Int[],
     0,
@@ -541,32 +543,29 @@ end
 @inline function get_rate(
     acc::Account,
     from_idx::Int,
-    to_idx::Int;
-    allow_nan::Bool=false,
+    to_idx::Int,
 )
     _ensure_account_cash_index(acc, from_idx)
     _ensure_account_cash_index(acc, to_idx)
-    get_rate(acc.exchange_rates, from_idx, to_idx; allow_nan=allow_nan)
+    get_rate(acc.exchange_rates, from_idx, to_idx)
 end
 
 @inline function get_rate(
     acc::Account,
     from::Cash,
-    to::Cash;
-    allow_nan::Bool=false,
+    to::Cash,
 )
-    get_rate(acc.exchange_rates, from, to; allow_nan=allow_nan)
+    get_rate(acc.exchange_rates, from, to)
 end
 
 @inline function get_rate(
     acc::Account,
     from_symbol::Symbol,
-    to_symbol::Symbol;
-    allow_nan::Bool=false,
+    to_symbol::Symbol,
 )
     from = cash_asset(acc.ledger, from_symbol)
     to = cash_asset(acc.ledger, to_symbol)
-    get_rate(acc.exchange_rates, from, to; allow_nan=allow_nan)
+    get_rate(acc.exchange_rates, from, to)
 end
 
 # ---------------------------------------------------------

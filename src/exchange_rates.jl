@@ -35,33 +35,37 @@ end
     nothing
 end
 
-"""
-Get the exchange rate between two assets according to the current rates.
-"""
-@inline function _get_rate_idx(er::ExchangeRates, from_idx::Int, to_idx::Int; allow_nan::Bool=false)
+@inline function _get_rate_idx_or_nan(er::ExchangeRates, from_idx::Int, to_idx::Int)
+    from_idx == to_idx && return 1.0
+    @inbounds er.rates[from_idx][to_idx]
+end
+
+@inline function _get_rate_idx(er::ExchangeRates, from_idx::Int, to_idx::Int)
     from_idx == to_idx && return 1.0
     rate = @inbounds er.rates[from_idx][to_idx]
-    if isnan(rate) && !allow_nan
+    if isnan(rate)
         throw(ArgumentError("No exchange rate available from cash index $(from_idx) to $(to_idx)."))
     end
     rate
 end
 
+"""
+Get the exchange rate between two assets according to the current rates.
+"""
 @inline function get_rate(
     er::ExchangeRates,
     from_idx::Int,
-    to_idx::Int;
-    allow_nan::Bool=false,
+    to_idx::Int,
 )
-    _get_rate_idx(er, from_idx, to_idx; allow_nan=allow_nan)
+    _get_rate_idx(er, from_idx, to_idx)
 end
 
-@inline function get_rate(er::ExchangeRates, from::Cash, to::Cash; allow_nan::Bool=false)
+@inline function get_rate(er::ExchangeRates, from::Cash, to::Cash)
     from_idx = from.index
     to_idx = to.index
     from_idx == to_idx && return 1.0
-    rate = get_rate(er, from_idx, to_idx; allow_nan=true)
-    if isnan(rate) && !allow_nan
+    rate = _get_rate_idx_or_nan(er, from_idx, to_idx)
+    if isnan(rate)
         throw(ArgumentError("No exchange rate available from $(from.symbol) to $(to.symbol)."))
     end
     rate
@@ -77,7 +81,7 @@ function get_rates_matrix(er::ExchangeRates)
     mat = fill(NaN, n, n)
     for f in 1:n
         for t in 1:n
-            @inbounds mat[f, t] = _get_rate_idx(er, f, t, allow_nan=true)
+            @inbounds mat[f, t] = _get_rate_idx_or_nan(er, f, t)
         end
     end
     mat

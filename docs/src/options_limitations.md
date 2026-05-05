@@ -45,6 +45,10 @@ For an IBKR-sourced US equity-option backtest, the usual mapping is:
 - Quote rows map to `MarkUpdate` values for bid, ask, and last.
 - Underlying reference prices map to `OptionUnderlyingUpdate`.
 - Single-leg fills map to `fill_order!`; package fills map to `fill_option_strategy!`.
+- `IBKRProFixedBroker` applies the option order minimum once across `fill_option_strategy!`
+  packages by default, while regulatory/pass-through fees remain per leg. Set
+  `option_strategy_commission=OptionStrategyCommissionMode.PerLegOrders` on the broker
+  to model legged execution costs.
 - Expiry and assignment do not map one-to-one. Fastback uses model-side cash intrinsic settlement,
   while many US equity and ETF options are American-style and physically settled.
 - Margin should be treated as an internal model result. Reconcile it against broker statements

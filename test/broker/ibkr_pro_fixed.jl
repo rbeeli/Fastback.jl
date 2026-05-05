@@ -11,6 +11,7 @@ using TestItemRunner
     @test broker isa IBKRProFixedBroker{DateTime}
     @test broker.benchmark_by_cash == benchmark_by_cash
     @test broker.benchmark_by_cash isa Dict{Symbol,StepSchedule{DateTime,Price}}
+    @test broker.option_strategy_commission == OptionStrategyCommissionMode.ComboOrder
     @test broker.short_proceeds_exclusion == 1.0
     @test broker.short_proceeds_rebate_spread == broker.lend_spread
 
@@ -114,4 +115,93 @@ end
 
     @test_throws ArgumentError IBKRProFixedBroker(; option_orf_per_contract=-0.01)
     @test_throws ArgumentError IBKRProFixedBroker(; option_sec_transaction_rate=-0.01)
+end
+
+@testitem "IBKRProFixedBroker package option commissions apply order minimum once" begin
+    using Test, Fastback, Dates
+
+    broker = IBKRProFixedBroker()
+    expiry = DateTime(2026, 1, 17)
+    long_spec = option_instrument(Symbol("AAPL_20260117_C100_COMBO_FEES"), :AAPL, :USD;
+        strike=100.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+    )
+    short_spec = option_instrument(Symbol("AAPL_20260117_C105_COMBO_FEES"), :AAPL, :USD;
+        strike=105.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+    )
+    long_inst = Instrument(1, 1, 1, 1, long_spec)
+    short_inst = Instrument(2, 1, 1, 1, short_spec)
+    dt = DateTime(2026, 1, 5)
+    orders = [
+        Order(1, long_inst, dt, 0.04, 1.0),
+        Order(2, short_inst, dt, 0.04, -1.0),
+    ]
+    commissions = CommissionQuote[]
+
+    broker_option_strategy_commissions!(
+        commissions,
+        broker,
+        orders,
+        dt,
+        nothing,
+        [0.04, 0.04],
+        nothing,
+    )
+
+    buy_pass_through =
+        broker.option_orf_per_contract +
+        broker.option_occ_per_contract +
+        broker.option_cat_per_contract
+    sell_pass_through =
+        buy_pass_through +
+        broker.option_finra_taf_per_contract_sold +
+        (0.04 * short_inst.spec.multiplier) * broker.option_sec_transaction_rate
+
+    @test length(commissions) == 2
+    @test sum(c.fixed for c in commissions) ≈
+        broker.option_min + buy_pass_through + sell_pass_through atol=1e-12
+    @test sum(c.fixed for c in commissions) ≈
+        broker_commission(broker, long_inst, dt, 1.0, 0.04).fixed +
+        broker_commission(broker, short_inst, dt, -1.0, 0.04).fixed -
+        broker.option_min atol=1e-12
+
+    per_leg_broker = IBKRProFixedBroker(;
+        option_strategy_commission=OptionStrategyCommissionMode.PerLegOrders,
+    )
+    broker_option_strategy_commissions!(
+        commissions,
+        per_leg_broker,
+        orders,
+        dt,
+        nothing,
+        [0.04, 0.04],
+        nothing,
+    )
+    @test sum(c.fixed for c in commissions) ≈
+        broker_commission(per_leg_broker, long_inst, dt, 1.0, 0.04).fixed +
+        broker_commission(per_leg_broker, short_inst, dt, -1.0, 0.04).fixed atol=1e-12
+
+    zero_per_contract = IBKRProFixedBroker(;
+        option_per_contract=0.0,
+        option_low_premium_per_contract=0.0,
+        option_mid_premium_per_contract=0.0,
+        option_orf_per_contract=0.0,
+        option_occ_per_contract=0.0,
+        option_cat_per_contract=0.0,
+        option_finra_taf_per_contract_sold=0.0,
+        option_sec_transaction_rate=0.0,
+    )
+    broker_option_strategy_commissions!(
+        commissions,
+        zero_per_contract,
+        orders,
+        dt,
+        nothing,
+        [0.04, 0.04],
+        nothing,
+    )
+    @test sum(c.fixed for c in commissions) ≈ zero_per_contract.option_min atol=1e-12
 end

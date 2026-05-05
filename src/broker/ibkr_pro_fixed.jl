@@ -5,6 +5,11 @@ US option commissions include the configured premium-tier commission plus
 predictable per-contract/pass-through regulatory, clearing, and transaction
 fees. Exchange-specific maker/taker routing fees are intentionally left to
 custom broker overrides or calibrated flat-fee overlays.
+
+For `fill_option_strategy!`, `option_strategy_commission=OptionStrategyCommissionMode.ComboOrder`
+applies the option order minimum once across the package, while per-contract
+pass-through fees remain leg-specific. Use `OptionStrategyCommissionMode.PerLegOrders`
+to model legged execution costs.
 """
 struct IBKRProFixedBroker{TTime<:Dates.AbstractTime} <: AbstractBroker
     equity_per_share::Price
@@ -12,6 +17,7 @@ struct IBKRProFixedBroker{TTime<:Dates.AbstractTime} <: AbstractBroker
     equity_max_pct::Price
     option_per_contract::Price
     option_min::Price
+    option_strategy_commission::OptionStrategyCommissionMode.T
     option_low_premium_per_contract::Price
     option_mid_premium_per_contract::Price
     option_low_premium_threshold::Price
@@ -38,6 +44,7 @@ function IBKRProFixedBroker(
     equity_max_pct::Real=0.01,
     option_per_contract::Real=0.65,
     option_min::Real=1.0,
+    option_strategy_commission::OptionStrategyCommissionMode.T=OptionStrategyCommissionMode.ComboOrder,
     option_low_premium_per_contract::Real=0.25,
     option_mid_premium_per_contract::Real=0.50,
     option_low_premium_threshold::Real=0.05,
@@ -101,6 +108,7 @@ function IBKRProFixedBroker(
         equity_max_pct_p,
         option_per_contract_p,
         option_min_p,
+        option_strategy_commission,
         option_low_p,
         option_mid_p,
         option_low_threshold_p,
@@ -118,6 +126,39 @@ function IBKRProFixedBroker(
         short_exclusion_p,
         short_rebate_spread_p,
     )
+end
+
+@inline function _ibkr_option_per_contract_commission(
+    broker::IBKRProFixedBroker,
+    price::Price,
+)::Price
+    if abs(price) < broker.option_low_premium_threshold
+        broker.option_low_premium_per_contract
+    elseif abs(price) < broker.option_mid_premium_threshold
+        broker.option_mid_premium_per_contract
+    else
+        broker.option_per_contract
+    end
+end
+
+@inline function _ibkr_option_pass_through_fee(
+    broker::IBKRProFixedBroker,
+    inst::Instrument,
+    qty::Quantity,
+    price::Price,
+)::Price
+    qty_abs = abs(qty)
+    fee = qty_abs * (
+        broker.option_orf_per_contract +
+        broker.option_occ_per_contract +
+        broker.option_cat_per_contract
+    )
+    if qty < 0.0
+        premium_sale_value = qty_abs * abs(price) * inst.spec.multiplier
+        fee += qty_abs * broker.option_finra_taf_per_contract_sold
+        fee += premium_sale_value * broker.option_sec_transaction_rate
+    end
+    fee
 end
 
 @inline function broker_commission(
@@ -139,29 +180,84 @@ end
         )
         return CommissionQuote(; fixed=fee, pct=0.0)
     elseif inst.spec.contract_kind == ContractKind.Option
-        per_contract = if abs(price) < broker.option_low_premium_threshold
-            broker.option_low_premium_per_contract
-        elseif abs(price) < broker.option_mid_premium_threshold
-            broker.option_mid_premium_per_contract
-        else
-            broker.option_per_contract
-        end
+        per_contract = _ibkr_option_per_contract_commission(broker, price)
         base_fee = max(broker.option_min, qty_abs * per_contract)
-        pass_through_fee = qty_abs * (
-            broker.option_orf_per_contract +
-            broker.option_occ_per_contract +
-            broker.option_cat_per_contract
-        )
-        if qty < 0.0
-            premium_sale_value = qty_abs * abs(price) * inst.spec.multiplier
-            pass_through_fee += qty_abs * broker.option_finra_taf_per_contract_sold
-            pass_through_fee += premium_sale_value * broker.option_sec_transaction_rate
-        end
+        pass_through_fee = _ibkr_option_pass_through_fee(broker, inst, qty, price)
         return CommissionQuote(; fixed=base_fee + pass_through_fee, pct=0.0)
     end
 
     per_contract = get(broker.futures_per_contract, inst.spec.symbol, 0.0)
     CommissionQuote(; fixed=qty_abs * per_contract, pct=0.0)
+end
+
+function broker_option_strategy_commissions!(
+    dest::Vector{CommissionQuote},
+    broker::IBKRProFixedBroker,
+    orders::Vector{Order{TTime}},
+    dt::TTime,
+    fill_qtys::Union{Nothing,Vector{Quantity}},
+    fill_prices::Vector{Price},
+    is_makers::Union{Nothing,Vector{Bool}},
+)::Vector{CommissionQuote} where {TTime<:Dates.AbstractTime}
+    n = length(orders)
+    length(dest) == n || resize!(dest, n)
+
+    if broker.option_strategy_commission == OptionStrategyCommissionMode.PerLegOrders
+        return _broker_option_strategy_commissions_per_leg!(
+            dest,
+            broker,
+            orders,
+            dt,
+            fill_qtys,
+            fill_prices,
+            is_makers,
+        )
+    end
+    broker.option_strategy_commission == OptionStrategyCommissionMode.ComboOrder ||
+        throw(ArgumentError("Unsupported IBKRProFixedBroker option_strategy_commission $(broker.option_strategy_commission)."))
+
+    base_total = zero(Price)
+    qty_total = zero(Quantity)
+    @inbounds for i in 1:n
+        order = orders[i]
+        order.inst.spec.contract_kind == ContractKind.Option ||
+            throw(ArgumentError("IBKRProFixedBroker package option commissions only support option instruments, got $(order.inst.spec.symbol)."))
+        fill_qty = if fill_qtys === nothing
+            order.quantity
+        else
+            qty = fill_qtys[i]
+            qty != 0.0 ? qty : order.quantity
+        end
+        qty_abs = abs(fill_qty)
+        if qty_abs != 0.0
+            qty_total += qty_abs
+            base_total += qty_abs * _ibkr_option_per_contract_commission(broker, fill_prices[i])
+        end
+    end
+    package_base_fee = qty_total == 0.0 ? 0.0 : max(broker.option_min, base_total)
+
+    @inbounds for i in 1:n
+        order = orders[i]
+        fill_qty = if fill_qtys === nothing
+            order.quantity
+        else
+            qty = fill_qtys[i]
+            qty != 0.0 ? qty : order.quantity
+        end
+        qty_abs = abs(fill_qty)
+        leg_base = qty_abs * _ibkr_option_per_contract_commission(broker, fill_prices[i])
+        base_fee = if base_total != 0.0
+            package_base_fee * (leg_base / base_total)
+        elseif qty_total != 0.0
+            package_base_fee * (qty_abs / qty_total)
+        else
+            0.0
+        end
+        pass_through_fee = _ibkr_option_pass_through_fee(broker, order.inst, fill_qty, fill_prices[i])
+        dest[i] = CommissionQuote(; fixed=base_fee + pass_through_fee, pct=0.0)
+    end
+
+    dest
 end
 
 @inline function broker_interest_rates(

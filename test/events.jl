@@ -748,10 +748,10 @@ end
 
     acc_buffered, _, dt_exp_buffered = setup_expiring_future()
     buffer = Trade{DateTime}[]
-    b1 = Fastback.process_expiries_into!(buffer, acc_buffered, dt_exp_buffered)
+    b1 = Fastback._process_expiries_into!(buffer, acc_buffered, dt_exp_buffered)
     @test b1 === buffer
     @test length(buffer) == 1
-    b2 = Fastback.process_expiries_into!(buffer, acc_buffered, dt_exp_buffered + Day(1))
+    b2 = Fastback._process_expiries_into!(buffer, acc_buffered, dt_exp_buffered + Day(1))
     @test b2 === buffer
     @test isempty(buffer)
 end

@@ -8,6 +8,7 @@ using EnumX
 @enumx ContractKind::Int8 Spot = 1 Perpetual = 2 Future = 3 Option = 4
 @enumx OptionRight::Int8 Null = 0 Call = 1 Put = 2
 @enumx OptionExerciseStyle::Int8 Null = 0 American = 1 European = 2
+@enumx OptionStrategyCommissionMode::Int8 PerLegOrders = 1 ComboOrder = 2
 @enumx AccountFunding::Int8 FullyFunded = 1 Margined = 2
 @enumx OrderRejectReason::Int8 None = 0 InstrumentNotAllowed = 1 InsufficientCash = 2 ShortNotAllowed = 3 InsufficientInitialMargin = 4
 @enumx TradeReason::Int8 Normal = 0 Liquidation = 1 Expiry = 2 Roll = 3

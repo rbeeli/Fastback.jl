@@ -22,6 +22,65 @@ struct CommissionQuote
 end
 
 """
+Fill per-leg commission quotes for a listed-option package order.
+
+The default implementation preserves historical behavior by pricing each leg
+as an independent order. Broker profiles may override this for combo orders
+whose commission schedule applies order-level minimums to the package.
+"""
+function _broker_option_strategy_commissions_per_leg!(
+    dest::Vector{CommissionQuote},
+    broker::AbstractBroker,
+    orders::Vector{Order{TTime}},
+    dt::TTime,
+    fill_qtys::Union{Nothing,Vector{Quantity}},
+    fill_prices::Vector{Price},
+    is_makers::Union{Nothing,Vector{Bool}},
+)::Vector{CommissionQuote} where {TTime<:Dates.AbstractTime}
+    n = length(orders)
+    length(dest) == n || resize!(dest, n)
+    @inbounds for i in 1:n
+        order = orders[i]
+        fill_qty = if fill_qtys === nothing
+            order.quantity
+        else
+            qty = fill_qtys[i]
+            qty != 0.0 ? qty : order.quantity
+        end
+        is_maker = is_makers !== nothing && is_makers[i]
+        dest[i] = broker_commission(
+            broker,
+            order.inst,
+            dt,
+            fill_qty,
+            fill_prices[i];
+            is_maker=is_maker,
+        )
+    end
+    dest
+end
+
+function broker_option_strategy_commissions!(
+    dest::Vector{CommissionQuote},
+    broker::AbstractBroker,
+    orders::Vector{Order{TTime}},
+    dt::TTime,
+    fill_qtys::Union{Nothing,Vector{Quantity}},
+    fill_prices::Vector{Price},
+    is_makers::Union{Nothing,Vector{Bool}},
+)::Vector{CommissionQuote} where {TTime<:Dates.AbstractTime}
+    _broker_option_strategy_commissions_per_leg!(
+        dest,
+        broker,
+        orders,
+        dt,
+        fill_qtys,
+        fill_prices,
+        is_makers,
+    )
+end
+
+"""
 Piecewise-constant schedule keyed by time.
 
 `starts[i]` marks the first timestamp where `values[i]` becomes active.

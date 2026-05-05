@@ -254,7 +254,6 @@ end
             lasts,
             nothing,
             nothing,
-            false,
             TradeReason.Normal,
             100.0,
         )
@@ -274,7 +273,6 @@ end
         lasts,
         nothing,
         nothing,
-        false,
         TradeReason.Normal,
         100.0,
     )
@@ -295,7 +293,6 @@ end
         lasts,
         nothing,
         nothing,
-        false,
         TradeReason.Normal,
         100.0,
     )

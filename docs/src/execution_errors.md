@@ -4,7 +4,7 @@ Execution behavior (user-facing):
 
 - `fill_order!` records a `Trade` when the fill is accepted.
 - When a fill is rejected, `fill_order!` throws `OrderRejectError`.
-- `settle_expiry!`, `process_expiries!`, `liquidate_all!`, and `liquidate_to_maintenance!` send close-only synthetic fills (`fill_qty = -position_qty`) with `allow_inactive=true`, so they do not reject on incremental margin checks (`inc_qty == 0`).
+- `settle_expiry!`, `process_expiries!`, `liquidate_all!`, and `liquidate_to_maintenance!` use internal close-only settlement/liquidation paths, so they do not expose normal order lifecycle bypass flags on `fill_order!`.
 - Those helpers can still throw non-rejection errors (for example stale/non-finite stored quote state or liquidation loop limits).
 
 ```@example

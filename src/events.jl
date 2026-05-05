@@ -77,15 +77,15 @@ function advance_time!(
 end
 
 """
-    process_expiries_into!(trades, acc, dt)
+    _process_expiries_into!(trades, acc, dt)
 
 Settles expired futures at `dt` using final variation-margin settlement and
 expired options using cash-settled intrinsic value, then flattens exposure and
 releases margin.
 Clears and refills `trades`, returning the same vector. This helper is intended
-for internal or explicitly buffered callers.
+for internal buffered callers.
 """
-function process_expiries_into!(
+function _process_expiries_into!(
     trades::Vector{Trade{TTime}},
     acc::Account{TTime,TBroker},
     dt::TTime;
@@ -108,11 +108,12 @@ function process_expiries_into!(
             )
         else
             recompute_options = true
-            settle_option_expiry!(
+            _settle_option_expiry!(
                 acc,
                 inst,
-                dt;
-                recompute_option_margins=false,
+                dt,
+                Price(NaN),
+                false,
             )
         end
         trade === nothing && continue
@@ -135,7 +136,7 @@ function process_expiries!(
     acc::Account{TTime,TBroker},
     dt::TTime;
 ) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    process_expiries_into!(Trade{TTime}[], acc, dt)
+    _process_expiries_into!(Trade{TTime}[], acc, dt)
 end
 
 """
@@ -277,12 +278,12 @@ function process_step!(
 
     if option_underlyings !== nothing
         @inbounds for u in option_underlyings
-            update_option_underlying_price!(
+            _update_option_underlying_price!(
                 acc,
                 u.underlying_symbol,
                 u.quote_symbol,
-                u.underlying_price;
-                recompute_option_margins=false,
+                u.underlying_price,
+                false,
             )
             mark_option_underlying_dirty!(acc, u.underlying_symbol, u.quote_symbol)
         end
@@ -294,14 +295,14 @@ function process_step!(
             pos = acc.positions[m.inst_index]
             is_option_inst = pos.inst.spec.contract_kind == ContractKind.Option
             recompute_options |= is_option_inst
-            update_marks!(
+            _update_marks_from_quotes!(
                 acc,
                 pos,
                 dt,
                 m.bid,
                 m.ask,
-                m.last;
-                recompute_option_margins=false,
+                m.last,
+                false,
             )
             is_option_inst && pos.quantity != 0.0 && mark_option_position_dirty!(acc, pos.inst.index)
         end
@@ -317,7 +318,7 @@ function process_step!(
         end
     end
 
-    expiries && process_expiries_into!(acc._expiry_trades_buffer, acc, dt)
+    expiries && _process_expiries_into!(acc._expiry_trades_buffer, acc, dt)
 
     if liquidate && is_under_maintenance(acc)
         liquidate_to_maintenance!(acc, dt; max_steps=max_liq_steps)

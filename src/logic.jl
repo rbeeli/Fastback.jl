@@ -136,6 +136,23 @@ end
     return
 end
 
+@inline function _update_marks_from_quotes!(
+    acc::Account,
+    pos::Position{TTime},
+    dt::TTime,
+    bid::Price,
+    ask::Price,
+    last::Price,
+    recompute_option_margins::Bool,
+) where {TTime<:Dates.AbstractTime}
+    isfinite(bid) || throw(ArgumentError("update_marks! requires finite bid, got $(bid) at dt=$(dt)."))
+    isfinite(ask) || throw(ArgumentError("update_marks! requires finite ask, got $(ask) at dt=$(dt)."))
+    isfinite(last) || throw(ArgumentError("update_marks! requires finite last, got $(last) at dt=$(dt)."))
+    _validate_option_mark_prices(pos.inst, bid, ask, last)
+    close_price = _calc_mark_price(pos.inst, pos.quantity, bid, ask)
+    _update_marks!(acc, pos, dt, close_price, bid, ask, last, recompute_option_margins)
+end
+
 """
 Updates valuation and margin for a position using the latest bid/ask/last.
 
@@ -150,15 +167,8 @@ liquidation marks in fully funded accounts and `last` in margined accounts.
     bid::Price,
     ask::Price,
     last::Price,
-    ;
-    recompute_option_margins::Bool=true,
 ) where {TTime<:Dates.AbstractTime}
-    isfinite(bid) || throw(ArgumentError("update_marks! requires finite bid, got $(bid) at dt=$(dt)."))
-    isfinite(ask) || throw(ArgumentError("update_marks! requires finite ask, got $(ask) at dt=$(dt)."))
-    isfinite(last) || throw(ArgumentError("update_marks! requires finite last, got $(last) at dt=$(dt)."))
-    _validate_option_mark_prices(pos.inst, bid, ask, last)
-    close_price = _calc_mark_price(pos.inst, pos.quantity, bid, ask)
-    _update_marks!(acc, pos, dt, close_price, bid, ask, last, recompute_option_margins)
+    _update_marks_from_quotes!(acc, pos, dt, bid, ask, last, true)
 end
 
 @inline function _calc_mark_price(inst::Instrument, qty, bid, ask)
@@ -197,16 +207,9 @@ then applies settlement-aware margin reference pricing.
     bid::Price,
     ask::Price,
     last::Price,
-    ;
-    recompute_option_margins::Bool=true,
 ) where {TTime<:Dates.AbstractTime}
-    isfinite(bid) || throw(ArgumentError("update_marks! requires finite bid, got $(bid) at dt=$(dt)."))
-    isfinite(ask) || throw(ArgumentError("update_marks! requires finite ask, got $(ask) at dt=$(dt)."))
-    isfinite(last) || throw(ArgumentError("update_marks! requires finite last, got $(last) at dt=$(dt)."))
-    _validate_option_mark_prices(inst, bid, ask, last)
     pos = get_position(acc, inst)
-    close_price = _calc_mark_price(inst, pos.quantity, bid, ask)
-    _update_marks!(acc, pos, dt, close_price, bid, ask, last, recompute_option_margins)
+    _update_marks_from_quotes!(acc, pos, dt, bid, ask, last, true)
 end
 
 @inline function _fill_order_after_validation!(
@@ -478,7 +481,6 @@ Commission is broker-driven by default via `acc.broker`.
     fill_price::Price,
     fill_qty::Quantity=0.0,      # fill quantity, if not provided, order quantity is used (complete fill)
     is_maker::Bool=false,
-    allow_inactive::Bool=false,
     trade_reason::TradeReason.T=TradeReason.Normal,
     underlying_price::Price=Price(NaN),
     bid::Price,
@@ -492,7 +494,7 @@ Commission is broker-driven by default via `acc.broker`.
     isfinite(last) || throw(ArgumentError("fill_order! requires finite last, got $(last) at dt=$(dt)."))
     _validate_option_price(inst, "fill_price", fill_price)
     _validate_option_mark_prices(inst, bid, ask, last)
-    allow_inactive || is_active(inst, dt) || throw(OrderRejectError(OrderRejectReason.InstrumentNotAllowed))
+    is_active(inst, dt) || throw(OrderRejectError(OrderRejectReason.InstrumentNotAllowed))
     if inst.spec.contract_kind == ContractKind.Option && isfinite(underlying_price)
         _validate_option_price(inst, "underlying_price", underlying_price)
     end
@@ -548,7 +550,6 @@ function fill_option_strategy!(
     lasts::Vector{Price}=fill_prices,
     fill_qtys::Union{Nothing,Vector{Quantity}}=nothing,
     is_makers::Union{Nothing,Vector{Bool}}=nothing,
-    allow_inactive::Bool=false,
     trade_reason::TradeReason.T=TradeReason.Normal,
     underlying_price::Price=Price(NaN),
 )::Vector{Trade{TTime}} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
@@ -562,10 +563,21 @@ function fill_option_strategy!(
         lasts,
         fill_qtys,
         is_makers,
-        allow_inactive,
         trade_reason,
         underlying_price,
     )
+end
+
+@inline function _strategy_fill_qty(
+    order::Order,
+    fill_qtys::Union{Nothing,Vector{Quantity}},
+    i::Int,
+)::Quantity
+    if fill_qtys === nothing
+        return order.quantity
+    end
+    qty = @inbounds fill_qtys[i]
+    qty != 0.0 ? qty : order.quantity
 end
 
 function _fill_option_strategy!(
@@ -578,7 +590,6 @@ function _fill_option_strategy!(
     lasts::Vector{Price},
     fill_qtys::Union{Nothing,Vector{Quantity}},
     is_makers::Union{Nothing,Vector{Bool}},
-    allow_inactive::Bool,
     trade_reason::TradeReason.T,
     underlying_price::Price,
 )::Vector{Trade{TTime}} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
@@ -610,7 +621,7 @@ function _fill_option_strategy!(
         isfinite(lasts[i]) || throw(ArgumentError("fill_option_strategy! requires finite last, got $(lasts[i]) at dt=$(dt)."))
         _validate_option_price(inst, "fill_price", fill_prices[i])
         _validate_option_mark_prices(inst, bids[i], asks[i], lasts[i])
-        allow_inactive || is_active(inst, dt) || throw(OrderRejectError(OrderRejectReason.InstrumentNotAllowed))
+        is_active(inst, dt) || throw(OrderRejectError(OrderRejectReason.InstrumentNotAllowed))
     end
 
     scratch = acc._option_margin_scratch
@@ -623,6 +634,16 @@ function _fill_option_strategy!(
     empty!(affected_groups)
     equity_delta_by_cash = _reset_buffer!(scratch.equity_delta_by_cash, length(acc.ledger.equities), zero(Price))
     projected_generation = _begin_option_projection!(acc)
+    commissions = resize!(scratch.strategy_commissions, n)
+    broker_option_strategy_commissions!(
+        commissions,
+        acc.broker,
+        orders,
+        dt,
+        fill_qtys,
+        fill_prices,
+        is_makers,
+    )
 
     @inbounds for i in 1:n
         order = orders[i]
@@ -630,22 +651,14 @@ function _fill_option_strategy!(
         pos = get_position(acc, inst)
         positions[i] = pos
 
-        fill_qty = fill_qtys === nothing ? order.quantity : (fill_qtys[i] != 0.0 ? fill_qtys[i] : order.quantity)
+        fill_qty = _strategy_fill_qty(order, fill_qtys, i)
         if acc.funding == AccountFunding.FullyFunded && calc_exposure_increase_quantity(pos.quantity, fill_qty) < 0.0
             throw(OrderRejectError(OrderRejectReason.ShortNotAllowed))
         end
 
         mark_for_valuation = _calc_mark_price(inst, pos.quantity + fill_qty, bids[i], asks[i])
         margin_for_valuation = margin_reference_price(acc, inst, mark_for_valuation, lasts[i])
-        is_maker = is_makers !== nothing && is_makers[i]
-        commission_quote = broker_commission(
-            acc.broker,
-            inst,
-            dt,
-            fill_qty,
-            fill_prices[i];
-            is_maker=is_maker,
-        )
+        commission_quote = commissions[i]
 
         plan = plan_fill(
             acc,
@@ -755,8 +768,6 @@ function roll_position!(
     open_bid::Price=open_fill_price,
     open_ask::Price=open_fill_price,
     open_last::Price=open_fill_price,
-    allow_inactive_close::Bool=false,
-    allow_inactive_open::Bool=false,
 )::Tuple{Union{Trade{TTime},Nothing},Union{Trade{TTime},Nothing}} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     from_spec = from_inst.spec
     to_spec = to_inst.spec
@@ -804,7 +815,6 @@ function roll_position!(
         bid=close_bid,
         ask=close_ask,
         last=close_last,
-        allow_inactive=allow_inactive_close,
         trade_reason=TradeReason.Roll,
     )
 
@@ -817,7 +827,6 @@ function roll_position!(
         bid=open_bid,
         ask=open_ask,
         last=open_last,
-        allow_inactive=allow_inactive_open,
         trade_reason=TradeReason.Roll,
     )
 
