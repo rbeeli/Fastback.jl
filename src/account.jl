@@ -1,21 +1,57 @@
-mutable struct OptionMarginScratch
+mutable struct OptionMarginScratch{TTime<:Dates.AbstractTime}
     const init_by_pos::Vector{Price}
     const maint_by_pos::Vector{Price}
     const qty_by_pos::Vector{Quantity}
     const mark_by_pos::Vector{Price}
+    const override_generation::Vector{Int}
+    const override_qty::Vector{Quantity}
+    const override_mark::Vector{Price}
     const processed::Vector{Bool}
     const group_idx::Vector{Int}
     const current_init::Vector{Price}
     const current_maint::Vector{Price}
     const projected_init::Vector{Price}
     const projected_maint::Vector{Price}
+    const equity_delta_by_cash::Vector{Price}
+    const strategy_positions::Vector{Position{TTime}}
+    const strategy_plans::Vector{FillPlan}
+    const strategy_pos_qtys::Vector{Quantity}
+    const strategy_pos_entry_prices::Vector{Price}
+    const strategy_projected_mark_prices::Vector{Price}
+    const projected_active_positions::Vector{Int}
+    const override_indices::Vector{Int}
+    generation::Int
 end
 
 const OptionUnderlyingKey = Tuple{Symbol,Symbol}
 
-OptionMarginScratch() = OptionMarginScratch(
+struct OptionMarginGroupKey{TTime<:Dates.AbstractTime}
+    underlying_symbol::Symbol
+    expiry::TTime
+    multiplier::Float64
+    quote_cash_index::Int
+    settle_cash_index::Int
+    margin_cash_index::Int
+end
+
+mutable struct OptionMarginGroup{TTime<:Dates.AbstractTime}
+    const key::OptionMarginGroupKey{TTime}
+    const positions::Vector{Int}
+    const sorted_positions::Vector{Int}
+    const active_positions::Vector{Int}
+    const sorted_active_positions::Vector{Int}
+    dirty::Bool
+    underlying_price::Price
+    init_total::Price
+    maint_total::Price
+end
+
+OptionMarginScratch{TTime}() where {TTime<:Dates.AbstractTime} = OptionMarginScratch{TTime}(
     Price[],
     Price[],
+    Quantity[],
+    Price[],
+    Int[],
     Quantity[],
     Price[],
     Bool[],
@@ -24,6 +60,15 @@ OptionMarginScratch() = OptionMarginScratch(
     Price[],
     Price[],
     Price[],
+    Price[],
+    Position{TTime}[],
+    FillPlan[],
+    Quantity[],
+    Price[],
+    Price[],
+    Int[],
+    Int[],
+    0,
 )
 
 mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
@@ -37,7 +82,17 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     const trades::Vector{Trade{TTime}}
     const cashflows::Vector{Cashflow{TTime}}
     const option_underlying_prices::Dict{OptionUnderlyingKey,Price}
-    const _option_margin_scratch::OptionMarginScratch
+    const option_position_indices::Vector{Int}
+    const option_position_active::Vector{Bool}
+    const option_group_id_by_pos::Vector{Int}
+    const option_groups::Vector{OptionMarginGroup{TTime}}
+    const option_group_lookup::Dict{OptionMarginGroupKey{TTime},Int}
+    const option_group_ids_by_underlying::Dict{OptionUnderlyingKey,Vector{Int}}
+    const dirty_option_groups::Vector{Int}
+    const dirty_option_group_flags::Vector{Bool}
+    const option_init_by_cash::Vector{Price}
+    const option_maint_by_cash::Vector{Price}
+    const _option_margin_scratch::OptionMarginScratch{TTime}
     const _expiry_trades_buffer::Vector{Trade{TTime}}
     const track_trades::Bool
     const track_cashflows::Bool
@@ -80,7 +135,17 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
             Vector{Trade{TTime}}(), # trades
             Vector{Cashflow{TTime}}(), # cashflows
             Dict{OptionUnderlyingKey,Price}(), # option underlying marks by (underlying, quote)
-            OptionMarginScratch(),
+            Int[], # option position indices
+            Bool[], # option active flags by position
+            Int[], # option group id by position
+            OptionMarginGroup{TTime}[], # option margin groups
+            Dict{OptionMarginGroupKey{TTime},Int}(), # option margin group lookup
+            Dict{OptionUnderlyingKey,Vector{Int}}(), # option group ids by underlying/quote
+            Int[], # dirty option groups
+            Bool[], # dirty option group flags
+            fill(zero(Price), length(ledger.cash)), # cached option initial margin by cash
+            fill(zero(Price), length(ledger.cash)), # cached option maintenance margin by cash
+            OptionMarginScratch{TTime}(),
             Vector{Trade{TTime}}(), # reusable expiry buffer
             track_trades,
             track_cashflows,
@@ -108,6 +173,8 @@ Registers a new cash asset in the account and synchronizes the FX matrix size.
 function register_cash_asset!(acc::Account, spec::CashSpec)::Cash
     cash = _register_cash_asset!(acc.ledger, spec)
     _ensure_rates_size!(acc.exchange_rates, cash.index)
+    push!(acc.option_init_by_cash, zero(Price))
+    push!(acc.option_maint_by_cash, zero(Price))
     cash
 end
 
@@ -327,6 +394,11 @@ function register_instrument!(
 
     # create empty position for the instrument
     push!(acc.positions, Position{TTime}(inst.index, inst))
+    push!(acc.option_group_id_by_pos, 0)
+    push!(acc.option_position_active, false)
+    if spec.contract_kind == ContractKind.Option
+        _register_option_position!(acc, inst)
+    end
 
     inst
 end

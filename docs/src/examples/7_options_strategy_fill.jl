@@ -109,7 +109,7 @@ trades = fill_option_strategy!(
     underlying_price=100.0,
 );
 
-(length(trades), all(!isnothing, trades))
+(length(trades), eltype(trades))
 
 # The spread is now open with zero remaining available funds: the account has
 # exactly enough capital for the final 300 maximum loss.

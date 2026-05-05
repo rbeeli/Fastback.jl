@@ -77,18 +77,19 @@ function advance_time!(
 end
 
 """
-    process_expiries!(acc, dt)
+    process_expiries_into!(trades, acc, dt)
 
 Settles expired futures at `dt` using final variation-margin settlement and
 expired options using cash-settled intrinsic value, then flattens exposure and
 releases margin.
-Returns a reusable internal buffer cleared and refilled on each call.
+Clears and refills `trades`, returning the same vector. This helper is intended
+for internal or explicitly buffered callers.
 """
-function process_expiries!(
+function process_expiries_into!(
+    trades::Vector{Trade{TTime}},
     acc::Account{TTime,TBroker},
     dt::TTime;
 ) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    trades = acc._expiry_trades_buffer
     empty!(trades)
     recompute_options = false
 
@@ -117,9 +118,24 @@ function process_expiries!(
         trade === nothing && continue
         push!(trades, trade)
     end
-    recompute_options && recompute_option_margins!(acc)
+    recompute_options && recompute_dirty_option_groups!(acc)
 
     trades
+end
+
+"""
+    process_expiries!(acc, dt)
+
+Settles expired futures at `dt` using final variation-margin settlement and
+expired options using cash-settled intrinsic value, then flattens exposure and
+releases margin.
+Returns a caller-owned vector of generated expiry trades.
+"""
+function process_expiries!(
+    acc::Account{TTime,TBroker},
+    dt::TTime;
+) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+    process_expiries_into!(Trade{TTime}[], acc, dt)
 end
 
 """
@@ -130,15 +146,29 @@ Adjusts position `value_settle`/`pnl_settle` for non-VM instruments and updates
 margin usage for FX-sensitive requirements (percent-notional, and all fully-funded
 requirements) using settlement-aware margin reference prices.
 """
-@inline function _revalue_fx_caches!(acc::Account)
+@inline function _fx_updates_touch_pair(fx_updates, from_idx::Int, to_idx::Int)::Bool
+    from_idx == to_idx && return false
+    fx_updates === nothing && return true
+    @inbounds for fx in fx_updates
+        fx_from = fx.from_cash.index
+        fx_to = fx.to_cash.index
+        ((fx_from == from_idx && fx_to == to_idx) || (fx_from == to_idx && fx_to == from_idx)) && return true
+    end
+    false
+end
+
+@inline function _revalue_fx_caches!(acc::Account, fx_updates=nothing)
     recompute_options = false
     @inbounds for pos in acc.positions
         inst = pos.inst
         is_option_inst = inst.spec.contract_kind == ContractKind.Option
-        recompute_options |= is_option_inst && pos.quantity != 0.0
         quote_idx = inst.quote_cash_index
         settle_idx = inst.settle_cash_index
         margin_idx = inst.margin_cash_index
+        if is_option_inst && pos.quantity != 0.0 && _fx_updates_touch_pair(fx_updates, quote_idx, margin_idx)
+            recompute_options = true
+            mark_option_position_dirty!(acc, inst.index)
+        end
         quote_settle_fx = quote_idx != settle_idx
         quote_margin_fx = !is_option_inst && quote_idx != margin_idx
         margin_fx_sensitive = quote_margin_fx && pos.quantity != 0.0 &&
@@ -173,7 +203,7 @@ requirements) using settlement-aware margin reference prices.
             pos.maint_margin_settle = new_maint_margin
         end
     end
-    recompute_options && recompute_option_margins!(acc)
+    recompute_options && recompute_dirty_option_groups!(acc)
     acc
 end
 
@@ -242,7 +272,7 @@ function process_step!(
         @inbounds for fx in fx_updates
             update_rate!(er, fx.from_cash, fx.to_cash, fx.rate)
         end
-        isempty(fx_updates) || _revalue_fx_caches!(acc)
+        isempty(fx_updates) || _revalue_fx_caches!(acc, fx_updates)
     end
 
     if option_underlyings !== nothing
@@ -254,6 +284,7 @@ function process_step!(
                 u.underlying_price;
                 recompute_option_margins=false,
             )
+            mark_option_underlying_dirty!(acc, u.underlying_symbol, u.quote_symbol)
         end
     end
 
@@ -261,7 +292,8 @@ function process_step!(
     if marks !== nothing
         @inbounds for m in marks
             pos = acc.positions[m.inst_index]
-            recompute_options |= pos.inst.spec.contract_kind == ContractKind.Option
+            is_option_inst = pos.inst.spec.contract_kind == ContractKind.Option
+            recompute_options |= is_option_inst
             update_marks!(
                 acc,
                 pos,
@@ -271,10 +303,11 @@ function process_step!(
                 m.last;
                 recompute_option_margins=false,
             )
+            is_option_inst && pos.quantity != 0.0 && mark_option_position_dirty!(acc, pos.inst.index)
         end
     end
     if recompute_options || (option_underlyings !== nothing && !isempty(option_underlyings))
-        recompute_option_margins!(acc)
+        recompute_dirty_option_groups!(acc)
     end
 
     if funding !== nothing
@@ -284,7 +317,7 @@ function process_step!(
         end
     end
 
-    expiries && process_expiries!(acc, dt)
+    expiries && process_expiries_into!(acc._expiry_trades_buffer, acc, dt)
 
     if liquidate && is_under_maintenance(acc)
         liquidate_to_maintenance!(acc, dt; max_steps=max_liq_steps)

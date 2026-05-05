@@ -168,3 +168,137 @@ end
     alloc = @allocated Fastback.recompute_option_margins!(acc)
     @test alloc == 0
 end
+
+@testitem "single option fill_order! allocation stays bounded after warmup" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+        track_trades=false,
+    )
+    deposit!(acc, :USD, 100_000.0)
+    dt = DateTime(2026, 1, 5)
+    call = register_instrument!(acc, option_instrument(:PERF_FILL_C100, :AAPL, :USD;
+        strike=100.0,
+        expiry=DateTime(2026, 2, 20),
+        right=OptionRight.Call,
+    ))
+
+    fill_order!(acc, Order(oid!(acc), call, dt, 1.0, 1.0);
+        dt=dt,
+        fill_price=1.0,
+        bid=1.0,
+        ask=1.0,
+        last=1.0,
+    )
+    fill_order!(acc, Order(oid!(acc), call, dt + Day(1), 1.0, 1.0);
+        dt=dt + Day(1),
+        fill_price=1.0,
+        bid=1.0,
+        ask=1.0,
+        last=1.0,
+    )
+
+    order = Order(oid!(acc), call, dt + Day(2), 1.0, 1.0)
+    alloc = @allocated fill_order!(acc, order;
+        dt=dt + Day(2),
+        fill_price=1.0,
+        bid=1.0,
+        ask=1.0,
+        last=1.0,
+    )
+    @test alloc <= 512
+end
+
+@testitem "option strategy fill allocation stays bounded after warmup" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+        track_trades=false,
+    )
+    deposit!(acc, :USD, 100_000.0)
+    dt = DateTime(2026, 1, 5)
+    expiry = DateTime(2026, 2, 20)
+    long_call = register_instrument!(acc, option_instrument(:PERF_STRAT_C100, :AAPL, :USD;
+        strike=100.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+    ))
+    short_call = register_instrument!(acc, option_instrument(:PERF_STRAT_C105, :AAPL, :USD;
+        strike=105.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+    ))
+
+    fill_prices = [5.0, 2.0]
+    bids = [5.0, 2.0]
+    asks = [5.0, 2.0]
+    lasts = [5.0, 2.0]
+    for offset in 0:2
+        orders = [
+            Order(oid!(acc), long_call, dt + Day(offset), 5.0, 1.0),
+            Order(oid!(acc), short_call, dt + Day(offset), 2.0, -1.0),
+        ]
+        Fastback._fill_option_strategy!(
+            acc,
+            orders,
+            dt + Day(offset),
+            fill_prices,
+            bids,
+            asks,
+            lasts,
+            nothing,
+            nothing,
+            false,
+            TradeReason.Normal,
+            100.0,
+        )
+    end
+
+    orders = [
+        Order(oid!(acc), long_call, dt + Day(3), 5.0, 1.0),
+        Order(oid!(acc), short_call, dt + Day(3), 2.0, -1.0),
+    ]
+    alloc = @allocated Fastback._fill_option_strategy!(
+        acc,
+        orders,
+        dt + Day(3),
+        fill_prices,
+        bids,
+        asks,
+        lasts,
+        nothing,
+        nothing,
+        false,
+        TradeReason.Normal,
+        100.0,
+    )
+    # Public API returns a fresh stable result vector; internal strategy buffers
+    # still reuse account-owned scratch storage.
+    @test alloc <= 256
+
+    trades = Fastback._fill_option_strategy!(
+        acc,
+        [
+            Order(oid!(acc), long_call, dt + Day(4), 5.0, 1.0),
+            Order(oid!(acc), short_call, dt + Day(4), 2.0, -1.0),
+        ],
+        dt + Day(4),
+        fill_prices,
+        bids,
+        asks,
+        lasts,
+        nothing,
+        nothing,
+        false,
+        TradeReason.Normal,
+        100.0,
+    )
+    @test isempty(trades)
+    @test eltype(trades) === Trade{DateTime}
+end

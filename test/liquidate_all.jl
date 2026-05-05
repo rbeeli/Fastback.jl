@@ -42,6 +42,164 @@ end
     @test get_position(acc, inst).quantity == 0.0
 end
 
+@testitem "liquidate_all! closes option shorts before protective longs" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+    )
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 1_000.0)
+
+    dt = DateTime(2026, 1, 5)
+    expiry = DateTime(2026, 2, 20)
+    long_call = register_instrument!(acc, option_instrument(Symbol("ALLLIQ_AAPL_C105"), :AAPL, :USD;
+        strike=105.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+    ))
+    short_call = register_instrument!(acc, option_instrument(Symbol("ALLLIQ_AAPL_C100"), :AAPL, :USD;
+        strike=100.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+    ))
+
+    fill_order!(acc, Order(oid!(acc), long_call, dt, 1.0, 1.0);
+        dt=dt,
+        fill_price=1.0,
+        bid=1.0,
+        ask=1.0,
+        last=1.0,
+    )
+    fill_order!(acc, Order(oid!(acc), short_call, dt, 3.0, -1.0);
+        dt=dt,
+        fill_price=3.0,
+        bid=3.0,
+        ask=3.0,
+        last=3.0,
+        underlying_price=100.0,
+    )
+
+    @test init_margin_used(acc, usd) ≈ 300.0 atol=1e-12
+
+    trades = liquidate_all!(acc, dt + Hour(1))
+
+    @test length(trades) == 2
+    @test trades[1].order.inst === short_call
+    @test trades[2].order.inst === long_call
+    @test all(t -> t.reason == TradeReason.Liquidation, trades)
+    @test get_position(acc, short_call).quantity == 0.0
+    @test get_position(acc, long_call).quantity == 0.0
+    @test init_margin_used(acc, usd) ≈ 0.0 atol=1e-12
+    @test maint_margin_used(acc, usd) ≈ 0.0 atol=1e-12
+    @test Fastback.check_invariants(acc)
+end
+
+@testitem "liquidate_all! force-closes multi-leg option groups without margin rejection" begin
+    using Test, Fastback, Dates
+
+    function setup_multileg_group()
+        acc = Account(;
+            broker=NoOpBroker(),
+            funding=AccountFunding.Margined,
+            margin_aggregation=MarginAggregation.BaseCurrency,
+            base_currency=CashSpec(:USD),
+        )
+        deposit!(acc, :USD, 8_900.0)
+
+        dt = DateTime(2026, 1, 1)
+        expiry = DateTime(2026, 2, 20)
+        short_put = register_instrument!(acc, option_instrument(Symbol("ALLBYPASS_AAPL_P105"), :AAPL, :USD;
+            strike=105.0,
+            expiry=expiry,
+            right=OptionRight.Put,
+        ))
+        short_call = register_instrument!(acc, option_instrument(Symbol("ALLBYPASS_AAPL_C130"), :AAPL, :USD;
+            strike=130.0,
+            expiry=expiry,
+            right=OptionRight.Call,
+        ))
+        long_call = register_instrument!(acc, option_instrument(Symbol("ALLBYPASS_AAPL_C120"), :AAPL, :USD;
+            strike=120.0,
+            expiry=expiry,
+            right=OptionRight.Call,
+        ))
+
+        fill_option_strategy!(
+            acc,
+            [
+                Order(oid!(acc), short_put, dt, 8.0, -1.0),
+                Order(oid!(acc), short_call, dt, 10.0, -1.0),
+                Order(oid!(acc), long_call, dt, 3.0, 1.0),
+            ];
+            dt=dt,
+            fill_prices=[8.0, 10.0, 3.0],
+            bids=[8.0, 10.0, 3.0],
+            asks=[8.0, 10.0, 3.0],
+            lasts=[8.0, 10.0, 3.0],
+            underlying_price=100.0,
+        )
+
+        dt_stress = dt + Day(1)
+        process_step!(
+            acc,
+            dt_stress;
+            marks=[
+                MarkUpdate(short_put.index, 32.0, 32.0, 32.0),
+                MarkUpdate(short_call.index, 80.0, 80.0, 80.0),
+                MarkUpdate(long_call.index, 12.0, 12.0, 12.0),
+            ],
+            option_underlyings=[OptionUnderlyingUpdate(:AAPL, :USD, 120.0)],
+            expiries=false,
+            liquidate=false,
+            accrue_interest=false,
+            accrue_borrow_fees=false,
+        )
+
+        acc, dt_stress, short_put, short_call, long_call
+    end
+
+    acc_regular, dt_stress, short_put_regular, short_call_regular, _ = setup_multileg_group()
+    fill_order!(acc_regular, Order(oid!(acc_regular), short_put_regular, dt_stress, 32.0, 1.0);
+        dt=dt_stress,
+        fill_price=32.0,
+        bid=32.0,
+        ask=32.0,
+        last=32.0,
+        allow_inactive=true,
+        trade_reason=TradeReason.Liquidation,
+    )
+    err = try
+        fill_order!(acc_regular, Order(oid!(acc_regular), short_call_regular, dt_stress, 80.0, 1.0);
+            dt=dt_stress,
+            fill_price=80.0,
+            bid=80.0,
+            ask=80.0,
+            last=80.0,
+            allow_inactive=true,
+            trade_reason=TradeReason.Liquidation,
+        )
+        nothing
+    catch e
+        e
+    end
+    @test err isa OrderRejectError
+    @test err.reason == OrderRejectReason.InsufficientInitialMargin
+    @test get_position(acc_regular, short_call_regular).quantity == -1.0
+
+    acc, _, short_put, short_call, long_call = setup_multileg_group()
+    trades = liquidate_all!(acc, dt_stress)
+
+    @test [t.order.inst for t in trades] == [short_put, short_call, long_call]
+    @test all(t -> t.reason == TradeReason.Liquidation, trades)
+    @test all(pos.quantity == 0.0 for pos in acc.positions)
+    @test all(iszero, acc.option_init_by_cash)
+    @test all(iszero, acc.option_maint_by_cash)
+    @test Fastback.check_invariants(acc)
+end
+
 @testitem "liquidate_all! uses side-aware forced-close prices for variation margin" begin
     using Test, Fastback, Dates
 

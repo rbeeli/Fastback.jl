@@ -630,7 +630,7 @@ end
     )
 
     @test length(trades) == 2
-    @test all(!isnothing, trades)
+    @test eltype(trades) === Trade{DateTime}
     @test cash_balance(acc, usd) ≈ 0.0 atol=1e-12
     @test equity(acc, usd) ≈ 300.0 atol=1e-12
     @test init_margin_used(acc, usd) ≈ 300.0 atol=1e-12
@@ -889,5 +889,253 @@ end
     @test cash_balance(acc, usd) ≈ 900.0 atol=1e-12
     @test init_margin_used(acc, usd) ≈ 100.0 atol=1e-12
     @test maint_margin_used(acc, usd) ≈ 100.0 atol=1e-12
+    @test Fastback.check_invariants(acc)
+end
+
+@testitem "Cached option margins match slow reference after batched dirty recompute" begin
+    using Test, Fastback, Dates, Random
+
+    rng = MersenneTwister(7)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 1_000_000.0)
+
+    dt = DateTime(2026, 1, 5)
+    expiry = DateTime(2026, 2, 20)
+    insts = Instrument{DateTime}[]
+    for (right, strikes) in ((OptionRight.Put, [90.0, 100.0]), (OptionRight.Call, [105.0, 115.0]))
+        for strike in strikes
+            push!(insts, register_instrument!(acc, option_instrument(Symbol("CACHE_$(right)_$(Int(strike))"), :AAPL, :USD;
+                strike=strike,
+                expiry=expiry,
+                right=right,
+            )))
+        end
+    end
+
+    for inst in insts
+        px = Price(rand(rng, 1:6))
+        qty = rand(rng, [-2.0, -1.0, 1.0, 2.0])
+        fill_order!(acc, Order(oid!(acc), inst, dt, px, qty);
+            dt=dt,
+            fill_price=px,
+            bid=px,
+            ask=px,
+            last=px,
+            underlying_price=104.0,
+        )
+    end
+
+    marks = [MarkUpdate(inst.index, Price(rand(rng, 1:8)), Price(rand(rng, 1:8)), Price(rand(rng, 1:8))) for inst in insts]
+    process_step!(
+        acc,
+        dt + Day(1);
+        option_underlyings=[OptionUnderlyingUpdate(:AAPL, :USD, 101.0)],
+        marks=marks,
+        expiries=false,
+        accrue_interest=false,
+        accrue_borrow_fees=false,
+    )
+
+    fast_init = copy(acc.ledger.init_margin_used)
+    fast_maint = copy(acc.ledger.maint_margin_used)
+    fast_option_init = copy(acc.option_init_by_cash)
+    fast_option_maint = copy(acc.option_maint_by_cash)
+    fast_pos_init = [pos.init_margin_settle for pos in acc.positions]
+    fast_pos_maint = [pos.maint_margin_settle for pos in acc.positions]
+
+    Fastback.recompute_option_margins_slow!(acc)
+
+    @test acc.ledger.init_margin_used ≈ fast_init atol=1e-9
+    @test acc.ledger.maint_margin_used ≈ fast_maint atol=1e-9
+    @test acc.option_init_by_cash ≈ fast_option_init atol=1e-9
+    @test acc.option_maint_by_cash ≈ fast_option_maint atol=1e-9
+    @test [pos.init_margin_settle for pos in acc.positions] ≈ fast_pos_init atol=1e-9
+    @test [pos.maint_margin_settle for pos in acc.positions] ≈ fast_pos_maint atol=1e-9
+    @test init_margin_used(acc, usd) ≈ fast_init[usd.index] atol=1e-9
+    @test Fastback.check_invariants(acc)
+end
+
+@testitem "FX update refreshes option quote-to-margin cache" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        margin_aggregation=MarginAggregation.PerCurrency,
+        base_currency=CashSpec(:USD),
+    )
+    usd = cash_asset(acc, :USD)
+    eur = register_cash_asset!(acc, CashSpec(:EUR))
+    update_rate!(acc.exchange_rates, usd, eur, 1.0)
+    deposit!(acc, :EUR, 10_000.0)
+
+    expiry = DateTime(2026, 1, 17)
+    call = register_instrument!(acc, option_instrument(Symbol("AAPL_USD_MARGIN_EUR_C100"), :AAPL, :USD;
+        strike=100.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+        margin_symbol=:EUR,
+    ))
+
+    dt = DateTime(2026, 1, 5)
+    fill_order!(acc, Order(oid!(acc), call, dt, 3.0, -1.0);
+        dt=dt,
+        fill_price=3.0,
+        bid=3.0,
+        ask=3.0,
+        last=3.0,
+        underlying_price=100.0,
+    )
+    @test init_margin_used(acc, eur) ≈ 2_300.0 atol=1e-12
+    @test acc.option_init_by_cash[eur.index] ≈ 2_300.0 atol=1e-12
+
+    process_step!(
+        acc,
+        dt + Day(1);
+        fx_updates=[FXUpdate(usd, eur, 0.5)],
+        expiries=false,
+        accrue_interest=false,
+        accrue_borrow_fees=false,
+    )
+
+    @test init_margin_used(acc, eur) ≈ 1_150.0 atol=1e-12
+    @test maint_margin_used(acc, eur) ≈ 1_150.0 atol=1e-12
+    @test acc.option_init_by_cash[eur.index] ≈ 1_150.0 atol=1e-12
+    @test acc.option_maint_by_cash[eur.index] ≈ 1_150.0 atol=1e-12
+    @test Fastback.check_invariants(acc)
+end
+
+@testitem "Batched option mark dirty tracking deduplicates groups" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
+    deposit!(acc, :USD, 10_000.0)
+
+    expiry = DateTime(2026, 1, 17)
+    long_call = register_instrument!(acc, option_instrument(Symbol("DEDUP_C100"), :AAPL, :USD;
+        strike=100.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+    ))
+    short_call = register_instrument!(acc, option_instrument(Symbol("DEDUP_C105"), :AAPL, :USD;
+        strike=105.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+    ))
+
+    dt = DateTime(2026, 1, 5)
+    fill_option_strategy!(
+        acc,
+        [Order(oid!(acc), long_call, dt, 5.0, 1.0), Order(oid!(acc), short_call, dt, 2.0, -1.0)];
+        dt=dt,
+        fill_prices=[5.0, 2.0],
+        bids=[5.0, 2.0],
+        asks=[5.0, 2.0],
+        lasts=[5.0, 2.0],
+        underlying_price=100.0,
+    )
+
+    update_marks!(acc, long_call, dt + Day(1), 4.0, 4.0, 4.0; recompute_option_margins=false)
+    Fastback.mark_option_position_dirty!(acc, long_call.index)
+    update_marks!(acc, short_call, dt + Day(1), 1.5, 1.5, 1.5; recompute_option_margins=false)
+    Fastback.mark_option_position_dirty!(acc, short_call.index)
+
+    @test length(acc.dirty_option_groups) == 1
+    Fastback.recompute_dirty_option_groups!(acc)
+    @test isempty(acc.dirty_option_groups)
+    @test Fastback.check_invariants(acc)
+end
+
+@testitem "Option margin groups track sparse active positions" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 20_000.0)
+
+    dt = DateTime(2026, 1, 5)
+    expiry = DateTime(2026, 1, 17)
+    chain = Instrument[]
+    for strike in 80.0:5.0:140.0
+        push!(chain, register_instrument!(acc, option_instrument(Symbol("SPARSE_C$(Int(strike))"), :AAPL, :USD;
+            strike=strike,
+            expiry=expiry,
+            right=OptionRight.Call,
+        )))
+    end
+    inactive_expiry_call = register_instrument!(acc, option_instrument(Symbol("SPARSE_NEXT_C100"), :AAPL, :USD;
+        strike=100.0,
+        expiry=expiry + Day(7),
+        right=OptionRight.Call,
+    ))
+
+    long_call = chain[5]   # C100
+    short_call = chain[6]  # C105
+    group_id = acc.option_group_id_by_pos[long_call.index]
+    group = acc.option_groups[group_id]
+    inactive_group_id = acc.option_group_id_by_pos[inactive_expiry_call.index]
+
+    @test length(group.positions) == length(chain)
+    @test length(group.sorted_positions) == length(chain)
+    @test isempty(group.active_positions)
+    @test isempty(group.sorted_active_positions)
+    @test sort(acc.option_group_ids_by_underlying[(:AAPL, :USD)]) == sort([group_id, inactive_group_id])
+
+    fill_option_strategy!(
+        acc,
+        [
+            Order(oid!(acc), long_call, dt, 5.0, 1.0),
+            Order(oid!(acc), short_call, dt, 2.0, -1.0),
+        ];
+        dt=dt,
+        fill_prices=[5.0, 2.0],
+        bids=[5.0, 2.0],
+        asks=[5.0, 2.0],
+        lasts=[5.0, 2.0],
+        underlying_price=100.0,
+    )
+
+    @test sort(group.active_positions) == sort([long_call.index, short_call.index])
+    @test group.sorted_active_positions == [long_call.index, short_call.index]
+    @test acc.option_position_active[long_call.index]
+    @test acc.option_position_active[short_call.index]
+    @test !acc.option_position_active[inactive_expiry_call.index]
+    @test init_margin_used(acc, usd) ≈ 300.0 atol=1e-12
+
+    Fastback.mark_option_underlying_dirty!(acc, :AAPL, :USD)
+    @test acc.dirty_option_groups == [group_id]
+    Fastback.recompute_dirty_option_groups!(acc)
+    @test isempty(acc.dirty_option_groups)
+
+    fill_order!(acc, Order(oid!(acc), short_call, dt + Hour(1), 2.0, 1.0);
+        dt=dt + Hour(1),
+        fill_price=2.0,
+        bid=2.0,
+        ask=2.0,
+        last=2.0,
+        underlying_price=100.0,
+    )
+
+    @test group.active_positions == [long_call.index]
+    @test group.sorted_active_positions == [long_call.index]
+    @test !acc.option_position_active[short_call.index]
+
+    fill_order!(acc, Order(oid!(acc), long_call, dt + Hour(2), 5.0, -1.0);
+        dt=dt + Hour(2),
+        fill_price=5.0,
+        bid=5.0,
+        ask=5.0,
+        last=5.0,
+    )
+
+    @test isempty(group.active_positions)
+    @test isempty(group.sorted_active_positions)
+    @test !acc.option_position_active[long_call.index]
+    @test init_margin_used(acc, usd) ≈ 0.0 atol=1e-12
+    @test maint_margin_used(acc, usd) ≈ 0.0 atol=1e-12
+
+    Fastback.mark_option_underlying_dirty!(acc, :AAPL, :USD)
+    @test isempty(acc.dirty_option_groups)
     @test Fastback.check_invariants(acc)
 end

@@ -692,6 +692,70 @@ end
     @test get_position(acc, inst).quantity == 0.0
 end
 
+@testitem "process_expiries! returns caller-owned trade vectors" begin
+    using Test, Fastback, Dates
+
+    function setup_expiring_future()
+        acc = Account(;
+            broker=NoOpBroker(),
+            funding=AccountFunding.Margined,
+            base_currency=CashSpec(:USD),
+        )
+        deposit!(acc, :USD, 10_000.0)
+
+        dt_open = DateTime(2026, 1, 1)
+        dt_exp = dt_open + Day(3)
+        inst = register_instrument!(
+            acc,
+            InstrumentSpec(
+                Symbol("OWNED_EXP/USD"),
+                :OWNED_EXP,
+                :USD;
+                contract_kind=ContractKind.Future,
+                settlement=SettlementStyle.VariationMargin,
+                margin_requirement=MarginRequirement.PercentNotional,
+                margin_init_long=0.1,
+                margin_init_short=0.1,
+                margin_maint_long=0.05,
+                margin_maint_short=0.05,
+                expiry=dt_exp,
+            ),
+        )
+
+        fill_order!(
+            acc,
+            Order(oid!(acc), inst, dt_open, 100.0, 1.0);
+            dt=dt_open,
+            fill_price=100.0,
+            bid=100.0,
+            ask=100.0,
+            last=100.0,
+        )
+
+        acc, inst, dt_exp
+    end
+
+    acc, inst, dt_exp = setup_expiring_future()
+    r1 = process_expiries!(acc, dt_exp)
+    trade1 = only(r1)
+    r2 = process_expiries!(acc, dt_exp + Day(1))
+
+    @test r1 !== r2
+    @test length(r1) == 1
+    @test r1[1] === trade1
+    @test isempty(r2)
+    @test get_position(acc, inst).quantity == 0.0
+
+    acc_buffered, _, dt_exp_buffered = setup_expiring_future()
+    buffer = Trade{DateTime}[]
+    b1 = Fastback.process_expiries_into!(buffer, acc_buffered, dt_exp_buffered)
+    @test b1 === buffer
+    @test length(buffer) == 1
+    b2 = Fastback.process_expiries_into!(buffer, acc_buffered, dt_exp_buffered + Day(1))
+    @test b2 === buffer
+    @test isempty(buffer)
+end
+
 @testitem "Futures expiry auto-closes with no extra PnL beyond last variation settlement" begin
     using Test, Fastback, Dates
 

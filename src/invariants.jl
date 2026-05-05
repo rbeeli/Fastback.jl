@@ -112,5 +112,28 @@ function check_invariants(acc::Account; atol::Real=1e-9, rtol::Real=1e-9)
     isapprox(acc.ledger.maint_margin_used, maint_recomputed; atol=atol, rtol=rtol) ||
         throw(AssertionError("Stored maint_margin_used does not match recomputed values."))
 
+    option_init = zero.(acc.ledger.init_margin_used)
+    option_maint = zero.(acc.ledger.maint_margin_used)
+    nonoption_init = zero.(acc.ledger.init_margin_used)
+    nonoption_maint = zero.(acc.ledger.maint_margin_used)
+    @inbounds for pos in acc.positions
+        margin_idx = pos.inst.margin_cash_index
+        if pos.inst.spec.contract_kind == ContractKind.Option
+            option_init[margin_idx] += pos.init_margin_settle
+            option_maint[margin_idx] += pos.maint_margin_settle
+        else
+            nonoption_init[margin_idx] += pos.init_margin_settle
+            nonoption_maint[margin_idx] += pos.maint_margin_settle
+        end
+    end
+    isapprox(acc.option_init_by_cash, option_init; atol=atol, rtol=rtol) ||
+        throw(AssertionError("Cached option_init_by_cash does not match option position margins."))
+    isapprox(acc.option_maint_by_cash, option_maint; atol=atol, rtol=rtol) ||
+        throw(AssertionError("Cached option_maint_by_cash does not match option position margins."))
+    isapprox(acc.ledger.init_margin_used, nonoption_init .+ acc.option_init_by_cash; atol=atol, rtol=rtol) ||
+        throw(AssertionError("Stored init_margin_used does not equal non-option margin plus cached option margin."))
+    isapprox(acc.ledger.maint_margin_used, nonoption_maint .+ acc.option_maint_by_cash; atol=atol, rtol=rtol) ||
+        throw(AssertionError("Stored maint_margin_used does not equal non-option margin plus cached option margin."))
+
     return true
 end
