@@ -43,6 +43,7 @@ include("plots.jl")
 include("backtest_runner.jl")
 include("liquidation.jl")
 include("events.jl")
+include("fxmacrodata.jl")
 
 # Core types
 export Price,
@@ -200,6 +201,8 @@ export MarkUpdate,
 
 # Backtesting
 export batch_backtest
+
+export FXMacroData
 
 # Tables integration
 export balances_table,
