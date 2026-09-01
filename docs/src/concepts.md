@@ -23,14 +23,14 @@ and it updates balances, equity, and margin deterministically.
 
 ## Realized vs unrealized P&L
 
-- Fill-level additive gross P&L is recorded on `Trade` as `fill_pnl_settle`.
+- Fill-level additive gross P&L is recorded on `Trade` as `fill_pnl_settle`. For variation-margin contracts, settled mark-to-market is carried with the open exposure and attributed proportionally when that exposure is reduced or expires.
 - Net fill cash movement is `cash_delta_settle`.
 - Unrealized P&L lives on the `Position` (`pnl_quote`, `pnl_settle`) and is mirrored into equity via `update_marks!` or `process_step!`.
 
 ## Settlement styles
 
 - PrincipalExchange: fills exchange principal; open position value is marked notional (`qty * price * multiplier`).
-- VariationMargin: mark-to-market P&L is settled into cash at each mark; open position value stays at zero.
+- VariationMargin: mark-to-market P&L is settled into cash at each mark; open position value stays at zero. Cash timing and trade-P&L attribution are deliberately separate, so an opening execution-to-mark settlement can move cash while the opening trade reports zero realized P&L.
 
 `AccountFunding.FullyFunded` is a funding policy, not a settlement style.
 
@@ -59,16 +59,27 @@ A typical loop is:
 
 1. Advance time (enforced non-decreasing timestamps): `advance_time!`.
 2. Accrue interest and borrow fees as needed: `accrue_interest!`, `accrue_borrow_fees!`.
-3. Apply FX updates if you run multi-currency: `update_rate!` (or `process_step!` with `FXUpdate`).
+3. Apply FX updates if you run multi-currency through `process_step!` with `FXUpdate` once exposure is open.
 4. Mark positions with bid/ask/last prices: `update_marks!`.
 5. Apply funding events (perpetuals): `apply_funding!`.
-6. Process expiries (futures): `process_expiries!`.
+6. Process expiries: `process_expiries!` closes short options first, futures second, and long options last.
 7. Optionally liquidate to maintenance: `liquidate_to_maintenance!`.
-8. Decide and fill new orders for that step: `fill_order!` (after `Order` creation).
+8. Decide and fill new orders for that step: `create_order!` advances account time when the order is accepted, then `fill_order!` applies its execution.
 
 You can either:
 
 - Use `process_step!` to run steps 1-7 in one call (recommended for clean, deterministic loops).
 - Call the individual functions manually when you need custom ordering.
+
+Within a step, repeated FX routes, instrument marks, and option-underlying marks
+use the final observation for each key. Reusable indices coalesce them in linear
+time without copying account state. Ordered funding and lifecycle work follows
+the market updates. Direct `update_rate!(acc, ...)` is only
+allowed while the account is flat, because open positions require coordinated
+revaluation.
+
+`process_step!` is fail-stop. If any phase throws, completed earlier phases stay
+applied and `acc.poisoned` is set. Discard that account; a later time-advancing
+operation throws `AccountPoisonedError`.
 
 The [How-to](how_to.md) page shows both styles with code snippets.

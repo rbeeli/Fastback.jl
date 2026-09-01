@@ -21,6 +21,11 @@ it reports period count, best/worst period returns, positive-period rate,
 95% expected shortfall, skewness, kurtosis, downside volatility, drawdown
 duration/time-in-drawdown, and Omega ratio.
 
+`risk_free` and `mar` are annualized simple rates. Fastback divides them by
+`periods_per_year` before using them as periodic Sharpe, Sortino, downside
+volatility, and Omega thresholds. For example, with monthly returns use
+`periods_per_year=12` and pass an annual rate such as `risk_free=0.03`.
+
 ```@example analytics
 using Fastback
 using Dates
@@ -74,7 +79,7 @@ inst = register_instrument!(acc, spot_instrument(Symbol("ABC/USD"), :ABC, :USD))
 dt0 = DateTime(2026, 1, 1)
 fill_order!(
     acc,
-    Order(oid!(acc), inst, dt0, 100.0, 2.0);
+    create_order!(acc, inst, dt0, 100.0, 2.0);
     dt=dt0,
     fill_price=100.0,
     bid=100.0,
@@ -84,7 +89,7 @@ fill_order!(
 
 win_trade = fill_order!(
     acc,
-    Order(oid!(acc), inst, dt0 + Day(1), 110.0, -1.0);
+    create_order!(acc, inst, dt0 + Day(1), 110.0, -1.0);
     dt=dt0 + Day(1),
     fill_price=110.0,
     bid=110.0,
@@ -94,7 +99,7 @@ win_trade = fill_order!(
 
 loss_trade = fill_order!(
     acc,
-    Order(oid!(acc), inst, dt0 + Day(2), 90.0, -1.0);
+    create_order!(acc, inst, dt0 + Day(2), 90.0, -1.0);
     dt=dt0 + Day(2),
     fill_price=90.0,
     bid=90.0,

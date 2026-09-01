@@ -6,7 +6,7 @@
 
 ## Order
 
-An `Order` encapsulates an instruction to trade an instrument at a specific time, price, and quantity, with optional `take_profit` and `stop_loss` levels. Orders translate into trades through `fill_order!`.
+An `Order` encapsulates an instruction to trade an instrument at a specific time, price, and quantity, with optional `take_profit` and `stop_loss` levels. Create strategy orders with `create_order!`, which validates the request, assigns its account-local ID, and advances account time. Orders translate into trades through `fill_order!`; direct `Order(...)` construction is the low-level compatibility path and cannot update an account clock.
 
 ## Trade
 

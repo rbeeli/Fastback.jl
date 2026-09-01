@@ -29,7 +29,9 @@ include("execution.jl")
 include("risk.jl")
 include("margin.jl")
 include("logic.jl")
+include("corporate_actions.jl")
 include("invariants.jl")
+include("portfolio.jl")
 include("collectors/periodic.jl")
 include("collectors/predicate.jl")
 include("collectors/extrema.jl")
@@ -59,7 +61,9 @@ export Price,
     CashflowKind,
     OrderRejectReason,
     OrderRejectError,
+    AccountPoisonedError,
     TradeReason,
+    OrphanPositionPolicy,
     AbstractBroker,
     NoOpBroker,
     FlatFeeBroker,
@@ -98,6 +102,7 @@ export symbol,
     fill_order!,
     fill_option_strategy!,
     roll_position!,
+    apply_spot_corporate_action!,
     is_realizing,
     realized_return_gross,
     realized_return_net
@@ -140,6 +145,7 @@ export quote_cash,
     register_instrument!,
     get_position,
     is_exposed_to,
+    create_order!,
     oid!,
     format_datetime,
     liquidate_all!,
@@ -168,6 +174,24 @@ export get_rate,
 export update_marks!,
     settle_expiry!,
     settle_option_expiry!
+
+# Target-weight portfolio management
+export AccountSnapshot,
+    PortfolioExposure,
+    TargetWeights,
+    RebalancePolicy,
+    RollTransition,
+    FillContext,
+    AbstractFillModel,
+    TopOfBookFillModel,
+    SpreadFillModel,
+    ModelFill,
+    RebalanceResult,
+    Portfolio,
+    account_snapshot,
+    portfolio_exposure,
+    model_fill,
+    rebalance!
 
 # Collectors
 export PeriodicValues,

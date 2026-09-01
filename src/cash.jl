@@ -22,6 +22,7 @@ struct CashSpec
         symbol::Symbol;
         digits::Int=2,
     )
+        isempty(strip(String(symbol))) && throw(ArgumentError("Cash symbol cannot be empty."))
         digits >= 0 || throw(ArgumentError("Cash digits must be >= 0."))
         new(symbol, digits)
     end
@@ -47,11 +48,13 @@ mutable struct CashLedger
     const init_margin_used::Vector{Price}
     const maint_margin_used::Vector{Price}
     const short_proceeds_by_cash_buffer::Vector{Price}
+    const financing_by_cash_buffer::Vector{Price}
 
     function CashLedger()
         new(
             Vector{Cash}(),
             Dict{Symbol,Int}(),
+            Vector{Price}(),
             Vector{Price}(),
             Vector{Price}(),
             Vector{Price}(),
@@ -90,6 +93,7 @@ function _register_cash_asset!(
     push!(ledger.init_margin_used, zero(Price))
     push!(ledger.maint_margin_used, zero(Price))
     push!(ledger.short_proceeds_by_cash_buffer, zero(Price))
+    push!(ledger.financing_by_cash_buffer, zero(Price))
 
     cash
 end
@@ -99,9 +103,14 @@ end
     idx::Int,
     amount::Price,
 )
+    isfinite(amount) || throw(ArgumentError("Cash adjustment must be finite, got $(amount)."))
     @inbounds begin
-        ledger.balances[idx] += amount
-        ledger.equities[idx] += amount
+        new_balance = ledger.balances[idx] + amount
+        new_equity = ledger.equities[idx] + amount
+        isfinite(new_balance) || throw(ArgumentError("Cash adjustment produces a non-finite balance."))
+        isfinite(new_equity) || throw(ArgumentError("Cash adjustment produces non-finite equity."))
+        ledger.balances[idx] = new_balance
+        ledger.equities[idx] = new_equity
     end
 
     nothing

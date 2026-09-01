@@ -244,8 +244,8 @@ end
 
     dt0 = DateTime(2026, 1, 1)
     fill_order!(acc, Order(oid!(acc), usd_inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
-    fill_order!(acc, Order(oid!(acc), usd_inst, dt0 + Day(1), 110.0, -1.0); dt=dt0 + Day(1), fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
     fill_order!(acc, Order(oid!(acc), eur_inst, dt0, 200.0, 1.0); dt=dt0, fill_price=200.0, bid=200.0, ask=200.0, last=200.0)
+    fill_order!(acc, Order(oid!(acc), usd_inst, dt0 + Day(1), 110.0, -1.0); dt=dt0 + Day(1), fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
     fill_order!(acc, Order(oid!(acc), eur_inst, dt0 + Day(1), 220.0, -1.0); dt=dt0 + Day(1), fill_price=220.0, bid=220.0, ask=220.0, last=220.0)
 
     tbl = pnl_concentration(acc; by=:trade)
@@ -286,8 +286,8 @@ end
 
     dt0 = DateTime(2026, 1, 1)
     fill_order!(acc, Order(oid!(acc), usd_inst, dt0, 100.0, 1.0); dt=dt0, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
-    fill_order!(acc, Order(oid!(acc), usd_inst, dt0 + Day(1), 110.0, -1.0); dt=dt0 + Day(1), fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
     fill_order!(acc, Order(oid!(acc), eur_inst, dt0, 200.0, 1.0); dt=dt0, fill_price=200.0, bid=200.0, ask=200.0, last=200.0)
+    fill_order!(acc, Order(oid!(acc), usd_inst, dt0 + Day(1), 110.0, -1.0); dt=dt0 + Day(1), fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
     fill_order!(acc, Order(oid!(acc), eur_inst, dt0 + Day(1), 220.0, -1.0); dt=dt0 + Day(1), fill_price=220.0, bid=220.0, ask=220.0, last=220.0)
 
     summary = trade_summary(acc)
@@ -453,6 +453,46 @@ end
     @test cols.winners == Union{Missing,Float64}[0.5]
     @test cols.losers == Union{Missing,Float64}[0.5]
     @test !(:mar in Tables.schema(tbl).names)
+end
+
+@testitem "performance summary converts annual risk thresholds to periodic rates" begin
+    using Test, Fastback, RiskPerf
+
+    returns = [0.01, 0.02, 0.03, 0.04]
+    periods_per_year = 4.0
+    annual_rate = 0.10
+    periodic_rate = annual_rate / periods_per_year
+    summary = performance_summary(
+        returns;
+        periods_per_year=periods_per_year,
+        risk_free=annual_rate,
+        mar=annual_rate,
+    )
+
+    @test isapprox(
+        summary.sharpe,
+        RiskPerf.sharpe_ratio(returns; multiplier=periods_per_year, risk_free=periodic_rate);
+        atol=1e-12,
+    )
+    @test isapprox(
+        summary.sortino,
+        RiskPerf.sortino_ratio(returns; multiplier=periods_per_year, MAR=periodic_rate);
+        atol=1e-12,
+    )
+    @test isapprox(
+        summary.downside_vol,
+        RiskPerf.downside_deviation(returns, periodic_rate; method=:full) * sqrt(periods_per_year);
+        atol=1e-12,
+    )
+    @test isapprox(summary.omega, RiskPerf.omega_ratio(returns, periodic_rate); atol=1e-12)
+    @test isapprox(summary.sharpe, 0.0; atol=1e-12)
+    @test isapprox(summary.sortino, 0.0; atol=1e-12)
+
+    @test_throws ArgumentError performance_summary(returns; periods_per_year=0.0)
+    @test_throws ArgumentError performance_summary(returns; periods_per_year=Inf)
+    @test_throws ArgumentError performance_summary(returns; risk_free=Inf)
+    @test_throws ArgumentError performance_summary(returns; mar=NaN)
+    @test_throws ArgumentError performance_summary(Float64[]; periods_per_year=0.0)
 end
 
 @testitem "flat closing trades are not counted as performance winners" begin

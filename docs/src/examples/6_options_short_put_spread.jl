@@ -133,7 +133,7 @@ function run_short_put_spread_backtest(market, option_quotes, quote_by_key)
             ## Buy the protective leg first, then sell the higher-strike put.
             fill_order!(
                 acc,
-                Order(oid!(acc), long_put, dt, long_quote.ask, CONTRACTS);
+                create_order!(acc, long_put, dt, long_quote.ask, CONTRACTS);
                 dt=dt,
                 fill_price=long_quote.ask,
                 bid=long_quote.bid,
@@ -143,7 +143,7 @@ function run_short_put_spread_backtest(market, option_quotes, quote_by_key)
             )
             fill_order!(
                 acc,
-                Order(oid!(acc), short_put, dt, short_quote.bid, -CONTRACTS);
+                create_order!(acc, short_put, dt, short_quote.bid, -CONTRACTS);
                 dt=dt,
                 fill_price=short_quote.bid,
                 bid=short_quote.bid,

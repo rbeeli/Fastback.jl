@@ -16,6 +16,8 @@ but the returned vector is empty.
 ) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     qty = pos.quantity
     qty == 0.0 && return nothing
+    (pos.mark_time != TTime(0) && dt < pos.mark_time) &&
+        throw(ArgumentError("Liquidation datetime $(dt) precedes the last mark $(pos.mark_time) for $(pos.inst.spec.symbol)."))
     fill_price, bid, ask = _forced_close_quotes(pos)
     inst = pos.inst
     _validate_option_price(inst, "fill_price", fill_price)
@@ -24,7 +26,7 @@ but the returned vector is empty.
     close_qty = -qty
     mark_for_valuation = _calc_mark_price(inst, qty + close_qty, bid, ask)
     margin_price = margin_reference_price(acc, inst, mark_for_valuation, pos.last_price)
-    order = Order(oid!(acc), inst, dt, fill_price, close_qty)
+    order = create_order!(acc, inst, dt, fill_price, close_qty)
     commission = broker_commission(acc.broker, inst, dt, close_qty, fill_price)
     plan = plan_fill(
         acc,
@@ -61,25 +63,30 @@ function liquidate_all!(
     acc::Account{TTime,TBroker},
     dt::TTime,
 )::Vector{Trade{TTime}} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    trades = Trade{TTime}[]
+    try
+        _validate_account_timestamp(acc, dt)
+        trades = Trade{TTime}[]
+        @inbounds for pos in acc.positions
+            pos.inst.spec.contract_kind == ContractKind.Option || continue
+            pos.quantity < 0.0 || continue
+            _liquidate_position!(trades, acc, pos, dt)
+        end
 
-    @inbounds for pos in acc.positions
-        pos.inst.spec.contract_kind == ContractKind.Option || continue
-        pos.quantity < 0.0 || continue
-        _liquidate_position!(trades, acc, pos, dt)
+        for pos in acc.positions
+            pos.inst.spec.contract_kind == ContractKind.Option && continue
+            _liquidate_position!(trades, acc, pos, dt)
+        end
+
+        @inbounds for pos in acc.positions
+            pos.inst.spec.contract_kind == ContractKind.Option || continue
+            _liquidate_position!(trades, acc, pos, dt)
+        end
+        _advance_account_timestamp!(acc, dt)
+        return trades
+    catch
+        _poison!(acc)
+        rethrow()
     end
-
-    for pos in acc.positions
-        pos.inst.spec.contract_kind == ContractKind.Option && continue
-        _liquidate_position!(trades, acc, pos, dt)
-    end
-
-    @inbounds for pos in acc.positions
-        pos.inst.spec.contract_kind == ContractKind.Option || continue
-        _liquidate_position!(trades, acc, pos, dt)
-    end
-
-    trades
 end
 
 """
@@ -163,7 +170,7 @@ end
 
     current_equity = @inbounds acc.ledger.equities[worst_idx]
     current_maint = @inbounds acc.ledger.maint_margin_used[worst_idx]
-    delta_equity = pos.inst.settle_cash_index == worst_idx ? (plan.cash_delta_settle + plan.value_delta_settle) : 0.0
+    delta_equity = pos.inst.settle_cash_index == worst_idx ? plan.equity_delta_settle : 0.0
     if pos.inst.spec.contract_kind == ContractKind.Option
         _, projected_option_maint = _project_option_margin_totals_after_fill(acc, pos, plan)
         @inbounds begin
@@ -215,7 +222,7 @@ end
         commission.pct,
     )
 
-    delta_equity = (plan.cash_delta_settle + plan.value_delta_settle) *
+    delta_equity = plan.equity_delta_settle *
                    _get_rate_base_ccy_idx(acc, pos.inst.settle_cash_index)
 
     if pos.inst.spec.contract_kind == ContractKind.Option
@@ -336,36 +343,42 @@ function liquidate_to_maintenance!(
     dt::TTime;
     max_steps::Int=10_000,
 )::Vector{Trade{TTime}} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    trades = Trade{TTime}[]
-    steps = 0
+    try
+        _validate_account_timestamp(acc, dt)
+        max_steps >= 0 || throw(ArgumentError("max_steps must be non-negative."))
+        trades = Trade{TTime}[]
+        steps = 0
+        while is_under_maintenance(acc)
+            steps += 1
+            steps > max_steps && throw(ArgumentError("Reached max_steps=$(max_steps) while account remains under maintenance."))
 
-    while is_under_maintenance(acc)
-        steps += 1
-        steps > max_steps && throw(ArgumentError("Reached max_steps=$(max_steps) while account remains under maintenance."))
+            max_pos = nothing
 
-        max_pos = nothing
+            if acc.margin_aggregation == MarginAggregation.BaseCurrency
+                max_pos = _select_base_currency_liquidation_pos(
+                    acc,
+                    dt,
+                    excess_liquidity_base_ccy(acc),
+                )
+            else
+                worst_idx, worst_excess = _worst_excess_currency(acc)
 
-        if acc.margin_aggregation == MarginAggregation.BaseCurrency
-            max_pos = _select_base_currency_liquidation_pos(
-                acc,
-                dt,
-                excess_liquidity_base_ccy(acc),
-            )
-        else
-            worst_idx, worst_excess = _worst_excess_currency(acc)
+                worst_idx == 0 && throw(ArgumentError("Account under maintenance but no currency deficit detected."))
+                max_pos = _select_per_currency_liquidation_pos(
+                    acc,
+                    dt,
+                    worst_idx,
+                    worst_excess,
+                )
+            end
 
-            worst_idx == 0 && throw(ArgumentError("Account under maintenance but no currency deficit detected."))
-            max_pos = _select_per_currency_liquidation_pos(
-                acc,
-                dt,
-                worst_idx,
-                worst_excess,
-            )
+            max_pos === nothing && throw(ArgumentError("Account under maintenance but has no open positions to liquidate."))
+            _liquidate_position!(trades, acc, max_pos, dt)
         end
-
-        max_pos === nothing && throw(ArgumentError("Account under maintenance but has no open positions to liquidate."))
-        _liquidate_position!(trades, acc, max_pos, dt)
+        _advance_account_timestamp!(acc, dt)
+        return trades
+    catch
+        _poison!(acc)
+        rethrow()
     end
-
-    trades
 end

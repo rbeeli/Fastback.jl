@@ -5,6 +5,7 @@
 [![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://rbeeli.github.io/Fastback.jl/)
 
 Fastback provides a lightweight, flexible and highly efficient event-based backtesting library for quantitative trading strategies.
+Fastback 0.10 requires Julia 1.12 or later.
 
 Fastback focuses on deterministic accounting: it tracks open positions, balances, equity, margin, option premium flows, and cashflows across multiple currencies.
 The execution pipeline supports broker-driven commissions/financing and partial fills; slippage and delays are modeled by the timestamps and fill prices you pass in.
@@ -42,11 +43,11 @@ collect_equity, equity_data = periodic_collector(Float64, Hour(1))
 for (dt, price) in zip(dts, prices)
     update_marks!(acc, inst, dt, price, price, price)
     if dt == dts[1]
-        order = Order(oid!(acc), inst, dt, price, 10.0)
+        order = create_order!(acc, inst, dt, price, 10.0)
         fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
     elseif dt == dts[end]
         pos = get_position(acc, inst)
-        order = Order(oid!(acc), inst, dt, price, -pos.quantity)
+        order = create_order!(acc, inst, dt, price, -pos.quantity)
         fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
     end
 
@@ -70,9 +71,11 @@ Fastback.plot_equity(equity_data)
 - Funding policies: fully funded or margined; per-currency or base-currency margin aggregation; percent-notional or fixed-per-contract margin requirements
 - Broker profiles for commissions/financing (e.g. flat-fee, IBKR-style, Binance-style)
 - Multi-currency cash book with FX conversion helpers and base-currency metrics
-- Execution & risk: broker-driven commissions, partial fills, liquidation-aware marking (bid/ask/last), and initial/maintenance margin checks
+- Execution & risk: broker-driven commissions, validated partial fills, liquidation-aware marking (bid/ask/last), and initial/maintenance margin checks
 - Netted positions with weighted-average cost, realized/unrealized P&L, and a cashflow ledger + accrual helpers (lend/borrow interest, broker-defined short-proceeds treatment, borrow fees on principal-exchange spot shorts, funding, variation margin)
-- Expiry handling for futures and cash-settled options plus deterministic liquidation helpers
+- Allocation-free linear-time market-event coalescing, account-clocked order creation, and fail-stop expiry, roll, and liquidation helpers
+- Mechanical spot corporate actions for splits/reverse splits and cash dividends
+- Optional target-weight portfolio rebalancing with complete targets, dust suppression, deterministic fill models, explicit contract rolls, and fully funded cash scaling
 - Collectors (periodic, predicate, drawdown, min/max) and Tables.jl views for balances, equity, positions, trades, cashflows; pretty-print helpers
 - Batch backtesting and parameter sweeps with threaded runner and ETA logging
 - Integrations

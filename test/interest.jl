@@ -69,3 +69,52 @@ end
     @test cf.inst_index == 0
     @test cash_balance(acc, usd) - bal_before ≈ sum(cf.amount for cf in acc.cashflows) atol=1e-8
 end
+
+@testitem "invalid broker interest terms do not partially mutate cash" begin
+    using Test, Fastback, Dates
+
+    struct InvalidSecondCashBroker <: AbstractBroker end
+    Fastback.broker_interest_rates(
+        ::InvalidSecondCashBroker,
+        cash::Cash,
+        ::Dates.AbstractTime,
+        ::Price,
+    ) = cash.symbol == :EUR ? (0.0, NaN) : (0.0, 0.10)
+    Fastback.broker_short_proceeds_rates(
+        ::InvalidSecondCashBroker,
+        ::Cash,
+        ::Dates.AbstractTime,
+    ) = (0.0, 0.0)
+
+    acc = Account(;
+        broker=InvalidSecondCashBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+    )
+    eur = register_cash_asset!(acc, CashSpec(:EUR))
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, usd, 1_000.0)
+    deposit!(acc, eur, 1_000.0)
+    dt0 = DateTime(2028, 1, 1)
+    accrue_interest!(acc, dt0)
+    state_before = (
+        cash_balance(acc, usd),
+        cash_balance(acc, eur),
+        equity(acc, usd),
+        equity(acc, eur),
+        length(acc.cashflows),
+        acc.last_interest_dt,
+        acc.last_event_dt,
+    )
+
+    @test_throws ArgumentError accrue_interest!(acc, dt0 + Year(1))
+    @test (
+        cash_balance(acc, usd),
+        cash_balance(acc, eur),
+        equity(acc, usd),
+        equity(acc, eur),
+        length(acc.cashflows),
+        acc.last_interest_dt,
+        acc.last_event_dt,
+    ) == state_before
+end

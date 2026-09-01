@@ -89,14 +89,22 @@ end
 
 """
 Update the exchange rate between two assets.
+
+Both the supplied rate and its reciprocal must be finite `Float64` values.
 """
 function update_rate!(er::ExchangeRates, from_idx::Int, to_idx::Int, rate::Real)
-    isfinite(rate) && rate > 0 || throw(ArgumentError("Exchange rate must be a positive finite number."))
     r = Float64(rate)
+    isfinite(r) && r > 0 || throw(ArgumentError("Exchange rate must be a positive finite Float64 value."))
+    reciprocal = 1.0 / r
+    isfinite(reciprocal) || throw(ArgumentError("Exchange rate reciprocal must be finite."))
+    if from_idx == to_idx
+        r == 1.0 || throw(ArgumentError("An exchange rate from a cash asset to itself must equal 1.0."))
+        return nothing
+    end
     max_idx = max(from_idx, to_idx)
     max_idx > length(er.rates) && _ensure_rates_size!(er, max_idx)
     @inbounds er.rates[from_idx][to_idx] = r
-    @inbounds er.rates[to_idx][from_idx] = 1.0 / r
+    @inbounds er.rates[to_idx][from_idx] = reciprocal
     return nothing
 end
 

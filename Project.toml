@@ -2,7 +2,7 @@ name = "Fastback"
 uuid = "2b92286b-cbc8-46f1-be48-a629b4baefca"
 authors = ["Rino Beeli <40661605+rbeeli@users.noreply.github.com>"]
 repo = "https://github.com/rbeeli/fastback.jl.git"
-version = "0.9.0"
+version = "0.10.0"
 
 [deps]
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
@@ -17,7 +17,7 @@ RiskPerf = "9166ba07-fd5b-44b6-9936-7aa4238d27f8"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 
 [compat]
-julia = "1.9"
+julia = "1.12"
 PrettyTables = "3"
 Query = "1"
 RiskPerf = "0.3.2"

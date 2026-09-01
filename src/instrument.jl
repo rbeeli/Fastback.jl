@@ -1,6 +1,30 @@
 using Dates
 using Printf
 
+const _TICK_COUNT_SNAP_EPSILON_FACTOR = 8.0
+const _MAX_TICK_COUNT_SNAP_DISTANCE = 1.0e-6
+
+@inline function _snap_tick_count_near_integer(tick_count::Float64)::Float64
+    isfinite(tick_count) || return tick_count
+    nearest = round(tick_count)
+    tolerance = min(
+        eps(Float64) * max(abs(tick_count), 1.0) * _TICK_COUNT_SNAP_EPSILON_FACTOR,
+        _MAX_TICK_COUNT_SNAP_DISTANCE,
+    )
+    abs(tick_count - nearest) <= tolerance ? nearest : tick_count
+end
+
+@inline function _inward_tick_count_bounds(
+    minimum::Quantity,
+    maximum::Quantity,
+    tick::Quantity,
+)
+    (
+        ceil(_snap_tick_count_near_integer(minimum / tick)),
+        floor(_snap_tick_count_near_integer(maximum / tick)),
+    )
+end
+
 struct InstrumentSpec{TTime<:Dates.AbstractTime}
     symbol::Symbol
     base_symbol::Symbol
@@ -147,14 +171,14 @@ Format a quote-currency value using the instrument's display precision.
     calc_base_qty_for_notional(inst, price, target_notional)
 
 Convert a target quote-currency notional into a base quantity for `inst`.
-The returned quantity is rounded down to the instrument's `base_tick` (toward
-zero in absolute terms) and clamped to `[base_min, base_max]`.
+The returned quantity is rounded toward zero to the instrument's `base_tick`
+and clamped to inward tick-aligned bounds within `[base_min, base_max]`.
 
 - `price` is interpreted in quote currency per base unit.
 - `target_notional` is interpreted in quote currency and may be signed.
 - Uses `abs(price)` so negative-price contracts remain well-defined.
-- Assumes valid inputs (finite non-zero `price`, finite `target_notional`,
-  and positive `base_tick`).
+- Decimal values within floating-point tolerance of a tick are treated as aligned.
+- Throws `ArgumentError` for invalid inputs or non-finite derived quantities.
 """
 @inline function calc_base_qty_for_notional(
     inst::Instrument,
@@ -162,10 +186,24 @@ zero in absolute terms) and clamped to `[base_min, base_max]`.
     target_notional::Price,
 )::Quantity
     spec = inst.spec
+    isfinite(price) && price != 0.0 ||
+        throw(ArgumentError("price must be finite and non-zero, got $(price)."))
+    isfinite(target_notional) ||
+        throw(ArgumentError("target_notional must be finite, got $(target_notional)."))
+
     step = spec.base_tick
     raw_qty = target_notional / (abs(price) * spec.multiplier)
-    qty_abs = floor(abs(raw_qty) / step) * step
-    qty = copysign(qty_abs, raw_qty)
+    isfinite(raw_qty) || throw(ArgumentError("computed quantity must be finite, got $(raw_qty)."))
+    raw_tick_count = raw_qty / step
+    isfinite(raw_tick_count) ||
+        throw(ArgumentError("computed tick count must be finite, got $(raw_tick_count)."))
+
+    rounded_tick_count = trunc(_snap_tick_count_near_integer(raw_tick_count))
+    minimum_tick_count, maximum_tick_count =
+        _inward_tick_count_bounds(spec.base_min, spec.base_max, step)
+    bounded_tick_count = clamp(rounded_tick_count, minimum_tick_count, maximum_tick_count)
+    qty = bounded_tick_count * step
+    isfinite(qty) || throw(ArgumentError("computed quantity must be finite, got $(qty)."))
     Quantity(clamp(qty, spec.base_min, spec.base_max))
 end
 
@@ -479,6 +517,42 @@ function validate_instrument_spec(spec::InstrumentSpec{TTime}) where {TTime<:Dat
     settlement = spec.settlement
 
     for (name, value) in (
+        ("symbol", spec.symbol),
+        ("base_symbol", spec.base_symbol),
+        ("quote_symbol", spec.quote_symbol),
+        ("settle_symbol", spec.settle_symbol),
+        ("margin_symbol", spec.margin_symbol),
+        ("underlying_symbol", spec.underlying_symbol),
+    )
+        isempty(strip(String(value))) &&
+            throw(ArgumentError("Instrument $(name) cannot be empty."))
+    end
+
+    isfinite(spec.base_tick) && spec.base_tick > 0.0 ||
+        throw(ArgumentError("Instrument $(spec.symbol) must set positive finite base_tick."))
+    if isnan(spec.base_min) || isnan(spec.base_max) ||
+       spec.base_min == Inf || spec.base_max == -Inf || spec.base_min > spec.base_max
+        throw(ArgumentError("Instrument $(spec.symbol) quantity bounds must be ordered and cannot be NaN or outward infinity."))
+    end
+    minimum_tick_count, maximum_tick_count =
+        _inward_tick_count_bounds(spec.base_min, spec.base_max, spec.base_tick)
+    minimum_tick_count <= maximum_tick_count ||
+        throw(ArgumentError("Instrument $(spec.symbol) quantity bounds must contain at least one base_tick-aligned quantity."))
+    isfinite(spec.quote_tick) && spec.quote_tick > 0.0 ||
+        throw(ArgumentError("Instrument $(spec.symbol) must set positive finite quote_tick."))
+    spec.base_digits >= 0 ||
+        throw(ArgumentError("Instrument $(spec.symbol) must set non-negative base_digits."))
+    spec.quote_digits >= 0 ||
+        throw(ArgumentError("Instrument $(spec.symbol) must set non-negative quote_digits."))
+    isfinite(spec.multiplier) && spec.multiplier > 0.0 ||
+        throw(ArgumentError("Instrument $(spec.symbol) must set positive finite multiplier."))
+    isfinite(spec.short_borrow_rate) && spec.short_borrow_rate >= 0.0 ||
+        throw(ArgumentError("Instrument $(spec.symbol) must set non-negative finite short_borrow_rate."))
+    if spec.start_time != TTime(0) && spec.expiry != TTime(0) && spec.start_time >= spec.expiry
+        throw(ArgumentError("Instrument $(spec.symbol) start_time must precede expiry."))
+    end
+
+    for (name, value) in (
         ("margin_init_long", spec.margin_init_long),
         ("margin_init_short", spec.margin_init_short),
         ("margin_maint_long", spec.margin_maint_long),
@@ -501,6 +575,7 @@ function validate_instrument_spec(spec::InstrumentSpec{TTime}) where {TTime<:Dat
 
     if kind == ContractKind.Spot
         settlement == SettlementStyle.PrincipalExchange || throw(ArgumentError("Spot instrument $(spec.symbol) must use Principal-exchange settlement."))
+        spec.expiry == TTime(0) || throw(ArgumentError("Spot instrument $(spec.symbol) must not define an expiry."))
     elseif kind == ContractKind.Perpetual
         settlement == SettlementStyle.VariationMargin || throw(ArgumentError("Perpetual instrument $(spec.symbol) must use VariationMargin settlement."))
         spec.expiry == TTime(0) || throw(ArgumentError("Perpetual instrument $(spec.symbol) must not define an expiry."))

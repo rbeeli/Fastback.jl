@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.0] - 2026-09-01
+
+### Breaking changes ⚠️
+
+- Fastback now requires Julia 1.12 or later; older Julia releases are no longer supported.
+- Variation-margin `Trade.fill_pnl_settle` now attributes previously settled mark-to-market P&L to reductions and final expiry. Opening execution-to-mark cash still settles immediately, but remains attached to the open position until exposure is realized. As a result, gross trade P&L and same-fill cash movement can differ.
+- Account operations now enforce non-decreasing time consistently. Backdated fills, marks, financing calls, lifecycle operations, and event steps are rejected.
+- Direct `update_rate!(acc, ...)` calls are rejected while exposure is open; use `process_step!(...; fx_updates=...)` so dependent values and margins are revalued together.
+- `process_step!` and multi-stage lifecycle operations are fail-stop rather than transactional. If one fails, completed changes remain and the account is marked `poisoned`; discard it rather than continuing the backtest.
+- `Trade` has a new `preceding_split_factor` field for split-aware analytics. The previous positional constructor remains available and defaults the factor to `1.0`.
+- `performance_summary` now interprets `risk_free` and `mar` as annualized simple rates and converts them to per-period thresholds using `periods_per_year`.
+
+### Added
+
+- Optional target-weight portfolio management with `Portfolio`, `TargetWeights`, `RebalancePolicy`, deterministic fill models, explicit futures/perpetual rolls, fully funded cash scaling, exposure snapshots, and reduction-first execution.
+- `apply_spot_corporate_action!` for spot splits, reverse splits, and signed cash dividends, including `CashflowKind.CashDividend` and split-aware holding-period reconstruction.
+- `AccountPoisonedError` identifies attempts to advance a failed account.
+- Boundary validation for fill quantities and ownership, crossed quotes, cash amounts, instrument metadata, exchange rates, and conversion overflows.
+
+### Changed
+
+- `process_step!` coalesces repeated FX, mark, and option-underlying observations with last-observation-wins semantics without copying account-wide state.
+- Duplicate market observations are indexed by route, option chain, or instrument, making coalescing linear in the event count.
+- `process_expiries!` settles short options first, futures second, and long options last, preserving registration order within each priority group.
+- `create_order!` validates account-owned strategy orders, assigns their IDs, and advances account time at order creation; direct `Order(...)` construction remains available as a low-level compatibility path.
+- Ordinary fills now plan mark settlement, borrow fees, execution effects, margin, and trade notional before committing; a failed fill leaves marks, cash, positions, financing clocks, and history unchanged.
+- Futures/option expiry batches, rolls, liquidation, and corporate actions retain completed changes and poison the account when any later stage fails.
+- Exchange-rate updates reject Float64 values whose reciprocal is not finite before resizing or changing the rate matrix.
+- `StepSchedule` sorts breakpoints and rejects empty schedules and duplicate timestamps.
+- `check_invariants` independently recomputes position values and portfolio margins and now audits registry layout, flat-position state, ledger numerics, and history ordering.
+- `calc_base_qty_for_notional` uses tolerance-aware tick arithmetic and clamps to inward tick-aligned quantity bounds.
+- Hot fill and mark paths no longer rescan every derived field for finiteness; critical input, route, conversion, and ledger boundaries remain validated.
+
 ## [0.9.0] - 2026-05-04
 
 ### Added

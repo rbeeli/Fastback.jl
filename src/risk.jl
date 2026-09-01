@@ -29,7 +29,7 @@ model (required margin is `rate * abs(notional)`).
     inc_qty == 0 && return OrderRejectReason.None
 
     # Compute equity and margin after the fill
-    cash_effect = impact.cash_delta_settle + impact.value_delta_settle
+    cash_effect = impact.equity_delta_settle
 
     if acc.margin_aggregation == MarginAggregation.PerCurrency
         if margin_idx == settle_idx
@@ -152,7 +152,7 @@ end
         return OrderRejectReason.None
     end
 
-    cash_effect = impact.cash_delta_settle + impact.value_delta_settle
+    cash_effect = impact.equity_delta_settle
 
     if acc.margin_aggregation == MarginAggregation.PerCurrency
         @inbounds for i in eachindex(acc.ledger.init_margin_used)

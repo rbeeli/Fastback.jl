@@ -80,7 +80,7 @@ for i in 1:n_steps
         delta_qty = target_qty - pos.quantity
 
         if abs(delta_qty) > 1e-8
-            order = Order(oid!(acc), perp, dt, last, delta_qty)
+            order = create_order!(acc, perp, dt, last, delta_qty)
             fill_order!(acc, order; dt=dt, fill_price=last, bid=bid, ask=ask, last=last)
         end
     end
@@ -106,7 +106,7 @@ end
 pos = get_position(acc, perp)
 if pos.quantity != 0.0
     row = df[end, :]
-    order = Order(oid!(acc), perp, row.dt, row.last, -pos.quantity)
+    order = create_order!(acc, perp, row.dt, row.last, -pos.quantity)
     fill_order!(acc, order; dt=row.dt, fill_price=row.last, bid=row.bid, ask=row.ask, last=row.last)
 end
 

@@ -488,6 +488,20 @@ function _realized_holding_periods(
             Tuple{TTime,Quantity}[]
         end
 
+        split_factor = t.preceding_split_factor
+        isfinite(split_factor) && split_factor > 0.0 ||
+            throw(ArgumentError("Trade $(t.tid) has invalid preceding_split_factor $(split_factor)."))
+        if split_factor != 1.0
+            for i in eachindex(lots)
+                entry_date, lot_qty = lots[i]
+                adjusted_qty = lot_qty * split_factor
+                isfinite(adjusted_qty) || throw(ArgumentError(
+                    "Split-adjusted holding quantity is non-finite for $(symbol)."
+                ))
+                lots[i] = (entry_date, adjusted_qty)
+            end
+        end
+
         remaining_realized_qty = abs(t.realized_qty)
         if remaining_realized_qty > 0.0
             known_qty = _known_lot_quantity(lots)
@@ -737,6 +751,10 @@ end
 
 Return a `PerformanceSummary` for a periodic return series.
 
+`risk_free` and `mar` are annualized simple rates. They are converted to
+per-period rates using `periods_per_year` before computing Sharpe, Sortino,
+downside volatility, and Omega.
+
 When an account is supplied, trade counts use `acc.trade_count` and win/loss
 rates are computed from recorded closing trades when `acc.track_trades == true`.
 If trade history is not tracked, win/loss rates are `missing`.
@@ -822,6 +840,19 @@ function _performance_summary(
     winners::Union{Missing,Float64},
     losers::Union{Missing,Float64},
 )::PerformanceSummary
+    periods = Float64(periods_per_year)
+    isfinite(periods) && periods > 0.0 ||
+        throw(ArgumentError("periods_per_year must be positive and finite, got $(periods_per_year)."))
+    risk_free isa Real || throw(ArgumentError("risk_free must be an annualized scalar rate."))
+    annual_risk_free = Float64(risk_free)
+    isfinite(annual_risk_free) ||
+        throw(ArgumentError("risk_free must be finite, got $(risk_free)."))
+    mar isa Real || throw(ArgumentError("mar must be an annualized scalar rate."))
+    annual_mar = Float64(mar)
+    isfinite(annual_mar) || throw(ArgumentError("mar must be finite, got $(mar)."))
+    periodic_risk_free = annual_risk_free / periods
+    periodic_mar = annual_mar / periods
+
     if isempty(returns)
         return PerformanceSummary(
             NaN,
@@ -856,14 +887,14 @@ function _performance_summary(
 
     PerformanceSummary(
         RiskPerf.total_return(returns),
-        RiskPerf.cagr(returns, periods_per_year),
-        RiskPerf.sharpe_ratio(returns; multiplier=periods_per_year, risk_free=risk_free),
-        RiskPerf.sortino_ratio(returns; multiplier=periods_per_year, MAR=mar),
-        RiskPerf.calmar_ratio(returns, periods_per_year; compound=compound),
+        RiskPerf.cagr(returns, periods),
+        RiskPerf.sharpe_ratio(returns; multiplier=periods, risk_free=periodic_risk_free),
+        RiskPerf.sortino_ratio(returns; multiplier=periods, MAR=periodic_mar),
+        RiskPerf.calmar_ratio(returns, periods; compound=compound),
         RiskPerf.max_drawdown_pct(returns; compound=compound),
         RiskPerf.average_drawdown_pct(returns; compound=compound),
         RiskPerf.ulcer_index(returns; compound=compound),
-        RiskPerf.volatility(returns; multiplier=periods_per_year),
+        RiskPerf.volatility(returns; multiplier=periods),
         length(returns),
         path_stats.best_ret,
         path_stats.worst_ret,
@@ -871,10 +902,10 @@ function _performance_summary(
         RiskPerf.expected_shortfall(returns, 0.05; method=:historical),
         RiskPerf.skewness(returns),
         RiskPerf.kurtosis(returns),
-        RiskPerf.downside_deviation(returns, mar; method=:full) * sqrt(Float64(periods_per_year)),
+        RiskPerf.downside_deviation(returns, periodic_mar; method=:full) * sqrt(periods),
         drawdown_stats.max_dd_duration,
         drawdown_stats.pct_time_in_drawdown,
-        RiskPerf.omega_ratio(returns, mar),
+        RiskPerf.omega_ratio(returns, periodic_mar),
         n_trades,
         n_closing_trades,
         winners,

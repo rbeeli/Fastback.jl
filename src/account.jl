@@ -84,6 +84,9 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     const trades::Vector{Trade{TTime}}
     const cashflows::Vector{Cashflow{TTime}}
     const option_underlying_prices::Dict{OptionUnderlyingKey,Price}
+    const _fx_update_last_indices::Dict{Tuple{Int,Int},Int}
+    const _option_underlying_update_last_indices::Dict{OptionUnderlyingKey,Int}
+    const _mark_update_last_indices::Vector{Int}
     const option_position_indices::Vector{Int}
     const option_position_active::Vector{Bool}
     const option_group_id_by_pos::Vector{Int}
@@ -98,6 +101,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     const _expiry_trades_buffer::Vector{Trade{TTime}}
     const track_trades::Bool
     const track_cashflows::Bool
+    poisoned::Bool
     order_sequence::Int
     trade_sequence::Int
     trade_count::Int
@@ -137,6 +141,9 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
             Vector{Trade{TTime}}(), # trades
             Vector{Cashflow{TTime}}(), # cashflows
             Dict{OptionUnderlyingKey,Price}(), # option underlying marks by (underlying, quote)
+            Dict{Tuple{Int,Int},Int}(), # latest FX observation by unordered cash route
+            Dict{OptionUnderlyingKey,Int}(), # latest option-underlying observation by chain
+            Int[], # latest mark observation by position index
             Int[], # option position indices
             Bool[], # option active flags by position
             Int[], # option group id by position
@@ -151,6 +158,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
             Vector{Trade{TTime}}(), # reusable expiry buffer
             track_trades,
             track_cashflows,
+            false, # poisoned
             order_sequence,
             trade_sequence,
             0, # trade_count
@@ -164,10 +172,18 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     end
 end
 
+@inline function _poison!(acc::Account)
+    acc.poisoned = true
+    nothing
+end
+
 @inline has_cash_asset(acc::Account, symbol::Symbol)::Bool = has_cash_asset(acc.ledger, symbol)
 @inline cash_index(acc::Account, symbol::Symbol)::Int = cash_index(acc.ledger, symbol)
 @inline cash_asset(acc::Account, symbol::Symbol)::Cash = cash_asset(acc.ledger, symbol)
-@inline cash_asset(acc::Account, idx::Int)::Cash = @inbounds acc.ledger.cash[idx]
+@inline function cash_asset(acc::Account, idx::Int)::Cash
+    _ensure_account_cash_index(acc, idx)
+    @inbounds acc.ledger.cash[idx]
+end
 
 """
 Registers a new cash asset in the account and synchronizes the FX matrix size.
@@ -188,6 +204,9 @@ Format a timestamp using the account's configured date format.
 
 """
 Generates the next order ID sequence value for the account.
+
+This is a low-level sequence helper and does not validate or advance account
+time. Prefer `create_order!` for strategy orders.
 """
 @inline oid!(acc::Account) = acc.order_sequence += 1
 
@@ -207,6 +226,68 @@ Unlike `trade_sequence`, this counter advances even when trade history is not st
 """
 @inline function _count_trade!(acc::Account)
     acc.trade_count += 1
+end
+
+@inline function _validate_account_timestamp(acc::Account{TTime}, dt::TTime) where {TTime<:Dates.AbstractTime}
+    acc.poisoned && throw(AccountPoisonedError())
+    last_dt = acc.last_event_dt
+    (last_dt != TTime(0) && dt < last_dt) &&
+        throw(ArgumentError("Datetime $(dt) precedes account time $(last_dt)."))
+    nothing
+end
+
+@inline function _advance_account_timestamp!(acc::Account{TTime}, dt::TTime) where {TTime<:Dates.AbstractTime}
+    _validate_account_timestamp(acc, dt)
+    acc.last_event_dt = dt
+    nothing
+end
+
+"""
+    create_order!(acc, inst, dt, price, quantity; take_profit=NaN, stop_loss=NaN)
+
+Create a validated account-owned order, assign its sequence ID, and advance the
+account clock to `dt`. Validation failures leave both the order sequence and the
+account clock unchanged.
+
+Direct `Order(...)` construction remains available for low-level compatibility,
+but it cannot update account state.
+"""
+function create_order!(
+    acc::Account{TTime},
+    inst::Instrument{TTime},
+    dt::TTime,
+    price::Real,
+    quantity::Real;
+    take_profit::Real=Price(NaN),
+    stop_loss::Real=Price(NaN),
+)::Order{TTime} where {TTime<:Dates.AbstractTime}
+    get_position(acc, inst)
+
+    price_p = Price(price)
+    quantity_p = Quantity(quantity)
+    take_profit_p = Price(take_profit)
+    stop_loss_p = Price(stop_loss)
+    isfinite(price_p) || throw(ArgumentError("Order price must be finite, got $(price)."))
+    isfinite(quantity_p) && quantity_p != 0.0 ||
+        throw(ArgumentError("Order quantity must be finite and non-zero, got $(quantity)."))
+    _validate_option_price(inst, "order price", price_p)
+    (isnan(take_profit_p) || isfinite(take_profit_p)) ||
+        throw(ArgumentError("Order take_profit must be finite or NaN, got $(take_profit)."))
+    (isnan(stop_loss_p) || isfinite(stop_loss_p)) ||
+        throw(ArgumentError("Order stop_loss must be finite or NaN, got $(stop_loss)."))
+    _validate_account_timestamp(acc, dt)
+
+    order = Order(
+        oid!(acc),
+        inst,
+        dt,
+        price_p,
+        quantity_p;
+        take_profit=take_profit_p,
+        stop_loss=stop_loss_p,
+    )
+    _advance_account_timestamp!(acc, dt)
+    order
 end
 
 @inline function _record_cashflow!(
@@ -236,7 +317,6 @@ end
     _count_trade!(acc)
     acc.track_trades || return nothing
 
-    notional_base = iszero(plan.notional_value_quote) ? 0.0 : plan.notional_value_quote * get_rate_base_ccy(acc, order.inst.quote_cash_index)
     trade = Trade(
         order,
         tid!(acc),
@@ -244,7 +324,7 @@ end
         fill_price,
         plan.fill_qty,
         plan.remaining_qty,
-        notional_base,
+        plan.notional_value_base,
         plan.fill_pnl_settle,
         plan.realized_qty,
         plan.commission_quote,
@@ -253,6 +333,7 @@ end
         plan.cash_delta_settle,
         pos_qty,
         pos_entry_price,
+        plan.preceding_split_factor,
         trade_reason,
     )
     pos.last_order = order
@@ -276,7 +357,8 @@ function deposit!(
     symbol::Symbol,
     amount::Real,
 ) where {TTime<:Dates.AbstractTime}
-    isless(amount, zero(amount)) && throw(ArgumentError("Deposit amount must be non-negative."))
+    isfinite(amount) && amount >= zero(amount) ||
+        throw(ArgumentError("Deposit amount must be non-negative and finite."))
     cash = cash_asset(acc.ledger, symbol)
     deposit!(acc, cash, amount)
 end
@@ -286,9 +368,10 @@ function deposit!(
     cash::Cash,
     amount::Real,
 ) where {TTime<:Dates.AbstractTime}
-    isless(amount, zero(amount)) && throw(ArgumentError("Deposit amount must be non-negative."))
+    isfinite(amount) && amount >= zero(amount) ||
+        throw(ArgumentError("Deposit amount must be non-negative and finite."))
 
-    idx = cash.index
+    idx = _ensure_account_cash(acc, cash)
     _adjust_cash_idx!(acc.ledger, idx, Price(amount))
     @inbounds acc.ledger.cash[idx]
 end
@@ -342,7 +425,8 @@ function withdraw!(
     symbol::Symbol,
     amount::Real,
 ) where {TTime<:Dates.AbstractTime}
-    isless(amount, zero(amount)) && throw(ArgumentError("Withdraw amount must be non-negative."))
+    isfinite(amount) && amount >= zero(amount) ||
+        throw(ArgumentError("Withdraw amount must be non-negative and finite."))
     amount_p = Price(amount)
     cash = cash_asset(acc.ledger, symbol)
     _withdraw_idx!(acc, cash.index, cash.symbol, amount_p)
@@ -353,9 +437,10 @@ end
     cash::Cash,
     amount::Real,
 ) where {TTime<:Dates.AbstractTime}
-    isless(amount, zero(amount)) && throw(ArgumentError("Withdraw amount must be non-negative."))
+    isfinite(amount) && amount >= zero(amount) ||
+        throw(ArgumentError("Withdraw amount must be non-negative and finite."))
     amount_p = Price(amount)
-    idx = cash.index
+    idx = _ensure_account_cash(acc, cash)
     _withdraw_idx!(acc, idx, cash.symbol, amount_p)
 end
 
@@ -396,6 +481,7 @@ function register_instrument!(
 
     # create empty position for the instrument
     push!(acc.positions, Position{TTime}(inst.index, inst))
+    push!(acc._mark_update_last_indices, 0)
     push!(acc.option_group_id_by_pos, 0)
     push!(acc.option_position_active, false)
     if spec.contract_kind == ContractKind.Option
@@ -409,7 +495,13 @@ end
 Returns the position object of the given instrument in the account.
 """
 @inline function get_position(acc::Account{TTime}, inst::Instrument{TTime}) where {TTime<:Dates.AbstractTime}
-    @inbounds acc.positions[inst.index]
+    index = inst.index
+    1 <= index <= length(acc.positions) ||
+        throw(ArgumentError("Instrument $(inst.spec.symbol) is not registered in this account."))
+    @inbounds pos = acc.positions[index]
+    pos.inst === inst ||
+        throw(ArgumentError("Instrument $(inst.spec.symbol) does not belong to this account."))
+    pos
 end
 
 """
@@ -432,7 +524,10 @@ Returns the cash balance of the provided cash asset in the account.
 
 The returned value does not include the P&L value of open positions.
 """
-@inline cash_balance(acc::Account, cash::Cash) = @inbounds acc.ledger.balances[cash.index]
+@inline function cash_balance(acc::Account, cash::Cash)
+    idx = _ensure_account_cash(acc, cash)
+    @inbounds acc.ledger.balances[idx]
+end
 
 """
 Returns the equity value of the provided cash asset in the account.
@@ -440,17 +535,26 @@ Returns the equity value of the provided cash asset in the account.
 Equity is calculated as your cash balance +/- the floating profit/loss
 of your open positions in the same currency, not including closing commission.
 """
-@inline equity(acc::Account, cash::Cash) = @inbounds acc.ledger.equities[cash.index]
+@inline function equity(acc::Account, cash::Cash)
+    idx = _ensure_account_cash(acc, cash)
+    @inbounds acc.ledger.equities[idx]
+end
 
 """
 Initial margin currently used in the given currency.
 """
-@inline init_margin_used(acc::Account, cash::Cash)::Price = @inbounds acc.ledger.init_margin_used[cash.index]
+@inline function init_margin_used(acc::Account, cash::Cash)::Price
+    idx = _ensure_account_cash(acc, cash)
+    @inbounds acc.ledger.init_margin_used[idx]
+end
 
 """
 Maintenance margin currently used in the given currency.
 """
-@inline maint_margin_used(acc::Account, cash::Cash)::Price = @inbounds acc.ledger.maint_margin_used[cash.index]
+@inline function maint_margin_used(acc::Account, cash::Cash)::Price
+    idx = _ensure_account_cash(acc, cash)
+    @inbounds acc.ledger.maint_margin_used[idx]
+end
 
 """
 Available funds in a currency (equity minus initial margin used).
@@ -486,7 +590,7 @@ end
 FX rate from the given cash asset into the account base currency.
 """
 @inline function get_rate_base_ccy(acc::Account, cash::Cash)::Float64
-    _get_rate_base_ccy_idx(acc, cash.index)
+    _get_rate_base_ccy_idx(acc, _ensure_account_cash(acc, cash))
 end
 
 """
@@ -509,6 +613,13 @@ end
     idx
 end
 
+@inline function _ensure_account_cash(acc::Account, cash::Cash)::Int
+    idx = _ensure_account_cash_index(acc, cash.index)
+    @inbounds acc.ledger.cash[idx] === cash ||
+        throw(ArgumentError("Cash asset $(cash.symbol) does not belong to this account."))
+    idx
+end
+
 @inline function update_rate!(
     acc::Account,
     from_idx::Int,
@@ -517,6 +628,9 @@ end
 )
     _ensure_account_cash_index(acc, from_idx)
     _ensure_account_cash_index(acc, to_idx)
+    any(has_exposure, acc.positions) && throw(ArgumentError(
+        "Cannot update Account exchange rates directly while exposure is open; use process_step!(...; fx_updates=...) so cached valuations and margins are refreshed."
+    ))
     update_rate!(acc.exchange_rates, from_idx, to_idx, rate)
 end
 
@@ -526,7 +640,9 @@ end
     to::Cash,
     rate::Real,
 )
-    update_rate!(acc.exchange_rates, from, to, rate)
+    from_idx = _ensure_account_cash(acc, from)
+    to_idx = _ensure_account_cash(acc, to)
+    update_rate!(acc, from_idx, to_idx, rate)
 end
 
 @inline function update_rate!(
@@ -537,7 +653,7 @@ end
 )
     from = cash_asset(acc.ledger, from_symbol)
     to = cash_asset(acc.ledger, to_symbol)
-    update_rate!(acc.exchange_rates, from, to, rate)
+    update_rate!(acc, from.index, to.index, rate)
 end
 
 @inline function get_rate(
@@ -555,7 +671,7 @@ end
     from::Cash,
     to::Cash,
 )
-    get_rate(acc.exchange_rates, from, to)
+    get_rate(acc, _ensure_account_cash(acc, from), _ensure_account_cash(acc, to))
 end
 
 @inline function get_rate(
@@ -574,17 +690,26 @@ end
 """
 Retrieve the `Cash` object for the instrument quote currency without allocations.
 """
-@inline quote_cash(acc::Account, inst::Instrument) = @inbounds acc.ledger.cash[inst.quote_cash_index]
+@inline function quote_cash(acc::Account, inst::Instrument)
+    get_position(acc, inst)
+    @inbounds acc.ledger.cash[inst.quote_cash_index]
+end
 
 """
 Retrieve the `Cash` object for the instrument settlement currency without allocations.
 """
-@inline settle_cash(acc::Account, inst::Instrument) = @inbounds acc.ledger.cash[inst.settle_cash_index]
+@inline function settle_cash(acc::Account, inst::Instrument)
+    get_position(acc, inst)
+    @inbounds acc.ledger.cash[inst.settle_cash_index]
+end
 
 """
 Retrieve the `Cash` object for the instrument margin currency without allocations.
 """
-@inline margin_cash(acc::Account, inst::Instrument) = @inbounds acc.ledger.cash[inst.margin_cash_index]
+@inline function margin_cash(acc::Account, inst::Instrument)
+    get_position(acc, inst)
+    @inbounds acc.ledger.cash[inst.margin_cash_index]
+end
 
 """
 Total account equity converted into base currency using stored FX rates.
@@ -656,7 +781,11 @@ Convert a quote-currency amount into the instrument settlement currency.
 Naming follows the currency/unit semantics note in `contract_math.jl`.
 """
 @inline function to_settle(acc::Account, inst::Instrument, amount_quote::Price)::Price
-    amount_quote * _get_rate_idx(acc, inst.quote_cash_index, inst.settle_cash_index)
+    iszero(amount_quote) && return 0.0
+    isfinite(amount_quote) || throw(ArgumentError("Quote amount must be finite, got $(amount_quote)."))
+    result = amount_quote * _get_rate_idx(acc, inst.quote_cash_index, inst.settle_cash_index)
+    isfinite(result) || throw(ArgumentError("Quote-to-settlement conversion overflowed."))
+    result
 end
 
 """
@@ -664,14 +793,22 @@ Convert a settlement-currency amount back into the instrument quote currency.
 Inverse of `to_settle`; useful for round-trip tests and diagnostics.
 """
 @inline function to_quote(acc::Account, inst::Instrument, amount_settle::Price)::Price
-    amount_settle * _get_rate_idx(acc, inst.settle_cash_index, inst.quote_cash_index)
+    iszero(amount_settle) && return 0.0
+    isfinite(amount_settle) || throw(ArgumentError("Settlement amount must be finite, got $(amount_settle)."))
+    result = amount_settle * _get_rate_idx(acc, inst.settle_cash_index, inst.quote_cash_index)
+    isfinite(result) || throw(ArgumentError("Settlement-to-quote conversion overflowed."))
+    result
 end
 
 """
 Convert a quote-currency amount into the instrument margin currency.
 """
 @inline function to_margin(acc::Account, inst::Instrument, amount_quote::Price)::Price
-    amount_quote * _get_rate_idx(acc, inst.quote_cash_index, inst.margin_cash_index)
+    iszero(amount_quote) && return 0.0
+    isfinite(amount_quote) || throw(ArgumentError("Quote amount must be finite, got $(amount_quote)."))
+    result = amount_quote * _get_rate_idx(acc, inst.quote_cash_index, inst.margin_cash_index)
+    isfinite(result) || throw(ArgumentError("Quote-to-margin conversion overflowed."))
+    result
 end
 
 """
@@ -679,14 +816,24 @@ Convert a margin-currency amount back into the instrument quote currency.
 Inverse of `to_margin`; useful for diagnostics.
 """
 @inline function to_quote_from_margin(acc::Account, inst::Instrument, amount_margin::Price)::Price
-    amount_margin * _get_rate_idx(acc, inst.margin_cash_index, inst.quote_cash_index)
+    iszero(amount_margin) && return 0.0
+    isfinite(amount_margin) || throw(ArgumentError("Margin amount must be finite, got $(amount_margin)."))
+    result = amount_margin * _get_rate_idx(acc, inst.margin_cash_index, inst.quote_cash_index)
+    isfinite(result) || throw(ArgumentError("Margin-to-quote conversion overflowed."))
+    result
 end
 
 """
 Convert a settlement-currency amount into the account base currency.
 """
 @inline function to_base(acc::Account, settle_idx::Int, amount_settle::Price)::Price
-    amount_settle * _get_rate_base_ccy_idx(acc, settle_idx)
+    iszero(amount_settle) && return 0.0
+    isfinite(amount_settle) || throw(ArgumentError("Settlement amount must be finite, got $(amount_settle)."))
+    result = amount_settle * _get_rate_base_ccy_idx(acc, settle_idx)
+    isfinite(result) || throw(ArgumentError("Settlement-to-base conversion overflowed."))
+    result
 end
 
-@inline to_base(acc::Account, cash::Cash, amount_settle::Price)::Price = to_base(acc, cash.index, amount_settle)
+@inline function to_base(acc::Account, cash::Cash, amount_settle::Price)::Price
+    to_base(acc, _ensure_account_cash(acc, cash), amount_settle)
+end

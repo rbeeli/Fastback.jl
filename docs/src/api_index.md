@@ -7,7 +7,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 ## Core types and enums
 
 - `Price`, `Quantity`
-- `TradeDir`, `SettlementStyle`, `MarginRequirement`, `MarginAggregation`, `ContractKind`, `OptionRight`, `OptionExerciseStyle`, `OptionStrategyCommissionMode`, `AccountFunding`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `TradeReason`
+- `TradeDir`, `SettlementStyle`, `MarginRequirement`, `MarginAggregation`, `ContractKind`, `OptionRight`, `OptionExerciseStyle`, `OptionStrategyCommissionMode`, `AccountFunding`, `CashflowKind`, `OrderRejectReason`, `OrderRejectError`, `AccountPoisonedError`, `TradeReason`, `OrphanPositionPolicy`
 - `Cash`, `CashSpec`, `InstrumentSpec`, `Instrument`, `Order`, `Trade`, `Cashflow`, `Position`, `Account`
 - `ExchangeRates`
 
@@ -21,7 +21,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Order and trade utilities
 
-- `symbol`, `notional_value`, `fill_order!`, `fill_option_strategy!`
+- `symbol`, `notional_value`, `fill_order!`, `fill_option_strategy!`, `roll_position!`, `apply_spot_corporate_action!`
 - `realized_notional_quote`, `is_realizing`, `realized_return_gross`, `realized_return_net`
 
 ## Cash ledger operations
@@ -37,7 +37,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 - `available_funds`, `available_funds_base_ccy`, `excess_liquidity`, `excess_liquidity_base_ccy`
 - `maint_deficit_base_ccy`, `init_deficit_base_ccy`, `is_under_maintenance`
 - `deposit!`, `withdraw!`, `accrue_interest!`, `accrue_borrow_fees!`, `apply_funding!`
-- `register_instrument!`, `get_position`, `is_exposed_to`, `oid!`, `format_datetime`
+- `register_instrument!`, `get_position`, `is_exposed_to`, `create_order!`, `oid!`, `format_datetime`
 - `liquidate_all!`, `liquidate_to_maintenance!`
 
 ## Position analytics
@@ -57,6 +57,12 @@ For details, open the REPL and type `?symbol` to view docstrings.
 ## Portfolio logic
 
 - `update_marks!`, `settle_expiry!`, `settle_option_expiry!`
+
+## Target-weight portfolio management
+
+- `Portfolio`, `TargetWeights`, `RebalancePolicy`, `RollTransition`, `RebalanceResult`
+- `AccountSnapshot`, `PortfolioExposure`, `account_snapshot`, `portfolio_exposure`, `rebalance!`
+- `FillContext`, `ModelFill`, `AbstractFillModel`, `TopOfBookFillModel`, `SpreadFillModel`, `model_fill`
 
 ## Collectors
 

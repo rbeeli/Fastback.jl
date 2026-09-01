@@ -1,5 +1,56 @@
 using TestItemRunner
 
+@testitem "process_step! coalesces duplicate observations with reusable indices" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+    )
+    usd = cash_asset(acc, :USD)
+    eur = register_cash_asset!(acc, CashSpec(:EUR))
+    update_rate!(acc, eur, usd, 1.0)
+    spot = register_instrument!(acc, spot_instrument(:INDEXED_MARK, :INDEXED_MARK, :USD))
+    option = register_instrument!(acc, option_instrument(
+        :INDEXED_OPTION,
+        :ABC,
+        :USD;
+        strike=100.0,
+        expiry=DateTime(2028, 2, 1),
+        right=OptionRight.Call,
+    ))
+
+    dt = DateTime(2028, 1, 1)
+    process_step!(
+        acc,
+        dt;
+        fx_updates=[
+            FXUpdate(eur, usd, 2.0),
+            FXUpdate(usd, eur, 0.25),
+        ],
+        marks=[
+            MarkUpdate(spot.index, 99.0, 101.0, 100.0),
+            MarkUpdate(spot.index, 109.0, 111.0, 110.0),
+        ],
+        option_underlyings=[
+            OptionUnderlyingUpdate(option, 100.0),
+            OptionUnderlyingUpdate(option, 105.0),
+        ],
+        expiries=false,
+        accrue_interest=false,
+        accrue_borrow_fees=false,
+    )
+
+    @test get_rate(acc, eur, usd) == 4.0
+    @test get_position(acc, spot).last_price == 110.0
+    @test option_underlying_price(acc, option) == 105.0
+    @test length(acc._fx_update_last_indices) == 1
+    @test length(acc._option_underlying_update_last_indices) == 1
+    @test acc._mark_update_last_indices[spot.index] == 2
+    @test Fastback.check_invariants(acc)
+end
+
 @testitem "process_step! accrual is idempotent for repeated timestamps" begin
     using Test, Fastback, Dates
 
@@ -754,6 +805,88 @@ end
     b2 = Fastback._process_expiries_into!(buffer, acc_buffered, dt_exp_buffered + Day(1))
     @test b2 === buffer
     @test isempty(buffer)
+end
+
+@testitem "process_expiries! settles short options, futures, then long options" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+    )
+    deposit!(acc, :USD, 1_000_000.0)
+
+    dt_open = DateTime(2028, 1, 2)
+    expiry = dt_open + Day(7)
+    # Deliberately register these in the opposite of expiry priority.
+    long_call = register_instrument!(acc, option_instrument(
+        :EXPIRY_LONG,
+        :ABC,
+        :USD;
+        strike=100.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+    ))
+    future = register_instrument!(acc, future_instrument(
+        :EXPIRY_FUTURE,
+        :ABC,
+        :USD;
+        expiry=expiry,
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+    ))
+    short_call = register_instrument!(acc, option_instrument(
+        :EXPIRY_SHORT,
+        :ABC,
+        :USD;
+        strike=110.0,
+        expiry=expiry,
+        right=OptionRight.Call,
+    ))
+
+    update_option_underlying_price!(acc, long_call, 100.0)
+    fill_order!(
+        acc,
+        create_order!(acc, long_call, dt_open, 5.0, 1.0);
+        dt=dt_open,
+        fill_price=5.0,
+        bid=5.0,
+        ask=5.0,
+        last=5.0,
+    )
+    fill_order!(
+        acc,
+        create_order!(acc, future, dt_open, 100.0, 1.0);
+        dt=dt_open,
+        fill_price=100.0,
+        bid=100.0,
+        ask=100.0,
+        last=100.0,
+    )
+    fill_order!(
+        acc,
+        create_order!(acc, short_call, dt_open, 2.0, -1.0);
+        dt=dt_open,
+        fill_price=2.0,
+        bid=2.0,
+        ask=2.0,
+        last=2.0,
+    )
+    update_option_underlying_price!(acc, long_call, 105.0)
+
+    trades = process_expiries!(acc, expiry)
+    @test symbol.(getfield.(trades, :order)) == [
+        :EXPIRY_SHORT,
+        :EXPIRY_FUTURE,
+        :EXPIRY_LONG,
+    ]
+    @test issorted(getfield.(trades, :tid))
+    @test all(pos.quantity == 0.0 for pos in acc.positions)
+    @test Fastback.check_invariants(acc)
 end
 
 @testitem "Futures expiry auto-closes with no extra PnL beyond last variation settlement" begin

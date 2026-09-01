@@ -267,7 +267,8 @@ end
         close_fill_price=4_998.75,
         open_fill_price=5_003.00,
     )
-    @test_throws ArgumentError roll_position!(
+    @test acc.poisoned
+    @test_throws AccountPoisonedError roll_position!(
         acc,
         front,
         mismatched_margin,
@@ -275,20 +276,80 @@ end
         close_fill_price=4_998.75,
         open_fill_price=5_003.00,
     )
-    @test_throws ArgumentError roll_position!(
+
+    # Validate the remaining profile checks without reusing the poisoned account.
+    for candidate in (mismatched_margin, mismatched_settlement, mismatched_margin_requirement)
+        fresh = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
+        register_cash_asset!(fresh, CashSpec(:USDT))
+        deposit!(fresh, :USD, 100_000.0)
+        fresh_front = register_instrument!(fresh, front.spec)
+        fresh_candidate = register_instrument!(fresh, candidate.spec)
+        fill_order!(fresh, Order(oid!(fresh), fresh_front, dt_open, 5_000.25, 1.0);
+            dt=dt_open, fill_price=5_000.25, bid=5_000.0, ask=5_000.25, last=5_000.125)
+        @test_throws ArgumentError roll_position!(
+            fresh,
+            fresh_front,
+            fresh_candidate,
+            dt_roll;
+            close_fill_price=4_998.75,
+            open_fill_price=5_003.00,
+        )
+        @test fresh.poisoned
+    end
+end
+
+@testitem "roll_position! keeps a committed close and poisons on opening rejection" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+    )
+    usd = cash_asset(acc, :USD)
+    deposit!(acc, :USD, 100.0)
+    front = register_instrument!(acc, future_instrument(
+        :ROLLBACK_FRONT,
+        :RB,
+        :USD;
+        expiry=DateTime(2028, 3, 31),
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=0.1,
+        margin_init_short=0.1,
+        margin_maint_long=0.05,
+        margin_maint_short=0.05,
+    ))
+    next = register_instrument!(acc, future_instrument(
+        :ROLLBACK_NEXT,
+        :RB,
+        :USD;
+        expiry=DateTime(2028, 6, 30),
+        margin_requirement=MarginRequirement.PercentNotional,
+        margin_init_long=1.0,
+        margin_init_short=1.0,
+        margin_maint_long=1.0,
+        margin_maint_short=1.0,
+    ))
+
+    dt_open = DateTime(2028, 1, 2)
+    fill_order!(acc, Order(oid!(acc), front, dt_open, 100.0, 5.0);
+        dt=dt_open, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    @test_throws OrderRejectError roll_position!(
         acc,
         front,
-        mismatched_settlement,
-        dt_roll;
-        close_fill_price=4_998.75,
-        open_fill_price=5_003.00,
+        next,
+        dt_open + Day(1);
+        close_fill_price=100.0,
+        open_fill_price=100.0,
     )
-    @test_throws ArgumentError roll_position!(
-        acc,
-        front,
-        mismatched_margin_requirement,
-        dt_roll;
-        close_fill_price=4_998.75,
-        open_fill_price=5_003.00,
-    )
+    @test get_position(acc, front).quantity == 0.0
+    @test get_position(acc, next).quantity == 0.0
+    @test cash_balance(acc, usd) == 100.0
+    @test equity(acc, usd) == 100.0
+    @test init_margin_used(acc, usd) == 0.0
+    @test length(acc.trades) == 2
+    @test acc.last_event_dt == dt_open + Day(1)
+    @test acc.poisoned
+    @test_throws AccountPoisonedError process_step!(acc, dt_open + Day(2); expiries=false)
+    @test Fastback.check_invariants(acc)
 end

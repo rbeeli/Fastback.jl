@@ -64,7 +64,7 @@ for i in 1:N
         inst = rand(instruments)
         price = df[i, symbol(inst)]
         quantity = rand() > 0.5 ? 10.0 : -10.0
-        order = Order(oid!(acc), inst, dt, price, quantity)
+        order = create_order!(acc, inst, dt, price, quantity)
         fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
     end
 

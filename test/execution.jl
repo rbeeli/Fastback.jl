@@ -1,6 +1,76 @@
 using Dates
 using TestItemRunner
 
+@testitem "create_order! validates and advances account time" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; broker=NoOpBroker(), base_currency=CashSpec(:USD))
+    inst = register_instrument!(acc, spot_instrument(:ORDER_CLOCK, :ORDER_CLOCK, :USD))
+    dt = DateTime(2028, 3, 1)
+
+    order = create_order!(
+        acc,
+        inst,
+        dt,
+        100,
+        2;
+        take_profit=110.0,
+        stop_loss=90.0,
+    )
+    @test order.oid == 1
+    @test order.price == 100.0
+    @test order.quantity == 2.0
+    @test order.take_profit == 110.0
+    @test order.stop_loss == 90.0
+    @test acc.order_sequence == 1
+    @test acc.last_event_dt == dt
+
+    for create_invalid in (
+        () -> create_order!(acc, inst, dt + Day(1), NaN, 1.0),
+        () -> create_order!(acc, inst, dt + Day(1), 100.0, 0.0),
+        () -> create_order!(acc, inst, dt + Day(1), 100.0, Inf),
+        () -> create_order!(acc, inst, dt + Day(1), 100.0, 1.0; take_profit=Inf),
+        () -> create_order!(acc, inst, dt - Day(1), 100.0, 1.0),
+    )
+        @test_throws ArgumentError create_invalid()
+        @test acc.order_sequence == 1
+        @test acc.last_event_dt == dt
+    end
+
+    other = Account(; broker=NoOpBroker(), base_currency=CashSpec(:USD))
+    foreign = register_instrument!(other, spot_instrument(:FOREIGN_ORDER, :FOREIGN_ORDER, :USD))
+    @test_throws ArgumentError create_order!(acc, foreign, dt, 100.0, 1.0)
+    @test acc.order_sequence == 1
+    @test acc.last_event_dt == dt
+
+    option = register_instrument!(acc, option_instrument(
+        :ORDER_OPTION,
+        :ABC,
+        :USD;
+        strike=100.0,
+        expiry=dt + Month(1),
+        right=OptionRight.Call,
+    ))
+    @test_throws ArgumentError create_order!(acc, option, dt, -1.0, 1.0)
+    @test acc.order_sequence == 1
+    @test acc.last_event_dt == dt
+
+    second = create_order!(acc, inst, dt, 101.0, -1.0)
+    @test second.oid == 2
+    @test acc.last_event_dt == dt
+    @test_throws ArgumentError fill_order!(
+        acc,
+        second;
+        dt=dt - Millisecond(1),
+        fill_price=101.0,
+        bid=101.0,
+        ask=101.0,
+        last=101.0,
+    )
+    @test acc.last_event_dt == dt
+    @test acc.trade_count == 0
+end
+
 @testitem "plan_fill mirrors fill_order! (principal-exchange open)" begin
     using Test, Fastback, Dates
 
@@ -207,7 +277,7 @@ end
 
     @test pos.quantity == pos_qty_before
     @test plan.fill_qty == -1.0
-    @test plan.fill_pnl_settle == 0.0
+    @test plan.fill_pnl_settle == 10.0
     @test plan.cash_delta_settle == -commission
     @test plan.new_qty == 1.0
     @test plan.new_avg_entry_price_quote == price_open
@@ -233,7 +303,7 @@ end
     @test acc.ledger.maint_margin_used[inst.margin_cash_index] < maint_before
 end
 
-@testitem "variation margin entry spread settles immediately" begin
+@testitem "variation margin entry spread settles without premature realized P&L" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
@@ -284,11 +354,11 @@ end
 
     @test plan.new_qty == 1.0
     @test trade isa Trade
-    @test trade.fill_pnl_settle ≈ expected_settle atol=1e-12
+    @test trade.fill_pnl_settle == 0.0
     @test trade.cash_delta_settle ≈ expected_settle atol=1e-12
-    @test trade.cash_delta_settle ≈ trade.fill_pnl_settle atol=1e-12
-    @test plan.fill_pnl_settle ≈ expected_settle atol=1e-12
+    @test plan.fill_pnl_settle == 0.0
     @test plan.cash_delta_settle ≈ expected_settle atol=1e-12
+    @test plan.new_variation_margin_pnl_settle_carry ≈ expected_settle atol=1e-12
     @test cash_balance(acc, usd) ≈ cash_before_fill + expected_settle atol=1e-12
     @test equity(acc, usd) ≈ cash_balance(acc, usd) atol=1e-12
     @test pos.quantity == 1.0
@@ -296,6 +366,7 @@ end
     @test pos.mark_price == mark_price
     @test pos.value_quote == 0.0
     @test pos.pnl_quote == 0.0
+    @test pos.variation_margin_pnl_settle_carry ≈ expected_settle atol=1e-12
     @test Fastback.check_invariants(acc)
 end
 

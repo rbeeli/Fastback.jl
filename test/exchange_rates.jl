@@ -49,3 +49,22 @@ end
     @test get_rate(acc, eur, usd) == 1.12
     @test get_rate(acc, eur.index, usd.index) == 1.12
 end
+
+@testitem "Exchange-rate updates reject non-representable rates and reciprocals atomically" begin
+    using Test, Fastback
+
+    er = ExchangeRates()
+    @test_throws ArgumentError update_rate!(er, 1, 2, nextfloat(0.0))
+    @test isempty(er.rates)
+
+    @test_throws ArgumentError update_rate!(er, 1, 2, big"1e-400")
+    @test isempty(er.rates)
+    @test_throws ArgumentError update_rate!(er, 1, 2, big"1e400")
+    @test isempty(er.rates)
+
+    update_rate!(er, 1, 2, 2.0)
+    before = get_rates_matrix(er)
+    @test_throws ArgumentError update_rate!(er, 1, 2, nextfloat(0.0))
+    @test isequal(get_rates_matrix(er), before)
+    @test get_rate(er, 2, 1) == 0.5
+end

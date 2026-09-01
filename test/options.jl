@@ -261,11 +261,6 @@ end
     @test_throws ArgumentError update_marks!(acc, call, dt, -1.0, 1.0, 1.0)
     @test_throws ArgumentError update_marks!(acc, call, dt, 1.0, -1.0, 1.0)
     @test_throws ArgumentError update_marks!(acc, call, dt, 1.0, 1.0, -1.0)
-    @test_throws ArgumentError process_step!(acc, dt;
-        marks=[MarkUpdate(call.index, -1.0, 1.0, 1.0)],
-        expiries=false,
-    )
-
     @test_throws ArgumentError fill_order!(acc, Order(oid!(acc), call, dt, -1.0, 1.0);
         dt=dt,
         fill_price=-1.0,
@@ -299,6 +294,13 @@ end
     @test_throws ArgumentError Fastback.margin_maint_margin_ccy(acc, call, 1.0, -1.0)
     @test get_position(acc, call).quantity == 0.0
     @test Fastback.check_invariants(acc)
+
+    @test_throws ArgumentError process_step!(acc, dt;
+        marks=[MarkUpdate(call.index, -1.0, 1.0, 1.0)],
+        expiries=false,
+    )
+    @test acc.poisoned
+    @test_throws AccountPoisonedError update_marks!(acc, call, dt, 1.0, 1.0, 1.0)
 end
 
 @testitem "Flat expired option does not require underlying mark" begin
@@ -1002,7 +1004,11 @@ end
         )
     end
 
-    marks = [MarkUpdate(inst.index, Price(rand(rng, 1:8)), Price(rand(rng, 1:8)), Price(rand(rng, 1:8))) for inst in insts]
+    marks = map(insts) do inst
+        quote_one = Price(rand(rng, 1:8))
+        quote_two = Price(rand(rng, 1:8))
+        MarkUpdate(inst.index, min(quote_one, quote_two), max(quote_one, quote_two), Price(rand(rng, 1:8)))
+    end
     process_step!(
         acc,
         dt + Day(1);

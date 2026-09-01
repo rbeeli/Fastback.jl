@@ -84,6 +84,8 @@ end
 Piecewise-constant schedule keyed by time.
 
 `starts[i]` marks the first timestamp where `values[i]` becomes active.
+Construction requires at least one unique timestamp and stores entries in
+chronological order.
 """
 struct StepSchedule{TTime<:Dates.AbstractTime,T}
     starts::Vector{TTime}
@@ -94,7 +96,16 @@ struct StepSchedule{TTime<:Dates.AbstractTime,T}
         values::Vector{T},
     ) where {TTime<:Dates.AbstractTime,T}
         length(starts) == length(values) || throw(ArgumentError("StepSchedule starts/values length mismatch."))
-        new{TTime,T}(starts, values)
+        isempty(starts) && throw(ArgumentError("StepSchedule requires at least one entry."))
+
+        permutation = sortperm(starts)
+        sorted_starts = starts[permutation]
+        sorted_values = values[permutation]
+        @inbounds for i in 2:length(sorted_starts)
+            sorted_starts[i] != sorted_starts[i - 1] ||
+                throw(ArgumentError("StepSchedule timestamps must be unique; duplicate $(sorted_starts[i])."))
+        end
+        new{TTime,T}(sorted_starts, sorted_values)
     end
 end
 

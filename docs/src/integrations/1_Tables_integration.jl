@@ -47,12 +47,12 @@ let prev_price = prices[1]
 
             if momentum > 0.02  # buy signal
                 quantity = 10.0
-                order = Order(oid!(acc), AAPL, dt, price, quantity)
+                order = create_order!(acc, AAPL, dt, price, quantity)
                 fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
 
             elseif momentum < -0.02  # sell signal
                 quantity = -8.0
-                order = Order(oid!(acc), MSFT, dt, price, quantity)
+                order = create_order!(acc, MSFT, dt, price, quantity)
                 fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
             end
 

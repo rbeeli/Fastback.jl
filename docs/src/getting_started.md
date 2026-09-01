@@ -4,6 +4,8 @@ This page gets you to a running backtest in a few minutes.
 
 ## Install
 
+Fastback 0.10 requires Julia 1.12 or later.
+
 ```julia
 using Pkg
 Pkg.add("Fastback")
@@ -48,11 +50,11 @@ for (dt, price) in zip(dts, prices)
     update_marks!(acc, ABC, dt, price, price, price)
 
     if dt == dts[2] # open
-        order = Order(oid!(acc), ABC, dt, price, 10.0)
+        order = create_order!(acc, ABC, dt, price, 10.0)
         fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
     elseif dt == dts[5] # close
         pos = get_position(acc, ABC)
-        order = Order(oid!(acc), ABC, dt, price, -pos.quantity)
+        order = create_order!(acc, ABC, dt, price, -pos.quantity)
         fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
     end
 

@@ -26,3 +26,27 @@ end
     @test value_at(sched, DateTime(2025, 2, 1)) == 0.02
     @test value_at(sched, DateTime(2025, 3, 15)) == 0.03
 end
+
+@testitem "StepSchedule normalizes ordering and rejects ambiguous schedules" begin
+    using Test, Fastback, Dates
+
+    march = DateTime(2025, 3, 1)
+    january = DateTime(2025, 1, 1)
+    february = DateTime(2025, 2, 1)
+    starts = [march, january, february]
+    values = [0.03, 0.01, 0.02]
+    sched = StepSchedule(starts, values)
+
+    @test sched.starts == [january, february, march]
+    @test sched.values == [0.01, 0.02, 0.03]
+    @test starts == [march, january, february]
+    @test values == [0.03, 0.01, 0.02]
+    @test value_at(sched, DateTime(2025, 2, 15)) == 0.02
+
+    @test_throws ArgumentError StepSchedule(DateTime[], Float64[])
+    @test_throws ArgumentError StepSchedule(
+        [january, january],
+        [0.01, 0.02],
+    )
+    @test_throws ArgumentError StepSchedule([january], Float64[])
+end

@@ -125,7 +125,14 @@ end
     trade = fill_order!(acc, order; dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
     @test trade.notional_base ≈ 50.0
 
-    update_rate!(acc, :USD, :CHF, 0.8)
+    process_step!(
+        acc,
+        dt;
+        fx_updates=[FXUpdate(cash_asset(acc, :USD), cash_asset(acc, :CHF), 0.8)],
+        expiries=false,
+        accrue_interest=false,
+        accrue_borrow_fees=false,
+    )
     should_collect(collected, dt) && collect_turnover(dt)
 
     @test collected.gross_traded_notionals ≈ [50.0]

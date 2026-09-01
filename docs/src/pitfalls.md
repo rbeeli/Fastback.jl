@@ -6,9 +6,15 @@
 - Use `update_marks!` to keep equity and margin in sync with prices.
 - Expiry/liquidation helpers use stored side-aware quotes (`last_bid`/`last_ask`); keep marks updated with `update_marks!`.
 - Listed options are cash-settled and assignment-free in Fastback. SPY-like or AAPL-like examples are synthetic proxies, not OCC/IBKR physical-delivery simulations. See [Options limitations / IBKR mapping](options_limitations.md).
-- Multi-currency equity depends on `ExchangeRates` being updated.
+- Multi-currency equity depends on `ExchangeRates` being updated. Once exposure is open, submit FX through `process_step!`; direct account rate mutation is rejected so valuation caches cannot silently go stale.
+- FX updates must be representable in both directions as finite `Float64` values; extremely small rates whose reciprocal overflows are rejected without changing the matrix.
 - Register non-base currencies via `register_cash_asset!(acc, CashSpec(:EUR))`.
-- For variation-margin instruments, fills immediately settle to the current mark basis: execution-to-mark (`mark - fill`) hits cash on the fill, and post-fill `avg_settle_price` is the mark. Trade-level additive fill amounts are `fill_pnl_settle` (gross) and `cash_delta_settle` (net of commission).
+- For variation-margin instruments, fills immediately settle to the current mark basis: execution-to-mark (`mark - fill`) hits cash on the fill, and post-fill `avg_settle_price` is the mark. Settled P&L remains attributed to open exposure until reduction/expiry, so `fill_pnl_settle` (gross realized attribution) can differ from `cash_delta_settle` (same-fill net cash movement).
+- All stateful account operations enforce non-decreasing timestamps. Equal timestamps are allowed; backdated fills, marks, financing, and lifecycle operations are rejected.
+- Ordinary fills stage their accounting plan before commit, so validation, missing FX, and risk rejection do not require an account snapshot.
+- `process_step!` and multi-stage lifecycle operations are fail-stop: an error leaves completed changes in place and sets `acc.poisoned`. Do not recover or continue that account; start from a fresh account or replay from your own checkpoint.
+- `StepSchedule` requires at least one unique timestamp. Inputs may be unsorted; the constructor normalizes them chronologically.
+- Corporate actions expect raw, unadjusted quotes and have no replay protection. Accrue financing first, apply each action once, then submit the raw ex-action mark at the same timestamp with repeated accrual disabled.
 - `OrderRejectError` rejection semantics are mainly for `fill_order!`; expiry/liquidation helpers use internal close-only settlement/liquidation paths instead of exposing normal order lifecycle bypass flags.
-- Fastback currently has no separate bankruptcy state; forced closes can still leave negative balances/equity in stressed scenarios.
+- The poisoned flag reports an aborted mutation, not economic bankruptcy; forced closes can still leave negative balances/equity in stressed scenarios.
 - The package contains optionally loaded `Plots.jl` extension functions (some functions additionally require `StatsPlots.jl`).

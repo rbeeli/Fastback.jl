@@ -117,7 +117,7 @@ function run_backtest!(
 
             if delta_qty != 0.0
                 fill_px = delta_qty > 0 ? ask : bid
-                order = Order(oid!(acc), inst, dt, fill_px, delta_qty)
+                order = create_order!(acc, inst, dt, fill_px, delta_qty)
                 fill_order!(acc, order, dt=dt, fill_price=fill_px, bid=bid, ask=ask, last=last)
             end
         end
@@ -128,7 +128,7 @@ function run_backtest!(
     if has_exposure(pos)
         row = df[end, :]
         fill_px = pos.quantity > 0 ? row.bid : row.ask
-        order = Order(oid!(acc), inst, row.dt, fill_px, -pos.quantity)
+        order = create_order!(acc, inst, row.dt, fill_px, -pos.quantity)
         fill_order!(acc, order, dt=row.dt, fill_price=fill_px, bid=row.bid, ask=row.ask, last=row.last)
     end
 
@@ -191,7 +191,7 @@ function run_mes_chain_backtest!(
 
             if delta_qty != 0.0
                 fill_price = delta_qty > 0 ? ask : bid
-                order = Order(oid!(acc), active_inst, dt, fill_price, delta_qty)
+                order = create_order!(acc, active_inst, dt, fill_price, delta_qty)
                 fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=bid, ask=ask, last=last)
             end
         end
@@ -203,7 +203,7 @@ function run_mes_chain_backtest!(
         if has_exposure(pos)
             row = df[end, :]
             fill_price = pos.quantity > 0 ? row.bid : row.ask
-            order = Order(oid!(acc), inst, row.dt, fill_price, -pos.quantity)
+            order = create_order!(acc, inst, row.dt, fill_price, -pos.quantity)
             fill_order!(acc, order;
                 dt=row.dt,
                 fill_price=fill_price,
@@ -302,12 +302,12 @@ end
 function summarize(acc, label, initial_cash, leverage_factor)
     end_equity = equity(acc, cash_asset(acc, :USD))
     pnl = end_equity - initial_cash
-    commissions = sum(t.commission_settle for t in acc.trades, init = 0.0)
+    commissions = sum((t.commission_settle for t in acc.trades); init=0.0)
     roll_trades = count(t -> t.reason == TradeReason.Roll, acc.trades)
-    lend_interest = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.LendInterest, init=0.0)
-    borrow_interest = -sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowInterest, init=0.0)
+    lend_interest = sum((cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.LendInterest); init=0.0)
+    borrow_interest = -sum((cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowInterest); init=0.0)
     net_interest = lend_interest - borrow_interest
-    borrow_fees = sum(cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowFee, init=0.0)
+    borrow_fees = sum((cf.amount for cf in acc.cashflows if cf.kind == CashflowKind.BorrowFee); init=0.0)
 
     (
         leverage=leverage_factor,

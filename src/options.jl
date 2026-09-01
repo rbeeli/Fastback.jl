@@ -971,6 +971,8 @@ function _settle_option_expiry!(
 )::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     is_option(inst) || throw(ArgumentError("settle_option_expiry! only supports Option instruments, got $(inst.spec.symbol) with $(inst.spec.contract_kind)."))
 
+    _validate_account_timestamp(acc, dt)
+
     pos = get_position(acc, inst)
     (pos.quantity == 0.0 || !is_expired(inst, dt)) && return nothing
 
@@ -979,6 +981,7 @@ function _settle_option_expiry!(
 
     qty_before = pos.quantity
     avg_entry_before = pos.avg_entry_price
+    preceding_split_factor = pos.pending_split_factor
     intrinsic = option_intrinsic_value(inst, underlying_price)
     payoff_quote = qty_before * intrinsic * inst.spec.multiplier
     payoff_settle = to_settle(acc, inst, payoff_quote)
@@ -1000,6 +1003,8 @@ function _settle_option_expiry!(
     pos.avg_settle_price = 0.0
     pos.quantity = 0.0
     pos.entry_commission_quote_carry = 0.0
+    pos.variation_margin_pnl_settle_carry = 0.0
+    pos.pending_split_factor = 1.0
     pos.pnl_quote = 0.0
     pos.pnl_settle = 0.0
     pos.value_quote = 0.0
@@ -1018,9 +1023,10 @@ function _settle_option_expiry!(
     recompute_option_margins && recompute_dirty_option_groups!(acc)
 
     _count_trade!(acc)
+    _advance_account_timestamp!(acc, dt)
     acc.track_trades || return nothing
 
-    order = Order(oid!(acc), inst, dt, intrinsic, qty_close)
+    order = create_order!(acc, inst, dt, intrinsic, qty_close)
     notional_quote = abs(intrinsic) * abs(qty_close) * inst.spec.multiplier
     notional_base = iszero(notional_quote) ? 0.0 : notional_quote * get_rate_base_ccy(acc, inst.quote_cash_index)
     trade = Trade(
@@ -1039,6 +1045,7 @@ function _settle_option_expiry!(
         payoff_settle,
         qty_before,
         avg_entry_before,
+        preceding_split_factor,
         TradeReason.Expiry,
     )
     pos.last_order = order
@@ -1056,5 +1063,10 @@ function settle_option_expiry!(
     dt::TTime;
     underlying_price::Price=Price(NaN),
 )::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    _settle_option_expiry!(acc, inst, dt, underlying_price, true)
+    try
+        _settle_option_expiry!(acc, inst, dt, underlying_price, true)
+    catch
+        _poison!(acc)
+        rethrow()
+    end
 end

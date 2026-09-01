@@ -101,7 +101,7 @@ for i in 1:nrow(df)
 
         if abs(delta_qty) >= (perp.spec.base_tick / 2)
             fill_price = fill_price_for_qty(delta_qty, bid, ask)
-            order = Order(oid!(acc), perp, dt, fill_price, delta_qty)
+            order = create_order!(acc, perp, dt, fill_price, delta_qty)
             fill_order!(acc, order; dt=dt, fill_price=fill_price, bid=bid, ask=ask, last=last)
         end
     end
@@ -120,7 +120,7 @@ pos = get_position(acc, perp)
 if pos.quantity != 0.0
     close_qty = -pos.quantity
     close_fill_price = fill_price_for_qty(close_qty, row.bid, row.ask)
-    order = Order(oid!(acc), perp, row.dt, close_fill_price, close_qty)
+    order = create_order!(acc, perp, row.dt, close_fill_price, close_qty)
     fill_order!(acc, order; dt=row.dt, fill_price=close_fill_price, bid=row.bid, ask=row.ask, last=row.last)
 end
 

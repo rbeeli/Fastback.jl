@@ -88,6 +88,73 @@ end
     @test alloc == 0  # deterministic zero after warmup
 end
 
+@testitem "multi-mark process_step! does not allocate with a large account" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+        track_trades=false,
+        track_cashflows=false,
+    )
+    insts = Instrument{DateTime}[]
+    sizehint!(insts, 256)
+    for i in 1:256
+        push!(insts, register_instrument!(
+            acc,
+            spot_instrument(Symbol("PERFSTEP_$(i)/USD"), Symbol("PERFSTEP_$(i)"), :USD),
+        ))
+    end
+
+    marks = MarkUpdate[
+        MarkUpdate(insts[1].index, 100.0, 100.0, 100.0),
+        MarkUpdate(insts[end].index, 101.0, 101.0, 101.0),
+    ]
+    dt = DateTime(2026, 1, 1)
+    process_step!(acc, dt; marks=marks, expiries=false, accrue_interest=false, accrue_borrow_fees=false)
+    process_step!(acc, dt; marks=marks, expiries=false, accrue_interest=false, accrue_borrow_fees=false)
+
+    alloc = let acc=acc, dt=dt, marks=marks
+        @allocated process_step!(
+            acc,
+            dt;
+            marks=marks,
+            expiries=false,
+            accrue_interest=false,
+            accrue_borrow_fees=false,
+        )
+    end
+    @test alloc == 0
+end
+
+@testitem "ordinary fill planning is allocation-free without history" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+        track_trades=false,
+        track_cashflows=false,
+    )
+    deposit!(acc, :USD, 10_000.0)
+    inst = register_instrument!(acc, spot_instrument(Symbol("PERFPLAN/USD"), :PERFPLAN, :USD))
+    dt = DateTime(2026, 1, 1)
+    buy = Order(1, inst, dt, 100.0, 1.0)
+    sell = Order(2, inst, dt, 100.0, -1.0)
+
+    function roundtrip!(acc, buy, sell, dt)
+        fill_order!(acc, buy; dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+        fill_order!(acc, sell; dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+        nothing
+    end
+
+    roundtrip!(acc, buy, sell, dt)
+    roundtrip!(acc, buy, sell, dt)
+    @test (@allocated roundtrip!(acc, buy, sell, dt)) == 0
+end
+
 @testitem "process_step! with expiries=true avoids empty expiry allocations after warmup" begin
     using Test, Fastback, Dates
 

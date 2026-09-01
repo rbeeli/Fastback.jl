@@ -285,7 +285,7 @@ end
     trade = only(trades)
 
     @test trade.fill_price ≈ 79.0 atol=1e-12
-    @test trade.fill_pnl_settle ≈ -1.0 atol=1e-12
+    @test trade.fill_pnl_settle ≈ -22.0 atol=1e-12
     @test trade.cash_delta_settle ≈ -1.0 atol=1e-12
     @test get_position(acc, inst).quantity == 0.0
     @test !is_under_maintenance(acc)
@@ -380,11 +380,14 @@ end
         e
     end
 
-    # Liquidation should de-risk open positions first (no immediate "wrong-currency" abort),
-    # then fail only because no positions remain while equity is still negative.
+    # The close remains committed. With no position left to repair the negative
+    # cash equity, liquidation fails and poisons the account.
     @test err isa ArgumentError
     @test get_position(acc, inst).quantity == 0.0
     @test count(t -> t.reason == TradeReason.Liquidation, acc.trades) == 1
+    @test acc.poisoned
+    @test_throws AccountPoisonedError process_step!(acc, dt2; expiries=false)
+    @test Fastback.check_invariants(acc)
 end
 
 @testitem "option spread liquidation projections use grouped maintenance" begin

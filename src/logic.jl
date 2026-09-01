@@ -1,58 +1,136 @@
 # Positional signatures are the allocation-free hot paths; keyword wrappers are
 # kept for user ergonomics and forward directly.
 
+struct _ValuationUpdatePlan
+    balance::Price
+    equity::Price
+    avg_entry_price::Price
+    avg_entry_price_settle::Price
+    avg_settle_price::Price
+    pnl_quote::Price
+    pnl_settle::Price
+    value_quote::Price
+    value_settle::Price
+    variation_margin_pnl_settle_carry::Price
+    variation_margin_cashflow::Price
+end
+
+@inline function _plan_valuation_update(
+    acc::Account,
+    pos::Position,
+    close_price::Price,
+)::_ValuationUpdatePlan
+    inst = pos.inst
+    settle_cash_index = inst.settle_cash_index
+    settlement = inst.spec.settlement
+    qty = pos.quantity
+    new_pnl_quote = calc_pnl_quote(inst, qty, close_price, pos.avg_settle_price)
+
+    @inbounds current_balance = acc.ledger.balances[settle_cash_index]
+    @inbounds current_equity = acc.ledger.equities[settle_cash_index]
+    if settlement == SettlementStyle.VariationMargin
+        if qty == 0.0
+            new_equity = current_equity - pos.value_settle
+            return _ValuationUpdatePlan(
+                current_balance,
+                new_equity,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+            )
+        end
+
+        settled_amount = new_pnl_quote == 0.0 ? 0.0 : to_settle(acc, inst, new_pnl_quote)
+        new_balance = current_balance + settled_amount
+        new_equity = current_equity - pos.value_settle + settled_amount
+        new_carry = pos.variation_margin_pnl_settle_carry + settled_amount
+        return _ValuationUpdatePlan(
+            new_balance,
+            new_equity,
+            pos.avg_entry_price,
+            pos.avg_entry_price_settle,
+            close_price,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            new_carry,
+            settled_amount,
+        )
+    end
+
+    new_value_quote = calc_value_quote(inst, qty, close_price)
+    new_value_settle = to_settle(acc, inst, new_value_quote)
+    value_delta_settle = new_value_settle - pos.value_settle
+    new_equity = current_equity + value_delta_settle
+    new_pnl_settle = pnl_settle_principal_exchange(
+        inst,
+        qty,
+        new_value_settle,
+        pos.avg_entry_price_settle,
+    )
+    _ValuationUpdatePlan(
+        current_balance,
+        new_equity,
+        pos.avg_entry_price,
+        pos.avg_entry_price_settle,
+        pos.avg_settle_price,
+        new_pnl_quote,
+        new_pnl_settle,
+        new_value_quote,
+        new_value_settle,
+        pos.variation_margin_pnl_settle_carry,
+        0.0,
+    )
+end
+
+@inline function _apply_valuation_update!(
+    acc::Account,
+    pos::Position{TTime},
+    dt::TTime,
+    plan::_ValuationUpdatePlan,
+) where {TTime<:Dates.AbstractTime}
+    inst = pos.inst
+    settle_cash_index = inst.settle_cash_index
+    @inbounds begin
+        acc.ledger.balances[settle_cash_index] = plan.balance
+        acc.ledger.equities[settle_cash_index] = plan.equity
+    end
+    pos.avg_entry_price = plan.avg_entry_price
+    pos.avg_entry_price_settle = plan.avg_entry_price_settle
+    pos.avg_settle_price = plan.avg_settle_price
+    pos.pnl_quote = plan.pnl_quote
+    pos.pnl_settle = plan.pnl_settle
+    pos.value_quote = plan.value_quote
+    pos.value_settle = plan.value_settle
+    pos.variation_margin_pnl_settle_carry = plan.variation_margin_pnl_settle_carry
+    if plan.variation_margin_cashflow != 0.0
+        _record_cashflow!(
+            acc,
+            dt,
+            CashflowKind.VariationMargin,
+            settle_cash_index,
+            plan.variation_margin_cashflow,
+            inst.index,
+        )
+    end
+    nothing
+end
+
 @inline function _update_valuation!(
     acc::Account,
     pos::Position{TTime},
     dt::TTime,
     close_price::Price,
 ) where {TTime<:Dates.AbstractTime}
-    inst = pos.inst
-    settlement = inst.spec.settlement
-    settle_cash_index = inst.settle_cash_index
-    qty = pos.quantity
-    basis_price = pos.avg_settle_price
-
-    new_pnl = calc_pnl_quote(inst, qty, close_price, basis_price)
-
-    if settlement == SettlementStyle.VariationMargin
-        if pos.value_settle != 0.0
-            @inbounds acc.ledger.equities[settle_cash_index] -= pos.value_settle
-        end
-        pos.value_settle = 0.0
-        pos.value_quote = 0.0
-        if qty == 0.0
-            pos.avg_entry_price = zero(Price)
-            pos.avg_entry_price_settle = zero(Price)
-            pos.avg_settle_price = zero(Price)
-            pos.pnl_quote = 0.0
-            pos.pnl_settle = 0.0
-            return
-        end
-        if new_pnl != 0.0
-            settled_amount = to_settle(acc, inst, new_pnl)
-            @inbounds begin
-                acc.ledger.balances[settle_cash_index] += settled_amount
-                acc.ledger.equities[settle_cash_index] += settled_amount
-            end
-            _record_cashflow!(acc, dt, CashflowKind.VariationMargin, settle_cash_index, settled_amount, inst.index)
-        end
-        pos.pnl_quote = 0.0
-        pos.pnl_settle = 0.0
-        pos.value_settle = 0.0
-        pos.avg_settle_price = close_price
-        return
-    end
-
-    new_value = calc_value_quote(inst, qty, close_price)
-    new_value_settle = to_settle(acc, inst, new_value)
-    value_delta_settle = new_value_settle - pos.value_settle
-    @inbounds acc.ledger.equities[settle_cash_index] += value_delta_settle
-    pos.pnl_quote = new_pnl
-    pos.pnl_settle = pnl_settle_principal_exchange(inst, qty, new_value_settle, pos.avg_entry_price_settle)
-    pos.value_quote = new_value
-    pos.value_settle = new_value_settle
-    return
+    plan = _plan_valuation_update(acc, pos, close_price)
+    _apply_valuation_update!(acc, pos, dt, plan)
 end
 
 """
@@ -68,14 +146,27 @@ For variation-margin instruments, unrealized P&L is settled into cash at each up
     close_price::Price,
 ) where {TTime<:Dates.AbstractTime}
     isfinite(close_price) || throw(ArgumentError("update_valuation! requires finite close_price, got $(close_price) at dt=$(dt)."))
+    get_position(acc, pos.inst) === pos ||
+        throw(ArgumentError("Position for $(pos.inst.spec.symbol) does not belong to this account."))
+    _validate_account_timestamp(acc, dt)
+    (pos.mark_time != TTime(0) && dt < pos.mark_time) &&
+        throw(ArgumentError("Valuation datetime $(dt) precedes the last mark $(pos.mark_time) for $(pos.inst.spec.symbol)."))
     _update_valuation!(acc, pos, dt, close_price)
+    _advance_account_timestamp!(acc, dt)
 end
 
-@inline function _update_margin!(
+struct _MarginUpdatePlan
+    init_margin_settle::Price
+    maint_margin_settle::Price
+    init_margin_total::Price
+    maint_margin_total::Price
+end
+
+@inline function _plan_margin_update(
     acc::Account,
     pos::Position,
     close_price::Price,
-)
+)::_MarginUpdatePlan
     inst = pos.inst
     margin_cash_index = inst.margin_cash_index
 
@@ -84,12 +175,34 @@ end
     init_delta = new_init_margin - pos.init_margin_settle
     maint_delta = new_maint_margin - pos.maint_margin_settle
     @inbounds begin
-        acc.ledger.init_margin_used[margin_cash_index] += init_delta
-        acc.ledger.maint_margin_used[margin_cash_index] += maint_delta
+        new_init_total = acc.ledger.init_margin_used[margin_cash_index] + init_delta
+        new_maint_total = acc.ledger.maint_margin_used[margin_cash_index] + maint_delta
     end
-    pos.init_margin_settle = new_init_margin
-    pos.maint_margin_settle = new_maint_margin
-    return
+    _MarginUpdatePlan(new_init_margin, new_maint_margin, new_init_total, new_maint_total)
+end
+
+@inline function _apply_margin_update!(
+    acc::Account,
+    pos::Position,
+    plan::_MarginUpdatePlan,
+)
+    margin_cash_index = pos.inst.margin_cash_index
+    @inbounds begin
+        acc.ledger.init_margin_used[margin_cash_index] = plan.init_margin_total
+        acc.ledger.maint_margin_used[margin_cash_index] = plan.maint_margin_total
+    end
+    pos.init_margin_settle = plan.init_margin_settle
+    pos.maint_margin_settle = plan.maint_margin_settle
+    nothing
+end
+
+@inline function _update_margin!(
+    acc::Account,
+    pos::Position,
+    close_price::Price,
+)
+    plan = _plan_margin_update(acc, pos, close_price)
+    _apply_margin_update!(acc, pos, plan)
 end
 
 """
@@ -100,6 +213,8 @@ margin values on the position.
 """
 @inline function update_margin!(acc::Account, pos::Position; close_price::Price)
     isfinite(close_price) || throw(ArgumentError("update_margin! requires finite close_price, got $(close_price)."))
+    get_position(acc, pos.inst) === pos ||
+        throw(ArgumentError("Position for $(pos.inst.spec.symbol) does not belong to this account."))
     _update_margin!(acc, pos, close_price)
 end
 
@@ -113,8 +228,27 @@ end
     last_price::Price,
     recompute_options::Bool=true,
 ) where {TTime<:Dates.AbstractTime}
-    _update_valuation!(acc, pos, dt, close_price)
-    if pos.inst.spec.settlement != SettlementStyle.VariationMargin
+    inst = pos.inst
+    valuation_plan = _plan_valuation_update(acc, pos, close_price)
+    if inst.spec.contract_kind == ContractKind.Option
+        _apply_valuation_update!(acc, pos, dt, valuation_plan)
+        pos.avg_settle_price = pos.avg_entry_price
+        pos.mark_price = close_price
+        pos.last_bid = bid
+        pos.last_ask = ask
+        pos.last_price = last_price
+        pos.mark_time = dt
+        if recompute_options && pos.quantity != 0.0
+            mark_option_position_dirty!(acc, inst.index)
+            recompute_dirty_option_groups!(acc)
+        end
+        return
+    end
+
+    margin_price = margin_reference_price(acc, inst, close_price, last_price)
+    margin_plan = _plan_margin_update(acc, pos, margin_price)
+    _apply_valuation_update!(acc, pos, dt, valuation_plan)
+    if inst.spec.settlement != SettlementStyle.VariationMargin
         pos.avg_settle_price = pos.avg_entry_price
     end
     pos.mark_price = close_price
@@ -122,17 +256,7 @@ end
     pos.last_ask = ask
     pos.last_price = last_price
     pos.mark_time = dt
-
-    if pos.inst.spec.contract_kind == ContractKind.Option
-        if recompute_options && pos.quantity != 0.0
-            mark_option_position_dirty!(acc, pos.inst.index)
-            recompute_dirty_option_groups!(acc)
-        end
-        return
-    end
-
-    margin_price = margin_reference_price(acc, pos.inst, close_price, last_price)
-    _update_margin!(acc, pos, margin_price)
+    _apply_margin_update!(acc, pos, margin_plan)
     return
 end
 
@@ -148,6 +272,10 @@ end
     isfinite(bid) || throw(ArgumentError("update_marks! requires finite bid, got $(bid) at dt=$(dt)."))
     isfinite(ask) || throw(ArgumentError("update_marks! requires finite ask, got $(ask) at dt=$(dt)."))
     isfinite(last) || throw(ArgumentError("update_marks! requires finite last, got $(last) at dt=$(dt)."))
+    bid <= ask || throw(ArgumentError("update_marks! requires bid <= ask, got bid=$(bid), ask=$(ask) at dt=$(dt)."))
+    _validate_account_timestamp(acc, dt)
+    (pos.mark_time != TTime(0) && dt < pos.mark_time) &&
+        throw(ArgumentError("Mark datetime $(dt) precedes the last mark $(pos.mark_time) for $(pos.inst.spec.symbol)."))
     _validate_option_mark_prices(pos.inst, bid, ask, last)
     close_price = _calc_mark_price(pos.inst, pos.quantity, bid, ask)
     _update_marks!(acc, pos, dt, close_price, bid, ask, last, recompute_option_margins)
@@ -168,7 +296,11 @@ liquidation marks in fully funded accounts and `last` in margined accounts.
     ask::Price,
     last::Price,
 ) where {TTime<:Dates.AbstractTime}
+    get_position(acc, pos.inst) === pos ||
+        throw(ArgumentError("Position for $(pos.inst.spec.symbol) does not belong to this account."))
     _update_marks_from_quotes!(acc, pos, dt, bid, ask, last, true)
+    _advance_account_timestamp!(acc, dt)
+    nothing
 end
 
 @inline function _calc_mark_price(inst::Instrument, qty, bid, ask)
@@ -190,6 +322,7 @@ end
     isfinite(pos.last_ask) || throw(ArgumentError("Forced close for $(pos.inst.spec.symbol) requires finite last_ask; call update_marks! before expiry/liquidation."))
     bid = pos.last_bid
     ask = pos.last_ask
+    bid <= ask || throw(ArgumentError("Forced close for $(pos.inst.spec.symbol) requires bid <= ask."))
     fill_price = pos.quantity > 0.0 ? bid : ask
     fill_price, bid, ask
 end
@@ -210,6 +343,51 @@ then applies settlement-aware margin reference pricing.
 ) where {TTime<:Dates.AbstractTime}
     pos = get_position(acc, inst)
     _update_marks_from_quotes!(acc, pos, dt, bid, ask, last, true)
+    _advance_account_timestamp!(acc, dt)
+    nothing
+end
+
+@inline function _effective_fill_qty(order::Order, fill_qty::Quantity)::Quantity
+    fill_qty == 0.0 ? order.quantity : fill_qty
+end
+
+@inline function _validate_fill_request(
+    acc::Account{TTime},
+    order::Order{TTime},
+    dt::TTime,
+    fill_qty::Quantity,
+    bid::Price,
+    ask::Price,
+    underlying_price::Price,
+) where {TTime<:Dates.AbstractTime}
+    _validate_account_timestamp(acc, dt)
+    dt >= order.date || throw(ArgumentError("Fill datetime $(dt) precedes order datetime $(order.date)."))
+    inst = order.inst
+    1 <= inst.index <= length(acc.positions) ||
+        throw(ArgumentError("Order instrument $(inst.spec.symbol) is not registered in this account."))
+    pos = get_position(acc, inst)
+    (pos.mark_time != TTime(0) && dt < pos.mark_time) &&
+        throw(ArgumentError("Fill datetime $(dt) precedes the last mark $(pos.mark_time) for $(inst.spec.symbol)."))
+    isfinite(order.quantity) && order.quantity != 0.0 ||
+        throw(ArgumentError("Order quantity must be finite and non-zero, got $(order.quantity)."))
+    isfinite(order.price) || throw(ArgumentError("Order price must be finite, got $(order.price)."))
+    effective_qty = _effective_fill_qty(order, fill_qty)
+    isfinite(effective_qty) && effective_qty != 0.0 ||
+        throw(ArgumentError("Fill quantity must be finite and non-zero, got $(effective_qty)."))
+    sign(effective_qty) == sign(order.quantity) ||
+        throw(ArgumentError("Fill quantity $(effective_qty) must have the same direction as order quantity $(order.quantity)."))
+    abs(effective_qty) <= abs(order.quantity) ||
+        throw(ArgumentError("Fill quantity $(effective_qty) exceeds order quantity $(order.quantity)."))
+    bid <= ask || throw(ArgumentError("fill_order! requires bid <= ask, got bid=$(bid), ask=$(ask) at dt=$(dt)."))
+    if inst.spec.contract_kind == ContractKind.Option
+        (isnan(underlying_price) || isfinite(underlying_price)) ||
+            throw(ArgumentError("Option underlying_price must be finite or NaN, got $(underlying_price)."))
+    else
+        isnan(underlying_price) || throw(ArgumentError(
+            "underlying_price is only valid for option fills, got $(underlying_price) for $(inst.spec.symbol)."
+        ))
+    end
+    effective_qty
 end
 
 @inline function _fill_order_after_validation!(
@@ -230,24 +408,45 @@ end
         _set_option_underlying_price!(acc, inst, underlying_price)
     end
 
-    pos = get_position(acc, inst)
+    pos = @inbounds acc.positions[inst.index]
     fill_qty = fill_qty != 0 ? fill_qty : order.quantity
 
     mark_for_position = _calc_mark_price(inst, pos.quantity, bid, ask)
     mark_for_valuation = _calc_mark_price(inst, pos.quantity + fill_qty, bid, ask)
     margin_for_valuation = margin_reference_price(acc, inst, mark_for_valuation, last)
-    needs_mark_update = isnan(pos.mark_price) || pos.mark_price != mark_for_position ||
-                        pos.last_bid != bid || pos.last_ask != ask || pos.last_price != last || pos.mark_time != dt
-    needs_mark_update && _update_marks!(acc, pos, dt, mark_for_position, bid, ask, last)
-
-    _accrue_borrow_fee!(acc, pos, dt)
+    borrow_fee_settle = _planned_borrow_fee(acc, pos, dt)
+    valuation_plan = _plan_valuation_update(acc, pos, mark_for_position)
+    margin_for_position = margin_reference_price(acc, inst, mark_for_position, last)
+    margin_plan = _plan_margin_update(acc, pos, margin_for_position)
+    marked_avg_settle_price = inst.spec.settlement == SettlementStyle.VariationMargin ?
+                              valuation_plan.avg_settle_price : valuation_plan.avg_entry_price
+    marked_state = _FillPositionState(
+        pos.quantity,
+        valuation_plan.avg_entry_price,
+        valuation_plan.avg_entry_price_settle,
+        marked_avg_settle_price,
+        pos.entry_commission_quote_carry,
+        valuation_plan.variation_margin_pnl_settle_carry,
+        pos.pending_split_factor,
+        valuation_plan.value_settle,
+        margin_plan.init_margin_settle,
+        margin_plan.maint_margin_settle,
+    )
+    settle_cash_index = inst.settle_cash_index
+    margin_cash_index = inst.margin_cash_index
+    @inbounds begin
+        mark_balance_delta = valuation_plan.balance - acc.ledger.balances[settle_cash_index]
+        mark_equity_delta = valuation_plan.equity - acc.ledger.equities[settle_cash_index]
+        mark_init_margin_delta = margin_plan.init_margin_total - acc.ledger.init_margin_used[margin_cash_index]
+        mark_maint_margin_delta = margin_plan.maint_margin_total - acc.ledger.maint_margin_used[margin_cash_index]
+    end
     pos_qty = pos.quantity
     pos_entry_price = pos.avg_entry_price
     commission_quote = broker_commission(acc.broker, inst, dt, fill_qty, fill_price; is_maker=is_maker)
 
-    plan = plan_fill(
+    plan = _plan_fill(
         acc,
-        pos,
+        marked_state,
         order,
         dt,
         fill_price,
@@ -256,6 +455,13 @@ end
         fill_qty,
         commission_quote.fixed,
         commission_quote.pct,
+        Price(NaN),
+        mark_balance_delta,
+        mark_equity_delta,
+        mark_init_margin_delta,
+        mark_maint_margin_delta,
+        valuation_plan.variation_margin_cashflow,
+        borrow_fee_settle,
     )
 
     rejection = check_fill_constraints(acc, pos, plan)
@@ -292,7 +498,7 @@ end
     last::Price,
 )::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     inst = order.inst
-    pos = get_position(acc, inst)
+    pos = @inbounds acc.positions[inst.index]
     fill_qty = fill_qty != 0 ? fill_qty : order.quantity
 
     mark_for_position = _calc_mark_price(inst, pos.quantity, bid, ask)
@@ -410,10 +616,14 @@ function _apply_fill_plan!(
     settle_cash_index = inst.settle_cash_index
     margin_cash_index = inst.margin_cash_index
     @inbounds begin
-        acc.ledger.balances[settle_cash_index] += plan.cash_delta_settle
-        acc.ledger.equities[settle_cash_index] += plan.cash_delta_settle + plan.value_delta_settle
-        acc.ledger.init_margin_used[margin_cash_index] += plan.init_margin_delta
-        acc.ledger.maint_margin_used[margin_cash_index] += plan.maint_margin_delta
+        new_balance = acc.ledger.balances[settle_cash_index] + plan.balance_delta_settle
+        new_equity = acc.ledger.equities[settle_cash_index] + plan.equity_delta_settle
+        new_init_total = acc.ledger.init_margin_used[margin_cash_index] + plan.init_margin_delta
+        new_maint_total = acc.ledger.maint_margin_used[margin_cash_index] + plan.maint_margin_delta
+        acc.ledger.balances[settle_cash_index] = new_balance
+        acc.ledger.equities[settle_cash_index] = new_equity
+        acc.ledger.init_margin_used[margin_cash_index] = new_init_total
+        acc.ledger.maint_margin_used[margin_cash_index] = new_maint_total
     end
 
     pos.avg_entry_price = plan.new_avg_entry_price_quote
@@ -421,6 +631,8 @@ function _apply_fill_plan!(
     pos.avg_settle_price = plan.new_avg_settle_price
     pos.quantity = plan.new_qty
     pos.entry_commission_quote_carry = plan.new_entry_commission_quote_carry
+    pos.variation_margin_pnl_settle_carry = plan.new_variation_margin_pnl_settle_carry
+    pos.pending_split_factor = 1.0
     pos.pnl_quote = plan.new_pnl_quote
     pos.pnl_settle = plan.new_pnl_settle
     pos.value_quote = plan.new_value_quote
@@ -448,6 +660,27 @@ function _apply_fill_plan!(
         pos.borrow_fee_dt = TTime(0)
     end
 
+    if plan.borrow_fee_settle != 0.0
+        _record_cashflow!(
+            acc,
+            dt,
+            CashflowKind.BorrowFee,
+            settle_cash_index,
+            plan.borrow_fee_settle,
+            inst.index,
+        )
+    end
+    if plan.variation_margin_settle != 0.0
+        _record_cashflow!(
+            acc,
+            dt,
+            CashflowKind.VariationMargin,
+            settle_cash_index,
+            plan.variation_margin_settle,
+            inst.index,
+        )
+    end
+
     _record_trade!(
         acc,
         pos,
@@ -464,6 +697,7 @@ end
 """
 Fills an order, applying cash/equity/margin deltas and returning the resulting `Trade`.
 Returns `nothing` when `acc.track_trades == false`.
+Input and risk checks run before fill state is committed.
 Accrues borrow fees for any eligible principal-exchange spot short exposure up to `dt` and
 restarts the borrow-fee clock based on the post-fill position.
 Throws `OrderRejectError` when the fill is rejected (inactive instrument or risk checks).
@@ -492,6 +726,7 @@ Commission is broker-driven by default via `acc.broker`.
     isfinite(bid) || throw(ArgumentError("fill_order! requires finite bid, got $(bid) at dt=$(dt)."))
     isfinite(ask) || throw(ArgumentError("fill_order! requires finite ask, got $(ask) at dt=$(dt)."))
     isfinite(last) || throw(ArgumentError("fill_order! requires finite last, got $(last) at dt=$(dt)."))
+    fill_qty = _validate_fill_request(acc, order, dt, fill_qty, bid, ask, underlying_price)
     _validate_option_price(inst, "fill_price", fill_price)
     _validate_option_mark_prices(inst, bid, ask, last)
     is_active(inst, dt) || throw(OrderRejectError(OrderRejectReason.InstrumentNotAllowed))
@@ -500,7 +735,7 @@ Commission is broker-driven by default via `acc.broker`.
     end
 
     if inst.spec.contract_kind == ContractKind.Option
-        return _fill_option_order_after_validation!(
+        trade = _fill_option_order_after_validation!(
             acc,
             order,
             dt,
@@ -513,9 +748,11 @@ Commission is broker-driven by default via `acc.broker`.
             ask,
             last,
         )
+        _advance_account_timestamp!(acc, dt)
+        return trade
     end
 
-    _fill_order_after_validation!(
+    trade = _fill_order_after_validation!(
         acc,
         order,
         dt,
@@ -528,6 +765,8 @@ Commission is broker-driven by default via `acc.broker`.
         ask,
         last,
     )
+    _advance_account_timestamp!(acc, dt)
+    trade
 end
 
 """
@@ -604,6 +843,7 @@ function _fill_option_strategy!(
 
     first_underlying = orders[1].inst.spec.underlying_symbol
     first_quote = orders[1].inst.spec.quote_symbol
+    _validate_account_timestamp(acc, dt)
     @inbounds for i in 1:n
         order = orders[i]
         inst = order.inst
@@ -621,6 +861,16 @@ function _fill_option_strategy!(
         isfinite(lasts[i]) || throw(ArgumentError("fill_option_strategy! requires finite last, got $(lasts[i]) at dt=$(dt)."))
         _validate_option_price(inst, "fill_price", fill_prices[i])
         _validate_option_mark_prices(inst, bids[i], asks[i], lasts[i])
+        bids[i] <= asks[i] || throw(ArgumentError("fill_option_strategy! requires bid <= ask for $(inst.spec.symbol)."))
+        _validate_fill_request(
+            acc,
+            order,
+            dt,
+            _strategy_fill_qty(order, fill_qtys, i),
+            bids[i],
+            asks[i],
+            underlying_price,
+        )
         is_active(inst, dt) || throw(OrderRejectError(OrderRejectReason.InstrumentNotAllowed))
     end
 
@@ -685,7 +935,7 @@ function _fill_option_strategy!(
             plan.new_qty == 0.0 ? Price(NaN) : mark_for_valuation,
         )
         _push_unique_group!(affected_groups, _option_group_id(acc, inst.index))
-        equity_delta_by_cash[inst.settle_cash_index] += plan.cash_delta_settle + plan.value_delta_settle
+        equity_delta_by_cash[inst.settle_cash_index] += plan.equity_delta_settle
     end
 
     current_option_init, _ = _stored_option_margin_totals(acc)
@@ -739,6 +989,8 @@ function _fill_option_strategy!(
     end
     recompute_dirty_option_groups!(acc)
 
+    _advance_account_timestamp!(acc, dt)
+
     trades
 end
 
@@ -769,95 +1021,97 @@ function roll_position!(
     open_ask::Price=open_fill_price,
     open_last::Price=open_fill_price,
 )::Tuple{Union{Trade{TTime},Nothing},Union{Trade{TTime},Nothing}} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    from_spec = from_inst.spec
-    to_spec = to_inst.spec
-    from_inst.index == to_inst.index &&
-        throw(ArgumentError("roll_position! requires distinct instruments, got $(from_spec.symbol)."))
+    try
+        _validate_account_timestamp(acc, dt)
+        from_spec = from_inst.spec
+        to_spec = to_inst.spec
+        from_inst.index == to_inst.index &&
+            throw(ArgumentError("roll_position! requires distinct instruments, got $(from_spec.symbol)."))
 
-    from_is_option = from_spec.contract_kind == ContractKind.Option
-    to_is_option = to_spec.contract_kind == ContractKind.Option
-    from_is_option == to_is_option ||
-        throw(ArgumentError("roll_position! requires matching contract_kind, got $(from_spec.contract_kind) and $(to_spec.contract_kind)."))
-    if from_is_option
-        from_spec.underlying_symbol == to_spec.underlying_symbol ||
-            throw(ArgumentError("roll_position! requires matching underlying_symbol, got $(from_spec.underlying_symbol) and $(to_spec.underlying_symbol)."))
-        from_spec.option_right == to_spec.option_right ||
-            throw(ArgumentError("roll_position! requires matching option_right, got $(from_spec.option_right) and $(to_spec.option_right)."))
-        from_spec.exercise_style == to_spec.exercise_style ||
-            throw(ArgumentError("roll_position! requires matching exercise_style, got $(from_spec.exercise_style) and $(to_spec.exercise_style)."))
-    else
-        from_spec.base_symbol == to_spec.base_symbol ||
-            throw(ArgumentError("roll_position! requires matching base_symbol, got $(from_spec.base_symbol) and $(to_spec.base_symbol)."))
+        from_is_option = from_spec.contract_kind == ContractKind.Option
+        to_is_option = to_spec.contract_kind == ContractKind.Option
+        from_is_option == to_is_option ||
+            throw(ArgumentError("roll_position! requires matching contract_kind, got $(from_spec.contract_kind) and $(to_spec.contract_kind)."))
+        if from_is_option
+            from_spec.underlying_symbol == to_spec.underlying_symbol ||
+                throw(ArgumentError("roll_position! requires matching underlying_symbol, got $(from_spec.underlying_symbol) and $(to_spec.underlying_symbol)."))
+            from_spec.option_right == to_spec.option_right ||
+                throw(ArgumentError("roll_position! requires matching option_right, got $(from_spec.option_right) and $(to_spec.option_right)."))
+            from_spec.exercise_style == to_spec.exercise_style ||
+                throw(ArgumentError("roll_position! requires matching exercise_style, got $(from_spec.exercise_style) and $(to_spec.exercise_style)."))
+        else
+            from_spec.base_symbol == to_spec.base_symbol ||
+                throw(ArgumentError("roll_position! requires matching base_symbol, got $(from_spec.base_symbol) and $(to_spec.base_symbol)."))
+        end
+        from_spec.quote_symbol == to_spec.quote_symbol ||
+            throw(ArgumentError("roll_position! requires matching quote_symbol, got $(from_spec.quote_symbol) and $(to_spec.quote_symbol)."))
+        from_spec.multiplier == to_spec.multiplier ||
+            throw(ArgumentError("roll_position! requires matching multiplier, got $(from_spec.multiplier) and $(to_spec.multiplier)."))
+        from_spec.settle_symbol == to_spec.settle_symbol ||
+            throw(ArgumentError("roll_position! requires matching settle_symbol, got $(from_spec.settle_symbol) and $(to_spec.settle_symbol)."))
+        from_spec.margin_symbol == to_spec.margin_symbol ||
+            throw(ArgumentError("roll_position! requires matching margin_symbol, got $(from_spec.margin_symbol) and $(to_spec.margin_symbol)."))
+        from_spec.settlement == to_spec.settlement ||
+            throw(ArgumentError("roll_position! requires matching settlement style, got $(from_spec.settlement) and $(to_spec.settlement)."))
+        from_spec.margin_requirement == to_spec.margin_requirement ||
+            throw(ArgumentError("roll_position! requires matching margin_requirement, got $(from_spec.margin_requirement) and $(to_spec.margin_requirement)."))
+
+        pos = get_position(acc, from_inst)
+        qty = pos.quantity
+        qty == 0.0 && return nothing, nothing
+
+        close_order = create_order!(acc, from_inst, dt, close_fill_price, -qty)
+        close_trade = fill_order!(
+            acc,
+            close_order;
+            dt=dt,
+            fill_price=close_fill_price,
+            bid=close_bid,
+            ask=close_ask,
+            last=close_last,
+            trade_reason=TradeReason.Roll,
+        )
+
+        open_order = create_order!(acc, to_inst, dt, open_fill_price, qty)
+        open_trade = fill_order!(
+            acc,
+            open_order;
+            dt=dt,
+            fill_price=open_fill_price,
+            bid=open_bid,
+            ask=open_ask,
+            last=open_last,
+            trade_reason=TradeReason.Roll,
+        )
+
+        return close_trade, open_trade
+    catch
+        _poison!(acc)
+        rethrow()
     end
-    from_spec.quote_symbol == to_spec.quote_symbol ||
-        throw(ArgumentError("roll_position! requires matching quote_symbol, got $(from_spec.quote_symbol) and $(to_spec.quote_symbol)."))
-    from_spec.multiplier == to_spec.multiplier ||
-        throw(ArgumentError("roll_position! requires matching multiplier, got $(from_spec.multiplier) and $(to_spec.multiplier)."))
-    from_spec.settle_symbol == to_spec.settle_symbol ||
-        throw(ArgumentError("roll_position! requires matching settle_symbol, got $(from_spec.settle_symbol) and $(to_spec.settle_symbol)."))
-    from_spec.margin_symbol == to_spec.margin_symbol ||
-        throw(ArgumentError("roll_position! requires matching margin_symbol, got $(from_spec.margin_symbol) and $(to_spec.margin_symbol)."))
-    from_spec.settlement == to_spec.settlement ||
-        throw(ArgumentError("roll_position! requires matching settlement style, got $(from_spec.settlement) and $(to_spec.settlement)."))
-    from_spec.margin_requirement == to_spec.margin_requirement ||
-        throw(ArgumentError("roll_position! requires matching margin_requirement, got $(from_spec.margin_requirement) and $(to_spec.margin_requirement)."))
-
-    pos = get_position(acc, from_inst)
-    qty = pos.quantity
-    qty == 0.0 && return nothing, nothing
-
-    close_order = Order(oid!(acc), from_inst, dt, close_fill_price, -qty)
-    close_trade = fill_order!(
-        acc,
-        close_order;
-        dt=dt,
-        fill_price=close_fill_price,
-        bid=close_bid,
-        ask=close_ask,
-        last=close_last,
-        trade_reason=TradeReason.Roll,
-    )
-
-    open_order = Order(oid!(acc), to_inst, dt, open_fill_price, qty)
-    open_trade = fill_order!(
-        acc,
-        open_order;
-        dt=dt,
-        fill_price=open_fill_price,
-        bid=open_bid,
-        ask=open_ask,
-        last=open_last,
-        trade_reason=TradeReason.Roll,
-    )
-
-    close_trade, open_trade
 end
 
-"""
-Final-settles an expired futures position at the current mark and releases margin.
-
-For variation-margin futures, expiry applies one last mark-to-market settlement at
-`pos.mark_price`, then flattens quantity and clears margin usage without synthetic
-bid/ask execution or expiry commissions. Returns `nothing` when
-`acc.track_trades == false`.
-"""
-function settle_expiry!(
+function _settle_future_expiry!(
     acc::Account{TTime,TBroker},
     inst::Instrument{TTime},
     dt::TTime
 )::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     inst.spec.contract_kind == ContractKind.Future || throw(ArgumentError("settle_expiry! only supports Future instruments, got $(inst.spec.symbol) with $(inst.spec.contract_kind)."))
 
+    _validate_account_timestamp(acc, dt)
+
     pos = get_position(acc, inst)
     (pos.quantity == 0.0 || !is_expired(inst, dt)) && return nothing
 
     qty_before = pos.quantity
     avg_entry_before = pos.avg_entry_price
+    preceding_split_factor = pos.pending_split_factor
     settle_price = pos.mark_price
     isfinite(settle_price) || throw(ArgumentError("settle_expiry! requires finite mark_price for $(inst.spec.symbol); call update_marks! before expiry settlement."))
 
     # Realize the final VM settlement amount into cash/equity at expiry.
     _update_valuation!(acc, pos, dt, settle_price)
+    fill_pnl_settle = pos.variation_margin_pnl_settle_carry
 
     margin_idx = inst.margin_cash_index
     @inbounds begin
@@ -871,6 +1125,8 @@ function settle_expiry!(
     pos.avg_settle_price = 0.0
     pos.quantity = 0.0
     pos.entry_commission_quote_carry = 0.0
+    pos.variation_margin_pnl_settle_carry = 0.0
+    pos.pending_split_factor = 1.0
     pos.pnl_quote = 0.0
     pos.pnl_settle = 0.0
     pos.value_quote = 0.0
@@ -880,9 +1136,10 @@ function settle_expiry!(
     pos.borrow_fee_dt = TTime(0)
 
     _count_trade!(acc)
+    _advance_account_timestamp!(acc, dt)
     acc.track_trades || return nothing
 
-    order = Order(oid!(acc), inst, dt, settle_price, qty_close)
+    order = create_order!(acc, inst, dt, settle_price, qty_close)
     notional_quote = abs(settle_price) * abs(qty_close) * inst.spec.multiplier
     notional_base = iszero(notional_quote) ? 0.0 : notional_quote * get_rate_base_ccy(acc, inst.quote_cash_index)
     trade = Trade(
@@ -893,7 +1150,7 @@ function settle_expiry!(
         qty_close,
         0.0,
         notional_base,
-        0.0,        # Final settlement P&L is handled as VM cashflow, not trade execution P&L.
+        fill_pnl_settle,
         qty_before,
         0.0,
         0.0,
@@ -901,10 +1158,34 @@ function settle_expiry!(
         0.0,
         qty_before,
         avg_entry_before,
+        preceding_split_factor,
         TradeReason.Expiry,
     )
     pos.last_order = order
     pos.last_trade = trade
     push!(acc.trades, trade)
     trade
+end
+
+"""
+    settle_expiry!(acc, inst, dt)
+
+Final-settle an expired futures position at the current mark and release margin.
+For variation-margin futures it applies one last mark-to-market settlement,
+reports the position's accumulated lifetime P&L on the expiry trade, and
+flattens without synthetic bid/ask execution or commission.
+If settlement fails, the account is poisoned and must not be mutated again.
+Returns `nothing` when trade history tracking is disabled.
+"""
+function settle_expiry!(
+    acc::Account{TTime,TBroker},
+    inst::Instrument{TTime},
+    dt::TTime,
+)::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+    try
+        _settle_future_expiry!(acc, inst, dt)
+    catch
+        _poison!(acc)
+        rethrow()
+    end
 end

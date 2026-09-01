@@ -14,20 +14,61 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
     commission_pct::Price,
     option_underlying_price_override::Price=Price(NaN),
 ) where {TTime<:Dates.AbstractTime}
+    _plan_fill(
+        acc,
+        _FillPositionState(pos),
+        order,
+        dt,
+        fill_price,
+        mark_price,
+        margin_price,
+        fill_qty,
+        commission,
+        commission_pct,
+        option_underlying_price_override,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    )
+end
+
+@inline function _plan_fill(
+    acc::Account{TTime},
+    state::_FillPositionState,
+    order::Order{TTime},
+    dt::TTime,
+    fill_price::Price,
+    mark_price::Price,
+    margin_price::Price,
+    fill_qty::Quantity,
+    commission::Price,
+    commission_pct::Price,
+    option_underlying_price_override::Price,
+    mark_balance_delta::Price,
+    mark_equity_delta::Price,
+    mark_init_margin_delta::Price,
+    mark_maint_margin_delta::Price,
+    variation_margin_settle::Price,
+    borrow_fee_settle::Price,
+) where {TTime<:Dates.AbstractTime}
     inst = order.inst
 
     # set fill quantity if not provided
     fill_qty = fill_qty != 0 ? fill_qty : order.quantity
     remaining_qty = order.quantity - fill_qty
-    pos_qty = pos.quantity
-    pos_value_quote = pos.value_quote
-    pos_value_settle = pos.value_settle
-    pos_init_margin = pos.init_margin_settle
-    pos_maint_margin = pos.maint_margin_settle
-    pos_avg_entry_price = pos.avg_entry_price
-    pos_avg_entry_price_settle = pos.avg_entry_price_settle
-    pos_avg_settle_price = pos.avg_settle_price
-    pos_entry_commission_quote_carry = pos.entry_commission_quote_carry
+    pos_qty = state.quantity
+    pos_value_settle = state.value_settle
+    pos_init_margin = state.init_margin_settle
+    pos_maint_margin = state.maint_margin_settle
+    pos_avg_entry_price = state.avg_entry_price
+    pos_avg_entry_price_settle = state.avg_entry_price_settle
+    pos_avg_settle_price = state.avg_settle_price
+    pos_entry_commission_quote_carry = state.entry_commission_quote_carry
+    pos_variation_margin_pnl_settle_carry = state.variation_margin_pnl_settle_carry
+    preceding_split_factor = state.pending_split_factor
     inc_qty = calc_exposure_increase_quantity(pos_qty, fill_qty)
 
     # Percentage commissions should be based on absolute traded notional,
@@ -57,6 +98,8 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
 
     commission_settle = to_settle(acc, inst, commission_total_quote)
 
+    allocated_variation_margin_pnl_settle = 0.0
+    opening_pnl_settle = 0.0
     if inst.spec.settlement == SettlementStyle.PrincipalExchange
         # Principal-exchange settlement exchanges full principal, so realized settle P&L must use
         # settlement-entry basis (captures FX translation between entry and exit).
@@ -64,15 +107,14 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
             realized_qty * (fill_price_settle - pos_avg_entry_price_settle) * inst.spec.multiplier :
             0.0
     else
-        fill_pnl_quote = cash_delta_quote_vm(
-            inst,
-            inc_qty,
-            realized_pnl_reduce_quote,
-            mark_price,
-            fill_price,
-            0.0,
-        )
-        fill_pnl_settle = to_settle(acc, inst, fill_pnl_quote)
+        realized_pnl_reduce_settle = to_settle(acc, inst, realized_pnl_reduce_quote)
+        opening_pnl_quote = calc_pnl_quote(inst, inc_qty, mark_price, fill_price)
+        opening_pnl_settle = to_settle(acc, inst, opening_pnl_quote)
+        allocated_variation_margin_pnl_settle =
+            (realized_qty != 0.0 && pos_qty != 0.0) ?
+            pos_variation_margin_pnl_settle_carry * (realized_qty_abs / abs(pos_qty)) :
+            0.0
+        fill_pnl_settle = allocated_variation_margin_pnl_settle + realized_pnl_reduce_settle
     end
 
     cash_delta_quote_val = if inst.spec.settlement == SettlementStyle.VariationMargin
@@ -97,6 +139,13 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
         pos_entry_commission_quote_carry -
         allocated_entry_commission_quote +
         open_commission_from_fill_quote
+    end
+    new_variation_margin_pnl_settle_carry = if inst.spec.settlement != SettlementStyle.VariationMargin || new_qty == 0.0
+        0.0
+    else
+        pos_variation_margin_pnl_settle_carry -
+        allocated_variation_margin_pnl_settle +
+        opening_pnl_settle
     end
     new_avg_entry_price_quote = if new_qty == 0.0
         zero(Price)
@@ -159,20 +208,36 @@ Compute the fill impact on cash, equity, P&L, and margins without mutating state
         new_init_margin_settle = margin_init_margin_ccy(acc, inst, new_qty, margin_price)
         new_maint_margin_settle = margin_maint_margin_ccy(acc, inst, new_qty, margin_price)
     end
-    init_margin_delta = new_init_margin_settle - pos_init_margin
-    maint_margin_delta = new_maint_margin_settle - pos_maint_margin
+    fill_init_margin_delta = new_init_margin_settle - pos_init_margin
+    fill_maint_margin_delta = new_maint_margin_settle - pos_maint_margin
+    init_margin_delta = mark_init_margin_delta + fill_init_margin_delta
+    maint_margin_delta = mark_maint_margin_delta + fill_maint_margin_delta
+    balance_delta_settle = mark_balance_delta + cash_delta_settle + borrow_fee_settle
+    equity_delta_settle = mark_equity_delta + cash_delta_settle + value_delta_settle + borrow_fee_settle
+    notional_value_base = if acc.track_trades && !iszero(notional_value_quote)
+        notional_value_quote * get_rate_base_ccy(acc, inst.quote_cash_index)
+    else
+        0.0
+    end
 
     FillPlan(
         fill_qty,
         remaining_qty,
         notional_value_quote,
+        notional_value_base,
         commission_total_quote,
         realized_commission_quote,
         commission_settle,
         cash_delta_settle,
+        balance_delta_settle,
+        equity_delta_settle,
+        variation_margin_settle,
+        borrow_fee_settle,
         fill_pnl_settle,
         realized_qty,
         new_entry_commission_quote_carry,
+        new_variation_margin_pnl_settle_carry,
+        preceding_split_factor,
         new_qty,
         new_avg_entry_price_quote,
         new_avg_entry_price_settle,

@@ -16,7 +16,7 @@ Pkg.resolve()
 Pkg.instantiate()
 
 # GR render offscreen (avoid window popups during docs build)
-ENV["GKS_WSTYPE"] = "100"
+ENV["GKSwstype"] = "100"
 
 # Use a wider virtual terminal for @example/@repl output so wide tables
 # (DataFrames/PrettyTables) are not horizontally cropped in rendered docs.
@@ -124,6 +124,7 @@ deployment = deploy_decision()
 
 Documenter.makedocs(
     sitename="Fastback.jl",
+    repo=Documenter.Remotes.GitHub("rbeeli", "Fastback.jl"),
     format=DocumenterVitepress.MarkdownVitepress(;
         repo=DOCS_REPO,
         devurl="dev",
@@ -136,6 +137,7 @@ Documenter.makedocs(
         "Getting started" => "getting_started.md",
         "Basic setup" => "basic_setup.md",
         "Accounting model and event loop" => "concepts.md",
+        "Target-weight portfolios" => "portfolio.md",
         "Options limitations" => "options_limitations.md",
         "Execution and errors" => "execution_errors.md",
         "Pitfalls and gotchas" => "pitfalls.md",

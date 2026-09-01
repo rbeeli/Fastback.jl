@@ -100,8 +100,8 @@ snapshot(single_acc, single_usd)
 acc, usd, long_call, short_call = spread_account(300.0);
 
 orders = [
-    Order(oid!(acc), long_call, ENTRY_DT, 5.0, 1.0),
-    Order(oid!(acc), short_call, ENTRY_DT, 2.0, -1.0),
+    create_order!(acc, long_call, ENTRY_DT, 5.0, 1.0),
+    create_order!(acc, short_call, ENTRY_DT, 2.0, -1.0),
 ];
 
 trades = fill_option_strategy!(

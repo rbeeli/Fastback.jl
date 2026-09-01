@@ -16,8 +16,47 @@ mutable struct Trade{TTime<:Dates.AbstractTime}
     const cash_delta_settle::Price   # actual cash movement for this fill in settlement currency
     const pos_qty::Quantity          # quantity of the existing position
     const pos_price::Price           # average entry price of the existing position
+    const preceding_split_factor::Float64 # net split factor applied since the preceding fill
     const reason::TradeReason.T
 end
+
+# Compatibility constructor for pre-0.10 positional construction.
+Trade(
+    order::Order{TTime},
+    tid::Int,
+    date::TTime,
+    fill_price::Price,
+    fill_qty::Quantity,
+    remaining_qty::Quantity,
+    notional_base::Price,
+    fill_pnl_settle::Price,
+    realized_qty::Quantity,
+    commission_quote::Price,
+    realized_commission_quote::Price,
+    commission_settle::Price,
+    cash_delta_settle::Price,
+    pos_qty::Quantity,
+    pos_price::Price,
+    reason::TradeReason.T,
+) where {TTime<:Dates.AbstractTime} = Trade(
+    order,
+    tid,
+    date,
+    fill_price,
+    fill_qty,
+    remaining_qty,
+    notional_base,
+    fill_pnl_settle,
+    realized_qty,
+    commission_quote,
+    realized_commission_quote,
+    commission_settle,
+    cash_delta_settle,
+    pos_qty,
+    pos_price,
+    1.0,
+    reason,
+)
 
 """
 Notional trade value in quote currency (`abs(qty) * abs(price) * multiplier`).
@@ -106,6 +145,7 @@ function Base.show(io::IO, t::Trade)
               "cash_delta_settle=$(ccy_formatter(t.cash_delta_settle)) $(inst.spec.settle_symbol) " *
               "pos_qty=$(format_base(inst, t.pos_qty)) $(inst.spec.base_symbol) " *
               "pos_price=$(format_quote(inst, t.pos_price)) $(inst.spec.quote_symbol) " *
+              "preceding_split_factor=$(t.preceding_split_factor) " *
               "reason=$(t.reason)")
 end
 

@@ -8,6 +8,7 @@ using EnumX
     Funding = 4
     VariationMargin = 5
     Other = 6
+    CashDividend = 7
 end
 
 struct Cashflow{TTime<:Dates.AbstractTime}

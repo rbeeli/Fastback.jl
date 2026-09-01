@@ -484,7 +484,7 @@ end
     @test pos.avg_settle_price == 0.0
 end
 
-@testitem "Variation margin marks to fill before realizing pnl" begin
+@testitem "Variation margin marks are attributed when exposure is realized" begin
     using Test, Fastback, Dates
 
     base_currency=CashSpec(:USD)
@@ -517,7 +517,7 @@ end
     order_close = Order(oid!(acc), inst, dt_close, close_price, reduce_qty)
     trade = fill_order!(acc, order_close; dt=dt_close, fill_price=close_price, bid=close_price, ask=close_price, last=close_price)
 
-    @test trade.fill_pnl_settle ≈ 0.0
+    @test trade.fill_pnl_settle ≈ 50.0
     @test pos.quantity ≈ qty + reduce_qty
     @test pos.avg_entry_price ≈ open_price
     @test pos.avg_settle_price ≈ close_price
@@ -748,7 +748,7 @@ end
     @test acc.trades[end] === trade
     @test trade.fill_price ≈ 105.0 atol=1e-12
     @test trade.fill_qty ≈ -qty
-    @test trade.fill_pnl_settle ≈ 0.0 atol=1e-12
+    @test trade.fill_pnl_settle ≈ 15.0 atol=1e-12
     @test trade.cash_delta_settle ≈ 0.0 atol=1e-12
     @test trade.commission_settle ≈ 0.0 atol=1e-12
     @test trade.commission_quote ≈ 0.0 atol=1e-12
@@ -790,7 +790,7 @@ end
 
     @test trade isa Trade
     @test trade.fill_price ≈ 106.0 atol=1e-12
-    @test trade.fill_pnl_settle ≈ 0.0 atol=1e-12
+    @test trade.fill_pnl_settle ≈ -12.0 atol=1e-12
     @test trade.cash_delta_settle ≈ 0.0 atol=1e-12
     @test trade.commission_settle ≈ 0.0 atol=1e-12
     @test get_position(acc, inst).quantity == 0.0
