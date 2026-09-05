@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Removed the unused Query dependency from the core package.
 - Require RiskPerf 0.4, which replaces Distributions with StatsFuns and reduces package loading overhead.
 - SVG is the primary plotting approach in the README, quickstarts, API guide, and plotting showcases; Plots.jl remains an optional extension.
 - Both plotting backends select maximum-drawdown markers by the collector's mode and use non-negative default limits with a bounded number of integer ticks for open-order counts.
