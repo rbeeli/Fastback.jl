@@ -17,4 +17,4 @@
 - Corporate actions expect raw, unadjusted quotes and have no replay protection. Accrue financing first, apply each action once, then submit the raw ex-action mark at the same timestamp with repeated accrual disabled.
 - `OrderRejectError` rejection semantics are mainly for `fill_order!`; expiry/liquidation helpers use internal close-only settlement/liquidation paths instead of exposing normal order lifecycle bypass flags.
 - The poisoned flag reports an aborted mutation, not economic bankruptcy; forced closes can still leave negative balances/equity in stressed scenarios.
-- The package contains optionally loaded `Plots.jl` extension functions (some functions additionally require `StatsPlots.jl`).
+- `Fastback.plot_*` uses built-in SVG by default. For Plots.jl output, load `Plots` and call `set_plot_backend!(:plots)`; loading Plots alone does not change the backend. Match the selected backend to the target of `!` calls (IO for SVG, `Plots.Plot` for Plots).

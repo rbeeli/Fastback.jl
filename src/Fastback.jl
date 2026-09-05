@@ -12,6 +12,7 @@ include("order.jl")
 include("trade.jl")
 include("position.jl")
 include("fill_plan.jl")
+include("text_tables.jl")
 include("exchange_rates.jl")
 include("cashflows.jl")
 include("broker/base.jl")
@@ -42,6 +43,7 @@ include("analytics.jl")
 include("tables.jl")
 include("print.jl")
 include("plots.jl")
+include("plots_svg.jl")
 include("backtest_runner.jl")
 include("liquidation.jl")
 include("events.jl")
@@ -269,8 +271,13 @@ export print_cash_balances,
     print_trades,
     print_cashflows
 
-# Plots extension (requires Plots.jl; violins need StatsPlots)
-export plot_title,
+# Unified plotting interface (built-in SVG and optional Plots.jl backend)
+export plot_backend,
+    set_plot_backend!,
+    svg_output_format,
+    set_svg_output_format!,
+    plot_title,
+    plot_title!,
     plot_balance,
     plot_balance!,
     plot_equity,
@@ -284,11 +291,13 @@ export plot_title,
     plot_exposure,
     plot_exposure!,
     plot_portfolio_weights_over_time,
+    plot_portfolio_weights_over_time!,
     plot_cashflows,
-    plot_violin_realized_returns_by_day,
-    plot_violin_realized_returns_by_hour,
+    plot_cashflows!,
     plot_realized_cum_returns_by_hour,
-    plot_realized_cum_returns_by_weekday
+    plot_realized_cum_returns_by_hour!,
+    plot_realized_cum_returns_by_weekday,
+    plot_realized_cum_returns_by_weekday!
 
 # Utilities
 export params_combinations

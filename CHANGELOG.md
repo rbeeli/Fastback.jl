@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0] - 2026-09-05
+
+### Breaking changes ⚠️
+
+- Removed esoteric `plot_violin_realized_returns_by_day` and `plot_violin_realized_returns_by_hour`, their exports and examples, and the optional StatsPlots dependency.
+- `Fastback.plot_*` now uses built-in SVG by default. To retain Plots.jl output, run `using Plots` and `set_plot_backend!(:plots)`, or pass `backend=:plots` to individual calls.
+
+### Added
+
+- A unified `Fastback.plot_*` interface with built-in SVG rendering and optional Plots.jl output, selected globally through `set_plot_backend!` or per call with `backend`.
+- SVG strings and IO-first `!` methods for balance, equity, open orders, drawdown, exposure, portfolio weights, cashflows, and cumulative realized returns, without additional dependencies.
+- SVG plots return inline `Base.HTML` results by default. Use `set_svg_output_format!(:string)` for raw SVG strings or `:html` to restore inline display; individual calls accept an `output_format` override.
+- Dark SVG presentation theme, separate equity/drawdown axes, maximum-drawdown markers, and stacked portfolio weights.
+
+### Changed
+
+- Require RiskPerf 0.4, which replaces Distributions with StatsFuns and reduces package loading overhead.
+- SVG is the primary plotting approach in the README, quickstarts, API guide, and plotting showcases; Plots.jl remains an optional extension.
+- Both plotting backends select maximum-drawdown markers by the collector's mode and use non-negative default limits with a bounded number of integer ticks for open-order counts.
+
 ## [0.10.0] - 2026-09-01
 
 ### Breaking changes ⚠️

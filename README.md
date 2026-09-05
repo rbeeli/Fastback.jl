@@ -5,7 +5,7 @@
 [![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://rbeeli.github.io/Fastback.jl/)
 
 Fastback provides a lightweight, flexible and highly efficient event-based backtesting library for quantitative trading strategies.
-Fastback 0.10 requires Julia 1.12 or later.
+Fastback 0.11 requires Julia 1.12 or later.
 
 Fastback focuses on deterministic accounting: it tracks open positions, balances, equity, margin, option premium flows, and cashflows across multiple currencies.
 The execution pipeline supports broker-driven commissions/financing and partial fills; slippage and delays are modeled by the timestamps and fill prices you pass in.
@@ -58,8 +58,7 @@ end
 
 equity(acc, usd)
 
-# Plots (requires Plots.jl)
-using Plots
+# Built-in SVG plot
 Fastback.plot_equity(equity_data)
 ```
 
@@ -79,7 +78,7 @@ Fastback.plot_equity(equity_data)
 - Collectors (periodic, predicate, drawdown, min/max) and Tables.jl views for balances, equity, positions, trades, cashflows; pretty-print helpers
 - Batch backtesting and parameter sweeps with threaded runner and ETA logging
 - Integrations
-  - [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [StatsPlots.jl](https://github.com/JuliaPlots/StatsPlots.jl) for optional visualization helpers (via `FastbackPlotsExt`)
+  - Built-in SVG strings and direct IO rendering via `Fastback.plot_*`; [Plots.jl](https://github.com/JuliaPlots/Plots.jl) for optional visualization helpers
   - [NanoDates.jl](https://juliatime.github.io/NanoDates.jl/stable/) for nanosecond timestamps
   - [Timestamps64.jl](https://rbeeli.github.io/Timestamps64.jl/stable/) for efficient nanosecond timestamps
 

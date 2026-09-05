@@ -145,7 +145,7 @@ show(acc)
 
 using Plots
 
-theme(:juno)
+Fastback.set_plot_backend!(:plots);
 
 Fastback.plot_equity(equity_data; size=(800, 400))
 

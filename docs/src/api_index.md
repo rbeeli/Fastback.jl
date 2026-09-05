@@ -1,6 +1,6 @@
 # API index
 
-Exhaustive public API list (core + Plots extension).
+Exhaustive public API list (core, built-in SVG plotting, and optional Plots extension).
 For narrative guidance, see [How-to](how_to.md) and [Glossary](glossary.md).
 For details, open the REPL and type `?symbol` to view docstrings.
 
@@ -105,7 +105,18 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 - `params_combinations`
 
-## Plots extension (requires Plots.jl; violins need StatsPlots)
+## Plotting
+
+All helpers below belong to `Fastback` and use the selected backend. SVG is
+built in and selected by default. See [SVG plotting](plotting/gen/1_svg.md).
+
+- `plot_backend()`, `set_plot_backend!(:svg | :plots)`: read or select the global backend.
+- `svg_output_format()`, `set_svg_output_format!(:string | :html)`: select inline `Base.HTML` results (default) or raw SVG strings.
+
+Every plotting call accepts a `backend=:svg` or `:plots` override without
+changing the global setting. SVG calls also accept `output_format=:string` or
+`:html`. SVG `!` methods take an IO and write a complete SVG document; the
+output-format setting does not affect them.
 
 - `plot_title`
 - `plot_balance`, `plot_balance!`
@@ -115,6 +126,19 @@ For details, open the REPL and type `?symbol` to view docstrings.
 - `plot_equity_drawdown`, `plot_equity_drawdown!`
 - `plot_exposure`, `plot_exposure!`
 - `plot_portfolio_weights_over_time`
-- `plot_violin_realized_returns_by_day`, `plot_violin_realized_returns_by_hour`
+- `plot_cashflows`
 - `plot_realized_cum_returns_by_hour`
 - `plot_realized_cum_returns_by_weekday`
+
+## Optional Plots.jl extension
+
+Run `using Plots`, then `Fastback.set_plot_backend!(:plots)` to use the same
+`Fastback.plot_*` functions with Plots.jl output. Loading Plots alone does not
+change the default. Selecting it before loading the package raises an error
+with setup instructions.
+
+The Plots backend supports `!` overlays for balance, equity, open orders,
+drawdown, equity/drawdown, and exposure on an existing `Plots.Plot`. The other
+`!` helpers are SVG-only. A call's selected backend must match its IO or plot
+target; use `backend=` when working with both backends. See the
+[Plots.jl showcase](plotting/gen/2_plots_extension.md).

@@ -133,7 +133,7 @@ show(acc)
 
 using Plots, Query, Printf, Measures
 
-theme(:juno)
+Fastback.set_plot_backend!(:plots);
 
 ## equity / cash balance
 p1 = plot()
@@ -189,10 +189,7 @@ plot(p1, p2, p3, p4, p5;
 # Calculates summary statistics for each stock. Using the `Query.jl` package,
 # all trades are first grouped by instrument symbol, then average P&L,
 # worst P&L, best P&L, and win rate are calculated.
-# Finally, the results are piped into a `DataFrame` and printed
-# using the `PrettyTables.jl` package.
-
-using PrettyTables
+# Finally, the results are piped into a `DataFrame` and displayed.
 
 df = acc.trades |>
 @groupby(symbol(_.order.inst)) |>
@@ -204,4 +201,5 @@ df = acc.trades |>
     win_rate = round.(count(getfield.(_, :fill_pnl_settle) .> 0) / count(is_realizing.(_)), sigdigits=2),
 }) |> DataFrame
 
-pretty_table(df; column_labels=["Symbol", "Avg P&L", "Worst P&L", "Best P&L", "Win Rate"])
+rename!(df, ["Symbol", "Avg P&L", "Worst P&L", "Best P&L", "Win Rate"])
+show(stdout, MIME"text/plain"(), df; allcols=true)

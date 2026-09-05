@@ -216,7 +216,7 @@ entries
 
 using Plots
 
-theme(:juno);
+Fastback.set_plot_backend!(:plots);
 
 plot(
     market.dt,

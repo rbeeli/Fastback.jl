@@ -1,4 +1,4 @@
-# AGENTS – Fastback.jl
+# AI instructions
 
 Working notes for agents contributing to this repository.
 Keep it concise, keep it accurate, and keep the core trading/accounting invariants intact.
@@ -23,10 +23,11 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
   - `events.jl`: typed event driver (`MarkUpdate`, `FundingUpdate`, `FXUpdate`) and `process_step!` loop helpers.
   - `margin.jl`, `liquidation.jl`, `invariants.jl`: base-currency margin metrics, liquidation helpers, and account consistency checks.
   - `broker/*.jl`: broker fee/financing profiles (`NoOp`, `FlatFee`, `IBKRProFixed`, `Binance`).
-  - `collectors.jl`, `tables.jl`, `print.jl`, `analytics.jl`, `plots.jl`: collectors, Tables.jl views, pretty-printing, perf summary, plotting extension hooks.
+  - `collectors.jl`, `tables.jl`, `text_tables.jl`, `print.jl`, `analytics.jl`, `plots.jl`: collectors, Tables.jl views, built-in colored text tables, account printing, perf summary, plotting extension hooks.
   - `backtest_runner.jl`, `utils.jl`: threaded batch runner (`Threads.@threads`) and utility helpers.
 - `test/`: uses TestItemRunner and `@testitem` blocks; reconciliation data lives in `test/data/`.  
-- `ext/`: optional package extension(s), currently `FastbackPlotsExt.jl` for Plots/StatsPlots-backed plotting methods.  
+- `src/plots.jl` defines the shared plotting interface; `src/plots_svg.jl` implements built-in dependency-free SVG rendering.
+- `ext/`: `FastbackPlotsExt.jl` for optional Plots-backed methods.
 - `docs/`: Documenter + Literate; walkthroughs in `docs/src/examples` are rendered to `docs/src/examples/gen`, integration examples in `docs/src/integrations` are rendered to `docs/src/integrations/gen`, and plotting examples in `docs/src/plotting` are rendered to `docs/src/plotting/gen` by `docs/make.jl`.  
 - `justfile`: shortcuts for docs (`just build-docs`, `just serve-docs`).  
 - `CHANGELOG.md`: release history; update alongside version bumps in `Project.toml`.
@@ -50,9 +51,18 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
 - Maintain `Price`/`Quantity` as `Float64`; keep structs concrete for performance.  
 - Follow existing docstring style (triple quotes, short summary, brief args/returns) and liberal `@inline` on tiny helpers.  
 - Keep settlement semantics explicit: principal-exchange vs variation-margin paths must stay separate and deterministic.
-- Preserve Tables.jl schemas (`balances_table`, `positions_table`, etc.) and PrettyTables formatting behavior.  
+- Preserve Tables.jl schemas (`balances_table`, `positions_table`, etc.) and text-table numeric formatting, colors, and row limits.
 - Add new public symbols to `src/Fastback.jl` exports; mirror changes in docs/examples if user-facing.  
 - No formatter configured—match existing spacing/line breaks; prefer 4-space indent and explicit typing.
+
+### Style guide
+
+- When declaring functions, have at most 3 parameters in one line, otherwise
+  switch to one parameter per line and brackets are on separate lines.
+- When writing functions where all parameters are on separate lines and
+  there are keyword arguments, put a semicolon before the keyword arguments
+  and have it on a dedicated line.
+- Put new lines around larger code blocks like loops or if statements for better readability
 
 ## Docs workflow
 

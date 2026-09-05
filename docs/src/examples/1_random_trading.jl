@@ -70,7 +70,7 @@ show(acc)
 
 using Plots
 
-theme(:juno);
+Fastback.set_plot_backend!(:plots);
 
 Fastback.plot_equity(equity_data, size=(800, 400))
 
@@ -78,7 +78,7 @@ Fastback.plot_equity(equity_data, size=(800, 400))
 
 # ### Plot account equity drawdowns
 
-Fastback.plot_drawdown(drawdown_data, size=(800, 200),)
+Fastback.plot_drawdown(drawdown_data, size=(800, 200))
 
 #---------------------------------------------------------
 

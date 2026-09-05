@@ -1,12 +1,11 @@
-# # Plots extension showcase
+# # Built-in SVG plotting
 #
 # This example demonstrates all plotting helpers provided by the Fastback
-# Plots extension. It runs a small backtest to populate collectors, trades,
+# built-in SVG backend. It runs a small backtest to populate collectors, trades,
 # and cashflows, then renders each plot type for illustration.
 
 using Fastback
 using Dates
-using Plots
 using CSV
 using DataFrames
 using Statistics
@@ -104,6 +103,7 @@ for i in 1:n_steps
 end
 
 pos = get_position(acc, perp)
+
 if pos.quantity != 0.0
     row = df[end, :]
     order = create_order!(acc, perp, row.dt, row.last, -pos.quantity)
@@ -145,16 +145,25 @@ Fastback.plot_exposure(;
 Fastback.plot_equity_drawdown(equity_data, drawdown_data)
 
 # ---------------------------------------------------------
-# Overlay helpers (plot_! variants)
+# In-place helpers (plot_! variants)
+#
+# The SVG variants write one complete document to an IO at its current position
+# and return that IO. Retrieve its string with `String(take!(io))`.
 
-p = plot();
-Fastback.plot_balance!(p, balance_data; title="Account");
-Fastback.plot_equity!(p, equity_data);
-p
+io = IOBuffer();
+Fastback.plot_balance!(io, balance_data; title="Account balance");
+Base.HTML(String(take!(io)))
 
-p = plot();
-Fastback.plot_equity_drawdown!(p, equity_data, drawdown_data; title="Equity & drawdown");
-p
+io = IOBuffer();
+Fastback.plot_equity!(io, equity_data; title="Account equity");
+Base.HTML(String(take!(io)))
+
+io = IOBuffer();
+Fastback.plot_equity_drawdown!(io, equity_data, drawdown_data; title="Equity & drawdown");
+Base.HTML(String(take!(io)))
+
+# Pass a file IO instead to write an SVG directly to disk, or save a returned
+# string with `write("equity.svg", Fastback.plot_equity(equity_data; output_format=:string))`.
 
 # ---------------------------------------------------------
 # Cashflow plots
@@ -163,12 +172,6 @@ Fastback.plot_cashflows(acc)
 
 # ---------------------------------------------------------
 # Return-based plots
-
-# Gross returns by day (violin plot)
-Fastback.plot_violin_realized_returns_by_day(acc.trades; return_basis=:gross)
-
-# Net returns by hour (violin plot)
-Fastback.plot_violin_realized_returns_by_hour(acc.trades; return_basis=:net)
 
 # Cumulative net returns by hour
 Fastback.plot_realized_cum_returns_by_hour(acc.trades; return_basis=:net)

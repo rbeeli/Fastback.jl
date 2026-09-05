@@ -4,19 +4,16 @@ This page gets you to a running backtest in a few minutes.
 
 ## Install
 
-Fastback 0.10 requires Julia 1.12 or later.
+Fastback 0.11 requires Julia 1.12 or later.
 
 ```julia
 using Pkg
 Pkg.add("Fastback")
 ```
 
-Optional plotting extras:
-
-```julia
-using Pkg
-Pkg.add(["Plots", "StatsPlots"])
-```
+SVG plotting is built in and needs no extra packages. The optional
+[Plots.jl extension](plotting/gen/2_plots_extension.md) is available after
+installing and loading `Plots`.
 
 ## Hello world backtest
 
@@ -65,8 +62,7 @@ end
 
 equity(acc, usd)
 
-# optional plot (requires Plots.jl)
-using Plots
+# Built-in SVG plot
 Fastback.plot_equity(equity_data)
 ```
 

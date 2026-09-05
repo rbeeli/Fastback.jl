@@ -6,32 +6,20 @@ using Printf
 using Plots
 using Query
 
-const _HAS_STATSPLOTS = Ref(false)
-const _THEME_KW = (titlelocation=:left, titlefontsize=10, widen=true, fg_legend=:false, size=(800, 450))
-const _COLOR_BALANCE = "#0088DD"
-const _COLOR_EQUITY = "#BBBB00"
-const _COLOR_OPEN_ORDERS = "#00B8D9"
-const _COLOR_DRAWDOWN = "#BB0000"
-const _FILL_DRAWDOWN = "#BB000033"
-const _COLOR_EXPOSURE_GROSS = "#444444"
-const _COLOR_EXPOSURE_NET = "#0066BB"
-const _COLOR_EXPOSURE_LONG = "#22AA66"
-const _COLOR_EXPOSURE_SHORT = "#CC4444"
-
-@inline function _ensure_statsplots()
-    if _HAS_STATSPLOTS[] || isdefined(Main, :StatsPlots)
-        _HAS_STATSPLOTS[] = true
-        return
-    end
-    try
-        Core.eval(Main, :(import StatsPlots))
-        _HAS_STATSPLOTS[] = true
-        return
-    catch err
-        err_msg = sprint(showerror, err)
-        throw(ArgumentError("StatsPlots is required for violin plots. Install it with `import Pkg; Pkg.add(\"StatsPlots\")`. Import error: $(err_msg)"))
-    end
-end
+const _THEME_KW = (
+    titlelocation=:left,
+    titlefontsize=10,
+    widen=true,
+    fg_legend=false,
+    size=(800, 450),
+    background_color=Fastback._PLOT_COLORS.canvas,
+    foreground_color=Fastback._PLOT_COLORS.text,
+    foreground_color_axis=Fastback._PLOT_COLORS.axis,
+    foreground_color_text=Fastback._PLOT_COLORS.muted,
+    foreground_color_guide=Fastback._PLOT_COLORS.muted,
+    color_palette=collect(Fastback._PLOT_PALETTE),
+    grid=false,
+)
 
 @inline function _with_theme(f::Function)
     Plots.with(; _THEME_KW...) do
@@ -54,8 +42,9 @@ end
     plt,
     pv,
     label::AbstractString,
-    color;
-    kwargs...
+    color
+    ;
+    kwargs...,
 )
     _has_values(pv) || return plt
     plot_kwargs = merge((;
@@ -73,47 +62,16 @@ end
     pv.mode == DrawdownMode.Percentage ? "Drawdown [%]" : "Drawdown"
 end
 
-@inline function _max_drawdown_indices(vals::AbstractVector{<:Real})
-    n = length(vals)
-    n == 0 && return 0, 0, 0.0
-    max_val = Float64(vals[1])
-    max_idx = 1
-    peak_idx = 1
-    trough_idx = 1
-    max_dd = 0.0
-    for i in 2:n
-        v = Float64(vals[i])
-        if v > max_val
-            max_val = v
-            max_idx = i
-        end
-        dd = v - max_val
-        if dd < max_dd
-            max_dd = dd
-            peak_idx = max_idx
-            trough_idx = i
-        end
-    end
-    peak_idx, trough_idx, max_dd
-end
-
-@inline function _drawdown_value(peak_val::Real, trough_val::Real, mode::DrawdownMode.T)
-    dd = Float64(trough_val - peak_val)
-    if mode == DrawdownMode.Percentage
-        return peak_val == 0 ? 0.0 : dd / peak_val
-    end
-    dd
-end
-
 function _add_max_drawdown_markers!(
     plt,
     dts::AbstractVector{<:Dates.AbstractTime},
     vals::AbstractVector{<:Real},
-    mode::DrawdownMode.T;
+    mode::DrawdownMode.T
+    ;
     drawdown_axis::Bool=true,
     drawdown_plot=nothing,
 )
-    peak_idx, trough_idx, max_dd = _max_drawdown_indices(vals)
+    peak_idx, trough_idx, max_dd = Fastback._plot_max_drawdown_indices(vals, mode)
     max_dd < 0 || return plt
     peak_dt, trough_dt = dts[peak_idx], dts[trough_idx]
     peak_val, trough_val = vals[peak_idx], vals[trough_idx]
@@ -122,24 +80,24 @@ function _add_max_drawdown_markers!(
             plt, [peak_dt], [peak_val];
             marker=:utriangle,
             markersize=4,
-            color=_COLOR_DRAWDOWN,
+            color=Fastback._PLOT_COLORS.drawdown,
             label=false,
         )
         Plots.scatter!(
             plt, [trough_dt], [trough_val];
             marker=:dtriangle,
             markersize=4,
-            color=_COLOR_DRAWDOWN,
+            color=Fastback._PLOT_COLORS.drawdown,
             label=false,
         )
         if drawdown_axis
-            dd_val = _drawdown_value(peak_val, trough_val, mode)
+            dd_val = Fastback._plot_drawdown_value(peak_val, trough_val, mode)
             target = isnothing(drawdown_plot) ? plt : drawdown_plot
             Plots.scatter!(
                 target, [trough_dt], [dd_val];
                 marker=:circle,
                 markersize=4,
-                color=_COLOR_DRAWDOWN,
+                color=Fastback._PLOT_COLORS.drawdown,
                 label="Max drawdown",
             )
         end
@@ -163,12 +121,12 @@ end
 """
 Render a title-only plot panel.
 """
-function Fastback.plot_title(title_text; kwargs...)
+function Fastback.plot_title(backend::Fastback.PlotsBackend, title_text; kwargs...)
     plot_kwargs = merge((;
             marker=0,
             markeralpha=0,
             annotations=(1.5, 1.5, title_text),
-            foreground_color_subplot=:white,
+            foreground_color_subplot=Fastback._PLOT_COLORS.text,
             axis=false,
             grid=false,
             leg=false,
@@ -181,25 +139,31 @@ end
 """
 Plot cash balance over time from `PeriodicValues`.
 """
-function Fastback.plot_balance(pv::PeriodicValues; kwargs...)
+function Fastback.plot_balance(backend::Fastback.PlotsBackend, pv::PeriodicValues; kwargs...)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No balance data"; kwargs...)
     plt = _with_theme() do
         Plots.plot()
     end
-    Fastback.plot_balance!(plt, pv; title="Balance", legend=false, kwargs...)
+    Fastback.plot_balance!(backend, plt, pv; title="Balance", legend=false, kwargs...)
     plt
 end
 
 """
 Add cash balance series to an existing plot.
 """
-function Fastback.plot_balance!(plt, pv::PeriodicValues; kwargs...)
+function Fastback.plot_balance!(
+    backend::Fastback.PlotsBackend,
+    plt::Plots.Plot,
+    pv::PeriodicValues
+    ;
+    kwargs...,
+)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
     plot_kwargs = merge((;
             label="Cash balance",
-            linecolor=_COLOR_BALANCE,
+            linecolor=Fastback._PLOT_COLORS.balance,
             linetype=:steppost,
             yformatter=y -> @sprintf("%.0f", y),
             w=1,
@@ -215,26 +179,39 @@ Plot equity from `PeriodicValues`.
 
 Use `xaxis_mode=:date` (default) or `xaxis_mode=:index`.
 """
-function Fastback.plot_equity(pv::PeriodicValues; xaxis_mode::Symbol=:date, kwargs...)
+function Fastback.plot_equity(
+    backend::Fastback.PlotsBackend,
+    pv::PeriodicValues
+    ;
+    xaxis_mode::Symbol=:date,
+    kwargs...,
+)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No equity data"; kwargs...)
     plt = _with_theme() do
         Plots.plot()
     end
-    Fastback.plot_equity!(plt, pv; xaxis_mode=xaxis_mode, title="Equity", legend=false, kwargs...)
+    Fastback.plot_equity!(backend, plt, pv; xaxis_mode=xaxis_mode, title="Equity", legend=false, kwargs...)
     plt
 end
 
 """
 Add equity series to an existing plot.
 """
-function Fastback.plot_equity!(plt, pv::PeriodicValues; xaxis_mode::Symbol=:date, kwargs...)
+function Fastback.plot_equity!(
+    backend::Fastback.PlotsBackend,
+    plt::Plots.Plot,
+    pv::PeriodicValues
+    ;
+    xaxis_mode::Symbol=:date,
+    kwargs...,
+)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
     x = _resolve_xaxis_mode(dts, vals, xaxis_mode)
     plot_kwargs = merge((;
             label="Equity",
-            linecolor=_COLOR_EQUITY,
+            linecolor=Fastback._PLOT_COLORS.equity,
             linetype=:steppost,
             yformatter=y -> @sprintf("%.0f", y),
             w=1,
@@ -250,37 +227,46 @@ Plot open orders from `PeriodicValues`.
 
 Use `xaxis_mode=:date` (default) or `xaxis_mode=:index`.
 """
-function Fastback.plot_open_orders_count(pv::PeriodicValues; xaxis_mode::Symbol=:date, kwargs...)
-    vals = values(pv)
-    isempty(vals) && return _empty_plot("No open orders data"; kwargs...)
+function Fastback.plot_open_orders_count(
+    backend::Fastback.PlotsBackend,
+    pv::PeriodicValues
+    ;
+    xaxis_mode::Symbol=:date,
+    kwargs...,
+)
     plt = _with_theme() do
         Plots.plot()
     end
-    Fastback.plot_open_orders_count!(plt, pv; xaxis_mode=xaxis_mode, title="# open orders", legend=false, kwargs...)
+    Fastback.plot_open_orders_count!(backend, plt, pv; xaxis_mode=xaxis_mode, title="Open orders count", legend=false, kwargs...)
     plt
 end
 
 """
 Add open orders series to an existing plot.
 """
-function Fastback.plot_open_orders_count!(plt, pv::PeriodicValues; xaxis_mode::Symbol=:date, kwargs...)
+function Fastback.plot_open_orders_count!(
+    backend::Fastback.PlotsBackend,
+    plt::Plots.Plot,
+    pv::PeriodicValues
+    ;
+    xaxis_mode::Symbol=:date,
+    ylims=nothing,
+    kwargs...,
+)
     dts, vals = dates(pv), values(pv)
-    isempty(vals) && return plt
     x = _resolve_xaxis_mode(dts, vals, xaxis_mode)
-    max_open = maximum(vals)
-    max_tick = max(0, floor(Int, max_open))
-    y_ticks = 0:max_tick
+    bounds, y_ticks = Fastback._plot_count_axis(vals; ylims)
     y_ticks_str = map(x -> @sprintf("%.0f", x), y_ticks)
     plot_kwargs = merge((;
-            label="# open orders",
-            linecolor=_COLOR_OPEN_ORDERS,
+            label="Open orders count",
+            linecolor=Fastback._PLOT_COLORS.open_orders,
             linetype=:steppost,
             yticks=(y_ticks, y_ticks_str),
+            ylims=bounds,
             legend=false,
         ), kwargs)
     _with_theme() do
         Plots.plot!(plt, x, vals; plot_kwargs...)
-        Plots.ylims!(plt, (0, max(0, max_open)))
     end
     plt
 end
@@ -289,8 +275,10 @@ end
     if pv.mode == DrawdownMode.Percentage
         return (;
             label="Drawdown",
-            fill=(0, _FILL_DRAWDOWN),
-            linecolor=_COLOR_DRAWDOWN,
+            fillrange=0,
+            fillcolor=Fastback._PLOT_COLORS.drawdown,
+            fillalpha=0.3,
+            linecolor=Fastback._PLOT_COLORS.drawdown,
             linetype=:steppost,
             yformatter=y -> @sprintf("%.1f%%", 100y),
             ylims=(-1.0, 0.0),
@@ -300,8 +288,10 @@ end
     end
     (;
         label="Drawdown",
-        fill=(0, _FILL_DRAWDOWN),
-        linecolor=_COLOR_DRAWDOWN,
+        fillrange=0,
+        fillcolor=Fastback._PLOT_COLORS.drawdown,
+        fillalpha=0.3,
+        linecolor=Fastback._PLOT_COLORS.drawdown,
         linetype=:steppost,
         yformatter=y -> @sprintf("%.0f", y),
         w=1,
@@ -312,21 +302,34 @@ end
 """
 Plot drawdown series from `DrawdownValues`.
 """
-function Fastback.plot_drawdown(pv::DrawdownValues; xaxis_mode::Symbol=:date, kwargs...)
+function Fastback.plot_drawdown(
+    backend::Fastback.PlotsBackend,
+    pv::DrawdownValues
+    ;
+    xaxis_mode::Symbol=:date,
+    kwargs...,
+)
     vals = values(pv)
     isempty(vals) && return _empty_plot("No drawdown data"; kwargs...)
     title = (pv.mode == DrawdownMode.Percentage ? "Equity drawdowns [%]" : "Equity drawdowns")
     plt = _with_theme() do
         Plots.plot()
     end
-    Fastback.plot_drawdown!(plt, pv; xaxis_mode=xaxis_mode, title=title, legend=false, kwargs...)
+    Fastback.plot_drawdown!(backend, plt, pv; xaxis_mode=xaxis_mode, title=title, legend=false, kwargs...)
     plt
 end
 
 """
 Add drawdown series to an existing plot.
 """
-function Fastback.plot_drawdown!(plt, pv::DrawdownValues; xaxis_mode::Symbol=:date, kwargs...)
+function Fastback.plot_drawdown!(
+    backend::Fastback.PlotsBackend,
+    plt::Plots.Plot,
+    pv::DrawdownValues
+    ;
+    xaxis_mode::Symbol=:date,
+    kwargs...,
+)
     dts, vals = dates(pv), values(pv)
     isempty(vals) && return plt
     x = _resolve_xaxis_mode(dts, vals, xaxis_mode)
@@ -343,17 +346,19 @@ end
 Plot equity with drawdown overlay and max-drawdown markers.
 """
 function Fastback.plot_equity_drawdown(
+    backend::Fastback.PlotsBackend,
     equity_pv::PeriodicValues,
-    drawdown_pv::DrawdownValues;
+    drawdown_pv::DrawdownValues
+    ;
     show_max_dd::Bool=true,
-    kwargs...
+    kwargs...,
 )
     eq_vals = values(equity_pv)
     isempty(eq_vals) && return _empty_plot("No equity data"; kwargs...)
     plt = _with_theme() do
         Plots.plot()
     end
-    Fastback.plot_equity_drawdown!(plt, equity_pv, drawdown_pv;
+    Fastback.plot_equity_drawdown!(backend, plt, equity_pv, drawdown_pv;
         title="Equity & drawdown",
         legend=:topleft,
         show_max_dd=show_max_dd,
@@ -365,11 +370,13 @@ end
 Add equity with drawdown overlay and max-drawdown markers to an existing plot.
 """
 function Fastback.plot_equity_drawdown!(
-    plt,
+    backend::Fastback.PlotsBackend,
+    plt::Plots.Plot,
     equity_pv::PeriodicValues,
-    drawdown_pv::DrawdownValues;
+    drawdown_pv::DrawdownValues
+    ;
     show_max_dd::Bool=true,
-    kwargs...
+    kwargs...,
 )
     eq_vals = values(equity_pv)
     isempty(eq_vals) && return plt
@@ -378,7 +385,7 @@ function Fastback.plot_equity_drawdown!(
             ylabel="Equity",
             z_order=:front,
         ), kwargs)
-    Fastback.plot_equity!(plt, equity_pv; eq_kwargs...)
+    Fastback.plot_equity!(backend, plt, equity_pv; eq_kwargs...)
 
     dd_vals = values(drawdown_pv)
     dd_plot = nothing
@@ -417,19 +424,21 @@ Plot exposure over time (gross, net, long, short).
 
 Pass any combination via keyword arguments: `gross`, `net`, `long`, `short`.
 """
-function Fastback.plot_exposure(;
+function Fastback.plot_exposure(
+    backend::Fastback.PlotsBackend
+    ;
     gross=nothing,
     net=nothing,
     long=nothing,
     short=nothing,
-    kwargs...
+    kwargs...,
 )
     has_data = _has_values(gross) || _has_values(net) || _has_values(long) || _has_values(short)
     has_data || return _empty_plot("No exposure data"; kwargs...)
     plt = _with_theme() do
         Plots.plot()
     end
-    Fastback.plot_exposure!(plt;
+    Fastback.plot_exposure!(backend, plt;
         gross=gross,
         net=net,
         long=long,
@@ -446,18 +455,20 @@ Add exposure series (gross, net, long, short) to an existing plot.
 Pass any combination via keyword arguments: `gross`, `net`, `long`, `short`.
 """
 function Fastback.plot_exposure!(
-    plt;
+    backend::Fastback.PlotsBackend,
+    plt::Plots.Plot
+    ;
     gross=nothing,
     net=nothing,
     long=nothing,
     short=nothing,
-    kwargs...
+    kwargs...,
 )
     _with_theme() do
-        _plot_exposure_series!(plt, gross, "Gross exposure", _COLOR_EXPOSURE_GROSS; kwargs...)
-        _plot_exposure_series!(plt, net, "Net exposure", _COLOR_EXPOSURE_NET; kwargs...)
-        _plot_exposure_series!(plt, long, "Long exposure", _COLOR_EXPOSURE_LONG; kwargs...)
-        _plot_exposure_series!(plt, short, "Short exposure", _COLOR_EXPOSURE_SHORT; kwargs...)
+        _plot_exposure_series!(plt, gross, "Gross exposure", Fastback._PLOT_COLORS.exposure_gross; kwargs...)
+        _plot_exposure_series!(plt, net, "Net exposure", Fastback._PLOT_COLORS.exposure_net; kwargs...)
+        _plot_exposure_series!(plt, long, "Long exposure", Fastback._PLOT_COLORS.exposure_long; kwargs...)
+        _plot_exposure_series!(plt, short, "Short exposure", Fastback._PLOT_COLORS.exposure_short; kwargs...)
     end
     plt
 end
@@ -468,10 +479,12 @@ Plot portfolio constituent weights over time as a stacked area chart.
 `weights` must be shaped as `(length(dts), length(symbols))`.
 """
 function Fastback.plot_portfolio_weights_over_time(
+    backend::Fastback.PlotsBackend,
     dts::AbstractVector{<:Dates.AbstractTime},
     weights::AbstractMatrix{<:Real},
-    symbols::AbstractVector;
-    kwargs...
+    symbols::AbstractVector
+    ;
+    kwargs...,
 )
     n_dates = length(dts)
     n_dates == 0 && return _empty_plot("No portfolio weights data"; kwargs...)
@@ -507,8 +520,10 @@ end
 Plot portfolio constituent weights over time from `PortfolioWeightsValues`.
 """
 function Fastback.plot_portfolio_weights_over_time(
-    pv::PortfolioWeightsValues;
-    kwargs...
+    backend::Fastback.PlotsBackend,
+    pv::PortfolioWeightsValues
+    ;
+    kwargs...,
 )
     dts = dates(pv)
     n_dates = length(dts)
@@ -526,13 +541,13 @@ function Fastback.plot_portfolio_weights_over_time(
             weights[j, i] = series[j]
         end
     end
-    Fastback.plot_portfolio_weights_over_time(dts, weights, symbols; kwargs...)
+    Fastback.plot_portfolio_weights_over_time(backend, dts, weights, symbols; kwargs...)
 end
 
 """
 Plot account cashflows by type (one panel per `CashflowKind`).
 """
-function Fastback.plot_cashflows(acc::Account{TTime}; kwargs...) where {TTime<:Dates.AbstractTime}
+function Fastback.plot_cashflows(backend::Fastback.PlotsBackend, acc::Account{TTime}; kwargs...) where {TTime<:Dates.AbstractTime}
     isempty(acc.cashflows) && return _empty_plot("No cashflow data"; kwargs...)
 
     cf_by_kind = Dict{CashflowKind.T, Tuple{Vector{TTime}, Vector{Price}}}()
@@ -562,101 +577,9 @@ function Fastback.plot_cashflows(acc::Account{TTime}; kwargs...) where {TTime<:D
                 xlabel="Date",
                 ylabel=acc.base_currency.symbol,
             )
-            Plots.hline!(p[i], [0.0]; color=:black, alpha=0.2)
+            Plots.hline!(p[i], [0.0]; color=Fastback._PLOT_COLORS.axis, alpha=0.2)
         end
         p
-    end
-end
-
-"""
-Violin plot of realized returns grouped by day of week (realizing trades only).
-
-Use `return_basis=:gross` (default) or `return_basis=:net`.
-`NaN` return values are ignored.
-"""
-function Fastback.plot_violin_realized_returns_by_day(
-    trades::AbstractVector{<:Trade};
-    return_basis::Symbol=:gross,
-    kwargs...
-)
-    _ensure_statsplots()
-    ret_func, basis_label = _resolve_return_basis(return_basis)
-    trades = filter(is_realizing, trades)
-    isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
-
-    groups = trades |>
-             @groupby(Dates.dayofweek(_.date)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
-
-    y = Vector{Vector{Float64}}()
-    x_lbls = String[]
-    for (day, group) in groups
-        vals = _collect_non_nan_rets(group, ret_func)
-        isempty(vals) && continue
-        push!(y, vals)
-        push!(x_lbls, Dates.dayname(day))
-    end
-    isempty(y) && return _empty_plot("No realizing trades"; kwargs...)
-
-    plot_kwargs = merge((;
-            xticks=(1:length(y), x_lbls),
-            fill="green",
-            linewidth=0,
-            title="$(basis_label) realized returns by day (trade date)",
-            legend=false,
-        ), kwargs)
-    _with_theme() do
-        sp = Base.invokelatest(getfield, Main, :StatsPlots)
-        Base.invokelatest(sp.violin, y; plot_kwargs...)
-    end
-end
-
-"""
-Violin plot of realized returns grouped by hour (realizing trades only).
-
-Use `return_basis=:gross` (default) or `return_basis=:net`.
-`NaN` return values are ignored.
-"""
-function Fastback.plot_violin_realized_returns_by_hour(
-    trades::AbstractVector{<:Trade};
-    return_basis::Symbol=:gross,
-    kwargs...
-)
-    _ensure_statsplots()
-    ret_func, basis_label = _resolve_return_basis(return_basis)
-    trades = filter(is_realizing, trades)
-    isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
-
-    groups = trades |>
-             @groupby(Dates.hour(_.date)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
-
-    y = Vector{Vector{Float64}}()
-    x_lbls = String[]
-    for (hour, group) in groups
-        vals = _collect_non_nan_rets(group, ret_func)
-        isempty(vals) && continue
-        push!(y, vals)
-        push!(x_lbls, string(hour))
-    end
-    isempty(y) && return _empty_plot("No realizing trades"; kwargs...)
-
-    plot_kwargs = merge((;
-            xticks=(1:length(y), x_lbls),
-            fill="green",
-            linewidth=0,
-            title="$(basis_label) realized returns by hour (trade time)",
-            legend=false,
-        ), kwargs)
-    _with_theme() do
-        sp = Base.invokelatest(getfield, Main, :StatsPlots)
-        Base.invokelatest(sp.violin, y; plot_kwargs...)
     end
 end
 
@@ -671,10 +594,12 @@ Returns are aggregated per timestamp using realized-notional weights, then
 compounded over time (`cumprod(1 + r) - 1`).
 """
 function Fastback.plot_realized_cum_returns_by_hour(
-    trades::AbstractVector{<:Trade};
+    backend::Fastback.PlotsBackend,
+    trades::AbstractVector{<:Trade}
+    ;
     return_basis::Symbol=:gross,
     xaxis_mode::Symbol=:date,
-    kwargs...
+    kwargs...,
 )
     ret_func, basis_label = _resolve_return_basis(return_basis)
     index_axis = if xaxis_mode === :date
@@ -746,7 +671,7 @@ function Fastback.plot_realized_cum_returns_by_hour(
                     Plots.plot!(plt, x, cum_rets; series_kwargs...)
                 end
                 if n_pos > 0
-                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
+                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, Fastback._PLOT_COLORS.text)
                     Plots.annotate!(plt, n_pos + floor(Int, 0.03 * n_pos),
                         cum_rets[end],
                         Plots.text(lbl, :left, 8, lbl_color))
@@ -765,7 +690,7 @@ function Fastback.plot_realized_cum_returns_by_hour(
                     Plots.plot!(plt, dts, cum_rets; series_kwargs...)
                 end
                 if !isempty(dts)
-                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
+                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, Fastback._PLOT_COLORS.text)
                     Plots.annotate!(plt, dts[end], cum_rets[end],
                         Plots.text(lbl, :left, 9, lbl_color))
                 end
@@ -837,16 +762,6 @@ end
     out
 end
 
-@inline function _collect_non_nan_rets(group, ret_func::Function)
-    rets = Float64[]
-    for item in group
-        ret = ret_func(item)
-        isnan(ret) && continue
-        push!(rets, Float64(ret))
-    end
-    rets
-end
-
 """
 Plot cumulative realized returns grouped by weekday (realizing trades only).
 
@@ -858,11 +773,12 @@ Returns are aggregated per timestamp using realized-notional weights, then
 compounded over time (`cumprod(1 + r) - 1`).
 """
 function Fastback.plot_realized_cum_returns_by_weekday(
-    trades::AbstractVector{<:Trade},
+    backend::Fastback.PlotsBackend,
+    trades::AbstractVector{<:Trade}
     ;
     return_basis::Symbol=:gross,
     xaxis_mode::Symbol=:date,
-    kwargs...
+    kwargs...,
 )
     ret_func, basis_label = _resolve_return_basis(return_basis)
     index_axis = if xaxis_mode === :date
@@ -906,7 +822,7 @@ function Fastback.plot_realized_cum_returns_by_weekday(
                     Plots.plot!(plt, x, cum_rets; series_kwargs...)
                 end
                 if n_pos > 0
-                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
+                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, Fastback._PLOT_COLORS.text)
                     Plots.annotate!(plt, n_pos + 1, cum_rets[end],
                         Plots.text(lbl, :left, 8, lbl_color))
                 end
@@ -923,7 +839,7 @@ function Fastback.plot_realized_cum_returns_by_weekday(
                     Plots.plot!(plt, dts, cum_rets; series_kwargs...)
                 end
                 if !isempty(dts)
-                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, :white)
+                    lbl_color = get(plt.series_list[end].plotattributes, :seriescolor, Fastback._PLOT_COLORS.text)
                     Plots.annotate!(plt, dts[end], cum_rets[end],
                         Plots.text(lbl, :left, 8, lbl_color))
                 end

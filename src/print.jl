@@ -1,5 +1,3 @@
-using PrettyTables
-using Crayons
 using Dates
 import Printf
 
@@ -45,35 +43,14 @@ function print_trades(
         end),
     ]
 
-    column_labels = [c[:name] for c in cols]
-    data_columns = []
-    for col in cols
-        push!(data_columns, map(col[:val], trades))
-    end
-    data_matrix = reduce(hcat, data_columns)
-
-    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](trades[row_ix], v)
-
-    h_pnl_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Fill P&L" && data_columns[j][i] > 0, crayon"#11BF11")
-    h_pnl_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Fill P&L" && data_columns[j][i] < 0, crayon"#DD0000")
-    h_qty_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] > 0, crayon"#DD00DD")
-    h_qty_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Filled" && data_columns[j][i] < 0, crayon"#DDDD00")
-    h_ret_gross_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Return (gross)" && data_columns[j][i] > 0, crayon"#11BF11")
-    h_ret_gross_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Return (gross)" && data_columns[j][i] < 0, crayon"#DD0000")
-    h_ret_net_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Return (net)" && data_columns[j][i] > 0, crayon"#11BF11")
-    h_ret_net_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Return (net)" && data_columns[j][i] < 0, crayon"#DD0000")
-
-    pretty_table(
+    _print_record_table(
         io,
-        data_matrix
+        trades,
+        cols
         ;
-        column_labels=column_labels,
-        highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg, h_ret_gross_pos, h_ret_gross_neg, h_ret_net_pos, h_ret_net_neg],
-        formatters=[formatter],
-        compact_printing=true,
-        vertical_crop_mode=:middle,
-        maximum_number_of_rows=max_print,
-        fit_table_in_display_vertically=false,
+        max_rows=max_print,
+        value_columns=("Fill P&L", "Return (gross)", "Return (net)"),
+        quantity_columns=("Filled",),
     )
 end
 
@@ -110,29 +87,14 @@ function print_cashflows(
         Dict(:name => "Inst", :val => cf -> cf.inst_index, :fmt => (cf, v) -> v == 0 ? "—" : string(positions[v].inst.spec.symbol)),
     ]
 
-    column_labels = [c[:name] for c in cols]
-    data_columns = []
-    for col in cols
-        push!(data_columns, map(col[:val], flows))
-    end
-    data_matrix = reduce(hcat, data_columns)
-
-    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](flows[row_ix], v)
-
-    h_amt_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Amount" && data_columns[j][i] > 0, crayon"#11BF11")
-    h_amt_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Amount" && data_columns[j][i] < 0, crayon"#DD0000")
-
-    pretty_table(
+    _print_record_table(
         io,
-        data_matrix
+        flows,
+        cols
         ;
-        column_labels=column_labels,
-        highlighters=[h_amt_pos, h_amt_neg],
-        formatters=[formatter],
-        compact_printing=true,
-        vertical_crop_mode=:middle,
-        maximum_number_of_rows=max_print,
-        fit_table_in_display_vertically=false,
+        max_rows=max_print,
+        value_columns=("Amount",),
+        quantity_columns=(),
     )
 end
 
@@ -173,31 +135,14 @@ function print_positions(
         Dict(:name => "P&L", :val => t -> t.pnl_quote, :fmt => (p, v) -> isnan(v) ? "—" : format_quote(p.inst, v)),
     ]
 
-    column_labels = [c[:name] for c in cols]
-    data_columns = []
-    for col in cols
-        push!(data_columns, map(col[:val], positions))
-    end
-    data_matrix = reduce(hcat, data_columns)
-
-    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](positions[row_ix], v)
-
-    h_pnl_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] > 0, crayon"#11BF11")
-    h_pnl_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "P&L" && data_columns[j][i] < 0, crayon"#DD0000")
-    h_qty_pos = TextHighlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] > 0, crayon"#DD00DD")
-    h_qty_neg = TextHighlighter((data, i, j) -> cols[j][:name] == "Qty" && data_columns[j][i] < 0, crayon"#DDDD00")
-
-    pretty_table(
+    _print_record_table(
         io,
-        data_matrix
+        positions,
+        cols
         ;
-        column_labels=column_labels,
-        highlighters=[h_pnl_pos, h_pnl_neg, h_qty_pos, h_qty_neg],
-        formatters=[formatter],
-        compact_printing=true,
-        vertical_crop_mode=:middle,
-        maximum_number_of_rows=max_print,
-        fit_table_in_display_vertically=false,
+        max_rows=max_print,
+        value_columns=("P&L",),
+        quantity_columns=("Qty",),
     )
 end
 
@@ -224,28 +169,14 @@ function print_cash_balances(
             :fmt => (a, v) -> format_cash(a, v)
         ),
     ]
-    columns = [c[:name] for c in cols]
-
-    data_columns = []
-    for col in cols
-        push!(data_columns, map(col[:val], acc.ledger.cash))
-    end
-    data_matrix = reduce(hcat, data_columns)
-
-    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](acc.ledger.cash[row_ix], v)
-
-    h_val_pos = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] > 0, crayon"#11BF11")
-    h_val_neg = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] < 0, crayon"#DD0000")
-
-    pretty_table(
+    _print_record_table(
         io,
-        data_matrix
+        acc.ledger.cash,
+        cols
         ;
-        column_labels=columns,
-        highlighters=[h_val_pos, h_val_neg],
-        formatters=[formatter],
-        compact_printing=true,
-        fit_table_in_display_vertically=false,
+        max_rows=-1,
+        value_columns=("Value",),
+        quantity_columns=(),
     )
 end
 
@@ -272,28 +203,14 @@ function print_equity_balances(
             :fmt => (a, v) -> format_cash(a, v)
         ),
     ]
-    columns = [c[:name] for c in cols]
-
-    data_columns = []
-    for col in cols
-        push!(data_columns, map(col[:val], acc.ledger.cash))
-    end
-    data_matrix = reduce(hcat, data_columns)
-
-    formatter = (v, row_ix, col_ix) -> cols[col_ix][:fmt](acc.ledger.cash[row_ix], v)
-
-    h_val_pos = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] > 0, crayon"#11BF11")
-    h_val_neg = TextHighlighter((data, i, j) -> startswith(cols[j][:name], "Value") && data_columns[j][i] < 0, crayon"#DD0000")
-
-    pretty_table(
+    _print_record_table(
         io,
-        data_matrix
+        acc.ledger.cash,
+        cols
         ;
-        column_labels=columns,
-        highlighters=[h_val_pos, h_val_neg],
-        formatters=[formatter],
-        compact_printing=true,
-        fit_table_in_display_vertically=false,
+        max_rows=-1,
+        value_columns=("Value",),
+        quantity_columns=(),
     )
 end
 
@@ -306,26 +223,25 @@ function Base.show(
     max_trades=30,
     kwargs...
 ) where {TTime<:Dates.AbstractTime}
-    display_width = displaysize(io)[2]
-
-    function get_color(val)
-        val >= 0 && return val == 0 ? crayon"#888888" : crayon"#11BF11"
-        crayon"#DD0000"
-    end
+    display_width = max(0, displaysize(io)[2])
 
     title = " ACCOUNT SUMMARY "
-    title_line = '━'^(floor(Int64, (display_width - length(title)) / 2))
-    println(io, title_line * title * title_line)
-    print(io, "\033[1mCash balances\033[0m ($(length(acc.ledger.balances)))\n")
+    title_line = '━'^max(0, fld(display_width - textwidth(title), 2))
+    println(io, _clip_table_text(title_line * title * title_line, display_width))
+    _print_styled(io, "Cash balances"; bold=true)
+    println(io, " ($(length(acc.ledger.balances)))")
     print_cash_balances(io, acc; kwargs...)
     print(io, "\n")
-    print(io, "\033[1mEquity balances\033[0m ($(length(acc.ledger.equities)))\n")
+    _print_styled(io, "Equity balances"; bold=true)
+    println(io, " ($(length(acc.ledger.equities)))")
     print_equity_balances(io, acc; kwargs...)
     print(io, "\n")
-    print(io, "\033[1mPositions\033[0m ($(count(has_exposure.(acc.positions))))\n")
+    _print_styled(io, "Positions"; bold=true)
+    println(io, " ($(count(has_exposure.(acc.positions))))")
     print_positions(io, acc; kwargs...)
     print(io, "\n")
-    print(io, "\033[1mTrades\033[0m ($(length(acc.trades)))\n")
+    _print_styled(io, "Trades"; bold=true)
+    println(io, " ($(length(acc.trades)))")
     print_trades(io, acc; max_print=max_trades, kwargs...)
     println(io, '━'^display_width)
     print(io, "")

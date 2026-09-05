@@ -1,5 +1,3 @@
-using PrettyTables
-
 """
 Supports spot exchange rates between cash assets by index.
 """
@@ -115,12 +113,7 @@ end
 function Base.show(io::IO, er::ExchangeRates)
     n = length(er.rates)
     n > 0 || return println(io, "No exchange rates available.")
-    labels = string.(1:n)
-    pretty_table(
-        io,
-        get_rates_matrix(er),
-        ;
-        column_labels=labels,
-        row_labels=labels,
-        compact_printing=true)
+    labels = vcat("", string.(1:n))
+    cell = (i, j) -> (j == 1 ? string(i) : string(er.rates[i][j - 1]), nothing)
+    _print_text_table(io, labels, n; cell)
 end

@@ -35,7 +35,15 @@ function postprocess_md(md, data_dir)
     # fix data folder path
     md = replace(md, "\"data/" => "\"$(data_dir)")
 
-    md
+    # Keep global plotting settings local to each executed walkthrough.
+    md * """
+
+    ```@setup plot_defaults
+    using Fastback
+    Fastback.set_plot_backend!(:svg)
+    Fastback.set_svg_output_format!(:html)
+    ```
+    """
 end
 
 const EXAMPLES_ROOT = joinpath(DOCS_ROOT, "src", "examples")
@@ -116,7 +124,12 @@ gen_markdown(
     source_root=INTEGRATIONS_ROOT,
     generated_root=GENERATED_INTEGRATIONS_ROOT);
 gen_markdown(
-    "1_plots_extension.jl";
+    "1_svg.jl";
+    source_root=PLOTTING_ROOT,
+    generated_root=GENERATED_PLOTTING_ROOT);
+
+gen_markdown(
+    "2_plots_extension.jl";
     source_root=PLOTTING_ROOT,
     generated_root=GENERATED_PLOTTING_ROOT);
 
@@ -153,7 +166,8 @@ Documenter.makedocs(
             "Atomic option strategy fills" => "examples/gen/7_options_strategy_fill.md",
         ],
         "Plotting" => [
-            "Plots extensions" => "plotting/gen/1_plots_extension.md",
+            "Built-in SVG" => "plotting/gen/1_svg.md",
+            "Optional Plots.jl extension" => "plotting/gen/2_plots_extension.md",
         ],
         "Integrations" => [
             "Overview" => "integrations/index.md",
