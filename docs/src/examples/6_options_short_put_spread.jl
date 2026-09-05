@@ -91,13 +91,17 @@ function run_short_put_spread_backtest(market, option_quotes, quote_by_key)
     )
 
     next_entry_idx = 1
+    marks = MarkUpdate[]
+    underlyings = [OptionUnderlyingUpdate(:SPY, :USD, 0.0)]
 
     for i in eachindex(market.dt)
         dt = market.dt[i]
         spot = market.spot[i]
 
-        ## Mark all live options and update the option chain's underlying price.
-        marks = MarkUpdate[]
+        ## Reuse event buffers and batch the chain so each option margin group
+        ## is refreshed once after all marks for this timestamp are applied.
+        empty!(marks)
+        underlyings[1] = OptionUnderlyingUpdate(:SPY, :USD, spot)
         for inst in registered_options
             is_expired(inst, dt) && continue
             q = quote_by_key[(dt, inst.spec.expiry, inst.spec.strike)]
@@ -107,7 +111,7 @@ function run_short_put_spread_backtest(market, option_quotes, quote_by_key)
         process_step!(
             acc,
             dt;
-            option_underlyings=[OptionUnderlyingUpdate(:SPY, :USD, spot)],
+            option_underlyings=underlyings,
             marks=marks,
             expiries=true,
         )

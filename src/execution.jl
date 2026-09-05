@@ -214,7 +214,7 @@ end
     maint_margin_delta = mark_maint_margin_delta + fill_maint_margin_delta
     balance_delta_settle = mark_balance_delta + cash_delta_settle + borrow_fee_settle
     equity_delta_settle = mark_equity_delta + cash_delta_settle + value_delta_settle + borrow_fee_settle
-    notional_value_base = if acc.track_trades && !iszero(notional_value_quote)
+    notional_value_base = if _tracks_trades(acc) && !iszero(notional_value_quote)
         notional_value_quote * get_rate_base_ccy(acc, inst.quote_cash_index)
     else
         0.0

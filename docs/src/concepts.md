@@ -78,6 +78,24 @@ the market updates. Direct `update_rate!(acc, ...)` is only
 allowed while the account is flat, because open positions require coordinated
 revaluation.
 
+For option-chain snapshots, pass all marks for a timestamp in one `process_step!`
+call. Margin is refreshed once per affected group after the marks are applied.
+Calling `update_marks!` separately refreshes the group after each call; use that
+form when intermediate account states need to be observed. Reuse the event vectors
+between steps with `empty!`/`push!` or overwrite existing entries as new data arrives.
+
+Default financing and expiry processing use indices of relevant positions. Cash
+interest reuses short-sale proceeds until exposure or entry bases change, and FX
+updates refresh the positions registered for those currency pairs. These indices
+are maintained by the trading and corporate-action APIs. Treat position quantities,
+entry bases, and registered instrument indices as engine-managed state.
+
+For runs that only need account state and aggregate trade counts, construct the
+account with `track_trades=false` and optionally `track_cashflows=false`. Ordinary
+spot and variation-margin fills can then avoid allocating temporary orders after
+compilation. Fills return `nothing` when trade tracking is disabled; analyses and
+collectors that require trade history still need `track_trades=true`.
+
 `process_step!` is fail-stop. If any phase throws, completed earlier phases stay
 applied and `acc.poisoned` is set. Discard that account; a later time-advancing
 operation throws `AccountPoisonedError`.

@@ -1,6 +1,109 @@
 using Dates
 using TestItemRunner
 
+@testitem "forward event loop and fresh orders allocate zero without history" begin
+    using Test, Fastback, Dates
+
+    function drive!(acc, marks)
+        dt = acc.last_event_dt
+        inst = first(acc.positions).inst
+
+        for i in 1:64
+            dt += Millisecond(1)
+            price = 100.0 + (i % 2)
+            marks[1] = MarkUpdate(inst.index, price, price, price)
+            process_step!(acc, dt; marks=marks)
+            direction = inst.spec.short_borrow_rate > 0.0 ? -1.0 : 1.0
+            qty = isodd(i) ? direction : -direction
+            order = Order(oid!(acc), inst, dt, price, qty)
+            fill_order!(acc, order; dt=dt, fill_price=price, bid=price, ask=price, last=price)
+        end
+        nothing
+    end
+
+    for kind in (:spot, :future, :short, :option)
+        acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined,
+            base_currency=CashSpec(:USD), track_trades=false, track_cashflows=false)
+        deposit!(acc, :USD, 1e6)
+        dt = DateTime(2026, 1, 1)
+        spec = if kind == :future
+            future_instrument(:PERF_VM, :VM, :USD;
+                expiry=dt + Day(365), margin_requirement=MarginRequirement.PercentNotional,
+                margin_init_long=0.1, margin_init_short=0.1,
+                margin_maint_long=0.05, margin_maint_short=0.05)
+        elseif kind == :option
+            option_instrument(:PERF_OPTION, :UNDERLYING, :USD;
+                strike=100.0, expiry=dt + Day(365), right=OptionRight.Call)
+        else
+            spot_instrument(:PERF_FRESH, :FRESH, :USD;
+                short_borrow_rate=kind == :short ? 0.1 : 0.0)
+        end
+        inst = register_instrument!(acc, spec)
+        for i in 1:1024
+            register_instrument!(acc, spot_instrument(Symbol("INACTIVE", i), :INACTIVE, :USD))
+        end
+        process_step!(acc, dt)
+        marks = [MarkUpdate(inst.index, 100.0, 100.0, 100.0)]
+        drive!(acc, marks)
+        drive!(acc, marks)
+        alloc = @allocated drive!(acc, marks)
+        @test alloc == 0
+        @test acc.last_event_dt == acc.last_interest_dt
+        @test isempty(acc._event_state.short_positions)
+        @test isempty(acc._event_state.borrow_positions)
+        @test isempty(acc._event_state.expiry_positions)
+        @test Fastback.check_invariants(acc)
+    end
+end
+
+@testitem "sparse and overlapping FX updates reuse account buffers" begin
+    using Test, Fastback, Dates
+
+    function drive_fx!(acc, updates)
+        for _ in 1:16
+            process_step!(acc, acc.last_event_dt + Millisecond(1); fx_updates=updates)
+        end
+        nothing
+    end
+
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD), track_trades=false, track_cashflows=false)
+    deposit!(acc, :USD, 1e6)
+    for sym in (:EUR, :CHF, :GBP)
+        register_cash_asset!(acc, CashSpec(sym))
+    end
+    update_rate!(acc, :EUR, :USD, 1.2)
+    update_rate!(acc, :EUR, :CHF, 1.1)
+    update_rate!(acc, :CHF, :USD, 1.0)
+    inst = register_instrument!(acc, spot_instrument(:FX_OPEN, :OPEN, :EUR;
+        settle_symbol=:USD, margin_symbol=:CHF))
+    for i in 1:1024
+        register_instrument!(acc, spot_instrument(Symbol("FX_INACTIVE", i), :INACTIVE, :USD))
+    end
+    dt = DateTime(2026, 1, 1)
+    fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, 1.0);
+        dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    for i in 1:96
+        quote_symbol = isodd(i) ? :EUR : :CHF
+        other = register_instrument!(acc, spot_instrument(Symbol("FX_OTHER", i), :OTHER, quote_symbol;
+            settle_symbol=:USD))
+        fill_order!(acc, Order(oid!(acc), other, dt, 100.0, 1.0);
+            dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    end
+    usd, eur, chf, gbp = (cash_asset(acc, sym) for sym in (:USD, :EUR, :CHF, :GBP))
+
+    for updates in ([FXUpdate(gbp, usd, 1.3)], [FXUpdate(eur, usd, 1.25)],
+                    [FXUpdate(eur, usd, 1.3), FXUpdate(eur, chf, 1.2),
+                     FXUpdate(chf, usd, 1.05), FXUpdate(usd, eur, 0.8)])
+        drive_fx!(acc, updates)
+        drive_fx!(acc, updates)
+        alloc = @allocated drive_fx!(acc, updates)
+        @test alloc == 0
+        @test length(acc._event_state.fx_positions) <= 97
+        @test Fastback.check_invariants(acc)
+    end
+end
+
 @testitem "update_marks! allocates ~0 after warmup" begin
     using Test, Fastback, Dates
 

@@ -21,7 +21,8 @@ Interest is applied to both balances and equities and recorded as
 )
     fill!(proceeds, 0.0)
 
-    @inbounds for pos in acc.positions
+    @inbounds for pos_idx in acc._event_state.short_positions
+        pos = acc.positions[pos_idx]
         qty = pos.quantity
         qty < 0.0 || continue
 
@@ -66,6 +67,12 @@ function accrue_interest!(
     yearfrac = millis / (1000 * 60 * 60 * 24 * Price(year_basis))
     isfinite(yearfrac) || throw(ArgumentError("Interest year fraction must be finite."))
 
+    if acc.broker isa NoOpBroker
+        acc.last_interest_dt = dt
+        _advance_account_timestamp!(acc, dt)
+        return acc
+    end
+
     rate_dt = acc.last_interest_dt
     ledger = acc.ledger
     short_proceeds_by_cash = ledger.short_proceeds_by_cash_buffer
@@ -89,7 +96,10 @@ function accrue_interest!(
             locked = 0.0
             if exclude_fraction != 0.0 || rebate_rate != 0.0
                 if !short_proceeds_ready
-                    _fill_short_proceeds_by_settle_cash!(acc, short_proceeds_by_cash)
+                    if acc._event_state.short_proceeds_dirty
+                        _fill_short_proceeds_by_settle_cash!(acc, short_proceeds_by_cash)
+                        acc._event_state.short_proceeds_dirty = false
+                    end
                     short_proceeds_ready = true
                 end
                 locked = min(bal, short_proceeds_by_cash[i])

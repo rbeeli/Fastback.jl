@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.0] - 2026-09-05
+
+- Speed up financing, expiry, and FX processing with event indices; reuse validated option-margin projections.
+- Eliminate temporary allocations in ordinary fills without trade history; add allocation tests and runtime/scaling benchmarks.
+- **Breaking API change:** `Account` gains a third type parameter for trade recording. Constructors and partial annotations such as `Account{DateTime,NoOpBroker}` remain supported; code assuming exactly two parameters must be updated.
+
 ## [0.11.0] - 2026-09-05
 
 This release reduces package loading time with fewer dependencies, built-in text

@@ -83,6 +83,7 @@ function apply_spot_corporate_action!(
         pos.avg_entry_price_settle /= factor
         pos.avg_settle_price /= factor
         pos.pending_split_factor = new_pending_factor
+        _update_position_events!(acc, pos, old_qty)
 
         close_price = _calc_mark_price(inst, new_qty, adjusted_bid, adjusted_ask)
         _update_marks!(

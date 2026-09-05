@@ -164,6 +164,39 @@ function _check_history_invariants(acc::Account)
     nothing
 end
 
+function _check_event_state_invariants(acc::Account, atol::Real, rtol::Real)
+    state = acc._event_state
+    n = length(acc.positions)
+    length(state.borrow_amounts) == n || throw(AssertionError("Borrow-fee buffer has a stale size."))
+    length(state.fx_effects) == n || throw(AssertionError("FX buffer has a stale size."))
+    expected_shorts = Int[]
+    expected_borrow = Int[]
+    expected_expiries = Int[]
+    proceeds = zeros(Price, length(acc.ledger.cash))
+
+    for pos in acc.positions
+        spec = pos.inst.spec
+        if pos.quantity < 0.0 && spec.contract_kind == ContractKind.Spot && spec.settlement == SettlementStyle.PrincipalExchange
+            push!(expected_shorts, pos.index)
+            spec.short_borrow_rate > 0.0 && push!(expected_borrow, pos.index)
+            proceeds[pos.inst.settle_cash_index] += max(0.0, -pos.quantity * pos.avg_entry_price_settle * spec.multiplier)
+        end
+        if pos.quantity != 0.0 && (spec.contract_kind == ContractKind.Future || spec.contract_kind == ContractKind.Option)
+            push!(expected_expiries, pos.index)
+        end
+    end
+
+    sort!(expected_expiries; by=idx -> (acc.positions[idx].inst.spec.expiry, idx))
+    state.short_positions == expected_shorts || throw(AssertionError("Short-position index is stale."))
+    state.borrow_positions == expected_borrow || throw(AssertionError("Borrow-position index is stale."))
+    state.expiry_positions == expected_expiries || throw(AssertionError("Expiry-position index is stale."))
+    if !state.short_proceeds_dirty
+        isapprox(acc.ledger.short_proceeds_by_cash_buffer, proceeds; atol=atol, rtol=rtol) ||
+            throw(AssertionError("Short-proceeds cache is stale."))
+    end
+    nothing
+end
+
 """
     check_invariants(acc; atol=1e-9, rtol=1e-9)
 
@@ -177,6 +210,7 @@ function check_invariants(acc::Account; atol::Real=1e-9, rtol::Real=1e-9)
     isfinite(atol) && atol >= 0 || throw(ArgumentError("atol must be non-negative and finite."))
     isfinite(rtol) && rtol >= 0 || throw(ArgumentError("rtol must be non-negative and finite."))
     _check_registry_invariants(acc)
+    _check_event_state_invariants(acc, atol, rtol)
     expected_init_by_pos, expected_maint_by_pos = _recompute_margin_by_position(acc)
     @inbounds for (position_index, pos) in pairs(acc.positions)
         inst = pos.inst

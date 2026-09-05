@@ -1,6 +1,47 @@
 using Dates
 using TestItemRunner
 
+@testitem "option projections commit across groups, closes and reversals" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
+    deposit!(acc, :USD, 1e6)
+    dt = DateTime(2026, 1, 1)
+    insts = Instrument{DateTime}[]
+    for (i, expiry) in enumerate((dt + Day(30), dt + Day(60)))
+        for strike in (100.0, 110.0)
+            push!(insts, register_instrument!(acc, option_instrument(Symbol("PROJECTION_", i, "_", Int(strike)), :U, :USD;
+                strike=strike, expiry=expiry, right=OptionRight.Call)))
+        end
+    end
+    prices = [6.0, 2.0, 6.0, 2.0]
+    orders = [Order(oid!(acc), insts[i], dt, prices[i], isodd(i) ? 1.0 : -1.0) for i in 1:4]
+    trades = fill_option_strategy!(acc, orders; dt=dt,
+        fill_prices=prices, bids=prices, asks=prices, lasts=prices, underlying_price=105.0)
+    @test length(trades) == 4
+    @test length(acc.option_groups) == 2
+    @test Fastback.check_invariants(acc)
+
+    marks = [MarkUpdate(insts[i].index, prices[i] + 0.5, prices[i] + 0.5, prices[i] + 0.5) for i in 1:4]
+    push!(marks, MarkUpdate(insts[1].index, 7.0, 7.0, 7.0))
+    process_step!(acc, dt + Day(1); marks=marks,
+        option_underlyings=[OptionUnderlyingUpdate(:U, :USD, 106.0)])
+    @test get_position(acc, insts[1]).mark_price == 7.0
+    @test isempty(acc.dirty_option_groups)
+    @test Fastback.check_invariants(acc)
+
+    for (i, qty) in ((2, 1.0), (1, -1.0), (4, 2.0), (3, -1.0), (4, -1.0))
+        fill_order!(acc, Order(oid!(acc), insts[i], dt + Day(1), prices[i], qty);
+            dt=dt + Day(1), fill_price=prices[i], bid=prices[i], ask=prices[i], last=prices[i])
+        @test isempty(acc.dirty_option_groups)
+        @test Fastback.check_invariants(acc)
+    end
+    @test all(iszero, acc.option_init_by_cash)
+    @test all(iszero, acc.option_maint_by_cash)
+    @test isempty(acc._event_state.expiry_positions)
+    @test length(trades) == 4
+end
+
 @testitem "Option constructor validates listed option metadata" begin
     using Test, Fastback, Dates
 

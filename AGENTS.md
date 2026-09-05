@@ -42,7 +42,8 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
 ## Testing
 
 - Full suite: `julia --project -e 'using Pkg; Pkg.test()'` (runs TestItemRunner).  
-- Targeted file: `julia --project -e 'using TestItemRunner; TestItemRunner.run_tests(\"test/account.jl\")'`.  
+- Targeted file: `julia --project -e 'using TestItemRunner; TestItemRunner.run_tests(pwd(); filter=ti -> endswith(ti.filename, "test/account.jl"))'`.
+- Runtime/scaling benchmarks: see `benchmark/README.md` (separate BenchmarkTools environment).
 - Set `JULIA_NUM_THREADS` when touching threaded code; keep tests deterministic.
 
 ## Coding conventions

@@ -75,10 +75,12 @@ function accrue_borrow_fees!(
     _validate_account_timestamp(acc, dt)
     isfinite(year_basis) && year_basis > 0 || throw(ArgumentError("year_basis must be positive and finite."))
     amounts_by_cash = acc.ledger.financing_by_cash_buffer
+    state = acc._event_state
     fill!(amounts_by_cash, 0.0)
-    @inbounds for pos in acc.positions
-        _borrow_fee_eligible(pos) || continue
+    @inbounds for pos_idx in state.borrow_positions
+        pos = acc.positions[pos_idx]
         amount = _planned_borrow_fee(acc, pos, dt; year_basis=year_basis)
+        state.borrow_amounts[pos_idx] = amount
         idx = pos.inst.settle_cash_index
         projected = amounts_by_cash[idx] + amount
         isfinite(projected) || throw(ArgumentError("Aggregate borrow-fee amount overflowed."))
@@ -89,9 +91,9 @@ function accrue_borrow_fees!(
         isfinite(acc.ledger.balances[i] + amount) || throw(ArgumentError("Borrow fees produce a non-finite balance."))
         isfinite(acc.ledger.equities[i] + amount) || throw(ArgumentError("Borrow fees produce non-finite equity."))
     end
-    @inbounds for pos in acc.positions
-        _borrow_fee_eligible(pos) || continue
-        amount = _planned_borrow_fee(acc, pos, dt; year_basis=year_basis)
+    @inbounds for pos_idx in state.borrow_positions
+        pos = acc.positions[pos_idx]
+        amount = state.borrow_amounts[pos_idx]
         if amount != 0.0
             idx = pos.inst.settle_cash_index
             _adjust_cash_idx!(acc.ledger, idx, amount)

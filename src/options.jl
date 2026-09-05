@@ -157,14 +157,14 @@ function _insert_sorted_option_position!(
             break
         end
     end
-    insert!(positions, insert_at, pos_idx)
+    _insert_position_index!(positions, insert_at, pos_idx)
     positions
 end
 
 @inline function _delete_option_position!(positions::Vector{Int}, pos_idx::Int)
     @inbounds for k in eachindex(positions)
         if positions[k] == pos_idx
-            deleteat!(positions, k)
+            _delete_position_index!(positions, k)
             return positions
         end
     end
@@ -638,7 +638,7 @@ function _compute_option_group_margins!(
         maint_total += maint_by_pos[idx]
     end
 
-    init_total, maint_total
+    init_total, maint_total, underlying_price
 end
 
 const _NO_OPTION_UNDERLYING_SYMBOL = Symbol("")
@@ -648,7 +648,9 @@ const _NO_OPTION_UNDERLYING_SYMBOL = Symbol("")
     group::OptionMarginGroup,
     generation::Int,
 )
-    _compute_option_group_margins!(acc, group, generation, _NO_OPTION_UNDERLYING_SYMBOL, 0, Price(NaN), true)
+    init_total, maint_total, _ =
+        _compute_option_group_margins!(acc, group, generation, _NO_OPTION_UNDERLYING_SYMBOL, 0, Price(NaN), true)
+    init_total, maint_total
 end
 
 function _project_option_totals_for_groups!(
@@ -663,10 +665,12 @@ function _project_option_totals_for_groups!(
 )
     _copy_option_totals!(init_dest, acc.option_init_by_cash)
     _copy_option_totals!(maint_dest, acc.option_maint_by_cash)
+    projections = acc._option_margin_scratch.projected_group_margins
+    resize!(projections, length(acc.option_groups))
 
     @inbounds for group_id in group_ids
         group = acc.option_groups[group_id]
-        init_total, maint_total = _compute_option_group_margins!(
+        init_total, maint_total, underlying_price = _compute_option_group_margins!(
             acc,
             group,
             generation,
@@ -675,6 +679,7 @@ function _project_option_totals_for_groups!(
             override_underlying_price,
             false,
         )
+        projections[group_id] = (init_total, maint_total, underlying_price)
         cash_idx = group.key.margin_cash_index
         init_dest[cash_idx] += init_total - group.init_total
         maint_dest[cash_idx] += maint_total - group.maint_total
@@ -683,11 +688,15 @@ function _project_option_totals_for_groups!(
     init_dest, maint_dest
 end
 
-function recompute_dirty_option_groups!(acc::Account)
+function _commit_option_group_margins!(
+    acc::Account,
+    group_id::Int,
+    init_total::Price,
+    maint_total::Price,
+)
     scratch = acc._option_margin_scratch
-    @inbounds for group_id in acc.dirty_option_groups
+    @inbounds begin
         group = acc.option_groups[group_id]
-        init_total, maint_total = _compute_option_group_margins!(acc, group, 0)
         margin_idx = group.key.margin_cash_index
 
         for idx in group.active_positions
@@ -706,6 +715,29 @@ function recompute_dirty_option_groups!(acc::Account)
         group.maint_total = maint_total
         group.dirty = false
         acc.dirty_option_group_flags[group_id] = false
+    end
+    nothing
+end
+
+function _commit_projected_option_margins!(acc::Account, group_ids::Vector{Int})
+    @inbounds for group_id in group_ids
+        init_total, maint_total, underlying_price = acc._option_margin_scratch.projected_group_margins[group_id]
+        _commit_option_group_margins!(acc, group_id, init_total, maint_total)
+        if isfinite(underlying_price)
+            acc.option_groups[group_id].underlying_price = underlying_price
+        end
+    end
+    # Projected groups may already be queued; their cleared flags avoid
+    # recomputing them while still refreshing any other pending groups.
+    recompute_dirty_option_groups!(acc)
+end
+
+function recompute_dirty_option_groups!(acc::Account)
+    @inbounds for group_id in acc.dirty_option_groups
+        acc.dirty_option_group_flags[group_id] || continue
+        group = acc.option_groups[group_id]
+        init_total, maint_total = _compute_option_group_margins!(acc, group, 0)
+        _commit_option_group_margins!(acc, group_id, init_total, maint_total)
     end
     empty!(acc.dirty_option_groups)
     acc
@@ -1018,13 +1050,14 @@ function _settle_option_expiry!(
     pos.mark_time = dt
     pos.borrow_fee_dt = TTime(0)
 
+    _update_position_events!(acc, pos, qty_before)
     _set_option_position_active!(acc, inst.index, false)
     mark_option_position_dirty!(acc, inst.index)
     recompute_option_margins && recompute_dirty_option_groups!(acc)
 
     _count_trade!(acc)
     _advance_account_timestamp!(acc, dt)
-    acc.track_trades || return nothing
+    _tracks_trades(acc) || return nothing
 
     order = create_order!(acc, inst, dt, intrinsic, qty_close)
     notional_quote = abs(intrinsic) * abs(qty_close) * inst.spec.multiplier

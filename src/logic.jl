@@ -579,7 +579,7 @@ end
         _set_option_underlying_price!(acc, inst, underlying_price)
     end
 
-    _apply_fill_plan!(
+    trade = _apply_fill_plan!(
         acc,
         pos,
         order,
@@ -592,11 +592,14 @@ end
         plan,
         pos_qty,
         pos_entry_price,
-        trade_reason,
+        trade_reason;
+        recompute_option_margins=false,
     )
+    _commit_projected_option_margins!(acc, group_ids)
+    trade
 end
 
-function _apply_fill_plan!(
+@inline function _apply_fill_plan!(
     acc::Account{TTime,TBroker},
     pos::Position{TTime},
     order::Order{TTime},
@@ -609,7 +612,8 @@ function _apply_fill_plan!(
     plan::FillPlan,
     pos_qty::Quantity,
     pos_entry_price::Price,
-    trade_reason::TradeReason.T;
+    trade_reason::TradeReason.T
+    ;
     recompute_option_margins::Bool=true,
 )::Union{Trade{TTime},Nothing} where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     inst = order.inst
@@ -644,6 +648,7 @@ function _apply_fill_plan!(
     pos.last_ask = ask
     pos.last_price = last
     pos.mark_time = dt
+    _update_position_events!(acc, pos, pos_qty)
     if inst.spec.contract_kind == ContractKind.Option
         _set_option_position_active!(acc, inst.index, pos.quantity != 0.0)
         if recompute_option_margins
@@ -962,7 +967,7 @@ function _fill_option_strategy!(
     end
 
     trades = Trade{TTime}[]
-    acc.track_trades && sizehint!(trades, n)
+    _tracks_trades(acc) && sizehint!(trades, n)
     @inbounds for i in 1:n
         trade = _apply_fill_plan!(
             acc,
@@ -984,10 +989,7 @@ function _fill_option_strategy!(
             push!(trades, trade::Trade{TTime})
         end
     end
-    @inbounds for group_id in affected_groups
-        mark_option_group_dirty!(acc, group_id)
-    end
-    recompute_dirty_option_groups!(acc)
+    _commit_projected_option_margins!(acc, affected_groups)
 
     _advance_account_timestamp!(acc, dt)
 
@@ -1135,9 +1137,10 @@ function _settle_future_expiry!(
     pos.maint_margin_settle = 0.0
     pos.borrow_fee_dt = TTime(0)
 
+    _update_position_events!(acc, pos, qty_before)
     _count_trade!(acc)
     _advance_account_timestamp!(acc, dt)
-    acc.track_trades || return nothing
+    _tracks_trades(acc) || return nothing
 
     order = create_order!(acc, inst, dt, settle_price, qty_close)
     notional_quote = abs(settle_price) * abs(qty_close) * inst.spec.multiplier

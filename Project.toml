@@ -2,7 +2,7 @@ name = "Fastback"
 uuid = "2b92286b-cbc8-46f1-be48-a629b4baefca"
 authors = ["Rino Beeli <40661605+rbeeli@users.noreply.github.com>"]
 repo = "https://github.com/rbeeli/fastback.jl.git"
-version = "0.11.0"
+version = "0.12.0"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"

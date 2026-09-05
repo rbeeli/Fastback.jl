@@ -1,0 +1,12 @@
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Fastback = "2b92286b-cbc8-46f1-be48-a629b4baefca"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[sources]
+Fastback = {path = ".."}
+
+[compat]
+BenchmarkTools = "1"
+julia = "1.12"

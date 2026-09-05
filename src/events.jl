@@ -51,10 +51,6 @@ struct FXUpdate
     rate::Float64
 end
 
-@inline function _fx_route_key(from_idx::Int, to_idx::Int)::Tuple{Int,Int}
-    from_idx <= to_idx ? (from_idx, to_idx) : (to_idx, from_idx)
-end
-
 @inline function _index_fx_updates!(acc::Account, updates::Vector{FXUpdate})
     indices = acc._fx_update_last_indices
     @inbounds for i in eachindex(updates)
@@ -152,19 +148,12 @@ function _process_expiries_into!(
     _validate_account_timestamp(acc, dt)
     empty!(trades)
     recompute_options = false
-    has_eligible_expiry = false
-    @inbounds for pos in acc.positions
-        pos.quantity == 0.0 && continue
-        kind = pos.inst.spec.contract_kind
-        if (kind == ContractKind.Future || kind == ContractKind.Option) && is_expired(pos.inst, dt)
-            has_eligible_expiry = true
-            break
-        end
-    end
-    has_eligible_expiry || return trades
+    due = _collect_due_expiries!(acc, dt)
+    isempty(due) && return trades
     # Close option shorts first so a bounded option group is not
     # transiently converted into a naked short during expiry processing.
-    @inbounds for pos in acc.positions
+    @inbounds for pos_idx in due
+        pos = acc.positions[pos_idx]
         pos.quantity < 0.0 || continue
         inst = pos.inst
         inst.spec.contract_kind == ContractKind.Option || continue
@@ -174,7 +163,8 @@ function _process_expiries_into!(
         trade === nothing || push!(trades, trade)
     end
 
-    @inbounds for pos in acc.positions
+    @inbounds for pos_idx in due
+        pos = acc.positions[pos_idx]
         pos.quantity == 0.0 && continue
         inst = pos.inst
         inst.spec.contract_kind == ContractKind.Future || continue
@@ -183,7 +173,8 @@ function _process_expiries_into!(
         trade === nothing || push!(trades, trade)
     end
 
-    @inbounds for pos in acc.positions
+    @inbounds for pos_idx in due
+        pos = acc.positions[pos_idx]
         pos.quantity > 0.0 || continue
         inst = pos.inst
         inst.spec.contract_kind == ContractKind.Option || continue
@@ -227,64 +218,110 @@ Adjusts position `value_settle`/`pnl_settle` for non-VM instruments and updates
 margin usage for FX-sensitive requirements (percent-notional, and all fully-funded
 requirements) using settlement-aware margin reference prices.
 """
-@inline function _fx_updates_touch_pair(fx_updates, from_idx::Int, to_idx::Int)::Bool
-    from_idx == to_idx && return false
-    fx_updates === nothing && return true
-    @inbounds for fx in fx_updates
-        fx_from = fx.from_cash.index
-        fx_to = fx.to_cash.index
-        ((fx_from == from_idx && fx_to == to_idx) || (fx_from == to_idx && fx_to == from_idx)) && return true
+@inline function _revalue_fx_position!(acc::Account, pos::Position, effects::UInt8)
+    inst = pos.inst
+    is_option_inst = inst.spec.contract_kind == ContractKind.Option
+    quote_idx = inst.quote_cash_index
+    settle_idx = inst.settle_cash_index
+    margin_idx = inst.margin_cash_index
+    if is_option_inst && pos.quantity != 0.0 && quote_idx != margin_idx && effects & _FX_MARGIN != 0
+        mark_option_position_dirty!(acc, inst.index)
     end
-    false
+    quote_settle_fx = quote_idx != settle_idx && effects & _FX_SETTLEMENT != 0
+    quote_margin_fx = !is_option_inst && quote_idx != margin_idx && effects & _FX_MARGIN != 0
+    margin_fx_sensitive = quote_margin_fx && pos.quantity != 0.0 &&
+                          (acc.funding == AccountFunding.FullyFunded || inst.spec.margin_requirement == MarginRequirement.PercentNotional)
+    quote_settle_fx || margin_fx_sensitive || return nothing
+
+    if quote_settle_fx && inst.spec.settlement != SettlementStyle.VariationMargin
+        val_quote = pos.value_quote
+        new_value_settle = val_quote == 0.0 ? 0.0 : to_settle(acc, inst, val_quote)
+        value_delta = new_value_settle - pos.value_settle
+        if value_delta != 0.0
+            acc.ledger.equities[settle_idx] += value_delta
+        end
+        pos.value_settle = new_value_settle
+
+        pos.pnl_settle = pnl_settle_principal_exchange(inst, pos.quantity, new_value_settle, pos.avg_entry_price_settle)
+    end
+
+    if margin_fx_sensitive
+        margin_price = margin_reference_price(acc, inst, pos.mark_price, pos.last_price)
+        new_init_margin = margin_init_margin_ccy(acc, inst, pos.quantity, margin_price)
+        new_maint_margin = margin_maint_margin_ccy(acc, inst, pos.quantity, margin_price)
+        init_delta = new_init_margin - pos.init_margin_settle
+        maint_delta = new_maint_margin - pos.maint_margin_settle
+        if init_delta != 0.0
+            acc.ledger.init_margin_used[margin_idx] += init_delta
+        end
+        if maint_delta != 0.0
+            acc.ledger.maint_margin_used[margin_idx] += maint_delta
+        end
+        pos.init_margin_settle = new_init_margin
+        pos.maint_margin_settle = new_maint_margin
+    end
+    nothing
 end
 
-@inline function _revalue_fx_caches!(acc::Account, fx_updates=nothing)
-    recompute_options = false
+# Full refresh remains available for internal reference/reconciliation callers.
+function _revalue_fx_caches!(acc::Account)
     @inbounds for pos in acc.positions
-        inst = pos.inst
-        is_option_inst = inst.spec.contract_kind == ContractKind.Option
-        quote_idx = inst.quote_cash_index
-        settle_idx = inst.settle_cash_index
-        margin_idx = inst.margin_cash_index
-        if is_option_inst && pos.quantity != 0.0 && _fx_updates_touch_pair(fx_updates, quote_idx, margin_idx)
-            recompute_options = true
-            mark_option_position_dirty!(acc, inst.index)
+        _revalue_fx_position!(acc, pos, _FX_SETTLEMENT | _FX_MARGIN)
+    end
+    recompute_dirty_option_groups!(acc)
+    acc
+end
+
+function _revalue_fx_caches!(acc::Account, updates::Vector{FXUpdate})
+    state = acc._event_state
+    positions = state.fx_positions
+    effects = state.fx_effects
+    empty!(positions)
+
+    if length(updates) == 1
+        update = only(updates)
+        route = _fx_route_key(update.from_cash.index, update.to_cash.index)
+        dependents = get(state.fx_dependents, route, nothing)
+        if dependents !== nothing
+            # A shared settlement/margin route covering the entire registry
+            # can traverse positions directly, without indexed indirection.
+            if length(dependents.positions) == length(acc.positions) &&
+                dependents.common_effects == (_FX_SETTLEMENT | _FX_MARGIN)
+                return _revalue_fx_caches!(acc)
+            end
+            @inbounds for dependent in dependents.positions
+                _revalue_fx_position!(acc, acc.positions[dependent.index], dependent.effects)
+            end
         end
-        quote_settle_fx = quote_idx != settle_idx
-        quote_margin_fx = !is_option_inst && quote_idx != margin_idx
-        margin_fx_sensitive = quote_margin_fx && pos.quantity != 0.0 &&
-                              (acc.funding == AccountFunding.FullyFunded || inst.spec.margin_requirement == MarginRequirement.PercentNotional)
-        quote_settle_fx || margin_fx_sensitive || continue
+        recompute_dirty_option_groups!(acc)
+        return acc
+    end
 
-        if quote_settle_fx && inst.spec.settlement != SettlementStyle.VariationMargin
-            val_quote = pos.value_quote
-            new_value_settle = val_quote == 0.0 ? 0.0 : to_settle(acc, inst, val_quote)
-            value_delta = new_value_settle - pos.value_settle
-            if value_delta != 0.0
-                acc.ledger.equities[settle_idx] += value_delta
-            end
-            pos.value_settle = new_value_settle
+    routes = 0
 
-            pos.pnl_settle = pnl_settle_principal_exchange(inst, pos.quantity, new_value_settle, pos.avg_entry_price_settle)
-        end
+    @inbounds for i in eachindex(updates)
+        _is_last_fx_update(acc, updates, i) || continue
+        update = updates[i]
+        route = _fx_route_key(update.from_cash.index, update.to_cash.index)
+        dependents = get(state.fx_dependents, route, nothing)
+        dependents === nothing && continue
+        routes += 1
 
-        if margin_fx_sensitive
-            margin_price = margin_reference_price(acc, inst, pos.mark_price, pos.last_price)
-            new_init_margin = margin_init_margin_ccy(acc, inst, pos.quantity, margin_price)
-            new_maint_margin = margin_maint_margin_ccy(acc, inst, pos.quantity, margin_price)
-            init_delta = new_init_margin - pos.init_margin_settle
-            maint_delta = new_maint_margin - pos.maint_margin_settle
-            if init_delta != 0.0
-                acc.ledger.init_margin_used[margin_idx] += init_delta
-            end
-            if maint_delta != 0.0
-                acc.ledger.maint_margin_used[margin_idx] += maint_delta
-            end
-            pos.init_margin_settle = new_init_margin
-            pos.maint_margin_settle = new_maint_margin
+        for dependent in dependents.positions
+            idx = dependent.index
+            effects[idx] == 0 && push!(positions, idx)
+            effects[idx] |= dependent.effects
         end
     end
-    recompute_options && recompute_dirty_option_groups!(acc)
+
+    # Each route is already in registration order. Multiple routes must be
+    # merged into that same order to preserve deterministic ledger summation.
+    routes > 1 && sort!(positions; alg=QuickSort)
+    @inbounds for idx in positions
+        _revalue_fx_position!(acc, acc.positions[idx], effects[idx])
+        effects[idx] = 0
+    end
+    recompute_dirty_option_groups!(acc)
     acc
 end
 
@@ -361,7 +398,7 @@ function process_step!(
                 fx = fx_updates[i]
                 update_rate!(er, fx.from_cash, fx.to_cash, fx.rate)
             end
-            isempty(fx_updates) || _revalue_fx_caches!(acc)
+            isempty(fx_updates) || _revalue_fx_caches!(acc, fx_updates)
         end
 
         if option_underlyings !== nothing

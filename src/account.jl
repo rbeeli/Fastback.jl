@@ -1,3 +1,39 @@
+struct _FXDependentPosition
+    index::Int
+    effects::UInt8
+end
+
+mutable struct _FXRouteDependents
+    const positions::Vector{_FXDependentPosition}
+    common_effects::UInt8
+end
+
+_FXRouteDependents() = _FXRouteDependents(_FXDependentPosition[], UInt8(3))
+
+mutable struct _AccountEventState
+    const short_positions::Vector{Int}
+    const borrow_positions::Vector{Int}
+    const borrow_amounts::Vector{Price}
+    const expiry_positions::Vector{Int}
+    const due_expiries::Vector{Int}
+    const fx_dependents::Dict{Tuple{Int,Int},_FXRouteDependents}
+    const fx_effects::Vector{UInt8}
+    const fx_positions::Vector{Int}
+    short_proceeds_dirty::Bool
+end
+
+_AccountEventState() = _AccountEventState(
+    Int[],
+    Int[],
+    Price[],
+    Int[],
+    Int[],
+    Dict{Tuple{Int,Int},_FXRouteDependents}(),
+    UInt8[],
+    Int[],
+    false,
+)
+
 mutable struct OptionMarginScratch{TTime<:Dates.AbstractTime}
     const init_by_pos::Vector{Price}
     const maint_by_pos::Vector{Price}
@@ -21,6 +57,7 @@ mutable struct OptionMarginScratch{TTime<:Dates.AbstractTime}
     const strategy_commissions::Vector{CommissionQuote}
     const projected_active_positions::Vector{Int}
     const override_indices::Vector{Int}
+    const projected_group_margins::Vector{NTuple{3,Price}}
     generation::Int
 end
 
@@ -70,10 +107,11 @@ OptionMarginScratch{TTime}() where {TTime<:Dates.AbstractTime} = OptionMarginScr
     CommissionQuote[],
     Int[],
     Int[],
+    NTuple{3,Price}[],
     0,
 )
 
-mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker,TrackTrades}
     const funding::AccountFunding.T
     const margin_aggregation::MarginAggregation.T
     const ledger::CashLedger
@@ -99,6 +137,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
     const option_maint_by_cash::Vector{Price}
     const _option_margin_scratch::OptionMarginScratch{TTime}
     const _expiry_trades_buffer::Vector{Trade{TTime}}
+    const _event_state::_AccountEventState
     const track_trades::Bool
     const track_cashflows::Bool
     poisoned::Bool
@@ -130,7 +169,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
         base_cash = _register_cash_asset!(ledger, base_currency)
         _ensure_rates_size!(exchange_rates, base_cash.index)
 
-        acc = new{TTime,TBroker}(
+        acc = new{TTime,TBroker,track_trades}(
             funding,
             margin_aggregation,
             ledger,
@@ -156,6 +195,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
             fill(zero(Price), length(ledger.cash)), # cached option maintenance margin by cash
             OptionMarginScratch{TTime}(),
             Vector{Trade{TTime}}(), # reusable expiry buffer
+            _AccountEventState(),
             track_trades,
             track_cashflows,
             false, # poisoned
@@ -171,6 +211,10 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
         acc
     end
 end
+
+# Expose the constructor's recording choice to inference without changing the
+# public track_trades field or specializing on other account configuration.
+@inline _tracks_trades(::Account{TTime,TBroker,TrackTrades}) where {TTime,TBroker,TrackTrades} = TrackTrades
 
 @inline function _poison!(acc::Account)
     acc.poisoned = true
@@ -315,7 +359,7 @@ end
     trade_reason::TradeReason.T,
 ) where {TTime<:Dates.AbstractTime}
     _count_trade!(acc)
-    acc.track_trades || return nothing
+    _tracks_trades(acc) || return nothing
 
     trade = Trade(
         order,
@@ -487,6 +531,7 @@ function register_instrument!(
     if spec.contract_kind == ContractKind.Option
         _register_option_position!(acc, inst)
     end
+    _register_position_events!(acc, inst)
 
     inst
 end
