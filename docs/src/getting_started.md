@@ -4,7 +4,7 @@ This page gets you to a running backtest in a few minutes.
 
 ## Install
 
-Fastback 0.11 requires Julia 1.12 or later.
+Fastback 0.11.0 requires Julia 1.12 or later.
 
 ```julia
 using Pkg

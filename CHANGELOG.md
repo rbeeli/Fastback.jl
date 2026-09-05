@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [0.11.0] - 2026-09-05
 
+This release reduces package loading time with fewer dependencies, built-in text
+and SVG rendering, and the lighter RiskPerf 0.4 dependency graph.
+
 ### Breaking changes ⚠️
 
 - Removed esoteric `plot_violin_realized_returns_by_day` and `plot_violin_realized_returns_by_hour`, their exports and examples, and the optional StatsPlots dependency.
@@ -18,6 +21,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Replaced PrettyTables and Crayons with built-in colored text tables for account and exchange-rate displays. Numeric precision, row limits, and terminal-width cropping are preserved; colors follow the IO context.
 - Removed the unused Query dependency from the core package.
 - Require RiskPerf 0.4, which replaces Distributions with StatsFuns and reduces package loading overhead.
 - SVG is the primary plotting approach in the README, quickstarts, API guide, and plotting showcases; Plots.jl remains an optional extension.
