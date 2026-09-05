@@ -178,7 +178,7 @@ Documenter.makedocs(
         "API index" => "api_index.md",
         "Glossary" => "glossary.md",
     ],
-    warnonly=get(ENV, "CI", "false") != "true",
+    warnonly=false,
     pagesonly=true,
 )
 

@@ -19,6 +19,8 @@ using TestItemRunner
     @test plot_backend() === :svg
     @test_throws ArgumentError Fastback.plot_equity(eq; backend=:plots)
     using Plots
+    @test Base.get_extension(Fastback, :FastbackPlotsExt) !== nothing
+    @test all(id.name != "Query" for id in keys(Base.loaded_modules))
     @test plot_backend() === :svg
     @test Fastback.plot_equity(eq) isa Base.HTML
     @test Fastback.plot_equity(eq; backend=:plots) isa Plots.Plot

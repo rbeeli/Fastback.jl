@@ -22,7 +22,7 @@ and SVG rendering, and the lighter RiskPerf 0.4 dependency graph.
 ### Changed
 
 - Replaced PrettyTables and Crayons with built-in colored text tables for account and exchange-rate displays. Numeric precision, row limits, and terminal-width cropping are preserved; colors follow the IO context.
-- Removed the unused Query dependency from the core package.
+- Removed the Query dependency; the Plots extension groups realized returns with plain Julia, while documentation examples retain their own Query dependency.
 - Require RiskPerf 0.4, which replaces Distributions with StatsFuns and reduces package loading overhead.
 - SVG is the primary plotting approach in the README, quickstarts, API guide, and plotting showcases; Plots.jl remains an optional extension.
 - Both plotting backends select maximum-drawdown markers by the collector's mode and use non-negative default limits with a bounded number of integer ticks for open-order counts.

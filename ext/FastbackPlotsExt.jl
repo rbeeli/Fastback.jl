@@ -4,7 +4,6 @@ using Fastback
 using Dates
 using Printf
 using Plots
-using Query
 
 const _THEME_KW = (
     titlelocation=:left,
@@ -613,12 +612,7 @@ function Fastback.plot_realized_cum_returns_by_hour(
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
-    groups = trades |>
-             @groupby(Dates.hour(_.date)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
+    groups = _group_trades_by(trades, Dates.hour)
 
     max_n = 0
     min_date_str = ""
@@ -698,6 +692,19 @@ function Fastback.plot_realized_cum_returns_by_hour(
         end
         plt === nothing ? _empty_plot("No realizing trades"; kwargs...) : plt
     end
+end
+
+function _group_trades_by(trades::AbstractVector{T}, date_key::F) where {T<:Trade,F}
+    groups = Dict{Int,Vector{T}}()
+
+    for trade in trades
+        group = get!(groups, date_key(trade.date)) do
+            T[]
+        end
+        push!(group, trade)
+    end
+
+    [key => groups[key] for key in sort!(collect(keys(groups)))]
 end
 
 @inline function _resolve_return_basis(return_basis::Symbol)
@@ -792,12 +799,7 @@ function Fastback.plot_realized_cum_returns_by_weekday(
     trades = filter(is_realizing, trades)
     isempty(trades) && return _empty_plot("No realizing trades"; kwargs...)
 
-    groups = trades |>
-             @groupby(Dates.dayofweek(_.date)) |>
-             @orderby(key(_)) |>
-             @map(key(_) => collect(_)) |>
-             collect
-    isempty(groups) && return _empty_plot("No realizing trades"; kwargs...)
+    groups = _group_trades_by(trades, Dates.dayofweek)
 
     _with_theme() do
         plt = nothing
