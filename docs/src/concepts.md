@@ -79,16 +79,23 @@ allowed while the account is flat, because open positions require coordinated
 revaluation.
 
 For option-chain snapshots, pass all marks for a timestamp in one `process_step!`
-call. Margin is refreshed once per affected group after the marks are applied.
-Calling `update_marks!` separately refreshes the group after each call; use that
-form when intermediate account states need to be observed. Reuse the event vectors
+call. Mixed long/short groups recompute margin once after changed inputs are
+applied; groups containing only long options update each position's margin by
+delta. Unchanged margin inputs retain cached totals while quote timestamps still
+advance. Calling `update_marks!` separately preserves intermediate account states. Reuse the event vectors
 between steps with `empty!`/`push!` or overwrite existing entries as new data arrives.
 
 Default financing and expiry processing use indices of relevant positions. Cash
 interest reuses short-sale proceeds until exposure or entry bases change, and FX
-updates refresh the positions registered for those currency pairs. These indices
-are maintained by the trading and corporate-action APIs. Treat position quantities,
+updates refresh only open positions dependent on those currency pairs. An indexed
+expiry schedule avoids shifting the portfolio on each open/close, and bulk
+settlements compact their indices once. These indices are maintained by the
+trading and corporate-action APIs. Treat position quantities,
 entry bases, and registered instrument indices as engine-managed state.
+
+Target-weight rebalancing reuses account-owned planning buffers and considers the
+union of target and open positions. Returned trade and suppression vectors remain
+caller-owned and are unaffected by later rebalances.
 
 For runs that only need account state and aggregate trade counts, construct the
 account with `track_trades=false` and optionally `track_cashflows=false`. Ordinary

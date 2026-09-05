@@ -150,39 +150,49 @@ function _process_expiries_into!(
     recompute_options = false
     due = _collect_due_expiries!(acc, dt)
     isempty(due) && return trades
-    # Close option shorts first so a bounded option group is not
-    # transiently converted into a naked short during expiry processing.
-    @inbounds for pos_idx in due
-        pos = acc.positions[pos_idx]
-        pos.quantity < 0.0 || continue
-        inst = pos.inst
-        inst.spec.contract_kind == ContractKind.Option || continue
-        is_expired(inst, dt) || continue
-        recompute_options = true
-        trade = _settle_option_expiry!(acc, inst, dt, Price(NaN), false)
-        trade === nothing || push!(trades, trade)
-    end
+    state = acc._event_state
+    # Compact only when a substantial fraction expires; sparse settlements
+    # retain O(log n) removals instead of scanning the remaining schedule.
+    bulk = length(due) > 1 && 4 * length(due) >= length(state.expiry_positions)
+    state.bulk_expiry = bulk
+    try
+        # Close option shorts first so a bounded option group is not
+        # transiently converted into a naked short during expiry processing.
+        @inbounds for pos_idx in due
+            pos = acc.positions[pos_idx]
+            pos.quantity < 0.0 || continue
+            inst = pos.inst
+            inst.spec.contract_kind == ContractKind.Option || continue
+            is_expired(inst, dt) || continue
+            recompute_options = true
+            trade = _settle_option_expiry!(acc, inst, dt, Price(NaN), false)
+            trade === nothing || push!(trades, trade)
+        end
 
-    @inbounds for pos_idx in due
-        pos = acc.positions[pos_idx]
-        pos.quantity == 0.0 && continue
-        inst = pos.inst
-        inst.spec.contract_kind == ContractKind.Future || continue
-        is_expired(inst, dt) || continue
-        trade = _settle_future_expiry!(acc, inst, dt)
-        trade === nothing || push!(trades, trade)
-    end
+        @inbounds for pos_idx in due
+            pos = acc.positions[pos_idx]
+            pos.quantity == 0.0 && continue
+            inst = pos.inst
+            inst.spec.contract_kind == ContractKind.Future || continue
+            is_expired(inst, dt) || continue
+            trade = _settle_future_expiry!(acc, inst, dt)
+            trade === nothing || push!(trades, trade)
+        end
 
-    @inbounds for pos_idx in due
-        pos = acc.positions[pos_idx]
-        pos.quantity > 0.0 || continue
-        inst = pos.inst
-        inst.spec.contract_kind == ContractKind.Option || continue
-        is_expired(inst, dt) || continue
-        recompute_options = true
-        trade = _settle_option_expiry!(acc, inst, dt, Price(NaN), false)
-        trade === nothing && continue
-        push!(trades, trade)
+        @inbounds for pos_idx in due
+            pos = acc.positions[pos_idx]
+            pos.quantity > 0.0 || continue
+            inst = pos.inst
+            inst.spec.contract_kind == ContractKind.Option || continue
+            is_expired(inst, dt) || continue
+            recompute_options = true
+            trade = _settle_option_expiry!(acc, inst, dt, Price(NaN), false)
+            trade === nothing && continue
+            push!(trades, trade)
+        end
+    finally
+        bulk && _finish_bulk_expiry!(acc)
+        _finish_option_expiries!(acc)
     end
     recompute_options && recompute_dirty_option_groups!(acc)
     trades
@@ -289,6 +299,7 @@ function _revalue_fx_caches!(acc::Account, updates::Vector{FXUpdate})
                 dependents.common_effects == (_FX_SETTLEMENT | _FX_MARGIN)
                 return _revalue_fx_caches!(acc)
             end
+            _sort_fx_dependents!(state, dependents)
             @inbounds for dependent in dependents.positions
                 _revalue_fx_position!(acc, acc.positions[dependent.index], dependent.effects)
             end
@@ -306,6 +317,7 @@ function _revalue_fx_caches!(acc::Account, updates::Vector{FXUpdate})
         dependents = get(state.fx_dependents, route, nothing)
         dependents === nothing && continue
         routes += 1
+        _sort_fx_dependents!(state, dependents)
 
         for dependent in dependents.positions
             idx = dependent.index
@@ -412,7 +424,6 @@ function process_step!(
                     u.underlying_price,
                     false,
                 )
-                mark_option_underlying_dirty!(acc, u.underlying_symbol, u.quote_symbol)
             end
         end
 
@@ -433,7 +444,6 @@ function process_step!(
                     m.last,
                     false,
                 )
-                is_option_inst && pos.quantity != 0.0 && mark_option_position_dirty!(acc, pos.inst.index)
             end
         end
         if recompute_options || (option_underlyings !== nothing && !isempty(option_underlyings))

@@ -6,32 +6,46 @@ end
 mutable struct _FXRouteDependents
     const positions::Vector{_FXDependentPosition}
     common_effects::UInt8
+    registered_count::Int
+    sorted::Bool
 end
 
-_FXRouteDependents() = _FXRouteDependents(_FXDependentPosition[], UInt8(3))
+_FXRouteDependents() = _FXRouteDependents(_FXDependentPosition[], UInt8(3), 0, true)
 
 mutable struct _AccountEventState
+    const open_positions::Vector{Int}
+    const open_slots::Vector{Int}
     const short_positions::Vector{Int}
     const borrow_positions::Vector{Int}
     const borrow_amounts::Vector{Price}
     const expiry_positions::Vector{Int}
     const due_expiries::Vector{Int}
+    const expiry_slots::Vector{Int}
+    bulk_expiry::Bool
     const fx_dependents::Dict{Tuple{Int,Int},_FXRouteDependents}
     const fx_effects::Vector{UInt8}
     const fx_positions::Vector{Int}
+    const fx_settle_slots::Vector{Int}
+    const fx_margin_slots::Vector{Int}
     short_proceeds_dirty::Bool
 end
 
 _AccountEventState() = _AccountEventState(
-    Int[],
-    Int[],
-    Price[],
-    Int[],
-    Int[],
+    Int[], # open positions
+    Int[], # open slots
+    Int[], # shorts
+    Int[], # borrow-fee positions
+    Price[], # planned borrow fees
+    Int[], # expiry heap
+    Int[], # due expiries
+    Int[], # expiry slots
+    false, # bulk expiry
     Dict{Tuple{Int,Int},_FXRouteDependents}(),
-    UInt8[],
-    Int[],
-    false,
+    UInt8[], # pending FX effects
+    Int[], # pending FX positions
+    Int[], # settlement-route slots
+    Int[], # margin-route slots
+    false, # short proceeds dirty
 )
 
 mutable struct OptionMarginScratch{TTime<:Dates.AbstractTime}
@@ -79,6 +93,7 @@ mutable struct OptionMarginGroup{TTime<:Dates.AbstractTime}
     const active_positions::Vector{Int}
     const sorted_active_positions::Vector{Int}
     dirty::Bool
+    short_count::Int
     underlying_price::Price
     init_total::Price
     maint_total::Price
@@ -137,6 +152,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker,TrackTr
     const option_maint_by_cash::Vector{Price}
     const _option_margin_scratch::OptionMarginScratch{TTime}
     const _expiry_trades_buffer::Vector{Trade{TTime}}
+    _rebalance_scratch::Union{Nothing,_RebalanceScratch{TTime}}
     const _event_state::_AccountEventState
     const track_trades::Bool
     const track_cashflows::Bool
@@ -195,6 +211,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker,TrackTr
             fill(zero(Price), length(ledger.cash)), # cached option maintenance margin by cash
             OptionMarginScratch{TTime}(),
             Vector{Trade{TTime}}(), # reusable expiry buffer
+            nothing, # lazy rebalance workspace
             _AccountEventState(),
             track_trades,
             track_cashflows,

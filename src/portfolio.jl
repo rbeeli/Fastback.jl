@@ -104,22 +104,6 @@ struct RebalancePolicy
     end
 end
 
-"""Explicit transition from one concrete futures/perpetual contract to another."""
-struct RollTransition
-    from_index::Int
-    to_index::Int
-
-    function RollTransition(from_index::Integer, to_index::Integer)
-        from = Int(from_index)
-        to = Int(to_index)
-        from > 0 && to > 0 || throw(ArgumentError("Roll instrument indices must be positive."))
-        from != to || throw(ArgumentError("Roll source and destination must be distinct."))
-        new(from, to)
-    end
-end
-
-RollTransition(from::Instrument, to::Instrument) = RollTransition(from.index, to.index)
-
 """Immutable market and requested-quantity inputs supplied to a fill model."""
 struct FillContext{TTime<:Dates.AbstractTime}
     dt::TTime
@@ -129,32 +113,6 @@ struct FillContext{TTime<:Dates.AbstractTime}
     last::Price
     quantity::Quantity
     reason::TradeReason.T
-end
-
-"""Complete simulated execution observation returned by a portfolio fill model."""
-struct ModelFill
-    price::Price
-    bid::Price
-    ask::Price
-    last::Price
-    is_maker::Bool
-
-    function ModelFill(
-        price::Real,
-        bid::Real,
-        ask::Real,
-        last::Real;
-        is_maker::Bool=false,
-    )
-        price_value = Price(price)
-        bid_value = Price(bid)
-        ask_value = Price(ask)
-        last_value = Price(last)
-        all(isfinite, (price_value, bid_value, ask_value, last_value)) ||
-            throw(ArgumentError("Model fill prices must be finite."))
-        bid_value <= ask_value || throw(ArgumentError("Model fill bid cannot exceed ask."))
-        new(price_value, bid_value, ask_value, last_value, is_maker)
-    end
 end
 
 abstract type AbstractFillModel end
@@ -227,13 +185,6 @@ function portfolio_exposure(portfolio::Portfolio)::PortfolioExposure
     PortfolioExposure(snapshot, gross, net)
 end
 
-mutable struct _RebalanceLeg{TTime<:Dates.AbstractTime}
-    inst::Instrument{TTime}
-    quantity::Quantity
-    reduction::Bool
-    fill::Union{Nothing,ModelFill}
-end
-
 @inline function _portfolio_market(pos::Position)
     pos.mark_time != typeof(pos.mark_time)(0) ||
         throw(ArgumentError("Rebalancing requires a timestamped mark for $(pos.inst.spec.symbol)."))
@@ -254,13 +205,6 @@ end
     market = _portfolio_market(pos)
     context = FillContext(dt, pos.inst, market.bid, market.ask, market.last, qty, reason)
     model_fill(model, context)
-end
-
-struct _PlannedRoll{TTime<:Dates.AbstractTime}
-    from_inst::Instrument{TTime}
-    to_inst::Instrument{TTime}
-    close_fill::ModelFill
-    open_fill::ModelFill
 end
 
 @inline function _portfolio_registered_instrument(
@@ -312,13 +256,24 @@ function _validate_portfolio_roll_compatibility(from::Instrument, to::Instrument
     nothing
 end
 
+function _rebalance_scratch!(acc::Account{TTime}) where {TTime<:Dates.AbstractTime}
+    scratch = acc._rebalance_scratch
+    if scratch === nothing
+        scratch = _RebalanceScratch{TTime}()
+        acc._rebalance_scratch = scratch
+    end
+    scratch
+end
+
 function _ordered_rolls(
     acc::Account,
     target::TargetWeights,
     rolls::AbstractVector{RollTransition},
 )
-    sources = Set{Int}()
-    pending = collect(rolls)
+    scratch = _rebalance_scratch!(acc)
+    sources = empty!(scratch.roll_sources)
+    pending = empty!(scratch.pending_rolls)
+    append!(pending, rolls)
     @inbounds for transition in pending
         transition.from_index in sources &&
             throw(ArgumentError("Roll source index $(transition.from_index) appears more than once."))
@@ -330,7 +285,7 @@ function _ordered_rolls(
         _validate_portfolio_roll_compatibility(from, to)
     end
 
-    ordered = RollTransition[]
+    ordered = empty!(scratch.ordered_rolls)
     while !isempty(pending)
         selected = 0
         @inbounds for i in eachindex(pending)
@@ -342,7 +297,11 @@ function _ordered_rolls(
             end
         end
         selected != 0 || throw(ArgumentError("Roll transitions contain a cycle."))
-        push!(ordered, splice!(pending, selected))
+        push!(ordered, pending[selected])
+        for i in selected:(length(pending) - 1)
+            pending[i] = pending[i + 1]
+        end
+        pop!(pending)
     end
     ordered, sources
 end
@@ -385,7 +344,12 @@ function _scale_fully_funded_increases!(
     legs::Vector{_RebalanceLeg{TTime}},
     model::AbstractFillModel,
 ) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
-    available = copy(acc.ledger.balances)
+    scratch = _rebalance_scratch!(acc)
+    available = scratch.available
+    remaining = scratch.remaining
+    resize!(available, length(acc.ledger.balances))
+    resize!(remaining, length(available))
+    copyto!(available, acc.ledger.balances)
     @inbounds for leg in legs
         leg.reduction || continue
         fill = _build_model_fill(model, dt, get_position(acc, leg.inst), leg.quantity, TradeReason.Normal)
@@ -397,7 +361,7 @@ function _scale_fully_funded_increases!(
         throw(ArgumentError("Fully funded reductions leave a negative cash balance."))
 
     function satisfies(scale::Price)
-        remaining = copy(available)
+        copyto!(remaining, available)
         @inbounds for leg in legs
             leg.reduction && continue
             inst = leg.inst
@@ -425,11 +389,13 @@ function _scale_fully_funded_increases!(
             upper = middle
         end
     end
-    @inbounds for leg in legs
+    @inbounds for i in eachindex(legs)
+        leg = legs[i]
         if !leg.reduction &&
            leg.inst.spec.settlement == SettlementStyle.PrincipalExchange &&
            leg.quantity > 0.0
-            leg.quantity = _scaled_increase_quantity(leg.inst, leg.quantity, lower)
+            qty = _scaled_increase_quantity(leg.inst, leg.quantity, lower)
+            legs[i] = _RebalanceLeg(leg.inst, qty, leg.reduction, leg.fill)
         end
     end
     legs
@@ -449,12 +415,25 @@ function _plan_rebalance(
     pretrade.equity > 0.0 || throw(ArgumentError("Pretrade account equity must be positive."))
 
     ordered_rolls, roll_sources = _ordered_rolls(acc, target, rolls)
+    scratch = _rebalance_scratch!(acc)
+    current, desired = scratch.current, scratch.desired
+    target_member, indices = scratch.target_member, scratch.indices
     n = length(acc.positions)
-    current = Vector{Quantity}(undef, n)
-    desired = zeros(Quantity, n)
-    target_member = falses(n)
-    @inbounds for i in 1:n
+    old_n = length(target_member)
+    resize!(current, n)
+    resize!(desired, n)
+    resize!(target_member, n)
+    @inbounds for i in (old_n + 1):n
+        target_member[i] = false
+    end
+    @inbounds for i in indices
+        target_member[i] = false
+    end
+    empty!(indices)
+    @inbounds for i in acc._event_state.open_positions
+        push!(indices, i)
         current[i] = acc.positions[i].quantity
+        desired[i] = 0.0
     end
 
     @inbounds for pair in target.weights
@@ -464,6 +443,11 @@ function _plan_rebalance(
         candidate.spec.contract_kind != ContractKind.Option || throw(ArgumentError(
             "Target-weight rebalancing does not support option $(candidate.spec.symbol); use fill_option_strategy!."
         ))
+        if acc._event_state.open_slots[index] == 0
+            push!(indices, index)
+            current[index] = 0.0
+            desired[index] = 0.0
+        end
         target_member[index] = true
         if weight == 0.0 && current[index] == 0.0
             continue
@@ -479,7 +463,8 @@ function _plan_rebalance(
         end
     end
 
-    @inbounds for i in 1:n
+    sort!(indices; alg=QuickSort)
+    @inbounds for i in indices
         current[i] == 0.0 && continue
         target_member[i] && continue
         _validate_portfolio_instrument(acc, i, dt)
@@ -488,7 +473,11 @@ function _plan_rebalance(
         end
     end
 
-    planned_rolls = _PlannedRoll{TTime}[]
+    planned_rolls = empty!(scratch.planned_rolls)
+    # A flat roll source need not be in the target/open-position union.
+    @inbounds for transition in ordered_rolls
+        current[transition.from_index] = acc.positions[transition.from_index].quantity
+    end
     @inbounds for transition in ordered_rolls
         source_qty = current[transition.from_index]
         (source_qty == 0.0 || desired[transition.to_index] == 0.0) && continue
@@ -502,9 +491,9 @@ function _plan_rebalance(
         isfinite(current[transition.to_index]) || throw(ArgumentError("Post-roll quantity overflowed."))
     end
 
-    legs = _RebalanceLeg{TTime}[]
+    legs = empty!(scratch.legs)
     suppressed = Int[]
-    @inbounds for i in 1:n
+    @inbounds for i in indices
         delta = desired[i] - current[i]
         delta == 0.0 && continue
         pos = acc.positions[i]
@@ -526,12 +515,14 @@ function _plan_rebalance(
             push!(legs, _RebalanceLeg(inst, delta, reduction, nothing))
         end
     end
-    sort!(legs; by=leg -> (!leg.reduction, leg.inst.index))
+    sort!(legs; by=leg -> (!leg.reduction, leg.inst.index), alg=QuickSort)
     acc.funding == AccountFunding.FullyFunded &&
         _scale_fully_funded_increases!(acc, dt, legs, model)
-    @inbounds for leg in legs
+    @inbounds for i in eachindex(legs)
+        leg = legs[i]
         leg.quantity == 0.0 && continue
-        leg.fill = _build_model_fill(model, dt, get_position(acc, leg.inst), leg.quantity, TradeReason.Normal)
+        fill = _build_model_fill(model, dt, get_position(acc, leg.inst), leg.quantity, TradeReason.Normal)
+        legs[i] = _RebalanceLeg(leg.inst, leg.quantity, leg.reduction, fill)
     end
     pretrade, planned_rolls, legs, suppressed
 end

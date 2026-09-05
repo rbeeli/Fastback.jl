@@ -83,6 +83,10 @@ end
 
 function option_marks!(acc, marks, ::Val{BATCH}) where {BATCH}
     dt = acc.last_event_dt + Millisecond(1)
+    price = 100.0 + mod(Dates.value(dt), 2)
+    @inbounds for i in eachindex(marks)
+        marks[i] = MarkUpdate(marks[i].inst_index, price, price, price)
+    end
     if BATCH
         process_step!(acc, dt; marks=marks,
             accrue_interest=false, accrue_borrow_fees=false, expiries=false)
@@ -164,4 +168,4 @@ function main()
     end
 end
 
-main()
+abspath(PROGRAM_FILE) == (@__FILE__) && main()

@@ -3,6 +3,7 @@ Run the runtime benchmarks from the repository root:
 ```sh
 julia --project=benchmark -e 'using Pkg; Pkg.instantiate()'
 JULIA_NUM_THREADS=1 julia --project=benchmark benchmark/benchmarks.jl
+JULIA_NUM_THREADS=1 julia --project=benchmark benchmark/scaling.jl
 ```
 
 The separate environment uses the local Fastback checkout. BenchmarkTools stays
@@ -19,8 +20,13 @@ Cases cover sparse updates as the instrument registry grows, financing with one
 eligible short, spot and variation-margin fills with both recording policies,
 related/unrelated FX routes, option mark batches, and option fills in large groups.
 An option-mark operation means the entire chain update, so individual and batched
-methods perform the same amount of market-data work. Repeated FX and option quotes
-isolate routing and margin work without introducing a data-feed benchmark.
+methods perform the same amount of market-data work and alternate quote prices.
+The original FX cases repeat quotes to isolate routing and revaluation.
+
+`scaling.jl` adds changing FX with mostly flat registered positions, no-op
+rebalances, actual open/close transitions, simultaneous expiries, and sparse
+option marks in both long-only and mixed groups. Expiry setup copies an account
+outside the timed region; expiry processing and index cleanup are timed.
 
 Use the allocation tests for deterministic regression checks:
 
@@ -32,7 +38,7 @@ Timing thresholds are intentionally kept out of unit tests. Inspect scaling as
 well as absolute times: unchanged positions should not increase sparse event cost,
 and a mark batch should recompute each affected option group once.
 
-Measured during this change on Julia 1.12.7, one thread, Intel Alder Lake
+Measured for 0.12.0 on Julia 1.12.7, one thread, Intel Alder Lake
 (baseline commit `4af3840`; warmed synthetic fixtures):
 
 | Operation | Before | After |
@@ -51,3 +57,23 @@ preferred existing API for chain snapshots. Retained history still allocates the
 required Order/Trade objects (208 B per fill in the fixture).
 
 These figures isolate engine work; they are not whole-strategy speedup guarantees.
+
+Further scaling improvements, relative to 0.12.0 (`9802fda`), on the same
+Julia/CPU/thread configuration (rounded warmed medians):
+
+| Operation | Before | After |
+| --- | ---: | ---: |
+| Changing FX, 10,000 registered instruments, one open | 62.4 µs | 44 ns |
+| Single changed option quote, 512 long positions | 4.44 µs | 21 ns |
+| Single unchanged option quote, 512 long positions | 4.45 µs | 18 ns |
+| Single option fill, 512-position group, no history | 9.31 µs | 5.21 µs |
+| Open/close first future among 10,000 open positions | 701 ns | 58 ns |
+| Expire 10,000 futures together, no history | 4.78 ms | 0.79 ms |
+| No-op rebalance, 10,000 registered instruments | 27.7 µs, 161,808 B | 81 ns, 96 B |
+
+All rows except rebalancing allocate zero after warmup. Rebalancing retains
+caller-owned result vectors and its empty default roll argument; its allocation
+no longer grows with the inactive registry. Changed marks in mixed option groups
+still require a group calculation. Ordinary spot/futures fills remain about
+22–23 ns without history, and default sparse mark steps about 30 ns. Active-index
+storage is reserved at registration; rebalance scratch storage is created lazily.

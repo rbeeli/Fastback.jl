@@ -1262,3 +1262,78 @@ end
     @test isempty(acc.dirty_option_groups)
     @test Fastback.check_invariants(acc)
 end
+
+@testitem "option quote fast paths reconcile through long, mixed and reversed groups" begin
+    using Test, Fastback, Dates
+
+    dt = DateTime(2026, 1, 1)
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD), track_trades=false, track_cashflows=false)
+    deposit!(acc, :USD, 1e6)
+    register_cash_asset!(acc, CashSpec(:EUR))
+    update_rate!(acc, :EUR, :USD, 1.2)
+    options = [register_instrument!(acc, option_instrument(Symbol("QUOTE", i), :U, :EUR;
+        settle_symbol=:USD, margin_symbol=:USD, strike=95.0 + i,
+        expiry=dt + Day(30), right=isodd(i) ? OptionRight.Call : OptionRight.Put)) for i in 1:16]
+    update_option_underlying_price!(acc, first(options), 100.0)
+    for inst in options
+        fill_order!(acc, Order(oid!(acc), inst, dt, 5.0, 1.0);
+            dt=dt, fill_price=5.0, bid=5.0, ask=5.0, last=5.0)
+    end
+    let dt = dt
+        for qty in (0.0, -2.0, 3.0, -2.0, 1.0)
+            dt += Minute(1)
+            if qty != 0.0
+                inst = first(options)
+                # Changed quotes and an explicit underlying require the complete
+                # risk-reducing comparison when reducing an existing position.
+                fill_order!(acc, Order(oid!(acc), inst, dt, 6.0, qty);
+                    dt=dt, fill_price=6.0, bid=5.5, ask=6.5, last=6.0, underlying_price=101.0)
+            end
+            for i in 1:16
+                dt += Minute(1)
+                marks = [MarkUpdate(i, 4.0 + i / 10, 5.0 + i / 10, 5.0)]
+                process_step!(acc, dt; marks=marks,
+                    option_underlyings=[OptionUnderlyingUpdate(:U, :EUR, 101.0)])
+                reference = deepcopy(acc)
+                Fastback.recompute_option_margins_slow!(reference)
+                @test acc.ledger.init_margin_used ≈ reference.ledger.init_margin_used
+                @test getfield.(acc.positions, :init_margin_settle) ≈ getfield.(reference.positions, :init_margin_settle)
+                @test Fastback.check_invariants(acc)
+                # Identical quotes must still advance the mark and account clocks.
+                process_step!(acc, dt + Second(1); marks=marks)
+                @test acc.positions[i].mark_time == acc.last_event_dt == dt + Second(1)
+            end
+        end
+    end
+    process_step!(acc, DateTime(2026, 1, 31))
+    @test isempty(acc._event_state.open_positions)
+    @test all(isempty(g.active_positions) && isempty(g.sorted_active_positions) for g in acc.option_groups)
+    @test Fastback.check_invariants(acc)
+
+end
+
+@testitem "underlying updates compare each group's cached input" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
+    deposit!(acc, :USD, 1e6)
+    dt = DateTime(2026, 1, 1)
+    a = register_instrument!(acc, option_instrument(:NEAR, :U, :USD;
+        strike=100.0, expiry=dt + Day(30), right=OptionRight.Call))
+    b = register_instrument!(acc, option_instrument(:FAR, :U, :USD;
+        strike=100.0, expiry=dt + Day(60), right=OptionRight.Call))
+    for (inst, underlying) in ((a, 100.0), (b, 100.0), (a, 120.0))
+        fill_order!(acc, Order(oid!(acc), inst, dt, 5.0, -1.0);
+            dt=dt, fill_price=5.0, bid=5.0, ask=5.0, last=5.0, underlying_price=underlying)
+    end
+    # The latest shared quote can already be 120 while another expiry group's
+    # margin was last computed at 100. Repeating 120 must refresh that group.
+    update_option_underlying_price!(acc, b, 120.0)
+    @test all(g.underlying_price == 120.0 for g in acc.option_groups)
+    @test Fastback.check_invariants(acc)
+    before = copy(acc.ledger.init_margin_used)
+    update_option_underlying_price!(acc, b, 120.0)
+    @test acc.ledger.init_margin_used == before
+    @test isempty(acc.dirty_option_groups)
+end

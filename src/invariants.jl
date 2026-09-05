@@ -186,10 +186,49 @@ function _check_event_state_invariants(acc::Account, atol::Real, rtol::Real)
         end
     end
 
-    sort!(expected_expiries; by=idx -> (acc.positions[idx].inst.spec.expiry, idx))
+    expected_open = [pos.index for pos in acc.positions if pos.quantity != 0.0]
+    sort(state.open_positions) == expected_open || throw(AssertionError("Open-position index is stale."))
+    for (slot, idx) in pairs(state.open_positions)
+        state.open_slots[idx] == slot || throw(AssertionError("Open-position slot is stale."))
+    end
+    for pos in acc.positions
+        (state.open_slots[pos.index] != 0) == (pos.quantity != 0.0) ||
+            throw(AssertionError("Open-position membership is stale."))
+    end
+    for (slot, idx) in pairs(state.expiry_positions)
+        state.expiry_slots[idx] == slot || throw(AssertionError("Expiry-position slot is stale."))
+        slot == 1 || _expiry_key(acc, state.expiry_positions[slot >> 1]) <= _expiry_key(acc, idx) ||
+            throw(AssertionError("Expiry heap is out of order."))
+    end
+    for pos in acc.positions
+        (state.expiry_slots[pos.index] != 0) == (pos.quantity != 0.0 && pos.inst.spec.contract_kind in (ContractKind.Future, ContractKind.Option)) ||
+            throw(AssertionError("Expiry-position membership is stale."))
+    end
+    for deps in values(state.fx_dependents)
+        for (slot, d) in pairs(deps.positions)
+            acc.positions[d.index].quantity != 0.0 || throw(AssertionError("Flat FX dependent."))
+            _fx_slots(state, d.effects)[d.index] == slot || throw(AssertionError("FX dependent slot is stale."))
+        end
+    end
     state.short_positions == expected_shorts || throw(AssertionError("Short-position index is stale."))
     state.borrow_positions == expected_borrow || throw(AssertionError("Borrow-position index is stale."))
-    state.expiry_positions == expected_expiries || throw(AssertionError("Expiry-position index is stale."))
+    sort(state.expiry_positions) == expected_expiries || throw(AssertionError("Expiry-position index is stale."))
+    for pos in acc.positions
+        settle_route, margin_route, settle_effects, margin_effects = _position_fx_dependencies(acc, pos.inst)
+        for (route, effects, slots) in ((settle_route, settle_effects, state.fx_settle_slots),
+                                        (margin_route, margin_effects, state.fx_margin_slots))
+            active = effects != 0 && pos.quantity != 0.0
+            (slots[pos.index] != 0) == active || throw(AssertionError("FX membership is stale."))
+            if active
+                d = state.fx_dependents[route].positions[slots[pos.index]]
+                d.index == pos.index && d.effects == effects || throw(AssertionError("FX dependency is stale."))
+            end
+        end
+    end
+    for group in acc.option_groups
+        group.short_count == count(idx -> acc.positions[idx].quantity < 0.0, group.positions) ||
+            throw(AssertionError("Option short count is stale."))
+    end
     if !state.short_proceeds_dirty
         isapprox(acc.ledger.short_proceeds_by_cash_buffer, proceeds; atol=atol, rtol=rtol) ||
             throw(AssertionError("Short-proceeds cache is stale."))

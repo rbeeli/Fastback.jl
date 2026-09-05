@@ -231,6 +231,7 @@ end
     inst = pos.inst
     valuation_plan = _plan_valuation_update(acc, pos, close_price)
     if inst.spec.contract_kind == ContractKind.Option
+        margin_changed = close_price != pos.mark_price
         _apply_valuation_update!(acc, pos, dt, valuation_plan)
         pos.avg_settle_price = pos.avg_entry_price
         pos.mark_price = close_price
@@ -238,9 +239,9 @@ end
         pos.last_ask = ask
         pos.last_price = last_price
         pos.mark_time = dt
-        if recompute_options && pos.quantity != 0.0
-            mark_option_position_dirty!(acc, inst.index)
-            recompute_dirty_option_groups!(acc)
+        if pos.quantity != 0.0
+            margin_changed && _update_option_mark_margin!(acc, pos)
+            recompute_options && recompute_dirty_option_groups!(acc)
         end
         return
     end
@@ -531,24 +532,35 @@ end
     empty!(group_ids)
     _push_unique_group!(group_ids, _option_group_id(acc, inst.index))
 
-    current_generation = _begin_option_projection!(acc)
-    _set_option_projection_override!(acc, current_generation, inst.index, pos.quantity, mark_for_position)
-    current_marked_option_init, _ = _project_option_totals_for_groups!(
-        acc,
-        acc._option_margin_scratch.current_init,
-        acc._option_margin_scratch.current_maint,
-        group_ids,
-        current_generation,
-        inst.spec.underlying_symbol,
-        inst.quote_cash_index,
-        underlying_price,
-    )
     current_option_init, _ = _stored_option_margin_totals(acc)
-    current_init_base = _account_init_with_option_totals_base(
-        acc,
-        current_option_init,
-        current_marked_option_init,
+    inc_qty = calc_exposure_increase_quantity(pos.quantity, plan.fill_qty)
+    group = @inbounds acc.option_groups[_option_group_id(acc, inst.index)]
+    # The current margin is used only to recognize risk-reducing closes.
+    # A clean group at the same mark can reuse its already validated totals.
+    if inc_qty != 0.0 || (
+        !group.dirty && mark_for_position == pos.mark_price && !isfinite(underlying_price) &&
+        (group.short_count == 0 || group.underlying_price == option_underlying_price(acc, inst))
     )
+        current_init_base = init_margin_used_base_ccy(acc)
+    else
+        current_generation = _begin_option_projection!(acc)
+        _set_option_projection_override!(acc, current_generation, inst.index, pos.quantity, mark_for_position)
+        current_marked_option_init, _ = _project_option_totals_for_groups!(
+            acc,
+            acc._option_margin_scratch.current_init,
+            acc._option_margin_scratch.current_maint,
+            group_ids,
+            current_generation,
+            inst.spec.underlying_symbol,
+            inst.quote_cash_index,
+            underlying_price,
+        )
+        current_init_base = _account_init_with_option_totals_base(
+            acc,
+            current_option_init,
+            current_marked_option_init,
+        )
+    end
 
     projected_generation = _begin_option_projection!(acc)
     projected_mark = plan.new_qty == 0.0 ? Price(NaN) : mark_for_valuation
@@ -563,7 +575,6 @@ end
         inst.quote_cash_index,
         underlying_price,
     )
-    inc_qty = calc_exposure_increase_quantity(pos.quantity, plan.fill_qty)
     rejection = _check_option_fill_constraints(
         acc,
         pos,

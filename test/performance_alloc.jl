@@ -469,3 +469,67 @@ end
     @test isempty(trades)
     @test eltype(trades) === Trade{DateTime}
 end
+
+@testitem "FX exposure churn reuses active dependency storage" begin
+    using Test, Fastback, Dates
+
+    function drive!(acc, updates)
+        inst = acc.positions[1].inst
+        for i in 1:64
+            dt = acc.last_event_dt + Millisecond(1)
+            qty = isodd(i) ? 1.0 : -1.0
+            fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, qty);
+                dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+            process_step!(acc, dt; fx_updates=updates)
+        end
+        nothing
+    end
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD), track_trades=false, track_cashflows=false)
+    deposit!(acc, :USD, 1e6)
+    register_cash_asset!(acc, CashSpec(:EUR))
+    update_rate!(acc, :EUR, :USD, 1.2)
+    for i in 1:1024
+        register_instrument!(acc, spot_instrument(Symbol("CHURN", i), :C, :EUR;
+            settle_symbol=:USD, margin_symbol=:USD))
+    end
+    process_step!(acc, DateTime(2026, 1, 1))
+    updates = [FXUpdate(cash_asset(acc, :EUR), acc.base_currency, 1.25)]
+    drive!(acc, updates)
+    drive!(acc, updates)
+    @test @allocated(drive!(acc, updates)) == 0
+    @test Fastback.check_invariants(acc)
+end
+
+@testitem "rebalance allocation stays bounded as the inactive registry grows" begin
+    using Test, Fastback, Dates
+
+    function drive!(portfolio, a, b)
+        for i in 1:64
+            target = isodd(i) ? a : b
+            rebalance!(portfolio, DateTime(2026, 1, 1), target)
+        end
+        nothing
+    end
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD), track_trades=false, track_cashflows=false)
+    deposit!(acc, :USD, 1e6)
+    inst = register_instrument!(acc, spot_instrument(:TRADED, :T, :USD))
+    update_marks!(acc, inst, DateTime(2026, 1, 1), 100.0, 100.0, 100.0)
+    portfolio = Portfolio(acc)
+    a, b = TargetWeights(inst => 0.001), TargetWeights(inst => 0.002)
+    @inferred rebalance!(portfolio, DateTime(2026, 1, 1), a)
+    drive!(portfolio, a, b)
+    drive!(portfolio, a, b)
+    small = @allocated drive!(portfolio, a, b)
+    for i in 1:4096
+        register_instrument!(acc, spot_instrument(Symbol("UNTRADED", i), :U, :USD))
+    end
+    drive!(portfolio, a, b)
+    large = @allocated drive!(portfolio, a, b)
+    @test small == large
+    # Results own their vectors; scratch storage and non-recorded fills do not
+    # add allocations proportional to the registry or retained history.
+    @test large <= 64 * 256
+    @test Fastback.check_invariants(acc)
+end

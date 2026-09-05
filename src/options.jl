@@ -112,6 +112,7 @@ function _register_option_position!(acc::Account{TTime}, inst::Instrument{TTime}
             Int[],
             Int[],
             false,
+            0, # open short positions
             Price(NaN),
             zero(Price),
             zero(Price),
@@ -199,17 +200,54 @@ end
     acc
 end
 
+# With no short legs, each option's margin is simply its premium. A quote
+# changes only that position; mixed or already dirty groups use the full path.
+@inline function _update_option_mark_margin!(acc::Account, pos::Position)
+    group_id = _option_group_id(acc, pos.index)
+    group = @inbounds acc.option_groups[group_id]
+    if group.short_count != 0 || group.dirty
+        mark_option_group_dirty!(acc, group_id)
+        return nothing
+    end
+    inst = pos.inst
+    margin = pos.quantity * pos.mark_price * inst.spec.multiplier *
+             _get_rate_idx(acc, inst.quote_cash_index, inst.margin_cash_index)
+    init_delta = margin - pos.init_margin_settle
+    maint_delta = margin - pos.maint_margin_settle
+    idx = inst.margin_cash_index
+    @inbounds begin
+        acc.ledger.init_margin_used[idx] += init_delta
+        acc.ledger.maint_margin_used[idx] += maint_delta
+        acc.option_init_by_cash[idx] += init_delta
+        acc.option_maint_by_cash[idx] += maint_delta
+    end
+    group.init_total += init_delta
+    group.maint_total += maint_delta
+    pos.init_margin_settle = margin
+    pos.maint_margin_settle = margin
+    nothing
+end
+
 @inline function mark_option_position_dirty!(acc::Account, pos_idx::Int)
     mark_option_group_dirty!(acc, _option_group_id(acc, pos_idx))
 end
 
-function mark_option_underlying_dirty!(acc::Account, underlying_symbol::Symbol, quote_symbol::Symbol)
+function mark_option_underlying_dirty!(
+    acc::Account,
+    underlying_symbol::Symbol,
+    quote_symbol::Symbol,
+    price::Price=Price(NaN),
+)
     cash_index(acc.ledger, quote_symbol)
     group_ids = get(acc.option_group_ids_by_underlying, (underlying_symbol, quote_symbol), nothing)
     group_ids === nothing && return acc
     @inbounds for group_id in group_ids
         group = acc.option_groups[group_id]
         isempty(group.active_positions) && continue
+        if isfinite(price)
+            group.short_count == 0 && continue
+            group.underlying_price == price && continue
+        end
         mark_option_group_dirty!(acc, group_id)
     end
     acc
@@ -268,11 +306,10 @@ function _update_option_underlying_price!(
     underlying_price::Real,
     recompute_option_margins::Bool,
 )
-    _set_option_underlying_price!(acc, underlying_symbol, quote_symbol, Price(underlying_price))
-    if recompute_option_margins
-        mark_option_underlying_dirty!(acc, underlying_symbol, quote_symbol)
-        recompute_dirty_option_groups!(acc)
-    end
+    price = Price(underlying_price)
+    _set_option_underlying_price!(acc, underlying_symbol, quote_symbol, price)
+    mark_option_underlying_dirty!(acc, underlying_symbol, quote_symbol, price)
+    recompute_option_margins && recompute_dirty_option_groups!(acc)
     acc
 end
 
@@ -302,12 +339,14 @@ function _update_option_underlying_price!(
     underlying_price::Real,
     recompute_option_margins::Bool,
 )
-    _set_option_underlying_price!(acc, inst, Price(underlying_price))
-    if recompute_option_margins
-        mark_option_underlying_dirty!(acc, inst.spec.underlying_symbol, inst.spec.quote_symbol)
-        recompute_dirty_option_groups!(acc)
-    end
-    acc
+    is_option(inst) || throw(ArgumentError("Instrument $(inst.spec.symbol) is not an option."))
+    _update_option_underlying_price!(
+        acc,
+        inst.spec.underlying_symbol,
+        inst.spec.quote_symbol,
+        underlying_price,
+        recompute_option_margins,
+    )
 end
 
 function update_option_underlying_price!(
@@ -1051,7 +1090,12 @@ function _settle_option_expiry!(
     pos.borrow_fee_dt = TTime(0)
 
     _update_position_events!(acc, pos, qty_before)
-    _set_option_position_active!(acc, inst.index, false)
+    if recompute_option_margins
+        _set_option_position_active!(acc, inst.index, false)
+    else
+        # The event driver compacts each affected group once after settlement.
+        @inbounds acc.option_position_active[inst.index] = false
+    end
     mark_option_position_dirty!(acc, inst.index)
     recompute_option_margins && recompute_dirty_option_groups!(acc)
 

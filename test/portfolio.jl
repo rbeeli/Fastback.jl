@@ -263,3 +263,36 @@ end
     @test isempty(acc.trades)
     @test acc.last_event_dt == DateTime(0)
 end
+
+@testitem "rebalance workspace survives failures and retains caller-owned results" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.Margined, base_currency=CashSpec(:USD))
+    deposit!(acc, :USD, 1_000.0)
+    dt = DateTime(2026, 1, 1)
+    a = register_instrument!(acc, spot_instrument(:A, :A, :USD))
+    b = register_instrument!(acc, spot_instrument(:B, :B, :USD))
+    for inst in (a, b)
+        update_marks!(acc, inst, dt, 100.0, 100.0, 100.0)
+    end
+    p = Portfolio(acc)
+    first_result = rebalance!(p, dt, TargetWeights(a => 0.5))
+    saved = copy(first_result.trades)
+    suppressed = rebalance!(p, dt, TargetWeights(a => 0.5, b => 0.01);
+        policy=RebalancePolicy(minimum_notional_base=20.0))
+    @test suppressed.suppressed == [b.index]
+    @test_throws ArgumentError rebalance!(p, dt, TargetWeights(a => 0.1, 1000 => 0.5))
+    for i in 1:128
+        register_instrument!(acc, spot_instrument(Symbol("LATE", i), :L, :USD))
+    end
+    rotated = rebalance!(Portfolio(acc), dt, TargetWeights(b => 0.5))
+    @test getfield.(rotated.trades, :fill_qty) == [-5.0, 5.0]
+    @test first_result.trades == saved
+    @test suppressed.suppressed == [b.index]
+    @test first_result.trades !== rotated.trades
+    @test Fastback.check_invariants(acc)
+    exited = rebalance!(p, dt, TargetWeights())
+    @test only(exited.trades).fill_qty == -5.0
+    @test isempty(acc._event_state.open_positions)
+    @test Fastback.check_invariants(acc)
+end
