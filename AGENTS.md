@@ -79,3 +79,11 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
 - If touching accounting internals, sanity-check with `check_invariants(acc)` in tests.
 - For releases: bump `Project.toml` version, update `CHANGELOG.md` (YYYY-MM-DD), and note breaking changes explicitly.
 - Hot-path code of the backtesting loop must be type stable, and is ideally allocation free. Avoid costly loops if possible.
+
+## Other instructions
+
+Git commits:
+- Never add Co-Authored-By trailers.
+- Never mention Codex, Claude, Claude Code, Anthropic, AI, or AI assistance in commit messages.
+- Never add Claude-Session URLs or generated-by attribution.
+- Commit messages must look exactly like normal human-authored Git commits.
