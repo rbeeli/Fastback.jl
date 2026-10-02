@@ -32,7 +32,7 @@ data_path = "data/stocks_1d.csv";
 isfile(data_path) || cd("src/examples")
 
 ## load CSV daily stock data for symbols AAPL, NVDA, TSLA, GE
-df_csv = DataFrame(CSV.File(data_path; dateformat="yyyy-mm-dd HH:MM:SS"));
+df_csv = DataFrame(CSV.File(data_path; types=Dict(:dt_close => DateTime), dateformat="yyyy-mm-dd HH:MM:SS"));
 df_csv.symbol = Symbol.(df_csv.symbol); # convert string to symbol type
 df = unstack(df_csv, :dt_close, :symbol, :close) # pivot long to wide format
 symbols = Symbol.(names(df)[2:end]);

@@ -51,7 +51,7 @@ data_path = "data/usdm_perp_1h.csv";
 isfile(data_path) || cd("src/plotting")
 
 ## parse CSV (hourly rows)
-df = DataFrame(CSV.File(data_path; dateformat="yyyy-mm-dd HH:MM:SS"));
+df = DataFrame(CSV.File(data_path; types=Dict(:dt => DateTime), dateformat="yyyy-mm-dd HH:MM:SS"));
 sort!(df, :dt);
 n_steps = nrow(df);
 
