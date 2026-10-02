@@ -460,9 +460,11 @@ instrument symbol. Returns one `RealizedHoldingPeriod` per consumed lot fragment
 
 Ordinary open/close and partial exits are exact under the FIFO convention.
 Scale-in, reduce, and flip sequences are FIFO approximations because Fastback
-stores one netted position per instrument, not full lot identity. If the trade
-vector starts after a position is already open, unmatched realized quantity is
-skipped because no entry timestamp is available.
+stores one netted position per instrument, not full lot identity. When the
+reconstructed lots disagree with a trade's pre-fill position, for example because
+the trade vector starts after the position opened, that exposure has an unknown
+entry and its realization records no period. A lot that matches the remaining
+realized quantity within rounding noise closes completely.
 """
 @inline realized_holding_periods(acc::Account) = realized_holding_periods(acc.trades)
 
@@ -480,38 +482,49 @@ function _realized_holding_periods(
     trades::AbstractVector{Trade{TTime}},
 ) where {TTime<:Dates.AbstractTime,TPeriod<:Dates.Period}
     records = RealizedHoldingPeriod{TTime,TPeriod}[]
-    lots_by_symbol = Dict{Symbol,Vector{Tuple{TTime,Quantity}}}()
+    # A lot without an entry timestamp holds exposure whose opening fill is not in `trades`.
+    lots_by_symbol = Dict{Symbol,Vector{Tuple{Union{Nothing,TTime},Quantity}}}()
 
     @inbounds for t in trades
         symbol = t.order.inst.spec.symbol
         lots = get!(lots_by_symbol, symbol) do
-            Tuple{TTime,Quantity}[]
+            Tuple{Union{Nothing,TTime},Quantity}[]
         end
 
         split_factor = t.preceding_split_factor
         isfinite(split_factor) && split_factor > 0.0 ||
             throw(ArgumentError("Trade $(t.tid) has invalid preceding_split_factor $(split_factor)."))
-        if split_factor != 1.0
-            for i in eachindex(lots)
-                entry_date, lot_qty = lots[i]
-                adjusted_qty = lot_qty * split_factor
-                isfinite(adjusted_qty) || throw(ArgumentError(
+        reconstructed_qty = 0.0
+        for i in eachindex(lots)
+            entry_date, lot_qty = lots[i]
+            if split_factor != 1.0
+                lot_qty *= split_factor
+                isfinite(lot_qty) || throw(ArgumentError(
                     "Split-adjusted holding quantity is non-finite for $(symbol)."
                 ))
-                lots[i] = (entry_date, adjusted_qty)
+                lots[i] = (entry_date, lot_qty)
             end
+            reconstructed_qty += lot_qty
+        end
+        isfinite(reconstructed_qty) ||
+            throw(ArgumentError("Reconstructed holding quantity is non-finite for $(symbol)."))
+        # Lots that disagree with the recorded pre-fill exposure cannot be attributed; the whole
+        # exposure then has an unknown entry.
+        if !_quantities_match(reconstructed_qty, t.pos_qty)
+            empty!(lots)
+            t.pos_qty != 0.0 && push!(lots, (nothing, t.pos_qty))
         end
 
         remaining_realized_qty = abs(t.realized_qty)
-        if remaining_realized_qty > 0.0
-            known_qty = _known_lot_quantity(lots)
-            unmatched_qty = max(abs(t.pos_qty) - known_qty, 0.0)
-            skipped_qty = min(remaining_realized_qty, unmatched_qty)
-            remaining_realized_qty -= skipped_qty
-
-            while remaining_realized_qty > 0.0 && !isempty(lots)
-                entry_date, lot_qty = first(lots)
-                consumed_qty = min(abs(lot_qty), remaining_realized_qty)
+        while remaining_realized_qty > 0.0 && !isempty(lots)
+            entry_date, lot_qty = first(lots)
+            # A lot that matches the remaining realized quantity within rounding noise closes
+            # completely, so subtraction residue never becomes a separate holding period.
+            closes_lot = _quantities_match(abs(lot_qty), remaining_realized_qty)
+            consumed_qty = closes_lot ? abs(lot_qty) : min(abs(lot_qty), remaining_realized_qty)
+            if entry_date !== nothing
+                t.date >= entry_date ||
+                    throw(ArgumentError("Trade $(t.tid) for $(symbol) exits before its selected entry."))
                 push!(records, RealizedHoldingPeriod{TTime,TPeriod}(
                     symbol,
                     entry_date,
@@ -519,14 +532,19 @@ function _realized_holding_periods(
                     consumed_qty,
                     t.date - entry_date,
                 ))
+            end
 
-                remaining_realized_qty -= consumed_qty
-                remaining_lot_qty = lot_qty - sign(lot_qty) * consumed_qty
-                if remaining_lot_qty == 0.0
-                    deleteat!(lots, 1)
-                else
-                    lots[1] = (entry_date, remaining_lot_qty)
-                end
+            if closes_lot
+                remaining_realized_qty = 0.0
+                deleteat!(lots, 1)
+                continue
+            end
+            remaining_realized_qty -= consumed_qty
+            remaining_lot_qty = lot_qty - sign(lot_qty) * consumed_qty
+            if remaining_lot_qty == 0.0
+                deleteat!(lots, 1)
+            else
+                lots[1] = (entry_date, remaining_lot_qty)
             end
         end
 
@@ -537,12 +555,8 @@ function _realized_holding_periods(
     return records
 end
 
-@inline function _known_lot_quantity(lots::Vector{Tuple{TTime,Quantity}}) where {TTime<:Dates.AbstractTime}
-    qty = 0.0
-    @inbounds for (_, lot_qty) in lots
-        qty += abs(lot_qty)
-    end
-    qty
+@inline function _quantities_match(left::Quantity, right::Quantity)::Bool
+    abs(left - right) <= eps(Float64) * 8.0 * max(abs(left), abs(right), 1.0)
 end
 
 """

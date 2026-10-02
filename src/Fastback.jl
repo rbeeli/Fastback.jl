@@ -46,6 +46,8 @@ include("tables.jl")
 include("print.jl")
 include("plots.jl")
 include("plots_svg.jl")
+include("charts.jl")
+include("artifacts.jl")
 include("backtest_runner.jl")
 include("liquidation.jl")
 include("events.jl")
@@ -303,5 +305,8 @@ export plot_backend,
 
 # Utilities
 export params_combinations
+
+# Standalone SVG charts and standard backtest artifacts
+export Charts, Artifacts
 
 end # module

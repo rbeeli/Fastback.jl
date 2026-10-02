@@ -156,6 +156,7 @@ Documenter.makedocs(
         "Pitfalls and gotchas" => "pitfalls.md",
         "How-to" => "how_to.md",
         "Analytics" => "analytics.md",
+        "Charts and standard artifacts" => "charts_artifacts.md",
         "Examples" => [
             "Random trading" => "examples/gen/1_random_trading.md",
             "Portfolio trading" => "examples/gen/2_portfolio_trading.md",

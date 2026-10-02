@@ -296,3 +296,27 @@ end
     @test isempty(acc._event_state.open_positions)
     @test Fastback.check_invariants(acc)
 end
+
+@testitem "fully funded scaling keeps planned ticks at unit scale and rounds every leg down below it" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; broker=NoOpBroker(), funding=AccountFunding.FullyFunded, base_currency=CashSpec(:USD))
+    deposit!(acc, :USD, 1_000.0)
+    fine = register_instrument!(acc, spot_instrument(Symbol("TICKF/USD"), :TICKF, :USD; base_tick=0.1))
+    whole = register_instrument!(acc, spot_instrument(Symbol("TICKW/USD"), :TICKW, :USD; base_tick=1.0))
+    planned = 43.0 * 0.1
+    @test trunc(planned / 0.1) < 43.0
+    @test Fastback._scaled_increase_quantity(fine, planned, 1.0) == planned
+    @test Fastback._scaled_increase_quantity(whole, 1_330.0, 1.0) == 1_330.0
+    @test Fastback._scaled_increase_quantity(whole, 1_330.0, 1.0 - eps(Float64)) == 1_329.0
+    @test Fastback._scaled_increase_quantity(whole, 778.0, 1.0 - eps(Float64)) == 777.0
+    @test Fastback._scaled_increase_quantity(whole, 10.0, 0.5) == 5.0
+
+    first_inst = register_instrument!(acc, spot_instrument(Symbol("MARGA/USD"), :MARGA, :USD; base_tick=1.0))
+    second_inst = register_instrument!(acc, spot_instrument(Symbol("MARGB/USD"), :MARGB, :USD; base_tick=1.0))
+    dt = DateTime(2028, 1, 2)
+    update_marks!(acc, first_inst, dt, 99.0, 101.0, 100.0)
+    update_marks!(acc, second_inst, dt, 99.0, 101.0, 100.0)
+    result = rebalance!(Portfolio(acc), dt, TargetWeights(first_inst => 0.5, second_inst => 0.5))
+    @test getfield.(result.trades, :fill_qty) == [4.0, 4.0]
+end

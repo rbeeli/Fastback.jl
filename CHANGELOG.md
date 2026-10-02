@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.0] - 2026-10-02
+
+### Added
+
+- `Fastback.Charts`: standalone SVG line, scatter, categorical bar, and stacked interval bar charts with two independent vertical axes, reference lines, and Rust-compatible output.
+- `Fastback.Artifacts`: the standard backtest report (Markdown, observation and trade Parquet exports, equity, normalized, exposure, and turnover charts), diagnostic tables and charts, normalized performance comparisons, and `CausalBuyAndHoldBenchmark`. Parquet output loads with `using Parquet2` through the new `FastbackParquet2Ext` extension.
+
+### Fixed
+
+- Fully funded rebalancing scales whole tick counts of planned purchases: a unit scale keeps the planned quantities and smaller scales round every leg toward zero. Near-unit scales no longer keep some legs whole through tick snapping, so marginally unaffordable rebalances are reduced consistently.
+- FIFO holding periods treat lots that disagree with a trade's pre-fill position as one unknown-entry lot, and close a lot that matches the remaining realized quantity within rounding noise. Floating-point residue no longer appears as extra realized lots.
+
+### Changed
+
+- Accept RiskPerf 0.5.
+
 ## [0.12.0] - 2026-09-05
 
 - Limit FX refreshes and rebalancing to active/target positions; reuse rebalance scratch storage.

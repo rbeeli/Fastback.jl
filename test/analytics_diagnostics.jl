@@ -514,3 +514,37 @@ end
     @test perf.winners == 0.0
     @test perf.losers == 0.0
 end
+
+@testitem "holding periods close lots that match within rounding noise" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; funding=AccountFunding.Margined, base_currency=CashSpec(:USD), broker=NoOpBroker())
+    deposit!(acc, :USD, 10_000.0)
+    inst = register_instrument!(acc, spot_instrument(Symbol("DIAGDUST/USD"), :DIAGDUST, :USD; base_tick=0.1))
+
+    dt0 = DateTime(2026, 1, 1)
+    for (day, qty) in ((0, 0.1), (1, 0.2), (2, -0.3), (3, 1.0), (4, -1.0))
+        dt = dt0 + Day(day)
+        fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, qty); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    end
+
+    periods = realized_holding_periods(acc)
+    @test [period.entry_date for period in periods] == [dt0, dt0 + Day(1), dt0 + Day(3)]
+    @test all(period -> period.quantity > 0.05, periods)
+end
+
+@testitem "holding periods give inconsistent exposure an unknown entry" begin
+    using Test, Fastback, Dates
+
+    acc = Account(; funding=AccountFunding.Margined, base_currency=CashSpec(:USD), broker=NoOpBroker())
+    deposit!(acc, :USD, 10_000.0)
+    inst = register_instrument!(acc, spot_instrument(Symbol("DIAGGAP/USD"), :DIAGGAP, :USD))
+
+    dt0 = DateTime(2026, 1, 1)
+    for (day, qty) in ((0, 2.0), (1, -1.0), (2, -1.0))
+        dt = dt0 + Day(day)
+        fill_order!(acc, Order(oid!(acc), inst, dt, 100.0, qty); dt=dt, fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
+    end
+
+    @test isempty(realized_holding_periods(acc.trades[[1, 3]]))
+end

@@ -327,9 +327,12 @@ end
     to_settle(acc, inst, cash_quote)
 end
 
+# Scale whole tick counts of a planned tick-aligned purchase, rounding toward zero. Snapping the
+# planned count first removes division noise, so a unit scale keeps the planned quantity and every
+# smaller scale rounds each leg down by the same rule.
 @inline function _scaled_increase_quantity(inst::Instrument, qty::Quantity, scale::Price)::Quantity
     qty <= 0.0 && return qty
-    tick_count = trunc(_snap_tick_count_near_integer(qty * scale / inst.spec.base_tick))
+    tick_count = trunc(_snap_tick_count_near_integer(qty / inst.spec.base_tick) * scale)
     scaled = tick_count * inst.spec.base_tick
     scaled <= 0.0 && return 0.0
     minimum = max(inst.spec.base_min, 0.0)

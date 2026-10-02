@@ -140,9 +140,11 @@ realized_holding_periods(acc)
 holding_period_summary(acc)
 ```
 
-If a trade vector starts after a position is already open, unmatched realized
-quantity is skipped because the entry timestamp is not present in the trade
-stream.
+When the reconstructed lots disagree with a trade's pre-fill position, for
+example because the trade vector starts after the position opened, that exposure
+has an unknown entry and its realization records no period. A lot that matches
+the remaining realized quantity within rounding noise closes completely, so
+floating-point residue never appears as a separate holding period.
 
 ## P&L Concentration
 

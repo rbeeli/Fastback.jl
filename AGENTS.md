@@ -27,6 +27,7 @@ Keep it concise, keep it accurate, and keep the core trading/accounting invarian
   - `backtest_runner.jl`, `utils.jl`: threaded batch runner (`Threads.@threads`) and utility helpers.
 - `test/`: uses TestItemRunner and `@testitem` blocks; reconciliation data lives in `test/data/`.  
 - `src/plots.jl` defines the shared plotting interface; `src/plots_svg.jl` implements built-in dependency-free SVG rendering.
+- `src/charts.jl` (`Fastback.Charts`) and `src/artifacts.jl` (`Fastback.Artifacts`) provide standalone SVG charts and standard backtest artifacts; `ext/FastbackParquet2Ext.jl` writes their Parquet tables.
 - `ext/`: `FastbackPlotsExt.jl` for optional Plots-backed methods.
 - `docs/`: Documenter + Literate; walkthroughs in `docs/src/examples` are rendered to `docs/src/examples/gen`, integration examples in `docs/src/integrations` are rendered to `docs/src/integrations/gen`, and plotting examples in `docs/src/plotting` are rendered to `docs/src/plotting/gen` by `docs/make.jl`.  
 - `justfile`: shortcuts for docs (`just build-docs`, `just serve-docs`).  
