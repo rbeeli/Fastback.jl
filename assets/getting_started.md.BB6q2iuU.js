@@ -1,4 +1,4 @@
-import{_ as i,o as a,c as n,an as t}from"./chunks/framework.BTeEg3It.js";const g=JSON.parse('{"title":"Getting started","description":"","frontmatter":{},"headers":[],"relativePath":"getting_started.md","filePath":"getting_started.md","lastUpdated":null}'),l={name:"getting_started.md"};function h(k,s,e,p,r,E){return a(),n("div",null,[...s[0]||(s[0]=[t(`<h1 id="Getting-started" tabindex="-1">Getting started <a class="header-anchor" href="#Getting-started" aria-label="Permalink to &quot;Getting started {#Getting-started}&quot;">​</a></h1><p>This page gets you to a running backtest in a few minutes.</p><h2 id="Install" tabindex="-1">Install <a class="header-anchor" href="#Install" aria-label="Permalink to &quot;Install {#Install}&quot;">​</a></h2><p>Fastback 0.11.0 requires Julia 1.12 or later.</p><div class="language-julia vp-adaptive-theme"><button title="Copy Code" class="copy"></button><span class="lang">julia</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">using</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;"> Pkg</span></span>
+import{_ as i,o as a,c as t,an as n}from"./chunks/framework.BTeEg3It.js";const g=JSON.parse('{"title":"Getting started","description":"","frontmatter":{},"headers":[],"relativePath":"getting_started.md","filePath":"getting_started.md","lastUpdated":null}'),h={name:"getting_started.md"};function l(k,s,e,p,r,d){return a(),t("div",null,[...s[0]||(s[0]=[n(`<h1 id="Getting-started" tabindex="-1">Getting started <a class="header-anchor" href="#Getting-started" aria-label="Permalink to &quot;Getting started {#Getting-started}&quot;">​</a></h1><p>This page gets you to a running backtest in a few minutes.</p><h2 id="Install" tabindex="-1">Install <a class="header-anchor" href="#Install" aria-label="Permalink to &quot;Install {#Install}&quot;">​</a></h2><p>Fastback 0.11.0 requires Julia 1.12 or later.</p><div class="language-julia vp-adaptive-theme"><button title="Copy Code" class="copy"></button><span class="lang">julia</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">using</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;"> Pkg</span></span>
 <span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">Pkg</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">.</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF;">add</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF;">&quot;Fastback&quot;</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">)</span></span></code></pre></div><p>SVG plotting is built in and needs no extra packages. The optional <a href="./plotting/gen/2_plots_extension">Plots.jl extension</a> is available after installing and loading <code>Plots</code>.</p><h2 id="Hello-world-backtest" tabindex="-1">Hello world backtest <a class="header-anchor" href="#Hello-world-backtest" aria-label="Permalink to &quot;Hello world backtest {#Hello-world-backtest}&quot;">​</a></h2><p>The example below runs a tiny event-driven loop, marks positions each step, and opens and closes a single position.</p><div class="language-julia vp-adaptive-theme"><button title="Copy Code" class="copy"></button><span class="lang">julia</span><pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">using</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;"> Fastback</span></span>
 <span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">using</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;"> Dates</span></span>
 <span class="line"></span>
@@ -41,25 +41,33 @@ import{_ as i,o as a,c as n,an as t}from"./chunks/framework.BTeEg3It.js";const g
 <span class="line"><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF;">equity</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">(acc, usd)</span></span>
 <span class="line"></span>
 <span class="line"><span style="--shiki-light:#6A737D;--shiki-dark:#6A737D;"># Built-in SVG plot</span></span>
-<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">Fastback</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">.</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF;">plot_equity</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">(equity_data)</span></span></code></pre></div><div><svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450" role="img">
-<title>Equity</title><rect width="100%" height="100%" fill="#182235"/><g font-family="sans-serif">
-<text x="24" y="30" text-anchor="start" fill="#F4F0E8" font-size="18">Equity</text>
-<path d="M 85.0 85.0 V 390.0" stroke="#66758F" fill="none"/>
-<text x="77.0" y="394.0" text-anchor="end" fill="#B6C0CF" font-size="12">9982.61</text>
-<text x="77.0" y="317.75" text-anchor="end" fill="#B6C0CF" font-size="12">9989.55</text>
-<text x="77.0" y="241.5" text-anchor="end" fill="#B6C0CF" font-size="12">9996.49</text>
-<text x="77.0" y="165.25" text-anchor="end" fill="#B6C0CF" font-size="12">10003.43</text>
-<text x="77.0" y="89.0" text-anchor="end" fill="#B6C0CF" font-size="12">10010.36</text>
-<text x="85.0" y="75.0" text-anchor="start" fill="#B6C0CF" font-size="12"></text>
-<path d="M 85.0 390.0 H 770.0" stroke="#66758F"/>
-<text x="118.94144144144144" y="412.0" text-anchor="middle" fill="#B6C0CF" font-size="10">2024-01-01 00:00</text>
-<text x="273.22072072072075" y="412.0" text-anchor="middle" fill="#B6C0CF" font-size="10">2024-01-01 01:15</text>
-<text x="427.5" y="412.0" text-anchor="middle" fill="#B6C0CF" font-size="10">2024-01-01 02:30</text>
-<text x="581.7792792792793" y="412.0" text-anchor="middle" fill="#B6C0CF" font-size="10">2024-01-01 03:45</text>
-<text x="736.0585585585585" y="412.0" text-anchor="middle" fill="#B6C0CF" font-size="10">2024-01-01 05:00</text>
-<text x="427.5" y="440" text-anchor="middle" fill="#B6C0CF" font-size="12"></text>
-<svg x="85.0" y="85.0" width="685.0" height="305.0" viewBox="85.0 85.0 685.0 305.0" overflow="hidden">
-<path d="M 118.94144144144144 198.92162162161924 H 242.36486486486487 V 210.02252252252254 H 365.7882882882883 V 374.8873873873874 H 489.2117117117117 V 100.11261261261262 H 612.6351351351351 V 221.12342342342583 H 736.0585585585585 V 221.12342342342583" fill="none" stroke="#D7A445" stroke-opacity="0.9" stroke-width="1.5"/>
-</svg>
-</g></svg>
-</div><h2 id="Next-steps" tabindex="-1">Next steps <a class="header-anchor" href="#Next-steps" aria-label="Permalink to &quot;Next steps {#Next-steps}&quot;">​</a></h2><ul><li><p>Read <a href="./basic_setup">Basic setup</a> for a checklist of the typical backtest components.</p></li><li><p>Read <a href="./concepts">Accounting model and event loop</a> to understand balances, equity, margin, and marks.</p></li><li><p>Browse the Examples for end-to-end strategies and integrations.</p></li></ul>`,12)])])}const y=i(l,[["render",h]]);export{g as __pageData,y as default};
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">Fastback</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583;">.</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF;">plot_equity</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8;">(equity_data)</span></span></code></pre></div><div><?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" data-chart-type="line" data-y-scale="linear" data-y-lower="9982.615" data-y-upper="10010.365">
+<title>Equity</title>
+<rect width="100%" height="100%" fill="#182235"/>
+<defs><clipPath id="plot-clip"><rect x="100" y="74" width="1468" height="771"/></clipPath></defs>
+<g font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+<text x="48" y="42" fill="#F4F0E8" font-size="28" font-weight="650">Equity</text>
+<path d="M 100 74 V 845 H 1568" fill="none" stroke="#66758F" stroke-width="0.8"/>
+<path d="M 100 639.82 h -5" stroke="#66758F" stroke-width="0.8"/>
+<text x="90" y="644.82" fill="#B6C0CF" font-size="15" text-anchor="end">9990</text>
+<path d="M 100 361.98 h -5" stroke="#66758F" stroke-width="0.8"/>
+<text x="90" y="366.98" fill="#B6C0CF" font-size="15" text-anchor="end">10000</text>
+<path d="M 100 84.14 h -5" stroke="#66758F" stroke-width="0.8"/>
+<text x="90" y="89.14" fill="#B6C0CF" font-size="15" text-anchor="end">10010</text>
+<path d="M 100.00 845 v 5" stroke="#66758F" stroke-width="0.8"/>
+<text x="100.00" y="870" fill="#B6C0CF" font-size="15" text-anchor="start">2024-01-01 00:00</text>
+<path d="M 393.60 845 v 5" stroke="#66758F" stroke-width="0.8"/>
+<text x="393.60" y="870" fill="#B6C0CF" font-size="15" text-anchor="middle">2024-01-01 01:00</text>
+<path d="M 687.20 845 v 5" stroke="#66758F" stroke-width="0.8"/>
+<text x="687.20" y="870" fill="#B6C0CF" font-size="15" text-anchor="middle">2024-01-01 02:00</text>
+<path d="M 980.80 845 v 5" stroke="#66758F" stroke-width="0.8"/>
+<text x="980.80" y="870" fill="#B6C0CF" font-size="15" text-anchor="middle">2024-01-01 03:00</text>
+<path d="M 1274.40 845 v 5" stroke="#66758F" stroke-width="0.8"/>
+<text x="1274.40" y="870" fill="#B6C0CF" font-size="15" text-anchor="middle">2024-01-01 04:00</text>
+<path d="M 1568.00 845 v 5" stroke="#66758F" stroke-width="0.8"/>
+<text x="1568.00" y="870" fill="#B6C0CF" font-size="15" text-anchor="end">2024-01-01 05:00</text>
+<g clip-path="url(#plot-clip)">
+<path class="series" data-y-axis="left" d=" M 100.00 361.98 L 393.60 390.04 L 687.20 806.80 L 980.80 112.20 L 1274.40 418.10 L 1568.00 418.10" fill="none" stroke="#D7A445" stroke-width="1.2" stroke-opacity="0.9" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"><title>Equity</title></path>
+</g></g></svg>
+</div><h2 id="Next-steps" tabindex="-1">Next steps <a class="header-anchor" href="#Next-steps" aria-label="Permalink to &quot;Next steps {#Next-steps}&quot;">​</a></h2><ul><li><p>Read <a href="./basic_setup">Basic setup</a> for a checklist of the typical backtest components.</p></li><li><p>Read <a href="./concepts">Accounting model and event loop</a> to understand balances, equity, margin, and marks.</p></li><li><p>Browse the Examples for end-to-end strategies and integrations.</p></li></ul>`,12)])])}const y=i(h,[["render",l]]);export{g as __pageData,y as default};
