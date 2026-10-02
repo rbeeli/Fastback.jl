@@ -12,6 +12,7 @@ using Dates
 using Printf
 
 import ..Fastback
+using ..Fastback: PerformanceConfig, PerformanceSummary, _finite_option, performance_summary
 using ..Charts:
     AxisOptions, ChartOptions, DARK_PLOT_THEME, LineSeries, write_svg_line_chart
 
@@ -19,8 +20,6 @@ export AdditionalCostStressRow,
     CausalBuyAndHoldBenchmark,
     DiagnosticSeries,
     DiagnosticTimeSeries,
-    PerformanceConfig,
-    PerformanceSummary,
     ReportObservation,
     ReportPeriodReturn,
     ReportRecorder,
@@ -31,7 +30,6 @@ export AdditionalCostStressRow,
     finish,
     markdown_artifact_link,
     observe!,
-    performance_summary,
     record!,
     render_markdown,
     report_period_returns,
@@ -70,70 +68,6 @@ end
 function display_timestamp(timestamp::DateTime)::String
     millisecond(timestamp) == 0 && return Dates.format(timestamp, dateformat"yyyy-mm-dd HH:MM:SS") * " UTC"
     return Dates.format(timestamp, dateformat"yyyy-mm-dd HH:MM:SS.sss") * " UTC"
-end
-
-# Performance metrics
-
-"""Annualization and reference rates of performance metrics."""
-struct PerformanceConfig
-    periods_per_year::Float64
-    annual_risk_free_rate::Float64
-    annual_minimum_acceptable_return::Float64
-
-    function PerformanceConfig(periods_per_year::Real; annual_risk_free_rate::Real=0.0,
-        annual_minimum_acceptable_return::Real=0.0)
-        isfinite(periods_per_year) && periods_per_year > 0 ||
-            throw(ArgumentError("Report periods_per_year must be positive and finite; received $(periods_per_year)."))
-        return new(Float64(periods_per_year), Float64(annual_risk_free_rate), Float64(annual_minimum_acceptable_return))
-    end
-end
-
-"""Return-path metrics of a report; undefined metrics are `nothing`."""
-struct PerformanceSummary
-    observations::Int
-    ignored_observations::Int
-    total_return::Union{Nothing,Float64}
-    annualized_return::Union{Nothing,Float64}
-    annualized_volatility::Union{Nothing,Float64}
-    sharpe_ratio::Union{Nothing,Float64}
-    sortino_ratio::Union{Nothing,Float64}
-    maximum_drawdown::Union{Nothing,Float64}
-    average_drawdown::Union{Nothing,Float64}
-    calmar_ratio::Union{Nothing,Float64}
-    ulcer_index::Union{Nothing,Float64}
-    omega_ratio::Union{Nothing,Float64}
-    expected_shortfall::Union{Nothing,Float64}
-    skewness::Union{Nothing,Float64}
-    excess_kurtosis::Union{Nothing,Float64}
-    annualized_downside_volatility::Union{Nothing,Float64}
-    best_return::Union{Nothing,Float64}
-    worst_return::Union{Nothing,Float64}
-    positive_period_rate::Union{Nothing,Float64}
-    maximum_drawdown_duration::Int
-    time_in_drawdown_rate::Union{Nothing,Float64}
-end
-
-_finite_option(value) = value isa Real && isfinite(value) ? Float64(value) : nothing
-
-"""
-    performance_summary(returns, config) -> PerformanceSummary
-
-Metrics of periodic simple returns. Non-finite returns are ignored and counted.
-"""
-function performance_summary(returns::AbstractVector{<:Real}, config::PerformanceConfig)::PerformanceSummary
-    finite = Float64[value for value in returns if isfinite(value)]
-    ignored = length(returns) - length(finite)
-    isempty(finite) && return PerformanceSummary(0, ignored, ntuple(_ -> nothing, 17)..., 0, nothing)
-    summary = Fastback.performance_summary(finite; periods_per_year=config.periods_per_year,
-        risk_free=config.annual_risk_free_rate, mar=config.annual_minimum_acceptable_return)
-    calmar = summary.max_dd > 0.0 ? _finite_option(summary.calmar) : nothing
-    return PerformanceSummary(length(finite), ignored, _finite_option(summary.tot_ret), _finite_option(summary.cagr),
-        _finite_option(summary.vol), _finite_option(summary.sharpe), _finite_option(summary.sortino),
-        _finite_option(summary.max_dd), _finite_option(summary.avg_dd), calmar, _finite_option(summary.ulcer),
-        _finite_option(summary.omega), _finite_option(summary.expected_shortfall_95), _finite_option(summary.skewness),
-        _finite_option(summary.kurtosis), _finite_option(summary.downside_vol), _finite_option(summary.best_ret),
-        _finite_option(summary.worst_ret), _finite_option(summary.positive_period_rate), summary.max_dd_duration,
-        _finite_option(summary.pct_time_in_drawdown))
 end
 
 # Report observations

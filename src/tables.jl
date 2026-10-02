@@ -333,64 +333,6 @@ struct PnlConcentrationRows
     table::PnlConcentrationTable
 end
 
-struct PerformanceSummaryRows
-    summary::PerformanceSummary
-end
-
-const _PERFORMANCE_SUMMARY_TABLE_NAMES = (
-    :tot_ret,
-    :cagr,
-    :sharpe,
-    :sortino,
-    :calmar,
-    :max_dd,
-    :avg_dd,
-    :ulcer,
-    :vol,
-    :n_periods,
-    :best_ret,
-    :worst_ret,
-    :positive_period_rate,
-    :expected_shortfall_95,
-    :skewness,
-    :kurtosis,
-    :downside_vol,
-    :max_dd_duration,
-    :pct_time_in_drawdown,
-    :omega,
-    :n_trades,
-    :n_closing_trades,
-    :winners,
-    :losers,
-)
-
-const _PERFORMANCE_SUMMARY_TABLE_TYPES = (
-    Float64,
-    Float64,
-    Float64,
-    Float64,
-    Float64,
-    Float64,
-    Float64,
-    Float64,
-    Float64,
-    Int,
-    Float64,
-    Float64,
-    Float64,
-    Float64,
-    Float64,
-    Float64,
-    Float64,
-    Int,
-    Float64,
-    Float64,
-    Int,
-    Int,
-    Union{Missing,Float64},
-    Union{Missing,Float64},
-)
-
 const _PNL_CONCENTRATION_TABLE_NAMES = (
     :bucket,
     :quote_symbol,
@@ -451,51 +393,34 @@ function Base.iterate(rows::PnlConcentrationRows, idx::Int=1)
     return row, idx + 1
 end
 
-Tables.istable(::Type{PerformanceSummaryTable}) = true
-Tables.rowaccess(::Type{PerformanceSummaryTable}) = true
-Tables.rows(tbl::PerformanceSummaryTable) = PerformanceSummaryRows(tbl.summary)
-Tables.schema(::PerformanceSummaryTable) = Tables.Schema(
-    _PERFORMANCE_SUMMARY_TABLE_NAMES,
-    _PERFORMANCE_SUMMARY_TABLE_TYPES,
+_performance_summary_row(summary::PerformanceSummary) =
+    NamedTuple{fieldnames(PerformanceSummary)}(map(name -> something(getfield(summary, name), missing),
+        fieldnames(PerformanceSummary)))
+
+function _performance_summary_row(summary::AccountPerformanceSummary)
+    return merge(_performance_summary_row(summary.performance), (
+        applied_trade_count=summary.applied_trade_count,
+        closing_trade_count=summary.closing_trade_count,
+        winner_rate=something(summary.winner_rate, missing),
+        loser_rate=something(summary.loser_rate, missing),
+    ))
+end
+
+_performance_summary_column_type(::Type{Union{Nothing,T}}) where {T} = Union{Missing,T}
+_performance_summary_column_type(::Type{T}) where {T} = T
+
+_performance_summary_schema(::Type{S}) where {S} = Tables.Schema(
+    fieldnames(S),
+    map(_performance_summary_column_type, fieldtypes(S)),
+)
+_performance_summary_schema(::Type{AccountPerformanceSummary}) = Tables.Schema(
+    (fieldnames(PerformanceSummary)..., :applied_trade_count, :closing_trade_count, :winner_rate, :loser_rate),
+    (map(_performance_summary_column_type, fieldtypes(PerformanceSummary))..., Int, Int,
+        Union{Missing,Float64}, Union{Missing,Float64}),
 )
 
+Tables.istable(::Type{<:PerformanceSummaryTable}) = true
+Tables.rowaccess(::Type{<:PerformanceSummaryTable}) = true
+Tables.rows(tbl::PerformanceSummaryTable) = (_performance_summary_row(tbl.summary),)
+Tables.schema(::PerformanceSummaryTable{S}) where {S} = _performance_summary_schema(S)
 Base.length(::PerformanceSummaryTable) = 1
-Base.length(::PerformanceSummaryRows) = 1
-Base.size(::PerformanceSummaryTable) = (1, length(_PERFORMANCE_SUMMARY_TABLE_NAMES))
-Base.size(::PerformanceSummaryTable, dim::Integer) = dim == 1 ? 1 :
-    dim == 2 ? length(_PERFORMANCE_SUMMARY_TABLE_NAMES) :
-    1
-
-function Base.iterate(rows::PerformanceSummaryRows, idx::Int=1)
-    idx > 1 && return nothing
-    return _performance_summary_table_row(rows.summary), 2
-end
-
-function _performance_summary_table_row(summary::PerformanceSummary)
-    (
-        tot_ret=summary.tot_ret,
-        cagr=summary.cagr,
-        sharpe=summary.sharpe,
-        sortino=summary.sortino,
-        calmar=summary.calmar,
-        max_dd=summary.max_dd,
-        avg_dd=summary.avg_dd,
-        ulcer=summary.ulcer,
-        vol=summary.vol,
-        n_periods=summary.n_periods,
-        best_ret=summary.best_ret,
-        worst_ret=summary.worst_ret,
-        positive_period_rate=summary.positive_period_rate,
-        expected_shortfall_95=summary.expected_shortfall_95,
-        skewness=summary.skewness,
-        kurtosis=summary.kurtosis,
-        downside_vol=summary.downside_vol,
-        max_dd_duration=summary.max_dd_duration,
-        pct_time_in_drawdown=summary.pct_time_in_drawdown,
-        omega=summary.omega,
-        n_trades=summary.n_trades,
-        n_closing_trades=summary.n_closing_trades,
-        winners=summary.winners,
-        losers=summary.losers,
-    )
-end

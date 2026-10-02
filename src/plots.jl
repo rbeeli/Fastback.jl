@@ -1,11 +1,10 @@
-# Shared colors for built-in SVG and the optional Plots extension.
-const _PLOT_PALETTE = ("#D7A445", "#8EA4D2", "#E36A83", "#F4F0E8",
-    "#66758F", "#7DD3FC", "#86EFAC", "#FCA5A5")
+# Shared colors for the built-in SVG backend and the optional Plots extension.
+const _PLOT_PALETTE = Tuple(Charts.DARK_PLOT_THEME.series_palette)
 const _PLOT_COLORS = (
-    canvas="#182235",
-    text="#F4F0E8",
-    muted="#B6C0CF",
-    axis="#66758F",
+    canvas=Charts.DARK_PLOT_THEME.canvas,
+    text=Charts.DARK_PLOT_THEME.text,
+    muted=Charts.DARK_PLOT_THEME.muted_text,
+    axis=Charts.DARK_PLOT_THEME.axis,
     balance=_PLOT_PALETTE[2],
     equity=_PLOT_PALETTE[1],
     open_orders=_PLOT_PALETTE[6],
@@ -57,7 +56,7 @@ function _plot_count_axis(vals; ylims=nothing)
     bounds, ceil(lo):step:floor(hi)
 end
 
-# Public plotting interface. SVG is built in; Plots adds methods when loaded.
+# Public plotting interface. SVG is built in (rendered by `Charts`); Plots adds methods when loaded.
 abstract type PlotBackend end
 struct SVGBackend <: PlotBackend end
 struct PlotsBackend <: PlotBackend end
@@ -121,14 +120,14 @@ end
 # Select the backend once at the public boundary; renderers implement these
 # same functions directly with SVGBackend or PlotsBackend as their first argument.
 
-"""Plot a title panel using the selected backend. See `set_plot_backend!`."""
+"""Plot a title panel for Plots layouts (`:plots` backend only). See `set_plot_backend!`."""
 function plot_title(args...; backend::Symbol=plot_backend(), kwargs...)
     plot_title(_resolve_plot_backend(backend), args...; kwargs...)
 end
 
 plot_title(backend::PlotBackend, args...; kwargs...) = _unsupported_plot(backend, :plot_title)
 
-"""Write or add a title panel using the selected backend. See `set_plot_backend!`."""
+"""Add a title panel to a Plots layout (`:plots` backend only). See `set_plot_backend!`."""
 function plot_title!(args...; backend::Symbol=plot_backend(), kwargs...)
     plot_title!(_resolve_plot_backend(backend), args...; kwargs...)
 end

@@ -14,38 +14,47 @@ Use them for quick checks after a backtest:
 
 ## Performance Summary
 
-`performance_summary` summarizes a periodic return series, or a `PeriodicValues`
-equity collector. It returns a `PerformanceSummary` with compact REPL printing.
-Alongside total return, CAGR, Sharpe/Sortino/Calmar, volatility, and drawdowns,
-it reports period count, best/worst period returns, positive-period rate,
-95% expected shortfall, skewness, kurtosis, downside volatility, drawdown
-duration/time-in-drawdown, and Omega ratio.
+`performance_summary(returns, config)` summarizes periodic simple returns and
+`performance_summary_from_equity(equity, config)` a `PeriodicValues` equity
+collector. Both return a `PerformanceSummary` with observation counts
+(non-finite returns are ignored and counted), total and annualized return, annualized volatility, Sharpe, Sortino,
+Calmar, and Omega ratios, maximum and average drawdown, ulcer index, expected
+shortfall, skewness, excess kurtosis, annualized downside volatility, best and
+worst period returns, positive-period rate, maximum drawdown duration, and time
+in drawdown. Metrics that cannot be estimated, such as volatility from one
+observation or a ratio with a zero denominator, are `nothing`.
 
-`risk_free` and `mar` are annualized simple rates. Fastback divides them by
-`periods_per_year` before using them as periodic Sharpe, Sortino, downside
-volatility, and Omega thresholds. For example, with monthly returns use
-`periods_per_year=12` and pass an annual rate such as `risk_free=0.03`.
+`PerformanceConfig(periods_per_year; annual_risk_free_rate, annual_minimum_acceptable_return,
+expected_shortfall_probability, drawdown_method)` defaults to 252 periods per
+year, zero reference rates, a 5% expected-shortfall tail, and `:compounded`
+drawdowns. Annual rates are simple rates divided by `periods_per_year` before
+they are used as periodic Sharpe, Sortino, downside-volatility, and Omega
+thresholds. For monthly returns use `PerformanceConfig(12; annual_risk_free_rate=0.03)`.
 
 ```@example analytics
 using Fastback
 using Dates
 using DataFrames
 
-performance_summary([0.01, -0.004, 0.007, 0.002]; periods_per_year=252)
+performance_summary([0.01, -0.004, 0.007, 0.002], PerformanceConfig(252))
 ```
 
-When you pass an account, the summary also reports executed trade count, closing
-trade count, and win/loss ratios from recorded closing trades:
+`account_performance_summary(acc, returns, config)` and
+`account_performance_summary_from_equity(acc, equity, config)` return an
+`AccountPerformanceSummary`: the performance summary plus applied trade count,
+closing trade count, and winner/loser rates of recorded closing trades
+(`nothing` when trade history is not tracked):
 
 ```julia
-performance_summary(acc, equity_data; periods_per_year=252)
+account_performance_summary_from_equity(acc, equity_data, PerformanceConfig(252))
 ```
 
-Use `performance_summary_table` when you want the same fields as a one-row
-Tables.jl-compatible table. Convert it to a `DataFrame` when that is convenient:
+`performance_summary_table` returns either summary as a one-row Tables.jl
+source with undefined metrics as `missing`. Convert it to a `DataFrame` when that
+is convenient:
 
 ```julia
-DataFrame(performance_summary_table(equity_data; periods_per_year=252))
+DataFrame(performance_summary_table(performance_summary_from_equity(equity_data, PerformanceConfig(252))))
 ```
 
 For an equity collector:
@@ -56,7 +65,7 @@ collect_equity(DateTime(2026, 1, 1), 10_000.0)
 collect_equity(DateTime(2026, 1, 2), 10_100.0)
 collect_equity(DateTime(2026, 1, 3), 10_050.0)
 
-performance_summary(equity_data; periods_per_year=252)
+performance_summary_from_equity(equity_data, PerformanceConfig(252))
 ```
 
 ## Trade Diagnostics

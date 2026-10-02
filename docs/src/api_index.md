@@ -85,8 +85,9 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Analytics
 
-- `performance_summary`, `performance_summary_table`
-- `PerformanceSummary`, `TradeSummary`, `QuoteTradeSummary`, `SettlementTradeSummary`, `RealizedHoldingPeriod`, `HoldingPeriodSummary`
+- `PerformanceConfig`, `PerformanceSummary`, `AccountPerformanceSummary`
+- `performance_summary`, `performance_summary_from_equity`, `account_performance_summary`, `account_performance_summary_from_equity`, `performance_summary_table`
+- `TradeSummary`, `QuoteTradeSummary`, `SettlementTradeSummary`, `RealizedHoldingPeriod`, `HoldingPeriodSummary`
 - `gross_realized_pnl_quote`, `net_realized_pnl_quote`
 - `trade_summary`, `realized_holding_periods`, `holding_period_summary`, `pnl_concentration`
 
@@ -108,7 +109,10 @@ For details, open the REPL and type `?symbol` to view docstrings.
 ## Plotting
 
 All helpers below belong to `Fastback` and use the selected backend. SVG is
-built in and selected by default. See [SVG plotting](plotting/gen/1_svg.md).
+built in, selected by default, and rendered by `Fastback.Charts`. SVG calls
+accept `title`, `width`, `height`, `legend`, and `ylims`, plus `xaxis_mode` for
+collector plots, and throw an `ArgumentError` when there are no finite samples.
+See [SVG plotting](plotting/gen/1_svg.md).
 
 - `plot_backend()`, `set_plot_backend!(:svg | :plots)`: read or select the global backend.
 - `svg_output_format()`, `set_svg_output_format!(:string | :html)`: select inline `Base.HTML` results (default) or raw SVG strings.
@@ -118,7 +122,7 @@ changing the global setting. SVG calls also accept `output_format=:string` or
 `:html`. SVG `!` methods take an IO and write a complete SVG document; the
 output-format setting does not affect them.
 
-- `plot_title`
+- `plot_title` (Plots backend only)
 - `plot_balance`, `plot_balance!`
 - `plot_equity`, `plot_equity!`
 - `plot_open_orders_count`, `plot_open_orders_count!`

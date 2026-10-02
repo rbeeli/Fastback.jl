@@ -1,31 +1,88 @@
 using Dates
 import RiskPerf
 
+"""
+    PerformanceConfig(periods_per_year=252.0; annual_risk_free_rate=0.0,
+        annual_minimum_acceptable_return=0.0, expected_shortfall_probability=0.05,
+        drawdown_method=:compounded)
+
+Annualization, reference rates, tail probability, and drawdown wealth method of performance
+metrics. Annual rates are simple rates converted to per-period rates by dividing by
+`periods_per_year`. `expected_shortfall_probability` is the lower-tail probability in `(0, 1]`.
+`drawdown_method` is `:compounded` (`wealth *= 1 + r`) or `:additive` (`wealth += r`).
+"""
+struct PerformanceConfig
+    periods_per_year::Float64
+    annual_risk_free_rate::Float64
+    annual_minimum_acceptable_return::Float64
+    expected_shortfall_probability::Float64
+    drawdown_method::Symbol
+
+    function PerformanceConfig(
+        periods_per_year::Real=252.0;
+        annual_risk_free_rate::Real=0.0,
+        annual_minimum_acceptable_return::Real=0.0,
+        expected_shortfall_probability::Real=0.05,
+        drawdown_method::Symbol=:compounded,
+    )
+        isfinite(periods_per_year) && periods_per_year > 0 ||
+            throw(ArgumentError("periods_per_year must be positive and finite, got $(periods_per_year)."))
+        isfinite(annual_risk_free_rate) ||
+            throw(ArgumentError("annual_risk_free_rate must be finite, got $(annual_risk_free_rate)."))
+        isfinite(annual_minimum_acceptable_return) || throw(ArgumentError(
+            "annual_minimum_acceptable_return must be finite, got $(annual_minimum_acceptable_return)."))
+        isfinite(expected_shortfall_probability) && 0 < expected_shortfall_probability <= 1 || throw(ArgumentError(
+            "expected_shortfall_probability must be in (0, 1], got $(expected_shortfall_probability)."))
+        drawdown_method in (:compounded, :additive) ||
+            throw(ArgumentError("drawdown_method must be :compounded or :additive, got $(repr(drawdown_method))."))
+        return new(Float64(periods_per_year), Float64(annual_risk_free_rate),
+            Float64(annual_minimum_acceptable_return), Float64(expected_shortfall_probability), drawdown_method)
+    end
+end
+
+"""
+Performance and distribution diagnostics of a periodic return series.
+
+Non-finite observations are ignored and counted in `ignored_observations`. Metrics that cannot be
+estimated, such as volatility from one observation or a ratio with a zero denominator, are
+`nothing`. Drawdown magnitudes are positive.
+"""
 struct PerformanceSummary
-    tot_ret::Float64
-    cagr::Float64
-    sharpe::Float64
-    sortino::Float64
-    calmar::Float64
-    max_dd::Float64
-    avg_dd::Float64
-    ulcer::Float64
-    vol::Float64
-    n_periods::Int
-    best_ret::Float64
-    worst_ret::Float64
-    positive_period_rate::Float64
-    expected_shortfall_95::Float64
-    skewness::Float64
-    kurtosis::Float64
-    downside_vol::Float64
-    max_dd_duration::Int
-    pct_time_in_drawdown::Float64
-    omega::Float64
-    n_trades::Int
-    n_closing_trades::Int
-    winners::Union{Missing,Float64}
-    losers::Union{Missing,Float64}
+    observations::Int
+    ignored_observations::Int
+    total_return::Union{Nothing,Float64}
+    annualized_return::Union{Nothing,Float64}
+    annualized_volatility::Union{Nothing,Float64}
+    sharpe_ratio::Union{Nothing,Float64}
+    sortino_ratio::Union{Nothing,Float64}
+    maximum_drawdown::Union{Nothing,Float64}
+    average_drawdown::Union{Nothing,Float64}
+    calmar_ratio::Union{Nothing,Float64}
+    ulcer_index::Union{Nothing,Float64}
+    omega_ratio::Union{Nothing,Float64}
+    expected_shortfall::Union{Nothing,Float64}
+    skewness::Union{Nothing,Float64}
+    excess_kurtosis::Union{Nothing,Float64}
+    annualized_downside_volatility::Union{Nothing,Float64}
+    best_return::Union{Nothing,Float64}
+    worst_return::Union{Nothing,Float64}
+    positive_period_rate::Union{Nothing,Float64}
+    maximum_drawdown_duration::Int
+    time_in_drawdown_rate::Union{Nothing,Float64}
+end
+
+"""
+Performance metrics combined with account-level trade diagnostics.
+
+Closing trades, winners, and losers are derived from retained trade history;
+`applied_trade_count` remains available when trade retention is disabled.
+"""
+struct AccountPerformanceSummary
+    performance::PerformanceSummary
+    applied_trade_count::Int
+    closing_trade_count::Int
+    winner_rate::Union{Nothing,Float64}
+    loser_rate::Union{Nothing,Float64}
 end
 
 struct QuoteTradeSummary
@@ -90,39 +147,29 @@ struct PnlConcentrationTable
     share_of_net_pnl::Vector{Float64}
 end
 
-struct PerformanceSummaryTable
-    summary::PerformanceSummary
+struct PerformanceSummaryTable{S<:Union{PerformanceSummary,AccountPerformanceSummary}}
+    summary::S
 end
 
-function Base.show(io::IO, summary::PerformanceSummary)
+function _show_fields(io::IO, value)
+    print(io, nameof(typeof(value)), "(\n")
+    names = fieldnames(typeof(value))
+    for (index, name) in enumerate(names)
+        print(io, "    ", name, "=", repr(getfield(value, name)), index == length(names) ? "\n" : ",\n")
+    end
+    print(io, ")")
+end
+
+Base.show(io::IO, summary::PerformanceSummary) = _show_fields(io, summary)
+
+function Base.show(io::IO, summary::AccountPerformanceSummary)
+    print(io, "AccountPerformanceSummary(\n    performance=")
+    show(io, summary.performance)
     print(io,
-        "PerformanceSummary(\n" *
-        "    tot_ret=$(summary.tot_ret),\n" *
-        "    cagr=$(summary.cagr),\n" *
-        "    sharpe=$(summary.sharpe),\n" *
-        "    sortino=$(summary.sortino),\n" *
-        "    calmar=$(summary.calmar),\n" *
-        "    max_dd=$(summary.max_dd),\n" *
-        "    avg_dd=$(summary.avg_dd),\n" *
-        "    ulcer=$(summary.ulcer),\n" *
-        "    vol=$(summary.vol),\n" *
-        "    n_periods=$(summary.n_periods),\n" *
-        "    best_ret=$(summary.best_ret),\n" *
-        "    worst_ret=$(summary.worst_ret),\n" *
-        "    positive_period_rate=$(summary.positive_period_rate),\n" *
-        "    expected_shortfall_95=$(summary.expected_shortfall_95),\n" *
-        "    skewness=$(summary.skewness),\n" *
-        "    kurtosis=$(summary.kurtosis),\n" *
-        "    downside_vol=$(summary.downside_vol),\n" *
-        "    max_dd_duration=$(summary.max_dd_duration),\n" *
-        "    pct_time_in_drawdown=$(summary.pct_time_in_drawdown),\n" *
-        "    omega=$(summary.omega),\n" *
-        "    n_trades=$(summary.n_trades),\n" *
-        "    n_closing_trades=$(summary.n_closing_trades),\n" *
-        "    winners=$(summary.winners),\n" *
-        "    losers=$(summary.losers)\n" *
-        ")"
-    )
+        ",\n    applied_trade_count=$(summary.applied_trade_count),\n" *
+        "    closing_trade_count=$(summary.closing_trade_count),\n" *
+        "    winner_rate=$(repr(summary.winner_rate)),\n" *
+        "    loser_rate=$(repr(summary.loser_rate))\n)")
 end
 
 function Base.show(io::IO, summary::TradeSummary)
@@ -193,75 +240,6 @@ function Base.show(io::IO, summary::HoldingPeriodSummary)
     )
 end
 
-@inline function _clean_returns(returns)
-    out = Float64[]
-    sizehint!(out, length(returns))
-    @inbounds for r in returns
-        (r === nothing || ismissing(r)) && continue
-        v = Float64(r)
-        isfinite(v) || continue
-        push!(out, v)
-    end
-    out
-end
-
-function _return_path_stats(returns::Vector{Float64})
-    best_ret = -Inf
-    worst_ret = Inf
-    n_positive = 0
-    @inbounds @simd for r in returns
-        best_ret = max(best_ret, r)
-        worst_ret = min(worst_ret, r)
-        n_positive += r > 0.0
-    end
-    return (
-        best_ret=best_ret,
-        worst_ret=worst_ret,
-        positive_period_rate=n_positive / length(returns),
-    )
-end
-
-function _drawdown_duration_stats(returns::Vector{Float64}, compound::Bool)
-    n = length(returns)
-    n == 0 && return (max_dd_duration=0, pct_time_in_drawdown=NaN)
-
-    wealth = 1.0
-    peak = 1.0
-    current_duration = 0
-    max_duration = 0
-    drawdown_periods = 0
-
-    if compound
-        @inbounds for r in returns
-            wealth *= 1.0 + r
-            if wealth >= peak
-                peak = wealth
-                current_duration = 0
-            else
-                current_duration += 1
-                max_duration = max(max_duration, current_duration)
-                drawdown_periods += 1
-            end
-        end
-    else
-        @inbounds for r in returns
-            wealth += r
-            if wealth >= peak
-                peak = wealth
-                current_duration = 0
-            else
-                current_duration += 1
-                max_duration = max(max_duration, current_duration)
-                drawdown_periods += 1
-            end
-        end
-    end
-
-    return (
-        max_dd_duration=max_duration,
-        pct_time_in_drawdown=drawdown_periods / n,
-    )
-end
 
 """
     gross_realized_pnl_quote(t::Trade)
@@ -759,278 +737,131 @@ function _calendar_bucket(dt::Dates.Time, period::Symbol)
     ))
 end
 
-"""
-    performance_summary(returns; periods_per_year=252, risk_free=0.0, mar=0.0, compound=true)
-    performance_summary(acc::Account, returns; periods_per_year=252, risk_free=0.0, mar=0.0, compound=true)
-
-Return a `PerformanceSummary` for a periodic return series.
-
-`risk_free` and `mar` are annualized simple rates. They are converted to
-per-period rates using `periods_per_year` before computing Sharpe, Sortino,
-downside volatility, and Omega.
-
-When an account is supplied, trade counts use `acc.trade_count` and win/loss
-rates are computed from recorded closing trades when `acc.track_trades == true`.
-If trade history is not tracked, win/loss rates are `missing`.
-"""
-function performance_summary(
-    returns;
-    periods_per_year::Real=252,
-    risk_free=0.0,
-    mar=0.0,
-    compound::Bool=true
-)
-    mar isa Real || throw(ArgumentError("mar must be a scalar for summary output."))
-    r = _clean_returns(returns)
-    _performance_summary(r, periods_per_year, risk_free, mar, compound, 0, 0, missing, missing)
-end
-
-function performance_summary(
-    acc::Account,
-    returns;
-    periods_per_year::Real=252,
-    risk_free=0.0,
-    mar=0.0,
-    compound::Bool=true
-)
-    mar isa Real || throw(ArgumentError("mar must be a scalar for summary output."))
-    r = _clean_returns(returns)
-    n_trades, n_closing_trades, winners, losers = _trade_win_loss_rates(acc)
-    _performance_summary(r, periods_per_year, risk_free, mar, compound, n_trades, n_closing_trades, winners, losers)
-end
+_finite_option(value) = value isa Real && isfinite(value) ? Float64(value) : nothing
 
 """
-    performance_summary(pv::PeriodicValues; periods_per_year=252, risk_free=0.0, mar=0.0, compound=true)
-    performance_summary(acc::Account, pv::PeriodicValues; periods_per_year=252, risk_free=0.0, mar=0.0, compound=true)
+    performance_summary(returns, config=PerformanceConfig()) -> PerformanceSummary
 
-Compute summary metrics from an equity series stored in a `PeriodicValues` collector.
+Performance statistics of periodic simple returns. NaN and infinite observations are ignored and
+counted.
 """
-function performance_summary(
-    pv::PeriodicValues;
-    periods_per_year::Real=252,
-    risk_free=0.0,
-    mar=0.0,
-    compound::Bool=true
-)
-    eq = values(pv)
-    returns = RiskPerf.simple_returns(eq; drop_first=true)
-    performance_summary(
-        returns;
-        periods_per_year=periods_per_year,
-        risk_free=risk_free,
-        mar=mar,
-        compound=compound,
-    )
-end
-
-function performance_summary(
-    acc::Account,
-    pv::PeriodicValues;
-    periods_per_year::Real=252,
-    risk_free=0.0,
-    mar=0.0,
-    compound::Bool=true
-)
-    eq = values(pv)
-    returns = RiskPerf.simple_returns(eq; drop_first=true)
-    performance_summary(
-        acc,
-        returns;
-        periods_per_year=periods_per_year,
-        risk_free=risk_free,
-        mar=mar,
-        compound=compound,
-    )
-end
-
-function _performance_summary(
-    returns::Vector{Float64},
-    periods_per_year::Real,
-    risk_free,
-    mar,
-    compound::Bool,
-    n_trades::Int,
-    n_closing_trades::Int,
-    winners::Union{Missing,Float64},
-    losers::Union{Missing,Float64},
-)::PerformanceSummary
-    periods = Float64(periods_per_year)
-    isfinite(periods) && periods > 0.0 ||
-        throw(ArgumentError("periods_per_year must be positive and finite, got $(periods_per_year)."))
-    risk_free isa Real || throw(ArgumentError("risk_free must be an annualized scalar rate."))
-    annual_risk_free = Float64(risk_free)
-    isfinite(annual_risk_free) ||
-        throw(ArgumentError("risk_free must be finite, got $(risk_free)."))
-    mar isa Real || throw(ArgumentError("mar must be an annualized scalar rate."))
-    annual_mar = Float64(mar)
-    isfinite(annual_mar) || throw(ArgumentError("mar must be finite, got $(mar)."))
-    periodic_risk_free = annual_risk_free / periods
-    periodic_mar = annual_mar / periods
-
-    if isempty(returns)
-        return PerformanceSummary(
-            NaN,
-            NaN,
-            NaN,
-            NaN,
-            NaN,
-            NaN,
-            NaN,
-            NaN,
-            NaN,
-            0,
-            NaN,
-            NaN,
-            NaN,
-            NaN,
-            NaN,
-            NaN,
-            NaN,
-            0,
-            NaN,
-            NaN,
-            n_trades,
-            n_closing_trades,
-            winners,
-            losers,
-        )
+function performance_summary(returns, config::PerformanceConfig=PerformanceConfig())::PerformanceSummary
+    finite = Float64[]
+    ignored = 0
+    for value in returns
+        value isa Real || throw(ArgumentError("Returns must be real numbers, got $(repr(value))."))
+        isfinite(value) ? push!(finite, Float64(value)) : (ignored += 1)
     end
+    isempty(finite) && return PerformanceSummary(0, ignored, ntuple(_ -> nothing, 17)..., 0, nothing)
 
-    path_stats = _return_path_stats(returns)
-    drawdown_stats = _drawdown_duration_stats(returns, compound)
+    periods = config.periods_per_year
+    periodic_risk_free = config.annual_risk_free_rate / periods
+    periodic_minimum_return = config.annual_minimum_acceptable_return / periods
+    compound = config.drawdown_method == :compounded
+    maximum_drawdown = RiskPerf.max_drawdown_pct(finite; compound=compound)
+    maximum_drawdown_duration, time_in_drawdown_rate =
+        _drawdown_duration_statistics(RiskPerf.drawdowns_pct(finite; compound=compound))
+    probability = config.expected_shortfall_probability
+    expected_shortfall = probability >= 1.0 ? RiskPerf.mean_excess(finite, 0.0) :
+        RiskPerf.expected_shortfall(finite, probability; method=:historical)
+    best_return, worst_return = RiskPerf.best_worst_period_return(finite)
 
-    PerformanceSummary(
-        RiskPerf.total_return(returns),
-        RiskPerf.cagr(returns, periods),
-        RiskPerf.sharpe_ratio(returns; multiplier=periods, risk_free=periodic_risk_free),
-        RiskPerf.sortino_ratio(returns; multiplier=periods, MAR=periodic_mar),
-        RiskPerf.calmar_ratio(returns, periods; compound=compound),
-        RiskPerf.max_drawdown_pct(returns; compound=compound),
-        RiskPerf.average_drawdown_pct(returns; compound=compound),
-        RiskPerf.ulcer_index(returns; compound=compound),
-        RiskPerf.volatility(returns; multiplier=periods),
-        length(returns),
-        path_stats.best_ret,
-        path_stats.worst_ret,
-        path_stats.positive_period_rate,
-        RiskPerf.expected_shortfall(returns, 0.05; method=:historical),
-        RiskPerf.skewness(returns),
-        RiskPerf.kurtosis(returns),
-        RiskPerf.downside_deviation(returns, periodic_mar; method=:full) * sqrt(periods),
-        drawdown_stats.max_dd_duration,
-        drawdown_stats.pct_time_in_drawdown,
-        RiskPerf.omega_ratio(returns, periodic_mar),
-        n_trades,
-        n_closing_trades,
-        winners,
-        losers,
+    return PerformanceSummary(
+        length(finite),
+        ignored,
+        _finite_option(RiskPerf.total_return(finite)),
+        _finite_option(RiskPerf.cagr(finite, periods)),
+        _finite_option(RiskPerf.volatility(finite; multiplier=periods)),
+        _finite_option(RiskPerf.sharpe_ratio(finite; multiplier=periods, risk_free=periodic_risk_free)),
+        _finite_option(RiskPerf.sortino_ratio(finite; multiplier=periods, MAR=periodic_minimum_return)),
+        _finite_option(maximum_drawdown),
+        _finite_option(RiskPerf.average_drawdown_pct(finite; compound=compound)),
+        maximum_drawdown > 0.0 ? _finite_option(RiskPerf.calmar_ratio(finite, periods; compound=compound)) : nothing,
+        _finite_option(RiskPerf.ulcer_index(finite; compound=compound)),
+        _finite_option(RiskPerf.omega_ratio(finite, periodic_minimum_return)),
+        _finite_option(expected_shortfall),
+        _finite_option(RiskPerf.skewness(finite)),
+        _finite_option(RiskPerf.kurtosis(finite)),
+        _finite_option(RiskPerf.downside_deviation(finite, periodic_minimum_return; method=:full) * sqrt(periods)),
+        _finite_option(best_return),
+        _finite_option(worst_return),
+        _finite_option(RiskPerf.hit_rate(finite)),
+        maximum_drawdown_duration,
+        _finite_option(time_in_drawdown_rate),
     )
 end
 
-function _trade_win_loss_rates(acc::Account)
-    n_trades = Int(acc.trade_count)
-    if !acc.track_trades
-        return n_trades, 0, missing, missing
+# Longest run and fraction of observations strictly below the running wealth peak.
+function _drawdown_duration_statistics(drawdowns::AbstractVector{Float64})
+    current = 0
+    maximum_duration = 0
+    in_drawdown = 0
+    for drawdown in drawdowns
+        if drawdown < 0.0
+            current += 1
+            maximum_duration = max(maximum_duration, current)
+            in_drawdown += 1
+        else
+            current = 0
+        end
     end
-
-    n_closing_trades = 0
-    n_winners = 0
-    n_losers = 0
-    @inbounds for t in acc.trades
-        is_realizing(t) || continue
-        n_closing_trades += 1
-        ret = realized_return_net(t)
-        n_winners += ret > 0.0
-        n_losers += ret < 0.0
-    end
-
-    if n_closing_trades == 0
-        return n_trades, n_closing_trades, missing, missing
-    end
-
-    return (
-        n_trades,
-        n_closing_trades,
-        n_winners / n_closing_trades,
-        n_losers / n_closing_trades,
-    )
+    return maximum_duration, in_drawdown / length(drawdowns)
 end
 
 """
-    performance_summary_table(returns; periods_per_year=252, risk_free=0.0, mar=0.0, compound=true)
-    performance_summary_table(pv::PeriodicValues; periods_per_year=252, risk_free=0.0, mar=0.0, compound=true)
+    performance_summary_from_equity(equity::PeriodicValues, config=PerformanceConfig()) -> PerformanceSummary
 
-Return `performance_summary(args...; kwargs...)` as a one-row Tables.jl source.
-The columns mirror the `PerformanceSummary` fields.
+Performance statistics of periodically sampled equity. Adjacent observations are converted to
+simple returns and the undefined first return is omitted. Deposits, withdrawals, and irregular
+sampling are not adjusted.
 """
-function performance_summary_table(
-    returns;
-    periods_per_year::Real=252,
-    risk_free=0.0,
-    mar=0.0,
-    compound::Bool=true
-)
-    summary = performance_summary(
-        returns;
-        periods_per_year=periods_per_year,
-        risk_free=risk_free,
-        mar=mar,
-        compound=compound,
-    )
-    PerformanceSummaryTable(summary)
+performance_summary_from_equity(equity::PeriodicValues, config::PerformanceConfig=PerformanceConfig()) =
+    performance_summary(RiskPerf.simple_returns(values(equity); drop_first=true), config)
+
+"""
+    account_performance_summary(acc::Account, returns, config=PerformanceConfig()) -> AccountPerformanceSummary
+
+Return performance with account trade diagnostics. Winner and loser rates use net realized returns
+of retained closing trades; both are `nothing` when trade history is not retained or no closing
+trade was retained.
+"""
+account_performance_summary(acc::Account, returns, config::PerformanceConfig=PerformanceConfig()) =
+    _account_performance(acc, performance_summary(returns, config))
+
+"""
+    account_performance_summary_from_equity(acc::Account, equity::PeriodicValues, config=PerformanceConfig())
+
+Equity performance with account trade diagnostics; see [`performance_summary_from_equity`](@ref)
+and [`account_performance_summary`](@ref).
+"""
+account_performance_summary_from_equity(acc::Account, equity::PeriodicValues,
+    config::PerformanceConfig=PerformanceConfig()) =
+    _account_performance(acc, performance_summary_from_equity(equity, config))
+
+function _account_performance(acc::Account, performance::PerformanceSummary)::AccountPerformanceSummary
+    applied = Int(acc.trade_count)
+    acc.track_trades || return AccountPerformanceSummary(performance, applied, 0, nothing, nothing)
+    closing = 0
+    winners = 0
+    losers = 0
+    for trade in acc.trades
+        is_realizing(trade) || continue
+        closing += 1
+        realized = realized_return_net(trade)
+        winners += realized > 0.0
+        losers += realized < 0.0
+    end
+    closing == 0 && return AccountPerformanceSummary(performance, applied, 0, nothing, nothing)
+    return AccountPerformanceSummary(performance, applied, closing,
+        _finite_option(winners / closing), _finite_option(losers / closing))
 end
 
-function performance_summary_table(
-    pv::PeriodicValues;
-    periods_per_year::Real=252,
-    risk_free=0.0,
-    mar=0.0,
-    compound::Bool=true
-)
-    summary = performance_summary(
-        pv;
-        periods_per_year=periods_per_year,
-        risk_free=risk_free,
-        mar=mar,
-        compound=compound,
-    )
-    PerformanceSummaryTable(summary)
-end
+"""
+    performance_summary_table(summary::PerformanceSummary)
+    performance_summary_table(summary::AccountPerformanceSummary)
 
-function performance_summary_table(
-    acc::Account,
-    returns;
-    periods_per_year::Real=252,
-    risk_free=0.0,
-    mar=0.0,
-    compound::Bool=true
-)
-    summary = performance_summary(
-        acc,
-        returns;
-        periods_per_year=periods_per_year,
-        risk_free=risk_free,
-        mar=mar,
-        compound=compound,
-    )
+One-row Tables.jl source whose columns are the summary's fields; account summaries flatten their
+performance fields followed by the trade diagnostics. Undefined metrics are `missing`.
+"""
+performance_summary_table(summary::Union{PerformanceSummary,AccountPerformanceSummary}) =
     PerformanceSummaryTable(summary)
-end
-
-function performance_summary_table(
-    acc::Account,
-    pv::PeriodicValues;
-    periods_per_year::Real=252,
-    risk_free=0.0,
-    mar=0.0,
-    compound::Bool=true
-)
-    summary = performance_summary(
-        acc,
-        pv;
-        periods_per_year=periods_per_year,
-        risk_free=risk_free,
-        mar=mar,
-        compound=compound,
-    )
-    PerformanceSummaryTable(summary)
-end

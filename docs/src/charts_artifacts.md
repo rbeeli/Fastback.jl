@@ -34,6 +34,3 @@ spec = StandardReportSpec("My strategy", abspath("results"), PerformanceConfig(2
 report = standard_backtest_report(portfolio.account, finish(recorder), spec)
 write(report)
 ```
-
-Equal inputs produce the same documents as the Rust `fastback` crate's `plots` and `artifacts`
-modules.

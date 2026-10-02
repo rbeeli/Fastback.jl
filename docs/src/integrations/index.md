@@ -63,7 +63,7 @@ using DataFrames
 using Fastback
 
 # equity_data is a PeriodicValues collector with equity history
-df_summary = DataFrame(performance_summary_table(equity_data; periods_per_year=365))
+df_summary = DataFrame(performance_summary_table(performance_summary_from_equity(equity_data, PerformanceConfig(365))))
 ```
 
 ## NanoDates.jl

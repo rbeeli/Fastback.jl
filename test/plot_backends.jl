@@ -7,7 +7,8 @@ using TestItemRunner
     @test plot_backend() === :svg
     @test svg_output_format() === :html
     @test Base.get_extension(Fastback, :FastbackPlotsExt) === nothing
-    _, eq = periodic_collector(Float64, Day(1))
+    collect_eq, eq = periodic_collector(Float64, Day(1))
+    collect_eq(DateTime(2025), 100.0)
     @test Fastback.plot_equity(eq) isa Base.HTML
     err = try
         set_plot_backend!(:plots)
@@ -44,13 +45,19 @@ end
         collect_dd(dt, v)
     end
 
-    acc = Account(; base_currency=CashSpec(:USD), broker=NoOpBroker())
+    acc = Account(; funding=AccountFunding.Margined, base_currency=CashSpec(:USD), broker=NoOpBroker())
+    deposit!(acc, :USD, 10_000.0)
+    inst = register_instrument!(acc, spot_instrument(Symbol("BACKEND/USD"), :BACKEND, :USD))
+    for (i, (price, qty)) in enumerate(((100.0, 1.0), (110.0, -1.0)))
+        dt = DateTime(2025) + Day(i)
+        fill_order!(acc, Order(oid!(acc), inst, dt, price, qty); dt, fill_price=price, bid=price, ask=price, last=price)
+    end
+    push!(acc.cashflows, Cashflow(1, DateTime(2025), CashflowKind.Other, 1, 5.0, inst.index))
     weights = fill(0.5, 4, 2)
     pv = PortfolioWeightsValues{DateTime,Day}(
         copy(dates(eq)), [:A, :B], [fill(0.5, 4), fill(0.5, 4)],
         Day(1), DateTime(0), dates(eq)[end])
     cases = (
-        (Fastback.plot_title, ("Title",), (;)),
         (Fastback.plot_balance, (eq,), (;)),
         (Fastback.plot_equity, (eq,), (;)),
         (Fastback.plot_open_orders_count, (eq,), (;)),
@@ -95,13 +102,15 @@ end
             kwargs = name === :exposure ? (; gross=eq) : (;)
             io = IOBuffer()
             @test f(io, args...; backend=:svg, kwargs...) === io
-            @test startswith(String(take!(io)), "<svg")
+            @test occursin("<svg xmlns=", String(take!(io)))
             plt = Plots.plot()
             @test f(plt, args...; kwargs...) === plt
             @test_throws ArgumentError f(io, args...; backend=:plots, kwargs...)
             @test_throws ArgumentError f(plt, args...; backend=:svg, kwargs...)
         end
 
+        @test Fastback.plot_title("Title"; backend=:plots) isa Plots.Plot
+        @test_throws ArgumentError Fastback.plot_title("Title"; backend=:svg)
         @test_throws ArgumentError Fastback.plot_title!(Plots.plot(), "Title")
     finally
         set_plot_backend!(previous_backend)

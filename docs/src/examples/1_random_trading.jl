@@ -84,4 +84,4 @@ Fastback.plot_drawdown(drawdown_data, size=(800, 200))
 
 # ### Summary performance table
 
-DataFrame(performance_summary_table(equity_data; periods_per_year=365 * 24))
+DataFrame(performance_summary_table(performance_summary_from_equity(equity_data, PerformanceConfig(365 * 24))))

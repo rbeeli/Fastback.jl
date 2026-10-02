@@ -377,82 +377,70 @@ end
     fill_order!(acc, Order(oid!(acc), inst, dt0 + Day(1), 110.0, -1.0); dt=dt0 + Day(1), fill_price=110.0, bid=110.0, ask=110.0, last=110.0)
     fill_order!(acc, Order(oid!(acc), inst, dt0 + Day(2), 90.0, -1.0); dt=dt0 + Day(2), fill_price=90.0, bid=90.0, ask=90.0, last=90.0)
 
-    rets = [0.01, -0.004, 0.007, 0.002]
-    summary = performance_summary(acc, rets; periods_per_year=252)
+    rets = [0.01, -0.004, NaN, 0.007, 0.002]
+    finite = filter(isfinite, rets)
+    account_summary = account_performance_summary(acc, rets, PerformanceConfig(252))
+    summary = account_summary.performance
 
-    @test summary isa PerformanceSummary
-    @test isapprox(summary.tot_ret, RiskPerf.total_return(rets); atol=1e-12)
-    @test summary.tot_ret != round(summary.tot_ret, digits=1)
-    @test isapprox(summary.cagr, RiskPerf.cagr(rets, 252); atol=1e-12)
-    @test isapprox(summary.max_dd, RiskPerf.max_drawdown_pct(rets; compound=true); atol=1e-12)
-    @test isapprox(summary.avg_dd, RiskPerf.average_drawdown_pct(rets; compound=true); atol=1e-12)
-    @test isapprox(summary.ulcer, RiskPerf.ulcer_index(rets; compound=true); atol=1e-12)
-    @test summary.n_periods == length(rets)
-    @test summary.best_ret == maximum(rets)
-    @test summary.worst_ret == minimum(rets)
-    @test isapprox(summary.positive_period_rate, 0.75; atol=1e-12)
-    @test isapprox(summary.expected_shortfall_95, RiskPerf.expected_shortfall(rets, 0.05; method=:historical); atol=1e-12)
-    @test isapprox(summary.skewness, RiskPerf.skewness(rets); atol=1e-12)
-    @test isapprox(summary.kurtosis, RiskPerf.kurtosis(rets); atol=1e-12)
-    @test isapprox(summary.downside_vol, RiskPerf.downside_deviation(rets, 0.0; method=:full) * sqrt(252); atol=1e-12)
-    @test summary.max_dd_duration == 1
-    @test isapprox(summary.pct_time_in_drawdown, 0.25; atol=1e-12)
-    @test isapprox(summary.omega, RiskPerf.omega_ratio(rets, 0.0); atol=1e-12)
-    @test summary.n_trades == 3
-    @test summary.n_closing_trades == 2
-    @test summary.winners == 0.5
-    @test summary.losers == 0.5
-    @test occursin("tot_ret=$(summary.tot_ret)", repr(summary))
-    @test occursin("PerformanceSummary(\n    tot_ret=$(summary.tot_ret),\n    cagr=$(summary.cagr)", repr(summary))
+    @test account_summary isa AccountPerformanceSummary
+    @test summary == performance_summary(rets)
+    @test summary.observations == 4
+    @test summary.ignored_observations == 1
+    @test summary.total_return == RiskPerf.total_return(finite)
+    @test summary.annualized_return == RiskPerf.cagr(finite, 252)
+    @test summary.annualized_volatility == RiskPerf.volatility(finite; multiplier=252)
+    @test summary.maximum_drawdown == RiskPerf.max_drawdown_pct(finite)
+    @test summary.average_drawdown == RiskPerf.average_drawdown_pct(finite)
+    @test summary.ulcer_index == RiskPerf.ulcer_index(finite)
+    @test summary.calmar_ratio == RiskPerf.calmar_ratio(finite, 252)
+    @test summary.best_return == 0.01
+    @test summary.worst_return == -0.004
+    @test summary.positive_period_rate == 0.75
+    @test summary.expected_shortfall == RiskPerf.expected_shortfall(finite, 0.05; method=:historical)
+    @test summary.skewness == RiskPerf.skewness(finite)
+    @test summary.excess_kurtosis == RiskPerf.kurtosis(finite)
+    @test summary.annualized_downside_volatility == RiskPerf.downside_deviation(finite, 0.0; method=:full) * sqrt(252)
+    @test summary.maximum_drawdown_duration == 1
+    @test summary.time_in_drawdown_rate == 0.25
+    @test summary.omega_ratio == RiskPerf.omega_ratio(finite, 0.0)
+    @test account_summary.applied_trade_count == 3
+    @test account_summary.closing_trade_count == 2
+    @test account_summary.winner_rate == 0.5
+    @test account_summary.loser_rate == 0.5
+    @test occursin("PerformanceSummary(\n    observations=4,\n    ignored_observations=1,", repr(summary))
+    @test occursin("applied_trade_count=3", repr(account_summary))
 
-    tbl = performance_summary_table(acc, rets; periods_per_year=252)
+    tbl = performance_summary_table(account_summary)
     @test Tables.istable(typeof(tbl))
-    @test Tables.schema(tbl).names == (
-        :tot_ret,
-        :cagr,
-        :sharpe,
-        :sortino,
-        :calmar,
-        :max_dd,
-        :avg_dd,
-        :ulcer,
-        :vol,
-        :n_periods,
-        :best_ret,
-        :worst_ret,
-        :positive_period_rate,
-        :expected_shortfall_95,
-        :skewness,
-        :kurtosis,
-        :downside_vol,
-        :max_dd_duration,
-        :pct_time_in_drawdown,
-        :omega,
-        :n_trades,
-        :n_closing_trades,
-        :winners,
-        :losers,
-    )
+    @test Tables.schema(tbl).names == (fieldnames(PerformanceSummary)...,
+        :applied_trade_count, :closing_trade_count, :winner_rate, :loser_rate)
     cols = Tables.columntable(tbl)
-    @test isapprox(cols.tot_ret[1], summary.tot_ret; atol=1e-12)
-    @test isapprox(cols.cagr[1], RiskPerf.cagr(rets, 252); atol=1e-12)
-    @test isapprox(cols.vol[1], RiskPerf.volatility(rets; multiplier=252); atol=1e-12)
-    @test cols.n_periods == [4]
-    @test cols.best_ret == [0.01]
-    @test cols.worst_ret == [-0.004]
-    @test isapprox(cols.positive_period_rate[1], 0.75; atol=1e-12)
-    @test isapprox(cols.expected_shortfall_95[1], summary.expected_shortfall_95; atol=1e-12)
-    @test isapprox(cols.skewness[1], summary.skewness; atol=1e-12)
-    @test isapprox(cols.kurtosis[1], summary.kurtosis; atol=1e-12)
-    @test isapprox(cols.downside_vol[1], summary.downside_vol; atol=1e-12)
-    @test cols.max_dd_duration == [1]
-    @test isapprox(cols.pct_time_in_drawdown[1], 0.25; atol=1e-12)
-    @test isapprox(cols.omega[1], summary.omega; atol=1e-12)
-    @test cols.n_trades == [3]
-    @test cols.n_closing_trades == [2]
-    @test cols.winners == Union{Missing,Float64}[0.5]
-    @test cols.losers == Union{Missing,Float64}[0.5]
-    @test !(:mar in Tables.schema(tbl).names)
+    @test cols.total_return == [summary.total_return]
+    @test cols.maximum_drawdown_duration == [1]
+    @test cols.applied_trade_count == [3]
+    @test cols.winner_rate == Union{Missing,Float64}[0.5]
+    @test Tables.schema(performance_summary_table(summary)).names == fieldnames(PerformanceSummary)
+end
+
+@testitem "performance summary reports undefined metrics as nothing" begin
+    using Test, Fastback, Tables
+
+    empty = performance_summary([NaN, Inf])
+    @test empty.observations == 0
+    @test empty.ignored_observations == 2
+    @test isnothing(empty.total_return)
+    @test empty.maximum_drawdown_duration == 0
+    @test isnothing(empty.time_in_drawdown_rate)
+
+    rising = performance_summary([0.01, 0.02])
+    @test rising.maximum_drawdown == 0.0
+    @test isnothing(rising.calmar_ratio)
+    @test isnothing(rising.omega_ratio)
+    @test all(ismissing, Tables.columntable(performance_summary_table(rising)).calmar_ratio)
+
+    single = performance_summary([0.01])
+    @test isnothing(single.annualized_volatility)
+    @test isnothing(single.sharpe_ratio)
 end
 
 @testitem "performance summary converts annual risk thresholds to periodic rates" begin
@@ -462,37 +450,35 @@ end
     periods_per_year = 4.0
     annual_rate = 0.10
     periodic_rate = annual_rate / periods_per_year
-    summary = performance_summary(
-        returns;
-        periods_per_year=periods_per_year,
-        risk_free=annual_rate,
-        mar=annual_rate,
-    )
+    summary = performance_summary(returns, PerformanceConfig(periods_per_year;
+        annual_risk_free_rate=annual_rate, annual_minimum_acceptable_return=annual_rate))
 
-    @test isapprox(
-        summary.sharpe,
-        RiskPerf.sharpe_ratio(returns; multiplier=periods_per_year, risk_free=periodic_rate);
-        atol=1e-12,
-    )
-    @test isapprox(
-        summary.sortino,
-        RiskPerf.sortino_ratio(returns; multiplier=periods_per_year, MAR=periodic_rate);
-        atol=1e-12,
-    )
-    @test isapprox(
-        summary.downside_vol,
-        RiskPerf.downside_deviation(returns, periodic_rate; method=:full) * sqrt(periods_per_year);
-        atol=1e-12,
-    )
-    @test isapprox(summary.omega, RiskPerf.omega_ratio(returns, periodic_rate); atol=1e-12)
-    @test isapprox(summary.sharpe, 0.0; atol=1e-12)
-    @test isapprox(summary.sortino, 0.0; atol=1e-12)
+    @test summary.sharpe_ratio == RiskPerf.sharpe_ratio(returns; multiplier=periods_per_year, risk_free=periodic_rate)
+    @test summary.sortino_ratio == RiskPerf.sortino_ratio(returns; multiplier=periods_per_year, MAR=periodic_rate)
+    @test summary.annualized_downside_volatility ==
+          RiskPerf.downside_deviation(returns, periodic_rate; method=:full) * sqrt(periods_per_year)
+    @test summary.omega_ratio == RiskPerf.omega_ratio(returns, periodic_rate)
+    @test isapprox(something(summary.sharpe_ratio), 0.0; atol=1e-12)
 
-    @test_throws ArgumentError performance_summary(returns; periods_per_year=0.0)
-    @test_throws ArgumentError performance_summary(returns; periods_per_year=Inf)
-    @test_throws ArgumentError performance_summary(returns; risk_free=Inf)
-    @test_throws ArgumentError performance_summary(returns; mar=NaN)
-    @test_throws ArgumentError performance_summary(Float64[]; periods_per_year=0.0)
+    @test_throws ArgumentError PerformanceConfig(0.0)
+    @test_throws ArgumentError PerformanceConfig(Inf)
+    @test_throws ArgumentError PerformanceConfig(252; annual_risk_free_rate=Inf)
+    @test_throws ArgumentError PerformanceConfig(252; annual_minimum_acceptable_return=NaN)
+    @test_throws ArgumentError PerformanceConfig(252; expected_shortfall_probability=0.0)
+    @test_throws ArgumentError PerformanceConfig(252; expected_shortfall_probability=1.5)
+    @test_throws ArgumentError PerformanceConfig(252; drawdown_method=:geometric)
+end
+
+@testitem "performance summary honors expected-shortfall probability and drawdown method" begin
+    using Test, Fastback, RiskPerf
+
+    returns = [0.05, -0.10, 0.02, -0.03, 0.04]
+    whole = performance_summary(returns, PerformanceConfig(252; expected_shortfall_probability=1.0))
+    @test whole.expected_shortfall == RiskPerf.mean_excess(returns, 0.0)
+
+    additive = performance_summary(returns, PerformanceConfig(252; drawdown_method=:additive))
+    @test additive.maximum_drawdown == RiskPerf.max_drawdown_pct(returns; compound=false)
+    @test additive.ulcer_index == RiskPerf.ulcer_index(returns; compound=false)
 end
 
 @testitem "flat closing trades are not counted as performance winners" begin
@@ -507,12 +493,12 @@ end
     fill_order!(acc, Order(oid!(acc), inst, dt0 + Day(1), 100.0, -1.0); dt=dt0 + Day(1), fill_price=100.0, bid=100.0, ask=100.0, last=100.0)
 
     trades = trade_summary(acc)
-    perf = performance_summary(acc, [0.0, 0.0]; periods_per_year=252)
+    perf = account_performance_summary(acc, [0.0, 0.0])
 
     @test trades.hit_rate == 0.0
-    @test perf.n_closing_trades == 1
-    @test perf.winners == 0.0
-    @test perf.losers == 0.0
+    @test perf.closing_trade_count == 1
+    @test perf.winner_rate == 0.0
+    @test perf.loser_rate == 0.0
 end
 
 @testitem "holding periods close lots that match within rounding noise" begin

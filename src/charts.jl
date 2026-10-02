@@ -200,8 +200,8 @@ end
 
 _optional_string(value) = isnothing(value) ? nothing : String(value)
 
-# Rust-compatible number text. Charts render coordinates, bounds, and labels with the same text as
-# the reference renderer, so equal inputs produce byte-identical documents.
+# Number text. Coordinates, bounds, and labels use fixed, platform-independent formatting, so
+# equal inputs produce byte-identical documents.
 
 """Shortest round-trip decimal text without an exponent; integral values have no fraction."""
 function _display(value::Float64)::String

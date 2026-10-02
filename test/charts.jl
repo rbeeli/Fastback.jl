@@ -1,6 +1,6 @@
 using TestItemRunner
 
-@testitem "charts render Rust-compatible number text and line documents" begin
+@testitem "charts render number text and line documents" begin
     using Test, Fastback, Dates
     using Fastback.Charts
 

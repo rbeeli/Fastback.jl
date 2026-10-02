@@ -2,11 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.0] - 2026-10-02
+
+### Changed
+
+- **Breaking:** one performance summary. `PerformanceConfig`, `PerformanceSummary`, `performance_summary(returns, config)`, `performance_summary_from_equity`, `AccountPerformanceSummary`, `account_performance_summary`, and `account_performance_summary_from_equity` replace the keyword API and the abbreviated fields (`tot_ret`, `max_dd`, `n_trades`, ...). Undefined metrics are `nothing`, non-finite returns are counted in `ignored_observations`, and `PerformanceConfig` adds the expected-shortfall probability and drawdown method. `performance_summary_table(summary)` takes a computed summary. `Fastback.Artifacts` no longer defines its own copy.
+- **Breaking:** the built-in SVG backend of `Fastback.plot_*` renders through `Fastback.Charts`, replacing the separate SVG renderer. SVG calls accept `title`, `width`, `height`, `legend`, `ylims`, and `xaxis_mode`; plots without finite samples throw an `ArgumentError`; cashflows render as one marker series per kind; `plot_title` is Plots-only.
+
 ## [0.13.0] - 2026-10-02
 
 ### Added
 
-- `Fastback.Charts`: standalone SVG line, scatter, categorical bar, and stacked interval bar charts with two independent vertical axes, reference lines, and Rust-compatible output.
+- `Fastback.Charts`: standalone SVG line, scatter, categorical bar, and stacked interval bar charts with two independent vertical axes, and reference lines.
 - `Fastback.Artifacts`: the standard backtest report (Markdown, observation and trade Parquet exports, equity, normalized, exposure, and turnover charts), diagnostic tables and charts, normalized performance comparisons, and `CausalBuyAndHoldBenchmark`. Parquet output loads with `using Parquet2` through the new `FastbackParquet2Ext` extension.
 
 ### Fixed

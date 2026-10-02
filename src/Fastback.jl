@@ -44,9 +44,9 @@ include("collectors/turnover.jl")
 include("analytics.jl")
 include("tables.jl")
 include("print.jl")
+include("charts.jl")
 include("plots.jl")
 include("plots_svg.jl")
-include("charts.jl")
 include("artifacts.jl")
 include("backtest_runner.jl")
 include("liquidation.jl")
@@ -239,9 +239,14 @@ export balances_table,
     cashflows_table
 
 # Analytics
-export performance_summary_table,
-    performance_summary,
+export PerformanceConfig,
     PerformanceSummary,
+    AccountPerformanceSummary,
+    performance_summary,
+    performance_summary_from_equity,
+    account_performance_summary,
+    account_performance_summary_from_equity,
+    performance_summary_table,
     TradeSummary,
     QuoteTradeSummary,
     SettlementTradeSummary,
