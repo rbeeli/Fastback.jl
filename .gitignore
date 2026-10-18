@@ -17,7 +17,6 @@ deps/src/
 docs/site/
 docs/build/
 docs/node_modules/
-docs/package-lock.json
 docs/src/examples/gen/
 docs/src/integrations/gen/
 docs/src/plotting/gen/
