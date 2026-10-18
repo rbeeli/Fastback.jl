@@ -241,7 +241,94 @@ end
     @test Fastback.check_invariants(acc)
 end
 
-@testitem "target-weight portfolio rejects options before mutation" begin
+@testitem "target weights trade options beside other instruments" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        broker=NoOpBroker(),
+        funding=AccountFunding.Margined,
+        base_currency=CashSpec(:USD),
+    )
+    deposit!(acc, :USD, 100_000.0)
+    stock = register_instrument!(acc, spot_instrument(
+        Symbol("HEDGED/USD"),
+        :HEDGED,
+        :USD;
+        base_tick=1.0,
+        margin_init_long=0.5,
+        margin_init_short=0.5,
+        margin_maint_long=0.25,
+        margin_maint_short=0.25,
+    ))
+    put = register_instrument!(acc, option_instrument(
+        Symbol("HEDGED_P95"),
+        :HEDGED,
+        :USD;
+        strike=95.0,
+        expiry=DateTime(2028, 6, 30),
+        right=OptionRight.Put,
+    ))
+    dt = DateTime(2028, 1, 2)
+    update_marks!(acc, stock, dt, 100.0, 100.0, 100.0)
+    update_marks!(acc, put, dt, 1.9, 2.1, 2.0)
+    portfolio = Portfolio(acc)
+
+    # An option's weight is its premium value: 0.02 × 100,000 / (2.0 × 100) is 10 contracts.
+    result = rebalance!(portfolio, dt, TargetWeights(stock => 0.98, put => 0.02))
+    @test get_position(acc, put).quantity == 10.0
+    @test get_position(acc, stock).quantity == 980.0
+    @test only(trade.fill_price for trade in result.trades if trade.order.inst === put) == 2.1
+    @test Fastback.check_invariants(acc)
+
+    # An omitted option is an orphan like any other position and closes at the bid; options of
+    # another underlying fill as their own strategy in the same rebalance.
+    call = register_instrument!(acc, option_instrument(Symbol("OTHER_C50"), :OTHER, :USD;
+        strike=50.0, expiry=DateTime(2028, 6, 30), right=OptionRight.Call))
+    update_marks!(acc, call, dt, 0.9, 1.1, 1.0)
+    result = rebalance!(portfolio, dt, TargetWeights(stock => 0.98, call => 0.01))
+    @test get_position(acc, put).quantity == 0.0
+    @test only(trade.fill_price for trade in result.trades if trade.order.inst === put) == 1.9
+    @test get_position(acc, call).quantity == 9.0
+    @test Fastback.check_invariants(acc)
+end
+
+@testitem "option legs of one rebalance fill as one strategy, margined as a spread" begin
+    using Test, Fastback, Dates
+
+    function spread_account()
+        acc = Account(;
+            broker=NoOpBroker(),
+            funding=AccountFunding.Margined,
+            base_currency=CashSpec(:USD),
+        )
+        deposit!(acc, :USD, 2_000.0)
+        expiry = DateTime(2028, 6, 30)
+        long_put = register_instrument!(acc, option_instrument(Symbol("SPREAD_P100"), :SPREADIDX, :USD;
+            strike=100.0, expiry=expiry, right=OptionRight.Put))
+        short_put = register_instrument!(acc, option_instrument(Symbol("SPREAD_P95"), :SPREADIDX, :USD;
+            strike=95.0, expiry=expiry, right=OptionRight.Put))
+        dt = DateTime(2028, 1, 2)
+        update_option_underlying_price!(acc, :SPREADIDX, :USD, 100.0)
+        update_marks!(acc, long_put, dt, 4.9, 5.1, 5.0)
+        update_marks!(acc, short_put, dt, 2.4, 2.6, 2.5)
+        acc, long_put, short_put, dt
+    end
+
+    # Two short puts alone need 2 × (2.6 + 15) × 100 of naked margin, more than the equity.
+    acc, long_put, short_put, dt = spread_account()
+    @test_throws OrderRejectError rebalance!(Portfolio(acc), dt, TargetWeights(short_put => -0.25))
+    @test get_position(acc, short_put).quantity == 0.0
+
+    # With the long puts in the same rebalance, the legs fill together and margin as a spread.
+    acc, long_put, short_put, dt = spread_account()
+    result = rebalance!(Portfolio(acc), dt, TargetWeights(long_put => 0.5, short_put => -0.25))
+    @test get_position(acc, long_put).quantity == 2.0
+    @test get_position(acc, short_put).quantity == -2.0
+    @test sort([trade.fill_price for trade in result.trades]) == [2.4, 5.1]
+    @test Fastback.check_invariants(acc)
+end
+
+@testitem "spread fills never model a negative option bid" begin
     using Test, Fastback, Dates
 
     acc = Account(;
@@ -250,18 +337,38 @@ end
         base_currency=CashSpec(:USD),
     )
     deposit!(acc, :USD, 10_000.0)
-    option = register_instrument!(acc, option_instrument(
-        Symbol("PORTOPT"),
-        :ABC,
-        :USD;
-        strike=100.0,
-        expiry=DateTime(2028, 6, 30),
-        right=OptionRight.Call,
-    ))
+    option = register_instrument!(acc, option_instrument(Symbol("NOBID_P50"), :NOBIDIDX, :USD;
+        strike=50.0, expiry=DateTime(2028, 6, 30), right=OptionRight.Put, quote_tick=0.05))
     dt = DateTime(2028, 1, 2)
-    @test_throws ArgumentError rebalance!(Portfolio(acc), dt, TargetWeights(option => 0.0))
-    @test isempty(acc.trades)
-    @test acc.last_event_dt == DateTime(0)
+    model = SpreadFillModel(minimum_full_spread_ticks=4.0)
+    sell = Fastback.model_fill(model, Fastback.FillContext(dt, option, 0.0, 0.05, 0.025, -1.0, TradeReason.Normal))
+    @test (sell.price, sell.bid) == (0.0, 0.0)
+    buy = Fastback.model_fill(model, Fastback.FillContext(dt, option, 0.0, 0.05, 0.025, 1.0, TradeReason.Normal))
+    @test buy.price ≈ 0.125
+end
+
+@testitem "fully funded rebalancing scales option purchases with other increases" begin
+    using Test, Fastback, Dates
+
+    acc = Account(;
+        broker=NoOpBroker(),
+        funding=AccountFunding.FullyFunded,
+        base_currency=CashSpec(:USD),
+    )
+    deposit!(acc, :USD, 10_000.0)
+    stock = register_instrument!(acc, spot_instrument(Symbol("FUNDED/USD"), :FUNDED, :USD; base_tick=1.0))
+    put = register_instrument!(acc, option_instrument(Symbol("FUNDED_P90"), :FUNDED, :USD;
+        strike=90.0, expiry=DateTime(2028, 6, 30), right=OptionRight.Put))
+    dt = DateTime(2028, 1, 2)
+    update_marks!(acc, stock, dt, 100.0, 100.0, 100.0)
+    update_marks!(acc, put, dt, 1.9, 2.1, 2.0)
+    # Buying 96 shares and 3 puts at the ask needs 10,230; both scale down to fit the cash.
+    rebalance!(Portfolio(acc), dt, TargetWeights(stock => 0.96, put => 0.06))
+    @test 0.0 < get_position(acc, put).quantity < 3.0
+    @test 0.0 < get_position(acc, stock).quantity <= 96.0
+    @test cash_balance(acc, cash_asset(acc.ledger, :USD)) >= 0.0
+    @test_throws ArgumentError rebalance!(Portfolio(acc), dt, TargetWeights(stock => 0.96, put => -0.05))
+    @test Fastback.check_invariants(acc)
 end
 
 @testitem "rebalance workspace survives failures and retains caller-owned results" begin

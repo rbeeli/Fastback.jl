@@ -68,7 +68,7 @@ See [Getting started](getting_started.md) for a runnable walkthrough and [Analyt
 
 - Event-driven accounting engine with explicit event processing (`process_step!`) for marks, option-underlying marks, FX, funding, expiries, and optional liquidation
 - Instruments: spot (including spot-on-margin), perpetuals, futures, and listed options with lifecycle guards (start/expiry), optional contract multipliers, and settlement styles (`PrincipalExchange`/`VariationMargin`)
-- Options backtesting: premium cash accounting, cash-settled expiry, conservative naked-short margin, bounded multi-leg margin relief, and atomic package fills via `fill_option_strategy!`
+- Options backtesting: premium cash accounting, cash-settled expiry, conservative naked-short margin, bounded multi-leg margin relief, and atomic package fills via `fill_option_strategy!`, which `rebalance!` uses for option targets
 - Funding policies: fully funded or margined; per-currency or base-currency margin aggregation; percent-notional or fixed-per-contract margin requirements
 - Broker profiles for commissions/financing (e.g. flat-fee, IBKR-style, Binance-style)
 - Multi-currency cash book with FX conversion helpers and base-currency metrics

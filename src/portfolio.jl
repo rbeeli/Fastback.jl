@@ -150,6 +150,8 @@ end
     )
     half_spread = full_spread / 2.0
     bid = min(context.bid, context.last - half_spread)
+    # An option premium is never negative: a contract without a bid sells at zero.
+    is_option(context.inst) && (bid = max(bid, 0.0))
     ask = max(context.ask, context.last + half_spread)
     price = context.quantity > 0.0 ? ask : bid
     ModelFill(price, bid, ask, context.last)
@@ -223,9 +225,6 @@ function _validate_portfolio_instrument(
 ) where {TTime<:Dates.AbstractTime}
     inst = _portfolio_registered_instrument(acc, index)
     pos = acc.positions[index]
-    inst.spec.contract_kind != ContractKind.Option || throw(ArgumentError(
-        "Target-weight rebalancing does not support option $(inst.spec.symbol); use fill_option_strategy!."
-    ))
     is_active(inst, dt) || throw(ArgumentError("Instrument $(inst.spec.symbol) is not active at $(dt)."))
     (pos.mark_time != TTime(0) && dt < pos.mark_time) &&
         throw(ArgumentError("Rebalance datetime $(dt) precedes the last mark for $(inst.spec.symbol)."))
@@ -442,10 +441,7 @@ function _plan_rebalance(
     @inbounds for pair in target.weights
         index = first(pair)
         weight = last(pair)
-        candidate = _portfolio_registered_instrument(acc, index)
-        candidate.spec.contract_kind != ContractKind.Option || throw(ArgumentError(
-            "Target-weight rebalancing does not support option $(candidate.spec.symbol); use fill_option_strategy!."
-        ))
+        _portfolio_registered_instrument(acc, index)
         if acc._event_state.open_slots[index] == 0
             push!(indices, index)
             current[index] = 0.0
@@ -508,7 +504,9 @@ function _plan_rebalance(
             push!(suppressed, i)
             continue
         end
-        if current[i] * desired[i] < 0.0
+        # Option legs fill as one strategy, which takes one leg per contract, so an option
+        # reversal stays a single leg.
+        if current[i] * desired[i] < 0.0 && !is_option(inst)
             push!(legs, _RebalanceLeg(inst, -current[i], true, nothing))
             push!(legs, _RebalanceLeg(inst, desired[i], false, nothing))
         else
@@ -530,13 +528,45 @@ function _plan_rebalance(
     pretrade, planned_rolls, legs, suppressed
 end
 
+@inline _option_chain(inst::Instrument) = (inst.spec.underlying_symbol, inst.spec.quote_symbol)
+
+# Fill the planned option legs of each underlying and quote chain, in chain order, as one option
+# strategy, so that spreads are margined as a whole and no leg is ever exposed alone.
+function _fill_rebalance_options!(
+    trades::Vector{Trade{TTime}},
+    acc::Account{TTime,TBroker},
+    dt::TTime,
+    legs::Vector{_RebalanceLeg{TTime}},
+) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+    chains = sort!(unique(_option_chain(leg.inst) for leg in legs if leg.quantity != 0.0 && is_option(leg.inst)))
+    for chain in chains
+        chain_legs = [leg for leg in legs if leg.quantity != 0.0 && is_option(leg.inst) && _option_chain(leg.inst) == chain]
+        fills = [leg.fill::ModelFill for leg in chain_legs]
+        orders = [create_order!(acc, leg.inst, dt, fill.price, leg.quantity) for (leg, fill) in zip(chain_legs, fills)]
+        append!(trades, fill_option_strategy!(
+            acc,
+            orders;
+            dt=dt,
+            fill_prices=[fill.price for fill in fills],
+            bids=[fill.bid for fill in fills],
+            asks=[fill.ask for fill in fills],
+            lasts=[fill.last for fill in fills],
+            is_makers=[fill.is_maker for fill in fills],
+        ))
+    end
+    trades
+end
+
 """
     rebalance!(portfolio, dt, target; rolls=[], policy=RebalancePolicy(), fill_model=TopOfBookFillModel())
 
 Move the wrapped account toward complete target weights. Explicit rolls run
-first; reversals and all other reductions precede increases. Planning errors do
-not mutate the account. Once execution starts, successful earlier fills remain
-committed if a later independent fill fails.
+first; reversals and all other reductions precede increases. An option's weight
+is its premium value over equity, like a spot position's; the option legs of
+each underlying and quote chain fill as one atomic option strategy, after the
+reductions of other instruments and before their increases. Planning errors do not mutate the account. Once
+execution starts, successful earlier fills remain committed if a later
+independent fill fails.
 """
 function rebalance!(
     portfolio::Portfolio{TAccount},
@@ -572,8 +602,13 @@ function rebalance!(
         open_trade === nothing || push!(trades, open_trade)
     end
 
+    options_filled = false
     @inbounds for leg in legs
-        leg.quantity == 0.0 && continue
+        (leg.quantity == 0.0 || is_option(leg.inst)) && continue
+        if !leg.reduction && !options_filled
+            _fill_rebalance_options!(trades, acc, dt, legs)
+            options_filled = true
+        end
         fill = leg.fill::ModelFill
         order = create_order!(acc, leg.inst, dt, fill.price, leg.quantity)
         trade = fill_order!(
@@ -589,6 +624,7 @@ function rebalance!(
         )
         trade === nothing || push!(trades, trade)
     end
+    options_filled || _fill_rebalance_options!(trades, acc, dt, legs)
 
     RebalanceResult(trades, suppressed, pretrade, account_snapshot(acc))
 end

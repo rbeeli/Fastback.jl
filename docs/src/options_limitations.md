@@ -12,6 +12,7 @@ and liquidation mechanics. It is not a full OCC, exchange, or broker lifecycle s
 - Cash settlement at intrinsic value through `settle_option_expiry!` and `process_expiries!`.
 - Short-option margin plus bounded multi-leg margin relief for same-underlying option groups.
 - Atomic package preflight through `fill_option_strategy!`.
+- Target-weight rebalancing of option positions, whose legs fill as one package.
 - Broker-profile commissions and financing where configured, for example through `IBKRProFixedBroker`.
 
 ## Important Limitations
@@ -44,7 +45,8 @@ For an IBKR-sourced US equity-option backtest, the usual mapping is:
   quote currency, and settlement currency.
 - Quote rows map to `MarkUpdate` values for bid, ask, and last.
 - Underlying reference prices map to `OptionUnderlyingUpdate`.
-- Single-leg fills map to `fill_order!`; package fills map to `fill_option_strategy!`.
+- Single-leg fills map to `fill_order!`; package fills map to `fill_option_strategy!`, which
+  `rebalance!` also uses for the option legs of a target.
 - `IBKRProFixedBroker` applies the option order minimum once across `fill_option_strategy!`
   packages by default, while regulatory/pass-through fees remain per leg. Set
   `option_strategy_commission=OptionStrategyCommissionMode.PerLegOrders` on the broker

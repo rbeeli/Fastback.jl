@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.0] - 2026-10-18
+
+### Added
+
+- Target-weight rebalancing trades options. An option's weight is its premium value over equity; open options absent from a complete target are orphans like other positions. The option legs of each underlying and quote chain fill as one atomic `fill_option_strategy!` package, chain by chain, after the reductions of other instruments and before their increases, so spreads are margined as a whole. Fully funded accounts scale option purchases with other increases.
+
+### Fixed
+
+- `SpreadFillModel` no longer models a negative option bid: a contract without a bid sells at zero instead of failing validation.
+
 ## [0.14.0] - 2026-10-02
 
 ### Changed

@@ -61,6 +61,21 @@ positive principal-exchange increases are uniformly scaled down, on tick, so the
 fit the available settlement-currency cash. Negative target weights are rejected
 under fully funded policy.
 
+`SpreadFillModel` never models a negative option bid: a contract without a bid
+sells at zero.
+
+## Options
+
+Options rebalance like other instruments. An option's weight is the market value
+of its premium over account equity, so `put => 0.02` holds puts worth 2% of
+equity, and an omitted open option is an orphan like any other position. The
+option legs of each underlying and quote chain fill as one atomic option strategy
+through `fill_option_strategy!`, chain by chain, after the reductions of other
+instruments and before their increases: each strategy is margined as a whole, so a
+spread opens or closes without either leg standing alone. Option purchases scale with other increases
+in fully funded accounts. Expired contracts settle through `settle_option_expiry!`
+or `process_expiries!`, not through rebalancing.
+
 ## Explicit contract rolls
 
 Pass `RollTransition(front, next)` for compatible futures or perpetual contracts:
@@ -84,5 +99,4 @@ complete target.
 All market evidence, routes, targets, policies, and rolls are planned before the
 first mutation. Once execution begins, successful earlier independent fills remain
 committed if a later fill fails; callers can inspect the account and decide how to
-recover. Target-weight rebalancing intentionally excludes options—use
-`fill_option_strategy!` for option packages.
+recover. A rejected option strategy fills none of its legs.
