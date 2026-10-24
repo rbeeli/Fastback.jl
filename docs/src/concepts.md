@@ -101,7 +101,9 @@ For runs that only need account state and aggregate trade counts, construct the
 account with `track_trades=false` and optionally `track_cashflows=false`. Ordinary
 spot and variation-margin fills can then avoid allocating temporary orders after
 compilation. Fills return `nothing` when trade tracking is disabled; analyses and
-collectors that require trade history still need `track_trades=true`.
+collectors that require trade history still need `track_trades=true`. An account
+built with a `trade_sink` passes every trade to `on_trade!(sink, trade)` without
+retaining it, so `TradeAnalytics` and streamed exports keep memory bounded.
 
 `process_step!` is fail-stop. If any phase throws, completed earlier phases stay
 applied and `acc.poisoned` is set. Discard that account; a later time-advancing

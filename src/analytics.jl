@@ -277,76 +277,8 @@ and no raw currency totals are silently summed across currency symbols.
 """
 @inline trade_summary(acc::Account) = trade_summary(acc.trades)
 
-function trade_summary(trades::AbstractVector{Trade{TTime}})::TradeSummary where {TTime<:Dates.AbstractTime}
-    trade_count = 0
-    realized_trade_count = 0
-    finite_realized_count = 0
-    win_count = 0
-    quote_accs = Dict{Symbol,_QuoteTradeAccumulator}()
-    settlement_accs = Dict{Symbol,_SettlementTradeAccumulator}()
-
-    @inbounds for t in trades
-        trade_count += 1
-        inst = t.order.inst
-        quote_symbol = inst.spec.quote_symbol
-        settle_symbol = inst.spec.settle_symbol
-
-        quote_acc = get!(quote_accs, quote_symbol) do
-            _QuoteTradeAccumulator()
-        end
-        quote_acc.trade_count += 1
-        quote_acc.total_commission += t.commission_quote
-
-        settlement_acc = get!(settlement_accs, settle_symbol) do
-            _SettlementTradeAccumulator()
-        end
-        settlement_acc.trade_count += 1
-        settlement_acc.total_commission += t.commission_settle
-
-        is_realizing(t) || continue
-        realized_trade_count += 1
-        settlement_acc.realized_trade_count += 1
-        settlement_acc.gross_realized_pnl += t.fill_pnl_settle
-        quote_acc.realized_trade_count += 1
-
-        gross_pnl_quote = gross_realized_pnl_quote(t)
-        net_pnl_quote = net_realized_pnl_quote(t)
-        notional_quote = realized_notional_quote(t)
-        if isfinite(gross_pnl_quote) && isfinite(net_pnl_quote) && isfinite(notional_quote) && notional_quote > 0.0
-            finite_realized_count += 1
-            quote_acc.finite_realized_count += 1
-            quote_acc.gross_realized_pnl += gross_pnl_quote
-            quote_acc.net_realized_pnl += net_pnl_quote
-            quote_acc.realized_notional += notional_quote
-
-            if net_pnl_quote > 0.0
-                win_count += 1
-                quote_acc.win_count += 1
-                quote_acc.win_sum += net_pnl_quote
-            elseif net_pnl_quote < 0.0
-                quote_acc.loss_count += 1
-                quote_acc.loss_sum += net_pnl_quote
-            end
-        end
-    end
-
-    hit_rate = finite_realized_count > 0 ? win_count / finite_realized_count : NaN
-    quote_summaries = _quote_trade_summaries(quote_accs)
-    settlement_summaries = _settlement_trade_summaries(settlement_accs)
-    hp_summary = holding_period_summary(trades)
-    TPeriod = _holding_period_summary_type(hp_summary)
-
-    return TradeSummary{TPeriod}(
-        trade_count,
-        realized_trade_count,
-        finite_realized_count,
-        hit_rate,
-        quote_summaries,
-        settlement_summaries,
-        hp_summary.average_holding_period,
-        hp_summary.median_holding_period,
-    )
-end
+trade_summary(trades::AbstractVector{Trade{TTime}}) where {TTime<:Dates.AbstractTime} =
+    trade_summary(_fold_trades(trades))
 
 mutable struct _QuoteTradeAccumulator
     trade_count::Int
@@ -460,77 +392,84 @@ function _realized_holding_periods(
     trades::AbstractVector{Trade{TTime}},
 ) where {TTime<:Dates.AbstractTime,TPeriod<:Dates.Period}
     records = RealizedHoldingPeriod{TTime,TPeriod}[]
-    # A lot without an entry timestamp holds exposure whose opening fill is not in `trades`.
     lots_by_symbol = Dict{Symbol,Vector{Tuple{Union{Nothing,TTime},Quantity}}}()
-
     @inbounds for t in trades
-        symbol = t.order.inst.spec.symbol
-        lots = get!(lots_by_symbol, symbol) do
-            Tuple{Union{Nothing,TTime},Quantity}[]
+        _realize_lots!(lots_by_symbol, t) do symbol, entry_date, quantity
+            push!(records, RealizedHoldingPeriod{TTime,TPeriod}(symbol, entry_date, t.date, quantity, t.date - entry_date))
         end
+    end
+    return records
+end
 
-        split_factor = t.preceding_split_factor
-        isfinite(split_factor) && split_factor > 0.0 ||
-            throw(ArgumentError("Trade $(t.tid) has invalid preceding_split_factor $(split_factor)."))
-        reconstructed_qty = 0.0
-        for i in eachindex(lots)
-            entry_date, lot_qty = lots[i]
-            if split_factor != 1.0
-                lot_qty *= split_factor
-                isfinite(lot_qty) || throw(ArgumentError(
-                    "Split-adjusted holding quantity is non-finite for $(symbol)."
-                ))
-                lots[i] = (entry_date, lot_qty)
-            end
-            reconstructed_qty += lot_qty
-        end
-        isfinite(reconstructed_qty) ||
-            throw(ArgumentError("Reconstructed holding quantity is non-finite for $(symbol)."))
-        # Lots that disagree with the recorded pre-fill exposure cannot be attributed; the whole
-        # exposure then has an unknown entry.
-        if !_quantities_match(reconstructed_qty, t.pos_qty)
-            empty!(lots)
-            t.pos_qty != 0.0 && push!(lots, (nothing, t.pos_qty))
-        end
-
-        remaining_realized_qty = abs(t.realized_qty)
-        while remaining_realized_qty > 0.0 && !isempty(lots)
-            entry_date, lot_qty = first(lots)
-            # A lot that matches the remaining realized quantity within rounding noise closes
-            # completely, so subtraction residue never becomes a separate holding period.
-            closes_lot = _quantities_match(abs(lot_qty), remaining_realized_qty)
-            consumed_qty = closes_lot ? abs(lot_qty) : min(abs(lot_qty), remaining_realized_qty)
-            if entry_date !== nothing
-                t.date >= entry_date ||
-                    throw(ArgumentError("Trade $(t.tid) for $(symbol) exits before its selected entry."))
-                push!(records, RealizedHoldingPeriod{TTime,TPeriod}(
-                    symbol,
-                    entry_date,
-                    t.date,
-                    consumed_qty,
-                    t.date - entry_date,
-                ))
-            end
-
-            if closes_lot
-                remaining_realized_qty = 0.0
-                deleteat!(lots, 1)
-                continue
-            end
-            remaining_realized_qty -= consumed_qty
-            remaining_lot_qty = lot_qty - sign(lot_qty) * consumed_qty
-            if remaining_lot_qty == 0.0
-                deleteat!(lots, 1)
-            else
-                lots[1] = (entry_date, remaining_lot_qty)
-            end
-        end
-
-        opened_qty = t.fill_qty + t.realized_qty
-        opened_qty != 0.0 && push!(lots, (t.date, opened_qty))
+"""
+Apply one trade to the FIFO lots of its instrument and call `realized(symbol, entry_date, quantity)`
+for every realized lot fragment with a known entry. A lot without an entry timestamp holds exposure
+whose opening fill was not observed.
+"""
+function _realize_lots!(
+    realized,
+    lots_by_symbol::Dict{Symbol,Vector{Tuple{Union{Nothing,TTime},Quantity}}},
+    t::Trade{TTime},
+) where {TTime<:Dates.AbstractTime}
+    symbol = t.order.inst.spec.symbol
+    lots = get!(lots_by_symbol, symbol) do
+        Tuple{Union{Nothing,TTime},Quantity}[]
     end
 
-    return records
+    split_factor = t.preceding_split_factor
+    isfinite(split_factor) && split_factor > 0.0 ||
+        throw(ArgumentError("Trade $(t.tid) has invalid preceding_split_factor $(split_factor)."))
+    reconstructed_qty = 0.0
+    for i in eachindex(lots)
+        entry_date, lot_qty = lots[i]
+        if split_factor != 1.0
+            lot_qty *= split_factor
+            isfinite(lot_qty) || throw(ArgumentError(
+                "Split-adjusted holding quantity is non-finite for $(symbol)."
+            ))
+            lots[i] = (entry_date, lot_qty)
+        end
+        reconstructed_qty += lot_qty
+    end
+    isfinite(reconstructed_qty) ||
+        throw(ArgumentError("Reconstructed holding quantity is non-finite for $(symbol)."))
+    # Lots that disagree with the recorded pre-fill exposure cannot be attributed; the whole
+    # exposure then has an unknown entry.
+    if !_quantities_match(reconstructed_qty, t.pos_qty)
+        empty!(lots)
+        t.pos_qty != 0.0 && push!(lots, (nothing, t.pos_qty))
+    end
+
+    remaining_realized_qty = abs(t.realized_qty)
+    while remaining_realized_qty > 0.0 && !isempty(lots)
+        entry_date, lot_qty = first(lots)
+        # A lot that matches the remaining realized quantity within rounding noise closes
+        # completely, so subtraction residue never becomes a separate holding period.
+        closes_lot = _quantities_match(abs(lot_qty), remaining_realized_qty)
+        consumed_qty = closes_lot ? abs(lot_qty) : min(abs(lot_qty), remaining_realized_qty)
+        if entry_date !== nothing
+            t.date >= entry_date ||
+                throw(ArgumentError("Trade $(t.tid) for $(symbol) exits before its selected entry."))
+            realized(symbol, entry_date, consumed_qty)
+        end
+
+        if closes_lot
+            remaining_realized_qty = 0.0
+            deleteat!(lots, 1)
+            continue
+        end
+        remaining_realized_qty -= consumed_qty
+        remaining_lot_qty = lot_qty - sign(lot_qty) * consumed_qty
+        if remaining_lot_qty == 0.0
+            deleteat!(lots, 1)
+        else
+            lots[1] = (entry_date, remaining_lot_qty)
+        end
+    end
+
+    opened_qty = t.fill_qty + t.realized_qty
+    opened_qty != 0.0 && push!(lots, (t.date, opened_qty))
+    return nothing
 end
 
 @inline function _quantities_match(left::Quantity, right::Quantity)::Bool
@@ -549,31 +488,34 @@ quantity and use the same period resolution as `t.date - entry_date`. They are
 """
 @inline holding_period_summary(acc::Account) = holding_period_summary(acc.trades)
 
-function holding_period_summary(trades::AbstractVector{Trade{TTime}}) where {TTime<:Dates.AbstractTime}
-    _holding_period_summary(realized_holding_periods(trades))
-end
+holding_period_summary(trades::AbstractVector{Trade{TTime}}) where {TTime<:Dates.AbstractTime} =
+    holding_period_summary(_fold_trades(trades))
 
+# The summary of realized lot fragments given as period values (`Dates.value`) and quantities in
+# realization order; `period_type` is the concrete period type of the values.
 function _holding_period_summary(
-    periods::AbstractVector{RealizedHoldingPeriod{TTime,TPeriod}},
-)::HoldingPeriodSummary{TPeriod} where {TTime<:Dates.AbstractTime,TPeriod<:Dates.Period}
+    ::Type{TPeriod},
+    period_type::Type,
+    values::AbstractVector{Int64},
+    quantities::AbstractVector{Quantity},
+)::HoldingPeriodSummary{TPeriod} where {TPeriod<:Dates.Period}
     realized_quantity = 0.0
     weighted_period_value = 0.0
 
-    @inbounds for period in periods
-        realized_quantity += period.quantity
-        weighted_period_value += Dates.value(period.holding_period) * period.quantity
+    @inbounds for i in eachindex(values, quantities)
+        realized_quantity += quantities[i]
+        weighted_period_value += values[i] * quantities[i]
     end
 
     if realized_quantity == 0.0
-        return HoldingPeriodSummary{TPeriod}(length(periods), realized_quantity, missing, missing)
+        return HoldingPeriodSummary{TPeriod}(length(values), realized_quantity, missing, missing)
     end
 
-    period_type = TPeriod === Dates.Period ? typeof(first(periods).holding_period) : TPeriod
     average_holding_period = _period_from_value(period_type, weighted_period_value / realized_quantity)
-    median_holding_period = _weighted_median_holding_period(periods, realized_quantity)
+    median_holding_period = _weighted_median_holding_period(period_type, values, quantities, realized_quantity)
 
     return HoldingPeriodSummary{TPeriod}(
-        length(periods),
+        length(values),
         realized_quantity,
         average_holding_period,
         median_holding_period,
@@ -584,18 +526,18 @@ end
     TPeriod(round(Int, value))
 
 function _weighted_median_holding_period(
-    periods::AbstractVector{RealizedHoldingPeriod{TTime,TPeriod}},
+    period_type::Type,
+    values::AbstractVector{Int64},
+    quantities::AbstractVector{Quantity},
     total_quantity::Quantity,
-) where {TTime<:Dates.AbstractTime,TPeriod<:Dates.Period}
-    period_weights = Vector{Tuple{Int64,Quantity}}(undef, length(periods))
-    @inbounds for i in eachindex(periods)
-        period = periods[i]
-        period_weights[i] = (Dates.value(period.holding_period), period.quantity)
+)
+    period_weights = Vector{Tuple{Int64,Quantity}}(undef, length(values))
+    @inbounds for i in eachindex(values, quantities)
+        period_weights[i] = (values[i], quantities[i])
     end
     sort!(period_weights; by=first)
 
     threshold = total_quantity / 2.0
-    period_type = TPeriod === Dates.Period ? typeof(first(periods).holding_period) : TPeriod
     cumulative = 0.0
     @inbounds for (period_value, qty) in period_weights
         cumulative += qty
@@ -646,23 +588,39 @@ function pnl_concentration(
             throw(ArgumentError("Unsupported concentration period: $(period). Use :day, :month, or :year."))
     end
 
+    by == :instrument && return pnl_concentration(_fold_trades(trades))
     buckets = Dict{Tuple{PnlConcentrationBucket,Symbol},_PnlConcentrationBucket}()
     @inbounds for t in trades
-        is_realizing(t) || continue
-        gross_pnl_quote = gross_realized_pnl_quote(t)
-        net_pnl_quote = net_realized_pnl_quote(t)
-        isfinite(gross_pnl_quote) && isfinite(net_pnl_quote) || continue
-
-        bucket = _pnl_concentration_bucket(t, by, period)
-        quote_symbol = t.order.inst.spec.quote_symbol
-        agg = get!(buckets, (bucket, quote_symbol)) do
-            _PnlConcentrationBucket()
-        end
-        agg.realized_trade_count += 1
-        agg.gross_realized_pnl_quote += gross_pnl_quote
-        agg.net_realized_pnl_quote += net_pnl_quote
+        _record_pnl_concentration!(buckets, t, by, period)
     end
+    return _pnl_concentration_table(buckets)
+end
 
+@inline function _record_pnl_concentration!(
+    buckets::Dict{Tuple{PnlConcentrationBucket,Symbol},_PnlConcentrationBucket},
+    t::Trade,
+    by::Symbol,
+    period::Symbol,
+)
+    is_realizing(t) || return nothing
+    gross_pnl_quote = gross_realized_pnl_quote(t)
+    net_pnl_quote = net_realized_pnl_quote(t)
+    isfinite(gross_pnl_quote) && isfinite(net_pnl_quote) || return nothing
+
+    bucket = _pnl_concentration_bucket(t, by, period)
+    quote_symbol = t.order.inst.spec.quote_symbol
+    agg = get!(buckets, (bucket, quote_symbol)) do
+        _PnlConcentrationBucket()
+    end
+    agg.realized_trade_count += 1
+    agg.gross_realized_pnl_quote += gross_pnl_quote
+    agg.net_realized_pnl_quote += net_pnl_quote
+    return nothing
+end
+
+function _pnl_concentration_table(
+    buckets::Dict{Tuple{PnlConcentrationBucket,Symbol},_PnlConcentrationBucket},
+)::PnlConcentrationTable
     sorted_buckets = collect(pairs(buckets))
     sort!(sorted_buckets; by=p -> abs(p.second.net_realized_pnl_quote), rev=true)
 
@@ -736,6 +694,127 @@ function _calendar_bucket(dt::Dates.Time, period::Symbol)
         "or use Date/DateTime-style timestamps."
     ))
 end
+
+"""
+    TradeAnalytics{TTime}()
+
+Online trade diagnostics: the trade summary, FIFO holding periods, realized-PnL concentration by
+instrument, and closing-fill counts, updated one trade at a time with [`on_trade!`](@ref) and equal to
+the functions of a retained trade vector. Memory is bounded by currencies, instruments, open lots and
+one period value and quantity per realized lot fragment. Pass it as an account's `trade_sink`.
+"""
+mutable struct TradeAnalytics{TTime<:Dates.AbstractTime}
+    trade_count::Int
+    realized_trade_count::Int
+    finite_realized_count::Int
+    win_count::Int
+    """Realizing trades and those with positive or negative net realized return."""
+    closing_trade_count::Int
+    closing_winner_count::Int
+    closing_loser_count::Int
+    const quote_accs::Dict{Symbol,_QuoteTradeAccumulator}
+    const settlement_accs::Dict{Symbol,_SettlementTradeAccumulator}
+    const concentration::Dict{Tuple{PnlConcentrationBucket,Symbol},_PnlConcentrationBucket}
+    const lots::Dict{Symbol,Vector{Tuple{Union{Nothing,TTime},Quantity}}}
+    """`Dates.value` and quantity of each realized lot fragment, in realization order."""
+    const holding_values::Vector{Int64}
+    const holding_quantities::Vector{Quantity}
+    holding_period_type::Union{Nothing,Type}
+end
+
+TradeAnalytics{TTime}() where {TTime<:Dates.AbstractTime} = TradeAnalytics{TTime}(0, 0, 0, 0, 0, 0, 0,
+    Dict{Symbol,_QuoteTradeAccumulator}(), Dict{Symbol,_SettlementTradeAccumulator}(),
+    Dict{Tuple{PnlConcentrationBucket,Symbol},_PnlConcentrationBucket}(),
+    Dict{Symbol,Vector{Tuple{Union{Nothing,TTime},Quantity}}}(), Int64[], Quantity[], nothing)
+
+function on_trade!(analytics::TradeAnalytics{TTime}, t::Trade{TTime})::Nothing where {TTime<:Dates.AbstractTime}
+    analytics.trade_count += 1
+    inst = t.order.inst
+    quote_acc = get!(analytics.quote_accs, inst.spec.quote_symbol) do
+        _QuoteTradeAccumulator()
+    end
+    quote_acc.trade_count += 1
+    quote_acc.total_commission += t.commission_quote
+
+    settlement_acc = get!(analytics.settlement_accs, inst.spec.settle_symbol) do
+        _SettlementTradeAccumulator()
+    end
+    settlement_acc.trade_count += 1
+    settlement_acc.total_commission += t.commission_settle
+
+    _realize_lots!(analytics.lots, t) do _, entry_date, quantity
+        period = t.date - entry_date
+        isnothing(analytics.holding_period_type) && (analytics.holding_period_type = typeof(period))
+        push!(analytics.holding_values, Dates.value(period))
+        push!(analytics.holding_quantities, quantity)
+    end
+    _record_pnl_concentration!(analytics.concentration, t, :instrument, :month)
+
+    is_realizing(t) || return nothing
+    analytics.closing_trade_count += 1
+    realized = realized_return_net(t)
+    analytics.closing_winner_count += realized > 0.0
+    analytics.closing_loser_count += realized < 0.0
+
+    analytics.realized_trade_count += 1
+    settlement_acc.realized_trade_count += 1
+    settlement_acc.gross_realized_pnl += t.fill_pnl_settle
+    quote_acc.realized_trade_count += 1
+
+    gross_pnl_quote = gross_realized_pnl_quote(t)
+    net_pnl_quote = net_realized_pnl_quote(t)
+    notional_quote = realized_notional_quote(t)
+    if isfinite(gross_pnl_quote) && isfinite(net_pnl_quote) && isfinite(notional_quote) && notional_quote > 0.0
+        analytics.finite_realized_count += 1
+        quote_acc.finite_realized_count += 1
+        quote_acc.gross_realized_pnl += gross_pnl_quote
+        quote_acc.net_realized_pnl += net_pnl_quote
+        quote_acc.realized_notional += notional_quote
+
+        if net_pnl_quote > 0.0
+            analytics.win_count += 1
+            quote_acc.win_count += 1
+            quote_acc.win_sum += net_pnl_quote
+        elseif net_pnl_quote < 0.0
+            quote_acc.loss_count += 1
+            quote_acc.loss_sum += net_pnl_quote
+        end
+    end
+    return nothing
+end
+
+function _fold_trades(trades::AbstractVector{Trade{TTime}})::TradeAnalytics{TTime} where {TTime<:Dates.AbstractTime}
+    analytics = TradeAnalytics{TTime}()
+    @inbounds for t in trades
+        on_trade!(analytics, t)
+    end
+    return analytics
+end
+
+function holding_period_summary(analytics::TradeAnalytics{TTime}) where {TTime<:Dates.AbstractTime}
+    TPeriod = _holding_period_type(TTime)
+    period_type = TPeriod === Dates.Period ? something(analytics.holding_period_type, Dates.Period) : TPeriod
+    return _holding_period_summary(TPeriod, period_type, analytics.holding_values, analytics.holding_quantities)
+end
+
+function trade_summary(analytics::TradeAnalytics)::TradeSummary
+    hit_rate = analytics.finite_realized_count > 0 ? analytics.win_count / analytics.finite_realized_count : NaN
+    hp_summary = holding_period_summary(analytics)
+    TPeriod = _holding_period_summary_type(hp_summary)
+    return TradeSummary{TPeriod}(
+        analytics.trade_count,
+        analytics.realized_trade_count,
+        analytics.finite_realized_count,
+        hit_rate,
+        _quote_trade_summaries(analytics.quote_accs),
+        _settlement_trade_summaries(analytics.settlement_accs),
+        hp_summary.average_holding_period,
+        hp_summary.median_holding_period,
+    )
+end
+
+"""Realized quote-currency P&L concentration by instrument, as `pnl_concentration(trades)`."""
+pnl_concentration(analytics::TradeAnalytics)::PnlConcentrationTable = _pnl_concentration_table(analytics.concentration)
 
 _finite_option(value) = value isa Real && isfinite(value) ? Float64(value) : nothing
 

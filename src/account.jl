@@ -126,7 +126,7 @@ OptionMarginScratch{TTime}() where {TTime<:Dates.AbstractTime} = OptionMarginScr
     0,
 )
 
-mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker,TrackTrades}
+mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker,TrackTrades,TSink}
     const funding::AccountFunding.T
     const margin_aggregation::MarginAggregation.T
     const ledger::CashLedger
@@ -155,6 +155,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker,TrackTr
     _rebalance_scratch::Union{Nothing,_RebalanceScratch{TTime}}
     const _event_state::_AccountEventState
     const track_trades::Bool
+    const trade_sink::TSink
     const track_cashflows::Bool
     poisoned::Bool
     order_sequence::Int
@@ -174,18 +175,19 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker,TrackTr
         margin_aggregation::MarginAggregation.T=MarginAggregation.BaseCurrency,
         broker::TBroker,
         track_trades::Bool=true,
+        trade_sink::TSink=nothing,
         track_cashflows::Bool=true,
         date_format=dateformat"yyyy-mm-dd",
         datetime_format=dateformat"yyyy-mm-dd HH:MM:SS",
         order_sequence=0,
         trade_sequence=0,
         exchange_rates::ExchangeRates=ExchangeRates(),
-    ) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker}
+    ) where {TTime<:Dates.AbstractTime,TBroker<:AbstractBroker,TSink}
         ledger = CashLedger()
         base_cash = _register_cash_asset!(ledger, base_currency)
         _ensure_rates_size!(exchange_rates, base_cash.index)
 
-        acc = new{TTime,TBroker,track_trades}(
+        acc = new{TTime,TBroker,track_trades || trade_sink !== nothing,TSink}(
             funding,
             margin_aggregation,
             ledger,
@@ -214,6 +216,7 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker,TrackTr
             nothing, # lazy rebalance workspace
             _AccountEventState(),
             track_trades,
+            trade_sink,
             track_cashflows,
             false, # poisoned
             order_sequence,
@@ -229,9 +232,41 @@ mutable struct Account{TTime<:Dates.AbstractTime,TBroker<:AbstractBroker,TrackTr
     end
 end
 
-# Expose the constructor's recording choice to inference without changing the
-# public track_trades field or specializing on other account configuration.
+# Whether the account builds `Trade` records, for its history or its trade sink, exposed to inference
+# without specializing on other account configuration. `track_trades` alone decides retention.
 @inline _tracks_trades(::Account{TTime,TBroker,TrackTrades}) where {TTime,TBroker,TrackTrades} = TrackTrades
+
+"""
+    on_trade!(sink, trade)
+
+Receive one trade the account recorded. An account built with `trade_sink=sink` calls it for every
+fill, expiry settlement and liquidation trade in application order, whether or not it retains them in
+`acc.trades`.
+"""
+function on_trade! end
+
+"""
+    TradeSinks(sinks...)
+
+A trade sink that passes each trade to every sink, in order.
+"""
+struct TradeSinks{T<:Tuple}
+    sinks::T
+end
+
+TradeSinks(sinks...) = TradeSinks(sinks)
+
+@inline function on_trade!(sinks::TradeSinks, trade::Trade)
+    foreach(sink -> on_trade!(sink, trade), sinks.sinks)
+    nothing
+end
+
+# Retain a recorded trade and pass it to the account's trade sink.
+@inline function _emit_trade!(acc::Account, trade::Trade)
+    acc.track_trades && push!(acc.trades, trade)
+    acc.trade_sink === nothing || on_trade!(acc.trade_sink, trade)
+    nothing
+end
 
 @inline function _poison!(acc::Account)
     acc.poisoned = true
@@ -399,7 +434,7 @@ end
     )
     pos.last_order = order
     pos.last_trade = trade
-    push!(acc.trades, trade)
+    _emit_trade!(acc, trade)
     trade
 end
 

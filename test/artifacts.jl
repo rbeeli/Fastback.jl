@@ -58,3 +58,57 @@ end
     @test_throws ArgumentError DiagnosticTimeSeries(timestamps, [DiagnosticSeries("x$(index)", ones(3)) for index in 1:5])
     @test_throws ArgumentError write_diagnostic_parquet(joinpath(directory, "bad.parquet"), reverse(timestamps), series)
 end
+
+@testitem "streamed report inputs reproduce the retained-trade report" begin
+    using Test, Fastback, Dates, Parquet2, Tables
+    using Fastback.Artifacts
+
+    directory = mktempdir()
+    retained = Account(; funding=AccountFunding.Margined, base_currency=CashSpec(:USD), broker=FlatFeeBroker(; pct=0.001))
+    recorder = ReportRecorder()
+    analytics = TradeAnalytics{DateTime}()
+    sink = TradeParquetSink(joinpath(directory, "streamed_trades.parquet"); batch_rows=2)
+    streamed = Account(; funding=AccountFunding.Margined, base_currency=CashSpec(:USD), broker=FlatFeeBroker(; pct=0.001),
+        track_trades=false, trade_sink=TradeSinks(recorder, analytics, sink))
+    accounts = (retained, streamed)
+    instruments = map(accounts) do acc
+        deposit!(acc, :USD, 10_000.0)
+        (register_instrument!(acc, spot_instrument(Symbol("A/USD"), :A, :USD)),
+            register_instrument!(acc, spot_instrument(Symbol("B/USD"), :B, :USD)))
+    end
+    start = DateTime(2030, 1, 1, 21)
+    # Quantities per day and instrument: opens, a partial exit, a flip and a close; the second fill of a day
+    # lands on the observation's timestamp after the observation.
+    fills = [(1, 10.0, 0.0), (2, -4.0, 5.0), (3, -10.0, -5.0), (4, 4.0, 0.0), (5, 0.0, 0.0)]
+    retained_observations = ReportObservation[]
+    for (day, quantity_a, quantity_b) in fills
+        timestamp = start + Day(day - 1)
+        prices = (100.0 + day, 50.0 - day)
+        for (index, acc) in enumerate(accounts)
+            a, b = instruments[index]
+            update_marks!(acc, a, timestamp, prices[1], prices[1], prices[1])
+            update_marks!(acc, b, timestamp, prices[2], prices[2], prices[2])
+            quantity_a == 0.0 || fill_order!(acc, Order(oid!(acc), a, timestamp, prices[1], quantity_a); dt=timestamp,
+                fill_price=prices[1], bid=prices[1], ask=prices[1], last=prices[1])
+            observation = ReportObservation(Portfolio(acc), timestamp, nothing)
+            index == 1 ? push!(retained_observations, observation) : record!(recorder, observation)
+            quantity_b == 0.0 || fill_order!(acc, Order(oid!(acc), b, timestamp, prices[2], quantity_b); dt=timestamp,
+                fill_price=prices[2], bid=prices[2], ask=prices[2], last=prices[2])
+        end
+    end
+    close(sink)
+    @test isempty(streamed.trades) && streamed.trade_count == retained.trade_count == sink.count
+    spec = StandardReportSpec("Streamed", directory, PerformanceConfig(252.0); additional_cost_stress_basis_points=[5.0])
+    expected = standard_backtest_report(retained, retained_observations, spec)
+    inputs = report_inputs(recorder, analytics, streamed.trade_count, sink.count)
+    actual = standard_backtest_report(inputs, spec)
+    @test render_markdown(actual) == render_markdown(expected)
+    @test actual.turnover == expected.turnover
+    @test inputs.gross_traded[2] > abs(4.0 * 102.0)  # includes the fill on the observation timestamp
+    expected_trades = joinpath(directory, "retained_trades.parquet")
+    Artifacts.write_parquet_table(expected_trades, Artifacts._trade_columns(retained.trades))
+    @test Tables.columntable(Parquet2.Dataset(sink.path)) == Tables.columntable(Parquet2.Dataset(expected_trades))
+    @test trade_summary(analytics).quote_summaries == trade_summary(retained).quote_summaries
+    @test holding_period_summary(analytics) == holding_period_summary(retained)
+    @test pnl_concentration(analytics).net_realized_pnl_quote == pnl_concentration(retained).net_realized_pnl_quote
+end

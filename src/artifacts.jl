@@ -12,7 +12,7 @@ using Dates
 using Printf
 
 import ..Fastback
-using ..Fastback: PerformanceConfig, PerformanceSummary, _finite_option, performance_summary
+using ..Fastback: PerformanceConfig, PerformanceSummary, TradeAnalytics, _finite_option, on_trade!, performance_summary
 using ..Charts:
     AxisOptions, ChartOptions, DARK_PLOT_THEME, LineSeries, write_svg_line_chart
 
@@ -24,14 +24,17 @@ export AdditionalCostStressRow,
     ReportPeriodReturn,
     ReportRecorder,
     StandardBacktestReport,
+    StandardReportInputs,
     StandardReportOutputPaths,
     StandardReportSpec,
+    TradeParquetSink,
     carry,
     finish,
     markdown_artifact_link,
     observe!,
     record!,
     render_markdown,
+    report_inputs,
     report_period_returns,
     standard_backtest_report,
     write_diagnostic_parquet,
@@ -62,6 +65,25 @@ function _write_parquet(path::AbstractString, columns::NamedTuple)
     mkpath(dirname(path))
     write_parquet_table(String(path), columns)
     return nothing
+end
+
+"""
+    open_parquet_stream(path) -> stream
+    write_parquet_batch!(stream, columns::NamedTuple)
+    close_parquet_stream!(stream)
+
+A Snappy-compressed Parquet table written one row group per batch, with the same columns in every
+batch, and moved to `path` only when closed. Implemented by the Parquet2 extension.
+"""
+function open_parquet_stream end
+function write_parquet_batch! end
+function close_parquet_stream! end
+
+function _open_parquet_stream(path::AbstractString)
+    hasmethod(open_parquet_stream, Tuple{String}) ||
+        throw(ArgumentError("Writing '$(path)' requires the Parquet2 extension; load it with `using Parquet2`."))
+    mkpath(dirname(path))
+    return open_parquet_stream(String(path))
 end
 
 """Report text of a UTC timestamp, with milliseconds only when present."""
@@ -102,12 +124,20 @@ function ReportObservation(portfolio::Fastback.Portfolio, timestamp::DateTime, b
         exposure.net_notional / equity, exposure.snapshot.balance / equity)
 end
 
-"""Records period observations in strictly increasing time, with a benchmark for all or none."""
+"""
+Records period observations in strictly increasing time, with a benchmark for all or none, and the
+gross base-currency notional traded in each period. As an account's trade sink it assigns each trade
+to the first observation at or after the trade's timestamp, as `standard_backtest_report` does with
+retained trades.
+"""
 mutable struct ReportRecorder
     observations::Vector{ReportObservation}
+    gross_traded::Vector{Float64}
+    """Notional of trades after the latest observation."""
+    pending_gross::Float64
 end
 
-ReportRecorder() = ReportRecorder(ReportObservation[])
+ReportRecorder() = ReportRecorder(ReportObservation[], Float64[], 0.0)
 
 function record!(recorder::ReportRecorder, observation::ReportObservation)::Nothing
     if !isempty(recorder.observations)
@@ -118,6 +148,23 @@ function record!(recorder::ReportRecorder, observation::ReportObservation)::Noth
             throw(ArgumentError("Benchmark equity must be present for every observation or none."))
     end
     push!(recorder.observations, observation)
+    push!(recorder.gross_traded, recorder.pending_gross)
+    recorder.pending_gross = 0.0
+    return nothing
+end
+
+function Fastback.on_trade!(recorder::ReportRecorder, trade::Fastback.Trade)::Nothing
+    observations = recorder.observations
+    if isempty(observations) || trade.date > last(observations).timestamp
+        recorder.pending_gross += abs(trade.notional_base)
+        return nothing
+    end
+    # A trade at or before the latest observation's timestamp belongs to the first observation at or after it.
+    index = length(observations)
+    while index > 1 && observations[index - 1].timestamp >= trade.date
+        index -= 1
+    end
+    recorder.gross_traded[index] += abs(trade.notional_base)
     return nothing
 end
 
@@ -230,7 +277,68 @@ struct StandardBacktestReport
     trade_summary::Any
     holding_periods::Any
     pnl_concentration::Any
-    trades::Vector{Any}
+    """Retained fills the report counts and, when it holds them, writes to its trades export."""
+    retained_trade_count::Int
+    trades::Union{Nothing,Vector{Any}}
+end
+
+"""
+Everything a standard report derives from an account: its period observations, the gross notional
+traded in each period, and the trade diagnostics. Built from an account's retained trades, or from a
+`ReportRecorder` and a `TradeAnalytics` that served as the account's trade sinks, so a report can be
+written after the account is gone.
+"""
+struct StandardReportInputs
+    observations::Vector{ReportObservation}
+    """Gross base-currency notional traded in the period ending at each observation."""
+    gross_traded::Vector{Float64}
+    applied_trade_count::Int
+    retained_trade_count::Int
+    closing_trade_count::Int
+    closing_winner_count::Int
+    closing_loser_count::Int
+    trade_summary::Fastback.TradeSummary
+    holding_periods::Fastback.HoldingPeriodSummary
+    pnl_concentration::Fastback.PnlConcentrationTable
+end
+
+"""
+    report_inputs(recorder, analytics, applied_trade_count, retained_trade_count) -> StandardReportInputs
+
+The report inputs of an account whose trades reached `recorder` and `analytics` as trade sinks;
+`retained_trade_count` is the number of trades its trades export holds.
+"""
+function report_inputs(recorder::ReportRecorder, analytics::TradeAnalytics, applied_trade_count::Integer,
+    retained_trade_count::Integer)::StandardReportInputs
+    recorder.pending_gross == 0.0 ||
+        throw(ArgumentError("Retained trades extend beyond the final report observation."))
+    return StandardReportInputs(finish(recorder), copy(recorder.gross_traded), Int(applied_trade_count),
+        Int(retained_trade_count), analytics.closing_trade_count, analytics.closing_winner_count,
+        analytics.closing_loser_count, Fastback.trade_summary(analytics), Fastback.holding_period_summary(analytics),
+        Fastback.pnl_concentration(analytics))
+end
+
+"""
+    report_inputs(account, observations) -> StandardReportInputs
+
+The report inputs of an account from its period observations and retained trades.
+"""
+function report_inputs(account::Fastback.Account{TTime}, observations::AbstractVector{ReportObservation},
+)::StandardReportInputs where {TTime<:Dates.AbstractTime}
+    recorder = ReportRecorder()
+    analytics = TradeAnalytics{TTime}()
+    trades = account.trades
+    trade_index = 1
+    for observation in observations
+        while trade_index <= length(trades) && trades[trade_index].date <= observation.timestamp
+            on_trade!(recorder, trades[trade_index])
+            on_trade!(analytics, trades[trade_index])
+            trade_index += 1
+        end
+        record!(recorder, observation)
+    end
+    trade_index > length(trades) || throw(ArgumentError("Retained trades extend beyond the final report observation."))
+    return report_inputs(recorder, analytics, account.trade_count, length(trades))
 end
 
 """Benchmark drawdowns: `equity / peak - 1` at each observation."""
@@ -252,32 +360,28 @@ function _strategy_drawdown_fractions(equity::AbstractVector{Float64})::Vector{F
 end
 
 """
-    standard_backtest_report(account, observations, spec) -> StandardBacktestReport
+    standard_backtest_report(inputs, spec) -> StandardBacktestReport
 
-Build the report of an account from its period observations and retained trades.
+Build the report from its inputs; see [`StandardReportInputs`](@ref). Its trades export is written
+by whoever streamed the trades, for example a [`TradeParquetSink`](@ref).
 """
-function standard_backtest_report(account::Fastback.Account, observations::AbstractVector{ReportObservation},
-    spec::StandardReportSpec)::StandardBacktestReport
+standard_backtest_report(inputs::StandardReportInputs, spec::StandardReportSpec)::StandardBacktestReport =
+    _standard_backtest_report(inputs, spec, nothing)
+
+function _standard_backtest_report(inputs::StandardReportInputs, spec::StandardReportSpec, trades)::StandardBacktestReport
+    observations = inputs.observations
     period_returns = report_period_returns(observations)
     paths = StandardReportOutputPaths(spec.output_directory, spec.report_path, spec.performance_export_path,
         spec.trades_export_path)
-    trades = account.trades
-    gross_traded = zeros(length(observations))
-    trade_index = 1
-    for (index, observation) in pairs(observations)
-        while trade_index <= length(trades) && trades[trade_index].date <= observation.timestamp
-            gross_traded[index] += abs(trades[trade_index].notional_base)
-            trade_index += 1
-        end
-    end
-    trade_index > length(trades) || throw(ArgumentError("Retained trades extend beyond the final report observation."))
+    gross_traded = inputs.gross_traded
+    length(gross_traded) == length(observations) ||
+        throw(ArgumentError("Report inputs hold $(length(gross_traded)) traded notionals for $(length(observations)) observations."))
     turnover = [gross / (2.0 * observation.equity) for (gross, observation) in zip(gross_traded, observations)]
     equity = [observation.equity for observation in observations]
     performance = performance_summary([period.strategy_return for period in period_returns], spec.performance)
-    closing = [trade for trade in trades if Fastback.is_realizing(trade)]
-    realized = [Fastback.realized_return_net(trade) for trade in closing]
-    winner_rate = isempty(closing) ? nothing : count(>(0.0), realized) / length(closing)
-    loser_rate = isempty(closing) ? nothing : count(<(0.0), realized) / length(closing)
+    closing = inputs.closing_trade_count
+    winner_rate = closing == 0 ? nothing : inputs.closing_winner_count / closing
+    loser_rate = closing == 0 ? nothing : inputs.closing_loser_count / closing
     benchmark_performance = isnothing(first(observations).benchmark_equity) ? nothing :
         performance_summary([something(period.benchmark_return) for period in period_returns], spec.performance)
     stresses = map(spec.additional_cost_stress_basis_points) do basis_points
@@ -292,10 +396,19 @@ function standard_backtest_report(account::Fastback.Account, observations::Abstr
         AdditionalCostStressRow(basis_points, performance_summary(returns, spec.performance))
     end
     return StandardBacktestReport(spec, paths, collect(observations), period_returns, _strategy_drawdown_fractions(equity), turnover,
-        performance, account.trade_count, length(closing), winner_rate, loser_rate, benchmark_performance, stresses,
-        Fastback.trade_summary(trades), Fastback.holding_period_summary(trades), Fastback.pnl_concentration(trades; by=:instrument),
-        collect(Any, trades))
+        performance, inputs.applied_trade_count, closing, winner_rate, loser_rate, benchmark_performance, stresses,
+        inputs.trade_summary, inputs.holding_periods, inputs.pnl_concentration, inputs.retained_trade_count, trades)
 end
+
+"""
+    standard_backtest_report(account, observations, spec) -> StandardBacktestReport
+
+Build the report of an account from its period observations and retained trades, which its trades
+export holds.
+"""
+standard_backtest_report(account::Fastback.Account, observations::AbstractVector{ReportObservation},
+    spec::StandardReportSpec)::StandardBacktestReport =
+    _standard_backtest_report(report_inputs(account, observations), spec, collect(Any, account.trades))
 
 _format_optional(value::Union{Nothing,Float64}, percent::Bool) =
     isnothing(value) ? "n/a" : percent ? @sprintf("%.4f", value * 100.0) : @sprintf("%.6f", value)
@@ -341,7 +454,7 @@ function render_markdown(report::StandardBacktestReport)::String
     io = IOBuffer()
     print(io, "# $(report.spec.title)\n\n## Scope\n\n- Period: $(display_timestamp(first_observation.timestamp)) through ",
         "$(display_timestamp(last_observation.timestamp))\n- Period observations: $(length(report.observations))\n",
-        "- Applied fills: $(report.applied_trade_count)\n- Retained fills: $(length(report.trades))\n",
+        "- Applied fills: $(report.applied_trade_count)\n- Retained fills: $(report.retained_trade_count)\n",
         @sprintf("- Annualization: %.4f periods/year\n\n", report.spec.performance.periods_per_year))
     performance = report.performance
     print(io, "## Strategy Performance\n\n| Metric | Value | Unit |\n|---|---:|---|\n",
@@ -512,11 +625,66 @@ function write_performance_charts(paths::StandardReportOutputPaths, timestamps::
     return nothing
 end
 
+"""The columns of the standard trades export."""
+_trade_columns(trades) = (
+    trade_id=UInt64[trade.tid for trade in trades],
+    timestamp=DateTime[trade.date for trade in trades],
+    symbol=String[String(trade.order.inst.spec.symbol) for trade in trades],
+    fill_price=Float64[trade.fill_price for trade in trades],
+    fill_quantity=Float64[trade.fill_qty for trade in trades],
+    notional_base=Float64[trade.notional_base for trade in trades],
+    commission_settlement=Float64[trade.commission_settle for trade in trades],
+    realized_quantity=Float64[trade.realized_qty for trade in trades],
+)
+
+"""
+    TradeParquetSink(path; batch_rows=65_536)
+
+An account trade sink that streams every trade to the standard trades export at `path`, holding at
+most `batch_rows` trades in memory. `close` writes the remaining trades and moves the file into place;
+`count` is the number of trades written.
+"""
+mutable struct TradeParquetSink
+    const path::String
+    const batch_rows::Int
+    const stream::Any
+    const buffer::Vector{Any}
+    count::Int
+    closed::Bool
+end
+
+function TradeParquetSink(path::AbstractString; batch_rows::Integer=65_536)
+    batch_rows > 0 || throw(ArgumentError("Trade batch size must be positive."))
+    return TradeParquetSink(String(path), Int(batch_rows), _open_parquet_stream(path), Any[], 0, false)
+end
+
+function Fastback.on_trade!(sink::TradeParquetSink, trade::Fastback.Trade)::Nothing
+    sink.closed && throw(ArgumentError("Trade sink '$(sink.path)' is closed."))
+    push!(sink.buffer, trade)
+    sink.count += 1
+    length(sink.buffer) >= sink.batch_rows && _flush!(sink)
+    return nothing
+end
+
+function _flush!(sink::TradeParquetSink)
+    write_parquet_batch!(sink.stream, _trade_columns(sink.buffer))
+    empty!(sink.buffer)
+    return nothing
+end
+
+function Base.close(sink::TradeParquetSink)::Nothing
+    sink.closed && return nothing
+    (!isempty(sink.buffer) || sink.count == 0) && _flush!(sink)
+    close_parquet_stream!(sink.stream)
+    sink.closed = true
+    return nothing
+end
+
 """
     write_with_markdown_appendix(report, appendix) -> StandardReportOutputPaths
 
-Write the Markdown report with a caller-rendered appendix, the observation and trade Parquet
-exports, and the equity, normalized, exposure, and turnover charts.
+Write the Markdown report with a caller-rendered appendix, the observation Parquet export, the trade
+export when the report holds its trades, and the equity, normalized, exposure, and turnover charts.
 """
 function write_with_markdown_appendix(report::StandardBacktestReport, appendix::AbstractString)::StandardReportOutputPaths
     mkpath(dirname(report.paths.report))
@@ -543,16 +711,7 @@ function write_with_markdown_appendix(report::StandardBacktestReport, appendix::
         cash_weight=[observation.cash_weight for observation in observations],
         round_trip_turnover=report.turnover,
     ))
-    _write_parquet(report.paths.trades, (
-        trade_id=UInt64[trade.tid for trade in report.trades],
-        timestamp=DateTime[trade.date for trade in report.trades],
-        symbol=String[String(trade.order.inst.spec.symbol) for trade in report.trades],
-        fill_price=Float64[trade.fill_price for trade in report.trades],
-        fill_quantity=Float64[trade.fill_qty for trade in report.trades],
-        notional_base=Float64[trade.notional_base for trade in report.trades],
-        commission_settlement=Float64[trade.commission_settle for trade in report.trades],
-        realized_quantity=Float64[trade.realized_qty for trade in report.trades],
-    ))
+    isnothing(report.trades) || _write_parquet(report.paths.trades, _trade_columns(something(report.trades)))
     write_performance_charts(report.paths, timestamps, equity,
         isnothing(benchmark) ? nothing : (report.spec.benchmark_label, something(benchmark)), report.drawdowns,
         report.spec.performance_y_axis_scale)

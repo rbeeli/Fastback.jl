@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.0] - 2026-10-24
+
+### Added
+
+- `Account(...; trade_sink)`: every recorded trade (fills, expiry settlements, liquidations) is passed to `on_trade!(sink, trade)` in application order, whether or not `track_trades` retains it. `TradeSinks(sinks...)` fans a trade out to several sinks.
+- `TradeAnalytics`: online trade summary, FIFO holding periods, realized-PnL concentration by instrument and closing-fill counts, equal to the functions of a retained trade vector, which now fold over it.
+- `Fastback.Artifacts`: `StandardReportInputs` and `report_inputs`, built from an account's retained trades or from a `ReportRecorder` and a `TradeAnalytics` used as trade sinks; `standard_backtest_report(inputs, spec)` writes the same report without the account. `TradeParquetSink` streams the standard trades export in row groups, and `open_parquet_stream`, `write_parquet_batch!` and `close_parquet_stream!` write any Parquet table batch by batch.
+
+### Changed
+
+- `ReportRecorder` records the gross notional traded in each period when it is a trade sink. `StandardBacktestReport` carries `retained_trade_count`; its `trades` are `nothing` for a report built from inputs, whose trades export is written by the sink that streamed them.
+
 ## [0.15.0] - 2026-10-18
 
 ### Added

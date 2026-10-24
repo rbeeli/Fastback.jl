@@ -1177,7 +1177,7 @@ function _settle_future_expiry!(
     )
     pos.last_order = order
     pos.last_trade = trade
-    push!(acc.trades, trade)
+    _emit_trade!(acc, trade)
     trade
 end
 

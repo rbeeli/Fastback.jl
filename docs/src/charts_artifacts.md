@@ -34,3 +34,21 @@ spec = StandardReportSpec("My strategy", abspath("results"), PerformanceConfig(2
 report = standard_backtest_report(portfolio.account, finish(recorder), spec)
 write(report)
 ```
+
+An account that should not retain its trades streams them instead. `TradeSinks` passes every trade
+to the `ReportRecorder` (traded notional per period), a `TradeAnalytics` (trade summary, holding
+periods and PnL concentration) and a `TradeParquetSink` (the trades export, written in row groups).
+`report_inputs` then captures everything the report needs, so it can be written later and
+repeatedly without the account:
+
+```julia
+recorder = ReportRecorder()
+analytics = TradeAnalytics{DateTime}()
+trades = TradeParquetSink(abspath("results/trades.parquet"))
+acc = Account(; base_currency=CashSpec(:USD), broker=NoOpBroker(), track_trades=false,
+    trade_sink=TradeSinks(recorder, analytics, trades))
+# ... run, recording observations as above ...
+close(trades)
+inputs = report_inputs(recorder, analytics, acc.trade_count, trades.count)
+write(standard_backtest_report(inputs, spec))
+```
