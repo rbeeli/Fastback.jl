@@ -127,6 +127,23 @@ records `CashflowKind.CashDividend`, and preserves equity before subsequent
 market movement. A failure poisons the account; completed changes are not rolled
 back. It does not accrue financing or deduplicate replayed actions.
 
+## Move a spot position on a ticker change
+
+When a stock changes its ticker, `transfer_spot_positions!` moves each open
+position to the successor instrument without a fill. Pairs apply at once, so
+two instruments may swap.
+
+```julia
+transfer_spot_positions!(acc, [old_ticker => new_ticker], change_date)
+```
+
+The successor takes the position's quantity, price bases, commission carry,
+quotes and borrow-fee clock and is margined under its own instrument; cash and
+equity are unchanged and no trade is recorded. Both instruments must be
+principal-exchange spot instruments in the same currencies and multiplier, and
+the successor must be flat. Accrue financing through `change_date` first to
+charge unaccrued borrow time at the old instrument's rate.
+
 ## Use Tables.jl outputs
 
 ```julia

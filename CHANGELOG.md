@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.17.0] - 2026-10-27
+
+### Added
+
+- `transfer_spot_positions!(acc, transfers, dt)` moves open principal-exchange spot positions to other instruments in the same currencies and multiplier without a fill, as on a ticker change. A batch of `from => to` pairs applies at once, so instruments may swap. The successor takes the quantity, price bases, commission carry, pending split factor, valuation, quotes and borrow-fee clock and is margined under its own instrument; cash and equity are unchanged and no trade or cashflow is recorded. Invalid transfers leave the account unchanged.
+
 ## [0.16.0] - 2026-10-24
 
 ### Added

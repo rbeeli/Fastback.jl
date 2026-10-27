@@ -21,7 +21,7 @@ For details, open the REPL and type `?symbol` to view docstrings.
 
 ## Order and trade utilities
 
-- `symbol`, `notional_value`, `fill_order!`, `fill_option_strategy!`, `roll_position!`, `apply_spot_corporate_action!`
+- `symbol`, `notional_value`, `fill_order!`, `fill_option_strategy!`, `roll_position!`, `apply_spot_corporate_action!`, `transfer_spot_positions!`
 - `realized_notional_quote`, `is_realizing`, `realized_return_gross`, `realized_return_net`
 
 ## Cash ledger operations

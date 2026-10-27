@@ -109,6 +109,7 @@ export symbol,
     fill_option_strategy!,
     roll_position!,
     apply_spot_corporate_action!,
+    transfer_spot_positions!,
     is_realizing,
     realized_return_gross,
     realized_return_net
