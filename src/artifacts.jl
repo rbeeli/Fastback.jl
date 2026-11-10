@@ -5,6 +5,8 @@ benchmarks, and normalized performance comparisons.
 
 Parquet output requires the Parquet2 package: `using Parquet2` loads the writer extension.
 Timestamps are `DateTime` values interpreted as UTC.
+Calendar-year returns use the instant before each period end, so a January 1 midnight
+close belongs to the year just completed. Observation timestamps retain their original values.
 """
 module Artifacts
 
@@ -475,10 +477,10 @@ function render_markdown(report::StandardBacktestReport)::String
     end
     print(io, "\n## Calendar-year stability\n\n| Year | Return observations | Total return | Annualized return | ",
         "Volatility | Sharpe | Maximum drawdown |\n|---|---:|---:|---:|---:|---:|---:|\n")
-    years = sort!(unique(year(period.timestamp) for period in report.period_returns))
+    years = sort!(unique(year(period.timestamp - Millisecond(1)) for period in report.period_returns))
     for calendar_year in years
         yearly = performance_summary([period.strategy_return for period in report.period_returns
-            if year(period.timestamp) == calendar_year], report.spec.performance)
+            if year(period.timestamp - Millisecond(1)) == calendar_year], report.spec.performance)
         drawdown = isnothing(yearly.maximum_drawdown) ? nothing : -abs(something(yearly.maximum_drawdown))
         print(io, "| $(calendar_year) | $(yearly.observations) | $(_format_optional(yearly.total_return, true)) | ",
             "$(_format_optional(yearly.annualized_return, true)) | $(_format_optional(yearly.annualized_volatility, true)) | ",

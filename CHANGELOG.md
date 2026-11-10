@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.17.1] - 2026-11-10
+
+### Fixed
+
+- The calendar-year stability table of the standard backtest report assigns each period return to the year of the instant before its period-ending timestamp, so a January 1 midnight close belongs to the year just completed. Intraday closes keep their calendar year; observation timestamps and total returns are unchanged.
+
 ## [0.17.0] - 2026-10-27
 
 ### Added

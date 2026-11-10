@@ -112,3 +112,28 @@ end
     @test holding_period_summary(analytics) == holding_period_summary(retained)
     @test pnl_concentration(analytics).net_realized_pnl_quote == pnl_concentration(retained).net_realized_pnl_quote
 end
+
+@testitem "calendar-year stability assigns midnight closes to the completed day" begin
+    using Test, Fastback, Dates
+    using Fastback.Artifacts
+
+    account = Account(; funding=AccountFunding.Margined, base_currency=CashSpec(:USD), broker=NoOpBroker())
+    deposit!(account, :USD, 100.0)
+    spec = StandardReportSpec("Calendar boundary", mktempdir(), PerformanceConfig(365.0))
+    for (close_hour, offset, expected_2023, expected_2024) in
+        ((0, Millisecond(0), 1, 1), (0, Millisecond(1), 0, 2), (21, Millisecond(0), 0, 2))
+        recorder = ReportRecorder()
+        for (timestamp, equity) in zip(
+            (DateTime(2023, 12, 31, close_hour), DateTime(2024, 1, 1, close_hour), DateTime(2024, 1, 2, close_hour)),
+            (100.0, 110.0, 121.0),
+        )
+            record!(recorder, ReportObservation(timestamp + offset, equity, nothing, 0.0, 0.0, 1.0))
+        end
+        report = standard_backtest_report(account, finish(recorder), spec)
+        markdown = render_markdown(report)
+        calendar = split(split(markdown, "## Calendar-year stability")[2], "## Trade diagnostics")[1]
+        @test occursin("| 2024 | $(expected_2024) |", calendar)
+        @test occursin("| 2023 | $(expected_2023) |", calendar) == (expected_2023 > 0)
+        @test report.performance.total_return ≈ 0.21
+    end
+end

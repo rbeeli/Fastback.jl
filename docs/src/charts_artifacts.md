@@ -24,6 +24,10 @@ diagnostic tables and charts (`DiagnosticTimeSeries`, `write_diagnostic_parquet`
 `write_typed_diagnostic_parquet`), normalized performance comparisons, and tracks a
 `CausalBuyAndHoldBenchmark`. Parquet output requires the Parquet2 extension:
 
+Calendar-year performance uses the instant before each period-ending UTC timestamp.
+A January 1 midnight close belongs to the year just completed; ordinary intraday closes
+keep their calendar year. Observation timestamps and total returns retain their original values.
+
 ```julia
 using Fastback, Parquet2
 using Fastback.Artifacts
